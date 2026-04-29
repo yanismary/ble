@@ -17,13 +17,13 @@ import { LoggerService } from '../../providers/logger/logger.service';
 })
 export class HelpPage {
 
-  showPairing:boolean;
-  showPairingTroubles:boolean;
-  isAndroid:boolean;
-  isIos:boolean;
+  showPairing:boolean = false;
+  showPairingTroubles:boolean = false;
+  isAndroid:boolean = false;
+  isIos:boolean = false;
   private TAG = 'HelpPage';
 
-  @ViewChild(Navbar) navBar: Navbar;
+  @ViewChild(Navbar) navBar!: Navbar;
   constructor(
     public navCtrl: NavController,
     public navParams: NavParams,

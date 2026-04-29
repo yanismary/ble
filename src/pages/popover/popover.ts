@@ -1,6 +1,7 @@
 import { Component, ViewChild } from '@angular/core';
 import { NavController, NavParams, App,Navbar } from 'ionic-angular';
 import { IonicPage, ViewController } from 'ionic-angular';
+import { LoggerService } from '../../providers/logger/logger.service';
 
 
 
@@ -16,6 +17,8 @@ import { IonicPage, ViewController } from 'ionic-angular';
   templateUrl: 'popover.html'
 })
 export class PopoverPage {
+  private TAG = 'PopoverPage';
+  private logger: LoggerService = new LoggerService();
   fromConnected :boolean;
 
 
@@ -27,7 +30,7 @@ export class PopoverPage {
     
   ) {
     this.fromConnected = this.navParams.get('fromConnected');
-    console.log('Hello PopoverComponent Component');
+    this.logger.debug(this.TAG, 'Hello PopoverComponent Component');
 
   }
   //@ViewChild(Navbar) navBar: Navbar;
@@ -48,7 +51,7 @@ export class PopoverPage {
 
   pushParamsPage(){
     if ( this.navCtrl.canGoBack()) {
-      console.log('can go back true');
+      this.logger.debug(this.TAG, 'can go back true');
     this.viewCtrl.dismiss('popover').then(() => {
       this.app.getRootNav().push('ParamPage').then(() => {
         this.navCtrl.remove(1, 1);
@@ -56,7 +59,7 @@ export class PopoverPage {
     });
     }
     else {
-      console.log('can go back false');
+      this.logger.debug(this.TAG, 'can go back false');
       this.viewCtrl.dismiss('popover').then(() => {
         this.app.getRootNav().push('ParamPage');
       }); 

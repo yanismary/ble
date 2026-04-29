@@ -19,11 +19,11 @@ import { LoggerService } from '../../providers/logger/logger.service';
 })
 export class InfoSlidePage implements OnInit {
   slides: any[] = [];
-  imageSlide2: string;
-  imageSlide3: string;
-  imageSlide4: string;
-  imageSlide5: string;
-  imageSlide6: string;
+  imageSlide2: string = '';
+  imageSlide3: string = '';
+  imageSlide4: string = '';
+  imageSlide5: string = '';
+  imageSlide6: string = '';
   private TAG = 'InfoSlidePage';
 
   constructor(

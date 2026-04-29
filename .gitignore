@@ -37,9 +37,7 @@ UserInterfaceState.xcuserstate
 node_modules/
 
 # Build Ionic / Angular
-www/build/
-www/*.map
-www/**/*.map
+www/
 .sourcemaps/
 
 # Docs générées
@@ -60,8 +58,3 @@ Thumbs.db
 .vscode/
 .idea/
 
-www/assets/i18n/
-www/assets/fonts/
-www/icon/
-www/images/
-www/assets/images/

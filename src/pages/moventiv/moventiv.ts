@@ -11,6 +11,7 @@ import { Platform } from 'ionic-angular';
 import { Buffer } from 'buffer';
 import { IonicPage } from 'ionic-angular';
 import { BleconnectserviceProvider } from '../../providers/bleconnectservice/bleconnectservice';
+import { LoggerService } from '../../providers/logger/logger.service';
 //import { bcrypt } from '../../../node_modules';
 import * as bcrypt from 'bcryptjs';
 import moment from 'moment';
@@ -134,166 +135,168 @@ const MLPC_PROPARAMALL_CHARACTERISTIC = 'cc942243-7656-441f-880c-4617eeb8bacc';
 })
 
 export class MoventivPage implements OnInit {
-  @ViewChild(Content) content: Content;
-  formName: FormGroup;
-  formPassword: FormGroup;
+  private TAG = 'MoventivPage';
+  private logger: LoggerService = new LoggerService();
+  @ViewChild(Content) content!: Content;
+  formName!: FormGroup;
+  formPassword!: FormGroup;
   userConfig: { mlpcName: string } = { mlpcName: '' };
 
   devices: any[] = [];
   peripheral: any = {};
-  power: boolean;
-  states: string;
-  statesColor: string;
-  periphCommand: number;
-  periphCommandAff: number;
-  periphCommandDynAff: number;
-  shutterPosition: number;
-  shutterPositionAff: number;
+  power!: boolean;
+  states!: string;
+  statesColor!: string;
+  periphCommand!: number;
+  periphCommandAff!: number;
+  periphCommandDynAff!: number;
+  shutterPosition!: number;
+  shutterPositionAff!: number;
   currentProductType: string = ''; // Ajout pour différencier Garline/Moventiv
 
-  userRangeWeight: number;
-  userRangeWeightBot: number;
-  userRangeWeightUp: number;
-  lock: number;
-  lockOpen: number;
-  lockClose: number;
+  userRangeWeight!: number;
+  userRangeWeightBot!: number;
+  userRangeWeightUp!: number;
+  lock!: number;
+  lockOpen!: number;
+  lockClose!: number;
 
-  animRead: string;
-  hideMenu: boolean;
-  statusMessage: string;
-  validation_messages: any;
+  animRead!: string;
+  hideMenu!: boolean;
+  statusMessage!: string;
+  validation_messages!: any;
   //translation var strings
 
-  userPassword: string;
+  userPassword!: string;
   todayDateArray: any = {};
 
   //read from BLE module
 
   // JDU V1.2.0 : Passage a 26 octet pour ID unique (20 avant) + ajout variable pour adresse
   rval_shDo_version: Uint8Array = new Uint8Array(26);
-  rval_shDo_version_bleStack_major: number;
-  rval_shDo_version_bleStack_minor: number;
-  rval_shDo_version_bleStack_patch: number;
-  rval_shDo_version_bleStack_build: number;
-  rval_shDo_version_motAddress_0 : string;
-  rval_shDo_version_motAddress_1 : string;
-  rval_shDo_version_motAddress_2 : string;
-  rval_shDo_version_motAddress_3 : string;
-  rval_shDo_version_motAddress_4 : string;
-  rval_shDo_version_motAddress_5 : string;
+  rval_shDo_version_bleStack_major!: number;
+  rval_shDo_version_bleStack_minor!: number;
+  rval_shDo_version_bleStack_patch!: number;
+  rval_shDo_version_bleStack_build!: number;
+  rval_shDo_version_motAddress_0!: string;
+  rval_shDo_version_motAddress_1!: string;
+  rval_shDo_version_motAddress_2!: string;
+  rval_shDo_version_motAddress_3!: string;
+  rval_shDo_version_motAddress_4!: string;
+  rval_shDo_version_motAddress_5!: string;
 
-  rval_shdo_motorState_state: number;
-  rval_shdo_motorState_pos: number;
-  rval_shdo_motorState_mpos: number;
-  rval_shdo_motorState_rpos: number;
-  rval_shdo_motorState_error: number;
-  rval_shdo_motorState_switchs: number;
-  rval_shdo_motorState_switch_7: boolean;
-  rval_shdo_motorState_switch_6: boolean;
-  rval_shdo_motorState_switch_5: boolean;
-  rval_shdo_motorState_switch_PushAGo: boolean;
-  rval_shdo_motorState_switch_BLE: boolean;
-  rval_shdo_motorState_switch_autoManu: boolean;
-  rval_shdo_motorState_switch_direction: boolean;
-  rval_shdo_motorState_switch_pairing: boolean;
+  rval_shdo_motorState_state!: number;
+  rval_shdo_motorState_pos!: number;
+  rval_shdo_motorState_mpos!: number;
+  rval_shdo_motorState_rpos!: number;
+  rval_shdo_motorState_error!: number;
+  rval_shdo_motorState_switchs!: number;
+  rval_shdo_motorState_switch_7!: boolean;
+  rval_shdo_motorState_switch_6!: boolean;
+  rval_shdo_motorState_switch_5!: boolean;
+  rval_shdo_motorState_switch_PushAGo!: boolean;
+  rval_shdo_motorState_switch_BLE!: boolean;
+  rval_shdo_motorState_switch_autoManu!: boolean;
+  rval_shdo_motorState_switch_direction!: boolean;
+  rval_shdo_motorState_switch_pairing!: boolean;
 
   rval_shDo_userDatesCycles: Uint8Array = new Uint8Array(10);
-  rval_shdo_userStates_01: number;
+  rval_shdo_userStates_01!: number;
   rval_mlpc_userStates: Uint8Array = new Uint8Array(10);
-  rval_shDo_userDatesCycles_totCyc: number;
-  rval_shDo_userDatesCycles_maintCyc: number;
+  rval_shDo_userDatesCycles_totCyc!: number;
+  rval_shDo_userDatesCycles_maintCyc!: number;
 
   rval_mlpc_userparam_all: Uint8Array = new Uint8Array(10);
   rval_mlpc_proParamAll: Uint8Array = new Uint8Array(10);
   rval_shDo_proMaintenance: Uint8Array = new Uint8Array(10);
 
-  rval_shDo_proMaintenance_NbInit: number;
-  rval_shDo_proMaintenance_NbCyclesSinceInit: number;
-  rval_shDo_proMaintenance_NbObsDetect: number;
-  rval_shDo_proMaintenance_NbWrongStopOpen: number;
-  rval_shDo_proMaintenance_NbWrongStopClose: number;
-  rval_shDo_proMaintenance_NbOverHeatingMotor: number;
-  rval_shDo_proMaintenance_NbLearningCycle: number;
-  rval_shDo_proMaintenance_NbErrorEncoder: number;
-  rval_shDo_proMaintenance_NbErrorMotor: number;
+  rval_shDo_proMaintenance_NbInit!: number;
+  rval_shDo_proMaintenance_NbCyclesSinceInit!: number;
+  rval_shDo_proMaintenance_NbObsDetect!: number;
+  rval_shDo_proMaintenance_NbWrongStopOpen!: number;
+  rval_shDo_proMaintenance_NbWrongStopClose!: number;
+  rval_shDo_proMaintenance_NbOverHeatingMotor!: number;
+  rval_shDo_proMaintenance_NbLearningCycle!: number;
+  rval_shDo_proMaintenance_NbErrorEncoder!: number;
+  rval_shDo_proMaintenance_NbErrorMotor!: number;
 
 
-  rval_mlpc_userParam_speedOpenTune: number;
-  rval_mlpc_userParam_speedCloseTune: number;
-  rval_mlpc_userParam_openTimeShort: number;
-  rval_mlpc_userParam_openTimeLong: number;
-  rval_mlpc_userParam_periphs1: number;
-  rval_mlpc_userParam_periphs2: number;
+  rval_mlpc_userParam_speedOpenTune!: number;
+  rval_mlpc_userParam_speedCloseTune!: number;
+  rval_mlpc_userParam_openTimeShort!: number;
+  rval_mlpc_userParam_openTimeLong!: number;
+  rval_mlpc_userParam_periphs1!: number;
+  rval_mlpc_userParam_periphs2!: number;
 
-  rval_mlpc_proParam_weightRangeBot: number;
-  rval_mlpc_proParam_weightRangeUp: number;
-  rval_mlpc_proParam_exactWeight: number;
-  rval_mlpc_proParam_nearOpenSpeed: number;
-  rval_mlpc_proParam_nearCloseSpeed: number;
-  rval_mlpc_proParam_nearOpenTorque: number;
-  rval_mlpc_proParam_brakingOpenPower: number;
-  rval_mlpc_proParam_nearCloseTorque: number;
-  rval_mlpc_proParam_obstacleSensibility: number;
-  rval_mlpc_proParam_nearOpenProportionnal: number;
-  rval_mlpc_proParam_nearCloseProportionnal: number;
-  rval_mlpc_proParam_nearOpenIntegral: number;
-  rval_mlpc_proParam_nearCloseIntegral: number;
-  rval_mlpc_proParam_periphs1: number;
-  rval_mlpc_proParam_periphs2: number;
-  rval_mlpc_proParam_periphs1_butOrRadar1: boolean;
-  rval_mlpc_proParam_periphs1_butOrRadar2: boolean;
-  rval_mlpc_proParam_periphs1_forceTest1: boolean;
-  rval_mlpc_proParam_periphs1_forceTest2: boolean;
-  rval_mlpc_proParam_periphs1_forceLock: boolean;
+  rval_mlpc_proParam_weightRangeBot!: number;
+  rval_mlpc_proParam_weightRangeUp!: number;
+  rval_mlpc_proParam_exactWeight!: number;
+  rval_mlpc_proParam_nearOpenSpeed!: number;
+  rval_mlpc_proParam_nearCloseSpeed!: number;
+  rval_mlpc_proParam_nearOpenTorque!: number;
+  rval_mlpc_proParam_brakingOpenPower!: number;
+  rval_mlpc_proParam_nearCloseTorque!: number;
+  rval_mlpc_proParam_obstacleSensibility!: number;
+  rval_mlpc_proParam_nearOpenProportionnal!: number;
+  rval_mlpc_proParam_nearCloseProportionnal!: number;
+  rval_mlpc_proParam_nearOpenIntegral!: number;
+  rval_mlpc_proParam_nearCloseIntegral!: number;
+  rval_mlpc_proParam_periphs1!: number;
+  rval_mlpc_proParam_periphs2!: number;
+  rval_mlpc_proParam_periphs1_butOrRadar1!: boolean;
+  rval_mlpc_proParam_periphs1_butOrRadar2!: boolean;
+  rval_mlpc_proParam_periphs1_forceTest1!: boolean;
+  rval_mlpc_proParam_periphs1_forceTest2!: boolean;
+  rval_mlpc_proParam_periphs1_forceLock!: boolean;
 
-  rval_mlpc_periphCommandLedStripStatic: boolean;
-  rval_mlpc_periphCommandLedStripDynamic: boolean;
-  rval_mlpc_periphCommandLight1: boolean;
-  rval_mlpc_periphCommandLight2: boolean;
-  rval_mlpc_periphCommandRGBIndic: boolean;
+  rval_mlpc_periphCommandLedStripStatic!: boolean;
+  rval_mlpc_periphCommandLedStripDynamic!: boolean;
+  rval_mlpc_periphCommandLight1!: boolean;
+  rval_mlpc_periphCommandLight2!: boolean;
+  rval_mlpc_periphCommandRGBIndic!: boolean;
 
-  rval_mlpc_verifParam_weightRangeBot: number;
-  rval_mlpc_verifParam_weightRangeUp: number;
-  rval_mlpc_verifParam_exactWeight: number;
+  rval_mlpc_verifParam_weightRangeBot!: number;
+  rval_mlpc_verifParam_weightRangeUp!: number;
+  rval_mlpc_verifParam_exactWeight!: number;
 
 
   //a replacer :
   checkingWeightLoading: any = {};
   passwordValid: boolean = false;
-  checkParamWeightRange: boolean;
+  checkParamWeightRange!: boolean;
   passwordString: string = 'password';
   //hide/show varaibles
-  isVisibleTabSet: any;
-  isVisibleTabInfo: any;
-  isActifVibrate: any;
+  isVisibleTabSet!: any;
+  isVisibleTabInfo!: any;
+  isActifVibrate!: any;
 
   device: any = {};
   //localisation
-  localisation: string;
+  localisation!: string;
   stringLoc: string = '';
 
   //logic connection
   loading: any = {};
   promptReading: any = {};
-  peripheralNameAff: any;
+  peripheralNameAff!: any;
   retry: boolean = false;
   retryConnection: number = 6;
-  menuType: string;
-  paramSubmenuType: string;
+  menuType!: string;
+  paramSubmenuType!: string;
 
 
-  dispOptionalCom_MO: boolean;
-  dispOptionalCom_LC: boolean;
-  dispOptionalCom_LLB: boolean;
+  dispOptionalCom_MO!: boolean;
+  dispOptionalCom_LC!: boolean;
+  dispOptionalCom_LLB!: boolean;
 
   //date maintenance
-  todayDate: string;
-  todayDateUint8Array: Uint8Array;
+  todayDate!: string;
+  todayDateUint8Array!: Uint8Array;
 
   //test a effacer 
-  ackData_SHDO_usercom: Uint8Array;
-  test_val_sub: Uint8Array;
-  ackData_SHDO_usercom_val: string;
+  ackData_SHDO_usercom!: Uint8Array;
+  test_val_sub!: Uint8Array;
+  ackData_SHDO_usercom_val!: string;
 
 
   constructor(public navCtrl: NavController,
@@ -314,17 +317,17 @@ export class MoventivPage implements OnInit {
 
     this.platform.ready().then(() => {
       this.platform.pause.subscribe(() => {
-        console.log('****UserdashboardPage PAUSED****');
+        this.logger.debug(this.TAG, '****UserdashboardPage PAUSED****');
       });
       this.platform.resume.subscribe(() => {
-        console.log('****UserdashboardPage RESUMED****');
+        this.logger.debug(this.TAG, '****UserdashboardPage RESUMED****');
       });
     });
     //cosmetic : loader
     //this.presentLoadingDefault();
     this.menuType = 'com';
     this.currentProductType = this.navParams.get('productType');
-    console.log('Produit détecté : ' + this.currentProductType);
+    this.logger.debug(this.TAG, 'Produit détecté : ' + this.currentProductType);
     this.paramSubmenuType = 'basic';
     //connection  
     
@@ -354,7 +357,7 @@ export class MoventivPage implements OnInit {
 
 
   ionViewDidEnter() {
-    console.log('[Moventiv] ionViewDidEnter');
+    this.logger.debug(this.TAG, '[Moventiv] ionViewDidEnter');
 
     // disable swipe back button
     this.navCtrl.swipeBackEnabled = false;
@@ -377,7 +380,7 @@ export class MoventivPage implements OnInit {
 
       this.device = navDevice;
       this.peripheral = navDevice; 
-      console.log('[Moventiv] Peripheral set:', this.peripheral.address);
+      this.logger.debug(this.TAG, '[Moventiv] Peripheral set:', this.peripheral.address);
 
       // Si on arrive depuis ScanPage déjà connecté,
       // on ne doit pas relancer une connexion
@@ -386,7 +389,7 @@ export class MoventivPage implements OnInit {
       }
 
     } else {
-      console.error('[Moventiv] Aucun device trouvé dans navParams/service');
+      this.logger.error(this.TAG, '[Moventiv] Aucun device trouvé dans navParams/service');
     }
 
     if (this.bleConnectService.getNeedConnect()) {
@@ -396,7 +399,7 @@ export class MoventivPage implements OnInit {
   }
 
   ionViewWillEnter() {
-    console.log('[Moventiv] ionViewWillEnter');
+    this.logger.debug(this.TAG, '[Moventiv] ionViewWillEnter');
     this.localisation = '';
 
     //  si peripheral perdu entre les pages, on le restaure
@@ -412,9 +415,9 @@ export class MoventivPage implements OnInit {
         }
         this.device = navDevice;
         this.peripheral = navDevice;
-        console.log('[Moventiv] Peripheral restored:', this.peripheral.address);
+        this.logger.debug(this.TAG, '[Moventiv] Peripheral restored:', this.peripheral.address);
       } else {
-        console.error('[Moventiv] Impossible de restaurer le peripheral');
+        this.logger.error(this.TAG, '[Moventiv] Impossible de restaurer le peripheral');
       }
     }
     // manage stored boolean for displaying/hide
@@ -430,13 +433,13 @@ export class MoventivPage implements OnInit {
     this.todayDate = moment().format('DD-MM-YYYY');
     this.todayDateArray = moment().toArray(); //[year, month, day, hour, minute, second, millisecond]
 
-    console.log('todayArray' + this.todayDateArray);
-    console.log('todayArrayYear' + this.todayDateArray[0]);
+    this.logger.debug(this.TAG, 'todayArray' + this.todayDateArray);
+    this.logger.debug(this.TAG, 'todayArrayYear' + this.todayDateArray[0]);
 
     this.todayDateArray[0] = this.todayDateArray[0] - 2000;
     this.todayDateUint8Array = this.todayDateArray;
 
-    console.log('todayArrayYearArray' + this.todayDateUint8Array[0]);
+    this.logger.debug(this.TAG, 'todayArrayYearArray' + this.todayDateUint8Array[0]);
 
     this.peripheralNameAff =
     this.navParams.get('displayName') || (this.peripheral ? (this.peripheral.customName || this.peripheral.name) : '') || '';
@@ -477,7 +480,7 @@ export class MoventivPage implements OnInit {
     let device = this.navParams.get('device');
 
     if (!device || !device.address) {
-      console.error("No device address found in navParams");
+      this.logger.error(this.TAG, "No device address found in navParams");
       return;
     }
 
@@ -486,7 +489,7 @@ export class MoventivPage implements OnInit {
 
       if (this.retryConnection > 0) {
         this.retryConnection--;
-        console.log('Reconnection try remaining:', this.retryConnection);
+        this.logger.debug(this.TAG, 'Reconnection try remaining:', this.retryConnection);
 
         this.randble.stopScan().catch(() => {})
           .then(() => this.randble.close({ address: device.address }))
@@ -499,7 +502,7 @@ export class MoventivPage implements OnInit {
                 }
               },
               (err) => {
-                console.log('[BLE] Connection error, retrying in 1.5s...');
+                this.logger.debug(this.TAG, '[BLE] Connection error, retrying in 1.5s...');
                 setTimeout(() => this.bleConnect(), 1500);
               }
             );
@@ -517,20 +520,20 @@ export class MoventivPage implements OnInit {
   bleConnectClose() {
     this.randble.close({ address: this.peripheral.address }).then(
       (conStates) => {
-        console.log('Close' + conStates.status);
+        this.logger.debug(this.TAG, 'Close' + conStates.status);
       },
       () => {
-        console.log('Close connection error');
+        this.logger.debug(this.TAG, 'Close connection error');
       }
     )
   }
 
-  errorOnConnection(peripheral) {
+  errorOnConnection(peripheral: any) {
     this.peripheral = peripheral;
   }
 
-  onConnected(peripheral) {
-    console.log('[STEP 1] Connected to hardware');
+  onConnected(peripheral: any) {
+    this.logger.debug(this.TAG, '[STEP 1] Connected to hardware');
     this.peripheral = peripheral;
 
     this.peripheralNameAff =
@@ -539,7 +542,7 @@ export class MoventivPage implements OnInit {
     setTimeout(() => {
       this.randble.discover({ address: peripheral.address })
         .then((data) => {
-          console.log('[STEP 2] Discovery Success', data);
+          this.logger.debug(this.TAG, '[STEP 2] Discovery Success', data);
           
           if (data.services && data.services.length > 0) {
             this.onDiscovered(peripheral);
@@ -548,14 +551,14 @@ export class MoventivPage implements OnInit {
           }
         })
         .catch(err => {
-          console.error('[STEP 2] Discovery Failed', err);
+          this.logger.error(this.TAG, '[STEP 2] Discovery Failed', err);
           this.handleConnectionError();
         });
     }, 500);
   }
 
-  onDiscovered(peripheral) {
-    console.log('[STEP 3] Starting Data Sync');
+  onDiscovered(peripheral: any) {
+    this.logger.debug(this.TAG, '[STEP 3] Starting Data Sync');
     this.readAll();
     
     if (this.loading) {
@@ -579,7 +582,7 @@ export class MoventivPage implements OnInit {
     }
 
     if (!this.peripheral || !this.peripheral.address) {
-      console.error('[Moventiv] readAll() aborted: no peripheral.address');
+      this.logger.error(this.TAG, '[Moventiv] readAll() aborted: no peripheral.address');
       this.toastCtrl.create({
         message: 'Connexion BLE perdue : veuillez vous reconnecter.',
         duration: 2500,
@@ -744,7 +747,7 @@ export class MoventivPage implements OnInit {
           let dataStringB = this.randble.encodedStringToBytes(buffer.value)
           this.ngZone.run(() => {
             this.rval_mlpc_proParam_weightRangeBot = dataStringB[D_MLPC_PROPARAM_WR_01_HOF];
-            console.log('rval_mlpc_proParam_weightRangeBot' + this.rval_mlpc_proParam_weightRangeBot);
+            this.logger.debug(this.TAG, 'rval_mlpc_proParam_weightRangeBot' + this.rval_mlpc_proParam_weightRangeBot);
 
             //JDU V1.3.0 #App-09 : associe plage de poids à la valeur de la selection (pour preselection)
             if (this.rval_mlpc_proParam_weightRangeBot == 10)
@@ -787,9 +790,9 @@ export class MoventivPage implements OnInit {
             this.rval_mlpc_proParam_weightRangeUp = dataStringB[D_MLPC_PROPARAM_WR_00_HOF];
             this.rval_mlpc_proParam_exactWeight = dataStringB[D_MLPC_PROPARAM_EW_HOF];
             this.rval_mlpc_proParam_nearOpenSpeed = dataStringB[D_MLPC_PROPARAM_NOS_HOF];
-            console.log('rval_mlpc_proParam_nearOpenSpeed' + this.rval_mlpc_proParam_nearOpenSpeed)
+            this.logger.debug(this.TAG, 'rval_mlpc_proParam_nearOpenSpeed' + this.rval_mlpc_proParam_nearOpenSpeed)
             this.rval_mlpc_proParam_nearCloseSpeed = dataStringB[D_MLPC_PROPARAM_NCS_HOF];
-            console.log('rval_mlpc_proParam_nearCloseSpeed' + this.rval_mlpc_proParam_nearCloseSpeed)
+            this.logger.debug(this.TAG, 'rval_mlpc_proParam_nearCloseSpeed' + this.rval_mlpc_proParam_nearCloseSpeed)
             this.rval_mlpc_proParam_brakingOpenPower = dataStringB[D_MLPC_PROPARAM_BOP_HOF];
             this.rval_mlpc_proParam_nearOpenTorque = dataStringB[D_MLPC_PROPARAM_NOT_HOF];
             this.rval_mlpc_proParam_nearCloseTorque = dataStringB[D_MLPC_PROPARAM_NCT_HOF];
@@ -817,7 +820,7 @@ export class MoventivPage implements OnInit {
                             }).subscribe(
       parameter => {
         let value = parameter.value;
-        console.log('Subscribed SHDO_MOTORSTATE_CHARACTERISTIC')
+        this.logger.debug(this.TAG, 'Subscribed SHDO_MOTORSTATE_CHARACTERISTIC')
         if (typeof value != "undefined") {
           let dataStringBytes = this.randble.encodedStringToBytes(value);
           this.ngZone.run(() => {
@@ -840,7 +843,7 @@ export class MoventivPage implements OnInit {
           });
         }
       },
-      () => (this.loading.dismiss(), this.navCtrl.push('ScanPage'), console.log('dismiss debug1'))
+      () => (this.loading.dismiss(), this.navCtrl.push('ScanPage'), this.logger.debug(this.TAG, 'dismiss debug1'))
     );
 
 
@@ -851,10 +854,10 @@ export class MoventivPage implements OnInit {
     this.randble.subscribe({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC }).subscribe(
       parameter => {
         let value = parameter.value;
-        console.log('Subscribed MLPC_PROPARAM_CHARACTERISTIC')
+        this.logger.debug(this.TAG, 'Subscribed MLPC_PROPARAM_CHARACTERISTIC')
         if (typeof value != "undefined") {
           let dataBytes = this.randble.encodedStringToBytes(value);
-          console.log('MLPC_VERIFPARAM WR : b0 ' + dataBytes[0] + 'b1 ' + dataBytes[1]);
+          this.logger.debug(this.TAG, 'MLPC_VERIFPARAM WR : b0 ' + dataBytes[0] + 'b1 ' + dataBytes[1]);
           this.ngZone.run(() => {
             this.rval_mlpc_verifParam_weightRangeBot = dataBytes[0];
             this.rval_mlpc_verifParam_weightRangeUp = dataBytes[1];
@@ -862,7 +865,7 @@ export class MoventivPage implements OnInit {
           });
         }
       },
-      () => (this.loading.dismiss(), this.navCtrl.push('ScanPage'), { animate: false }, console.log('dismiss debug2'))
+      () => (this.loading.dismiss(), this.navCtrl.push('ScanPage'), { animate: false }, this.logger.debug(this.TAG, 'dismiss debug2'))
     );
   }
 
@@ -883,7 +886,7 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('returned timing value: ' + bytes[0]);
+        this.logger.debug(this.TAG, 'returned timing value: ' + bytes[0]);
       }, 
     );
      */
@@ -891,7 +894,7 @@ export class MoventivPage implements OnInit {
 
   setShutterOpen() {
     if ((this.device.isDemo) == "true") return;
-    console.log('SetDoorOpen');
+    this.logger.debug(this.TAG, 'SetDoorOpen');
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
     else {
@@ -910,9 +913,9 @@ export class MoventivPage implements OnInit {
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
           //let returnString = this.randble.bytesToString(bytes); //DEBUG
-          console.log('page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
+          this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
           if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
-            console.log('BLE transmission OK')
+            this.logger.debug(this.TAG, 'BLE transmission OK')
           }
         },
       );
@@ -921,7 +924,7 @@ export class MoventivPage implements OnInit {
   
 
   setShutterOpenStime() {
-    console.log('SetDoorOpenStime');
+    this.logger.debug(this.TAG, 'SetDoorOpenStime');
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
     else {
@@ -936,9 +939,9 @@ export class MoventivPage implements OnInit {
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
           //let returnString = this.randble.bytesToString(bytes); //DEBUG
-          console.log('page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
+          this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
           if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
-            console.log('BLE transmission OK')
+            this.logger.debug(this.TAG, 'BLE transmission OK')
           }
         },
       );
@@ -946,7 +949,7 @@ export class MoventivPage implements OnInit {
   }
 
   setShutterOpenLtime() {
-    console.log('SetDoorOpenLtime');
+    this.logger.debug(this.TAG, 'SetDoorOpenLtime');
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
     else {
@@ -961,9 +964,9 @@ export class MoventivPage implements OnInit {
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
           //let returnString = this.randble.bytesToString(bytes); //DEBUG
-          console.log('page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
+          this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
           if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
-            console.log('BLE transmission OK')
+            this.logger.debug(this.TAG, 'BLE transmission OK')
           }
         },
       );
@@ -971,7 +974,7 @@ export class MoventivPage implements OnInit {
   }
 
   setShutterLearning() {
-    console.log('SetDoorLearning');
+    this.logger.debug(this.TAG, 'SetDoorLearning');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -985,16 +988,16 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page : ' + bytes[0] + 'setDoorLearning: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
+        this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorLearning: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
         if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
-          console.log('BLE transmission OK')
+          this.logger.debug(this.TAG, 'BLE transmission OK')
         }
       },
     );
   }
 
   setShdoMaintenanceDate() {
-    console.log('setShdoMaintenanceDate');
+    this.logger.debug(this.TAG, 'setShdoMaintenanceDate');
 
     let commandData = new Uint8Array(5);
     commandData[0] = 2;
@@ -1008,16 +1011,16 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('pageSel: ' + bytes[0] + 'setLastMaintDate YY: ' + bytes[1] + 'MM: ' + bytes[2] + 'DD: ' + bytes[3] + 'hh: ' + bytes[4]);
+        this.logger.debug(this.TAG, 'pageSel: ' + bytes[0] + 'setLastMaintDate YY: ' + bytes[1] + 'MM: ' + bytes[2] + 'DD: ' + bytes[3] + 'hh: ' + bytes[4]);
       },
     );
   }
 
 
   setShdoFirstDate() {
-    console.log('setShdoFirstDate');
+    this.logger.debug(this.TAG, 'setShdoFirstDate');
     if ((this.rval_shDo_userDatesCycles[5] == 0xFF) && (this.rval_shDo_userDatesCycles[4] == 0xFF) && (this.rval_shDo_userDatesCycles[3] == 0xFF)) {
-      console.log('firstUse');
+      this.logger.debug(this.TAG, 'firstUse');
       let commandData = new Uint8Array(5);  
       commandData[0] = 1;
       commandData[1] = this.todayDateUint8Array[0];
@@ -1030,14 +1033,14 @@ export class MoventivPage implements OnInit {
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
           let returnString = this.randble.bytesToString(bytes);
-          console.log('pageSel: ' + bytes[0] + 'setFirstUseDate YY: ' + bytes[1] + 'MM: ' + bytes[2] + 'DD: ' + bytes[3] + 'hh: ' + bytes[4]);
+          this.logger.debug(this.TAG, 'pageSel: ' + bytes[0] + 'setFirstUseDate YY: ' + bytes[1] + 'MM: ' + bytes[2] + 'DD: ' + bytes[3] + 'hh: ' + bytes[4]);
         },
       );
     }
   }
 
   setShutterClose() {
-    console.log('SetDoorClose');
+    this.logger.debug(this.TAG, 'SetDoorClose');
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
     else {
@@ -1051,7 +1054,7 @@ export class MoventivPage implements OnInit {
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
           let returnString = this.randble.bytesToString(bytes);
-          console.log('page: ' + bytes[0] + 'setDoorClose b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
+          this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'setDoorClose b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
         },
       );
 
@@ -1061,7 +1064,7 @@ export class MoventivPage implements OnInit {
 
 
   setLockClose() {
-    console.log('SetLockClose');
+    this.logger.debug(this.TAG, 'SetLockClose');
 
     if (this.lockClose != 0){
       this.lockConfirm();
@@ -1089,7 +1092,7 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'setLockClose b0: ' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'setLockClose b0: ' + bytes[1]);
       },
     );
   }
@@ -1108,7 +1111,7 @@ export class MoventivPage implements OnInit {
   }
 
   setLockOpen() {
-    console.log('SetLockOpen');
+    this.logger.debug(this.TAG, 'SetLockOpen');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -1132,7 +1135,7 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'setLockClose b0: ' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'setLockClose b0: ' + bytes[1]);
       },
     );
   }
@@ -1140,7 +1143,7 @@ export class MoventivPage implements OnInit {
 
 
   setOpenSpeedTune() {
-    console.log('SetSpeedOpenTune');
+    this.logger.debug(this.TAG, 'SetSpeedOpenTune');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -1153,7 +1156,7 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'SetSpeedOpenTune b0: ' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetSpeedOpenTune b0: ' + bytes[1]);
       },
     );
   }
@@ -1162,7 +1165,7 @@ export class MoventivPage implements OnInit {
 
 
   setCloseSpeedTune() {
-    console.log('SetSpeedCloseTune');
+    this.logger.debug(this.TAG, 'SetSpeedCloseTune');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -1175,14 +1178,14 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'SetSpeedCloseTune b0: ' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetSpeedCloseTune b0: ' + bytes[1]);
       },
     );
   }
 
 
   setNearOpenSpeed() {
-    console.log('setNearOpenSpeed');
+    this.logger.debug(this.TAG, 'setNearOpenSpeed');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -1201,7 +1204,7 @@ export class MoventivPage implements OnInit {
   }
 
   setNearCloseSpeed() {
-    console.log('setNearCloseSpeed');
+    this.logger.debug(this.TAG, 'setNearCloseSpeed');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -1214,13 +1217,12 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-
       },
     );
   }
 
   setNearOpenTorque() {
-    console.log('setNearOpenTorque');
+    this.logger.debug(this.TAG, 'setNearOpenTorque');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -1239,7 +1241,7 @@ export class MoventivPage implements OnInit {
   }
 
   setBrakingOpenPower() {
-    console.log('setBrakingOpenPowe');
+    this.logger.debug(this.TAG, 'setBrakingOpenPowe');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -1258,7 +1260,7 @@ export class MoventivPage implements OnInit {
   }
 
   setObstacleSensibility(){
-    console.log('setBrakingOpenPowe');
+    this.logger.debug(this.TAG, 'setBrakingOpenPowe');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -1277,7 +1279,7 @@ export class MoventivPage implements OnInit {
   }
 
   setNearCloseTorque() {
-    console.log('setNearCloseTorque');
+    this.logger.debug(this.TAG, 'setNearCloseTorque');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -1299,7 +1301,7 @@ export class MoventivPage implements OnInit {
 
 
   setShortTiming() {
-    console.log('SetShortTiming');
+    this.logger.debug(this.TAG, 'SetShortTiming');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -1312,13 +1314,13 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
       },
     );
   }
 
   setLongTiming() {
-    console.log('SetShortTiming');
+    this.logger.debug(this.TAG, 'SetShortTiming');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -1331,14 +1333,14 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
       },
     );
   }
 
 
   setUserStaticLight() {
-    console.log('setUserStaticLight');
+    this.logger.debug(this.TAG, 'setUserStaticLight');
 
     this.vibrate();
     let commandData = new Uint8Array(3);
@@ -1359,13 +1361,13 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph MSB set ' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph MSB set ' + bytes[1]);
       },
     );
   }
 
   setUserDynLight() {
-    console.log('setUserDynLight');
+    this.logger.debug(this.TAG, 'setUserDynLight');
 
     this.vibrate();
     let commandData = new Uint8Array(3);
@@ -1386,13 +1388,13 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph set ' + bytes[1] + 'periph set ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph set ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
   }
 
   setUserbutOrRadar1() {
-    console.log('setUserbutOrRadar1');
+    this.logger.debug(this.TAG, 'setUserbutOrRadar1');
 
     this.vibrate();
     let commandData = new Uint8Array(3);
@@ -1413,13 +1415,13 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
   }
 
   setUserbutOrRadar2() {
-    console.log('setUserbutOrRadar2');
+    this.logger.debug(this.TAG, 'setUserbutOrRadar2');
 
     this.vibrate();
     let commandData = new Uint8Array(3);
@@ -1440,14 +1442,14 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
   }
 
 
   setUserRGBIndic() {
-    console.log('setUserRGBIndic');
+    this.logger.debug(this.TAG, 'setUserRGBIndic');
 
     this.vibrate();
     let commandData = new Uint8Array(3);
@@ -1468,13 +1470,13 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph MSB set ' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph MSB set ' + bytes[1]);
       },
     );
   }
 
   setWeightRange() {
-    console.log('setWeightRange');
+    this.logger.debug(this.TAG, 'setWeightRange');
 
     if (this.userRangeWeight == 255)
       return;
@@ -1574,7 +1576,7 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'weight range bot' + bytes[1] + 'weight range top' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'weight range bot' + bytes[1] + 'weight range top' + bytes[2]);
       },
     );
     this.presentCheckWeight();
@@ -1594,20 +1596,20 @@ export class MoventivPage implements OnInit {
     this.rval_mlpc_verifParam_weightRangeBot = this.rval_mlpc_proParam_weightRangeBot;
     this.rval_mlpc_verifParam_weightRangeUp = this.rval_mlpc_proParam_weightRangeUp;
 
-    console.log('checkParamWeightRange')
-    console.log('this.rval_mlpc_verifParam_weightRangeBot : ' + this.rval_mlpc_verifParam_weightRangeBot)
-    console.log('this.userRangeWeightBot : ' + this.userRangeWeightBot)
-    console.log('this.rval_mlpc_verifParam_weightRangeUp : ' + this.rval_mlpc_verifParam_weightRangeUp)
-    console.log('this.userRangeWeightUp : ' + this.userRangeWeightUp)
+    this.logger.debug(this.TAG, 'checkParamWeightRange')
+    this.logger.debug(this.TAG, 'this.rval_mlpc_verifParam_weightRangeBot : ' + this.rval_mlpc_verifParam_weightRangeBot)
+    this.logger.debug(this.TAG, 'this.userRangeWeightBot : ' + this.userRangeWeightBot)
+    this.logger.debug(this.TAG, 'this.rval_mlpc_verifParam_weightRangeUp : ' + this.rval_mlpc_verifParam_weightRangeUp)
+    this.logger.debug(this.TAG, 'this.userRangeWeightUp : ' + this.userRangeWeightUp)
 
     if ((this.rval_mlpc_verifParam_weightRangeBot == this.userRangeWeightBot) && (this.rval_mlpc_verifParam_weightRangeUp == this.userRangeWeightUp)) {
       this.checkParamWeightRange = true;
-      console.log('checkParamWeightRange==true')
+      this.logger.debug(this.TAG, 'checkParamWeightRange==true')
 
     }
     else {
       this.checkParamWeightRange = false;
-      console.log('checkParamWeightRange==false')
+      this.logger.debug(this.TAG, 'checkParamWeightRange==false')
 
     }
   }
@@ -1621,19 +1623,19 @@ export class MoventivPage implements OnInit {
 
 
   dismissCheckParamWeightRange() {
-    console.log('dismissCheckParamWeightRange')
+    this.logger.debug(this.TAG, 'dismissCheckParamWeightRange')
     if (this.checkParamWeightRange == true) {
       if (this.checkingWeightLoading) {
         this.checkingWeightLoading.dismiss().catch();
         this.checkingWeightLoading = null;
-        console.log('OKWeightRangeCheck')
+        this.logger.debug(this.TAG, 'OKWeightRangeCheck')
         this.presentConfirmWeightRange(true);
       }
     } else if (this.checkParamWeightRange == false) {
       if (this.checkingWeightLoading) {
         this.checkingWeightLoading.dismiss().catch();
         this.checkingWeightLoading = null;
-        console.log('ErrorWeightRangeCheck')
+        this.logger.debug(this.TAG, 'ErrorWeightRangeCheck')
         this.presentConfirmWeightRange(false);
         this.userRangeWeight = 255;
       }
@@ -1642,7 +1644,7 @@ export class MoventivPage implements OnInit {
 
 
   SetName() {
-    console.log('SetName');
+    this.logger.debug(this.TAG, 'SetName');
 
     let bytes = this.randble.stringToBytes(this.userConfig.mlpcName.concat(this.stringLoc));
     let encodedString = this.randble.bytesToEncodedString(bytes); //convertion bytes -> base64 string
@@ -1651,7 +1653,7 @@ export class MoventivPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('setName :' + returnString);
+        this.logger.debug(this.TAG, 'setName :' + returnString);
       },
     );
   }
@@ -1826,11 +1828,11 @@ export class MoventivPage implements OnInit {
 
 
   disconnectBeforeSleep() {
-    console.log('disconnectBeforeSleep()');
+    this.logger.debug(this.TAG, 'disconnectBeforeSleep()');
 
 
     if (this.peripheral) { //if there is a peripheral 
-      console.log('peripheralExist');
+      this.logger.debug(this.TAG, 'peripheralExist');
       let peripheralAddress = '';
       peripheralAddress = this.peripheral.address;
       //iOS and android use 2 differents flow to disconnect
@@ -1838,21 +1840,21 @@ export class MoventivPage implements OnInit {
         setTimeout(() => { //add 50 ms between disconnect and close( force disconnect to 50ms delay)
           this.randble.disconnect({ address: peripheralAddress }).then(
             (val) => {
-              console.log('Disconnect status' + val.status);
+              this.logger.debug(this.TAG, 'Disconnect status' + val.status);
               setTimeout(() => {
                 this.randble.close({ address: peripheralAddress }).then(
                   (conStates) => {
-                    console.log('Close' + conStates.status);
+                    this.logger.debug(this.TAG, 'Close' + conStates.status);
                     this.showDeconnectedToast();
                   },
                   () => {
-                    console.log('Close connection error');
+                    this.logger.debug(this.TAG, 'Close connection error');
                   },
                 )
               }, 50);
             },
             () => {
-              console.log('Disconnect error');
+              this.logger.debug(this.TAG, 'Disconnect error');
             },
           )
         }, 50);
@@ -1861,17 +1863,17 @@ export class MoventivPage implements OnInit {
       else if (this.platform.is('android')) {
         this.randble.close({ address: peripheralAddress }).then(
           (conStates) => {
-            console.log('Close' + conStates.status);
+            this.logger.debug(this.TAG, 'Close' + conStates.status);
             this.showDeconnectedToast();
           },
           () => {
-            console.log('Close connection eroor');
+            this.logger.debug(this.TAG, 'Close connection eroor');
           },
         )
 
       }
     }
-    else console.log('peripheralDontExist');
+    else this.logger.debug(this.TAG, 'peripheralDontExist');
 
   }
 
@@ -1908,8 +1910,8 @@ export class MoventivPage implements OnInit {
   }
 
 
-  setStatus(message) {
-    console.log(message);
+  setStatus(message: any) {
+    this.logger.debug(this.TAG, message);
     this.ngZone.run(() => {
       this.statusMessage = message;
     });
@@ -1938,21 +1940,21 @@ export class MoventivPage implements OnInit {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.TEXT"],
                 role: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.ROLE"],
                 handler: () => {
-                  console.log('clicked Cancel');
+                  this.logger.debug(this.TAG, 'clicked Cancel');
                 }
               },
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES"],
                 handler: data => {
-                  console.log(data.MaintenancePassword)
+                  this.logger.debug(this.TAG, data.MaintenancePassword)
                   if (data.MaintenancePassword == 'MovMaint'){
                     //faire nécessaire maintenance 
-                    console.log('clicked go maintenance done')
+                    this.logger.debug(this.TAG, 'clicked go maintenance done')
                     this.setShdoMaintenanceDate();
                     this.setShdoFirstDate();//La fonction check si c'est bien la première mise en service
                   }
                   else{
-                    console.log('Wrong password')
+                    this.logger.debug(this.TAG, 'Wrong password')
                     let WPAlert = this.alertCtrl.create({
                       subTitle: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.WRONG_PASSWORD"],
                       buttons: [{
@@ -1988,22 +1990,22 @@ export class MoventivPage implements OnInit {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.TEXT"],
                 role: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.ROLE"],
                 handler: () => {
-                  console.log('clicked Cancel');
+                  this.logger.debug(this.TAG, 'clicked Cancel');
                 }
               },
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES"],
                 handler: data => {
-                  console.log(data.MaintenancePassword)
+                  this.logger.debug(this.TAG, data.MaintenancePassword)
                   if (data.MaintenancePassword == 'MovMaint'){
                     //faire nécessaire maintenance 
-                    console.log('clicked go setup done')
+                    this.logger.debug(this.TAG, 'clicked go setup done')
                     this.setShdoMaintenanceDate();
                     this.setShdoFirstDate();//La fonction check si c'est bien la première mise en service
                     this.readAll();
                   }
                   else{
-                    console.log('Wrong password')
+                    this.logger.debug(this.TAG, 'Wrong password')
                     let WPAlert = this.alertCtrl.create({
                       subTitle: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.WRONG_PASSWORD"]
                     })
@@ -2040,11 +2042,11 @@ export class MoventivPage implements OnInit {
     setTimeout(() => {
       this.randble.stopScan().then(
         () => {
-          console.log("Scanning has stopped");
+          this.logger.debug(this.TAG, "Scanning has stopped");
 
         },
         () => {
-          console.log("Error at stop scan");
+          this.logger.debug(this.TAG, "Error at stop scan");
 
         }
       );
@@ -2055,14 +2057,14 @@ export class MoventivPage implements OnInit {
 
   //JDU : ajout des fonction pour sous-onglet dans REGLAGE
   paramBasicOnclick() {
-    console.log("paramBAsicOnClick()");
+    this.logger.debug(this.TAG, "paramBAsicOnClick()");
     this.readAll();
     this.content.scrollToTop();
 
   }
 
   paramAdvancedOnclick() {
-    console.log("paramAdvancedOnClick()");
+    this.logger.debug(this.TAG, "paramAdvancedOnClick()");
     this.readAll();
     this.content.scrollToTop();
     this.advancedAlert();
@@ -2080,7 +2082,7 @@ export class MoventivPage implements OnInit {
               text: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.TEXT"],
               role: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.ROLE"],
               handler: () => {
-                console.log('clicked Cancel');
+                this.logger.debug(this.TAG, 'clicked Cancel');
                 this.paramSubmenuType = 'basic';
 
               }
@@ -2133,7 +2135,7 @@ export class MoventivPage implements OnInit {
 
 
   onSubmitformName() {
-    console.log('submitting form Name');
+    this.logger.debug(this.TAG, 'submitting form Name');
     this.SetName();
   }
 
@@ -2142,64 +2144,65 @@ export class MoventivPage implements OnInit {
 
   private isPasswordValid(field: string) {
     let formField = this.formPassword.get(field);
-    console.log('formField');
+    this.logger.debug(this.TAG, 'formField');
     return true
 
   }
 
   
   onSubmitformPasswordBCrypt() {
-    console.log('submitting form password');
-    console.log(this.userPassword);
+    this.logger.debug(this.TAG, 'submitting form password');
+    this.logger.debug(this.TAG, this.userPassword);
 
 
-    bcrypt.compare("wisavdoor", "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (err: Error, match: boolean) => {
-      console.log('BCryptCompare');
-      console.log(match);
-      
-      if (match == true) {
-        // passwords match
-        this.passwordValid = true;
-        console.log(' match Password BCrypt');
-      } else {
-        // passwords do not match
-        console.log('Password BCrypt');
-      }
-    });
+    bcrypt.compare("wisavdoor", "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (err: Error | null, match: boolean) => {
+          this.logger.debug(this.TAG, 'BCryptCompare');
+          this.logger.debug(this.TAG, 'Match result: ' + match);
+          
+          if (match == true) {
+            // passwords match
+            this.passwordValid = true;
+            this.logger.debug(this.TAG, ' match Password BCrypt');
+          } else {
+            // passwords do not match
+            this.logger.debug(this.TAG, 'Password BCrypt');
+          }
+        });
   }
 
   onSubmitformPassword() {
-    console.log('submitting form password');
-    console.log(this.userPassword);
+    this.logger.debug(this.TAG, 'submitting form password');
+    this.logger.debug(this.TAG, this.userPassword);
     if (this.userPassword == 'WidoorSAV') {
       this.passwordValid = true;
-      console.log('Password ok');
+      this.logger.debug(this.TAG, 'Password ok');
     }
     else {
       this.passwordValid = false;
-      console.log('Password nok');
+      this.logger.debug(this.TAG, 'Password nok');
     }
   }
 
 
   isValid(field: string) {
-    let formField = this.formName.get(field);
-    return formField.valid || formField.pristine;
+    const formField = this.formName.get(field);
+    return !!formField && (formField.valid || formField.pristine);
   }
 
 
-  nameValidator(control: FormControl): { [s: string]: boolean } {
+  nameValidator(control: FormControl): { [s: string]: boolean } | null {
     if (!control.value.match('[a-zA-Z0-9,.;:_-]*')) {
       return { invalidName: true };
     }
+    return null;
   }
 
 
 
 
 
-  onLocChange(event) {
-    console.log("Selected localisation");
+  onLocChange(event: any) {
+    this.logger.debug(this.TAG, "Selected localisation");
 
     switch (this.localisation) {
       case "locValRoom":
@@ -2243,7 +2246,7 @@ export class MoventivPage implements OnInit {
 
 
   //*******************  ConversionFct  *********************  
-  stringToBytes(string) {
+  stringToBytes(string: any) {
     var array = new Uint8Array(string.length);
     for (var i = 0, l = string.length; i < l; i++) {
       array[i] = string.charCodeAt(i);
@@ -2252,13 +2255,13 @@ export class MoventivPage implements OnInit {
   }
 
 
-  bytesToString(buffer) {
-    return String.fromCharCode.apply(null, new Uint8Array(buffer));
+  bytesToString(buffer: any) {
+    return String.fromCharCode.apply(null, Array.from(new Uint8Array(buffer)));
   }
 
 
   //*******************  Popover/loader/toasts  *********************  
-  presentPopover(ev) {
+  presentPopover(ev: any) {
     let popover = this.popoverCtrl.create('PopoverPage', {
     });
     popover.present({
@@ -2280,7 +2283,7 @@ export class MoventivPage implements OnInit {
       });
 
     this.loading.present();
-    console.log('this.loading.present() : connection');
+    this.logger.debug(this.TAG, 'this.loading.present() : connection');
   }
 
   presentReadingDefault() {
@@ -2318,7 +2321,7 @@ export class MoventivPage implements OnInit {
     this.checkingWeightLoading.present();
   }
 
-  presentConfirmWeightRange(confirm) {
+  presentConfirmWeightRange(confirm: boolean) {
 
 
     if (confirm) {
@@ -2335,7 +2338,7 @@ export class MoventivPage implements OnInit {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.WEIGHTCHECK.BUTTON.OK"],
                 handler: () => {
 
-                  console.log('clicked')
+                  this.logger.debug(this.TAG, 'clicked')
                 }
               }
             ]
@@ -2357,7 +2360,7 @@ export class MoventivPage implements OnInit {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.WEIGHTCHECK.BUTTON.OK"],
                 handler: () => {
 
-                  console.log('clicked')
+                  this.logger.debug(this.TAG, 'clicked')
                 }
               }
             ]
@@ -2384,6 +2387,6 @@ export class MoventivPage implements OnInit {
   }
 
   async delay(ms: number) {
-    await new Promise<void>(resolve => setTimeout(() => resolve(), ms)).then(() => console.log("fired"));
+    await new Promise<void>(resolve => setTimeout(() => resolve(), ms)).then(() => this.logger.debug(this.TAG, "fired"));
   }
 }

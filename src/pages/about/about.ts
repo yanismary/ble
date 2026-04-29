@@ -18,7 +18,7 @@ import { LoggerService } from '../../providers/logger/logger.service';
 })
 export class AboutPage {
 
-  @ViewChild(Navbar) navBar: Navbar;
+  @ViewChild(Navbar) navBar!: Navbar;
 
   app_Version: string = '';
   private TAG = 'AboutPage';

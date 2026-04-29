@@ -11,6 +11,7 @@ import { FormGroup, FormBuilder, FormControl, Validators, ValidatorFn, AbstractC
 import 'rxjs/add/operator/toPromise';
 
 import { IonicPage } from 'ionic-angular';
+import { LoggerService } from '../../providers/logger/logger.service';
 
 /**
  * Generated class for the ParamPage page.
@@ -25,11 +26,13 @@ import { IonicPage } from 'ionic-angular';
   templateUrl: 'param.html',
 })
 export class ParamPage {
+  private TAG = 'ParamPage';
+  private logger: LoggerService = new LoggerService();
 
-  @ViewChild(Navbar) navBar: Navbar;
+  @ViewChild(Navbar) navBar!: Navbar;
   //var declaration
   toggleLanguageAuto: any;
-  selectNgModLang: string;
+  selectNgModLang: string = '';
   toogleMac: any;
   toggleDispTabInformations: any;
   toggleDispTabSettings: any;
@@ -37,14 +40,14 @@ export class ParamPage {
   toggleMac: any;
   toggleVibrate: any;
   toggleBluetooth: any;
-  contentReboot: string;
-  view_isIos: boolean;
-  view_isAndroid: boolean;
-  userPassword: string;
+  contentReboot: string = '';
+  view_isIos: boolean = false;
+  view_isAndroid: boolean = false;
+  userPassword: string = '';
   passwordValid: boolean = false;
-  formPassword: FormGroup;
+  formPassword!: FormGroup;
   validation_messages: any;
-  formName: FormGroup;
+  formName!: FormGroup;
 
   constructor(
     public navCtrl: NavController,
@@ -105,7 +108,7 @@ export class ParamPage {
         const code = await Device.getLanguageCode();
         ln = code.value;
 
-        console.log(ln);
+        this.logger.debug(this.TAG, ln);
         if (ln.substring(0, 2) === 'fr') { //we select the first part of the BCP-47 id tag : sp ISO 639-1 alpha-2 (language tag)                 
           this.translate.use('fr');
           localStorage.setItem("lang", "fr");
@@ -130,7 +133,7 @@ export class ParamPage {
             this.config.set('ios', 'backButtonText', res);
           });
         } catch(e) { 
-          console.log(e);
+          this.logger.debug(this.TAG, String(e));
         }
       }
     }
@@ -177,7 +180,7 @@ export class ParamPage {
   }
 
   optComChange() {
-    console.log('optionaloptions', this.dispOptionalCom)
+    this.logger.debug(this.TAG, 'optionaloptions', this.dispOptionalCom)
     this.storage.set('StoredOptComs', JSON.stringify(this.dispOptionalCom));
   }
 
@@ -218,21 +221,21 @@ export class ParamPage {
   }
 
   onSubmitformPassword() {
-    console.log('submitting form password');
-    console.log(this.userPassword);
+    this.logger.debug(this.TAG, 'submitting form password');
+    this.logger.debug(this.TAG, this.userPassword);
     if (this.userPassword == 'wisavdoor') {
       this.passwordValid = true;
-      console.log('Password ok');
+      this.logger.debug(this.TAG, 'Password ok');
     }
     else {
       this.passwordValid = false;
-      console.log('Password nok');
+      this.logger.debug(this.TAG, 'Password nok');
     }
   }
 
   private isPasswordValid(field: string) {
     let formField = this.formPassword.get(field);
-    console.log('formField');
+    this.logger.debug(this.TAG, 'formField');
     return true
 
   }
@@ -241,7 +244,7 @@ export class ParamPage {
   private setBackButtonActionSW() {
     this.navBar.backButtonClick = () => {
       //Write here wherever you wanna do
-      console.log('backButtonFunc()');
+      this.logger.debug(this.TAG, 'backButtonFunc()');
       this.navCtrl.pop();
     }
   }
@@ -289,7 +292,7 @@ export class ParamPage {
   ionViewWillEnter() {
     this.platform.registerBackButtonAction(() => this.setBackButtonActionHW());
     this.setBackButtonActionSW();
-    console.log('ionViewWillEnter');
+    this.logger.debug(this.TAG, 'ionViewWillEnter');
 
     if (this.platform.is('ios')) {
       this.view_isIos = true;
@@ -311,7 +314,7 @@ export class ParamPage {
   }
 
   ionViewDidLoad() {
-    console.log('ionViewDidLoad ParamPage');
+    this.logger.debug(this.TAG, 'ionViewDidLoad ParamPage');
   }
 
   ionViewCanLeave() {

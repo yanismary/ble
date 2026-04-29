@@ -19,7 +19,7 @@ import { LoggerService } from '../../providers/logger/logger.service';
 export class GcuPage {
 
   private TAG = 'GcuPage';
-  @ViewChild(Navbar) navBar: Navbar;
+  @ViewChild(Navbar) navBar!: Navbar;
 
   constructor(
     public navCtrl: NavController,

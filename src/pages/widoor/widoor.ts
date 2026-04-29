@@ -11,6 +11,7 @@ import { Platform } from 'ionic-angular';
 import { Buffer } from 'buffer';
 import { IonicPage } from 'ionic-angular';
 import { BleconnectserviceProvider } from '../../providers/bleconnectservice/bleconnectservice';
+import { LoggerService } from '../../providers/logger/logger.service';																	  
 import * as bcrypt from 'bcryptjs';
 import moment from 'moment';
 
@@ -131,161 +132,163 @@ const MLPC_VERIFPARAM_CHARACTERISTIC = 'cc942243-7656-441f-880c-4617eeb8bacc';
   templateUrl: 'widoor.html'
 })
 export class WidoorPage implements OnInit {
+  private TAG = 'WidoorPage';
+  private logger: LoggerService = new LoggerService();
 
-  @ViewChild(Content) content: Content;
-  formName: FormGroup;
-  formPassword: FormGroup;
+  @ViewChild(Content) content!: Content;
+  formName!: FormGroup;
+  formPassword!: FormGroup;
   userConfig: { mlpcName: string } = { mlpcName: '' };
 
   devices: any[] = [];
   peripheral: any = {};
-  power: boolean;
-  states: string;
-  statesColor: string;
-  periphCommand: number;
-  periphCommandAff: number;
-  periphCommandDynAff: number;
-  shutterPosition: number;
-  shutterPositionAff: number;
+  power!: boolean;
+  states!: string;
+  statesColor!: string;
+  periphCommand!: number;
+  periphCommandAff!: number;
+  periphCommandDynAff!: number;
+  shutterPosition!: number;
+  shutterPositionAff!: number;
 
-  userRangeWeight: number;
-  userRangeWeightBot: number;
-  userRangeWeightUp: number;
-  userOpenBreakForce: number;
-  lock: number;
-  lockOpen: number;
-  lockClose: number;
+  userRangeWeight!: number;
+  userRangeWeightBot!: number;
+  userRangeWeightUp!: number;
+  userOpenBreakForce!: number;
+  lock!: number;
+  lockOpen!: number;
+  lockClose!: number;
 
-  animRead: string;
-  hideMenu: boolean;
-  statusMessage: string;
-  validation_messages: any;
+  animRead!: string;
+  hideMenu!: boolean;
+  statusMessage!: string;
+  validation_messages!: any;
   //translation var strings
 
-  userPassword: string;
+  userPassword!: string;
   todayDateArray: any = {};
 
   //read from BLE module
 
   rval_shDo_version: Uint8Array = new Uint8Array(20);
-  rval_shDo_version_bleStack_major: number;
-  rval_shDo_version_bleStack_minor: number;
-  rval_shDo_version_bleStack_patch: number;
-  rval_shDo_version_bleStack_build: number;
+  rval_shDo_version_bleStack_major!: number;
+  rval_shDo_version_bleStack_minor!: number;
+  rval_shDo_version_bleStack_patch!: number;
+  rval_shDo_version_bleStack_build!: number;
 
   displayLockSwitch = false;
   displayTestRadar = false;
 
-  rval_shdo_motorState_state: number;
-  rval_shdo_motorState_pos: number;
-  rval_shdo_motorState_mpos: number;
-  rval_shdo_motorState_rpos: number;
-  rval_shdo_motorState_error: number;
-  rval_shdo_motorState_switchs: number;
-  rval_shdo_motorState_switch_7: boolean;
-  rval_shdo_motorState_switch_6: boolean;
-  rval_shdo_motorState_switch_5: boolean;
-  rval_shdo_motorState_switch_PushAGo: boolean;
-  rval_shdo_motorState_switch_BLE: boolean;
-  rval_shdo_motorState_switch_autoManu: boolean;
-  rval_shdo_motorState_switch_direction: boolean;
-  rval_shdo_motorState_switch_pairing: boolean;
+  rval_shdo_motorState_state!: number;
+  rval_shdo_motorState_pos!: number;
+  rval_shdo_motorState_mpos!: number;
+  rval_shdo_motorState_rpos!: number;
+  rval_shdo_motorState_error!: number;
+  rval_shdo_motorState_switchs!: number;
+  rval_shdo_motorState_switch_7!: boolean;
+  rval_shdo_motorState_switch_6!: boolean;
+  rval_shdo_motorState_switch_5!: boolean;
+  rval_shdo_motorState_switch_PushAGo!: boolean;
+  rval_shdo_motorState_switch_BLE!: boolean;
+  rval_shdo_motorState_switch_autoManu!: boolean;
+  rval_shdo_motorState_switch_direction!: boolean;
+  rval_shdo_motorState_switch_pairing!: boolean;
 
   rval_shDo_userDatesCycles: Uint8Array = new Uint8Array(10);
-  rval_shdo_userStates_01: number;
+  rval_shdo_userStates_01!: number;
   rval_mlpc_userStates: Uint8Array = new Uint8Array(10);
-  rval_shDo_userDatesCycles_totCyc: number;
-  rval_shDo_userDatesCycles_maintCyc: number;
+  rval_shDo_userDatesCycles_totCyc!: number;
+  rval_shDo_userDatesCycles_maintCyc!: number;
 
   rval_mlpc_userparam_all: Uint8Array = new Uint8Array(10);
   rval_mlpc_proParamAll: Uint8Array = new Uint8Array(10);
   rval_shDo_proMaintenance: Uint8Array = new Uint8Array(10);
 
-  rval_shDo_proMaintenance_NbInit: number;
-  rval_shDo_proMaintenance_NbCyclesSinceInit: number;
-  rval_shDo_proMaintenance_NbObsDetect: number;
-  rval_shDo_proMaintenance_NbWrongStopOpen: number;
-  rval_shDo_proMaintenance_NbWrongStopClose: number;
-  rval_shDo_proMaintenance_NbOverHeatingMotor: number;
-  rval_shDo_proMaintenance_NbErrorEncoder: number;
-  rval_shDo_proMaintenance_NbErrorMotor: number;
+  rval_shDo_proMaintenance_NbInit!: number;
+  rval_shDo_proMaintenance_NbCyclesSinceInit!: number;
+  rval_shDo_proMaintenance_NbObsDetect!: number;
+  rval_shDo_proMaintenance_NbWrongStopOpen!: number;
+  rval_shDo_proMaintenance_NbWrongStopClose!: number;
+  rval_shDo_proMaintenance_NbOverHeatingMotor!: number;
+  rval_shDo_proMaintenance_NbErrorEncoder!: number;
+  rval_shDo_proMaintenance_NbErrorMotor!: number;
 
 
-  rval_mlpc_userParam_speedOpenTune: number;
-  rval_mlpc_userParam_speedCloseTune: number;
-  rval_mlpc_userParam_openTimeShort: number;
-  rval_mlpc_userParam_openTimeLong: number;
-  rval_mlpc_userParam_periphs1: number;
-  rval_mlpc_userParam_periphs2: number;
+  rval_mlpc_userParam_speedOpenTune!: number;
+  rval_mlpc_userParam_speedCloseTune!: number;
+  rval_mlpc_userParam_openTimeShort!: number;
+  rval_mlpc_userParam_openTimeLong!: number;
+  rval_mlpc_userParam_periphs1!: number;
+  rval_mlpc_userParam_periphs2!: number;
 
-  rval_mlpc_proParam_weightRangeBot: number;
-  rval_mlpc_proParam_weightRangeUp: number;
-  rval_mlpc_proParam_exactWeight: number;
-  rval_mlpc_proParam_breakForceAtOpen: number;
-  rval_mlpc_proParam_nearOpenSpeed: number;
-  rval_mlpc_proParam_nearCloseSpeed: number;
-  rval_mlpc_proParam_nearOpenTorque: number;
-  rval_mlpc_proParam_nearCloseTorque: number;
-  rval_mlpc_proParam_nearOpenProportionnal: number;
-  rval_mlpc_proParam_nearCloseProportionnal: number;
-  rval_mlpc_proParam_nearOpenIntegral: number;
-  rval_mlpc_proParam_nearCloseIntegral: number;
-  rval_mlpc_proParam_periphs1: number;
-  rval_mlpc_proParam_periphs2: number;
-  rval_mlpc_proParam_periphs1_butOrRadar1: boolean;
-  rval_mlpc_proParam_periphs1_butOrRadar2: boolean;
-  rval_mlpc_proParam_periphs1_radarTest1: boolean;
-  rval_mlpc_proParam_periphs1_radarTest2: boolean;
-  rval_mlpc_proParam_periphs1_lock: boolean;
+  rval_mlpc_proParam_weightRangeBot!: number;
+  rval_mlpc_proParam_weightRangeUp!: number;
+  rval_mlpc_proParam_exactWeight!: number;
+  rval_mlpc_proParam_breakForceAtOpen!: number;
+  rval_mlpc_proParam_nearOpenSpeed!: number;
+  rval_mlpc_proParam_nearCloseSpeed!: number;
+  rval_mlpc_proParam_nearOpenTorque!: number;
+  rval_mlpc_proParam_nearCloseTorque!: number;
+  rval_mlpc_proParam_nearOpenProportionnal!: number;
+  rval_mlpc_proParam_nearCloseProportionnal!: number;
+  rval_mlpc_proParam_nearOpenIntegral!: number;
+  rval_mlpc_proParam_nearCloseIntegral!: number;
+  rval_mlpc_proParam_periphs1!: number;
+  rval_mlpc_proParam_periphs2!: number;
+  rval_mlpc_proParam_periphs1_butOrRadar1!: boolean;
+  rval_mlpc_proParam_periphs1_butOrRadar2!: boolean;
+  rval_mlpc_proParam_periphs1_radarTest1!: boolean;
+  rval_mlpc_proParam_periphs1_radarTest2!: boolean;
+  rval_mlpc_proParam_periphs1_lock!: boolean;
 
-  rval_mlpc_periphCommandLedStripStatic: boolean;
-  rval_mlpc_periphCommandLedStripDynamic: boolean;
-  rval_mlpc_periphCommandLight1: boolean;
-  rval_mlpc_periphCommandLight2: boolean;
-  rval_mlpc_periphCommandRGBIndic: boolean;
+  rval_mlpc_periphCommandLedStripStatic!: boolean;
+  rval_mlpc_periphCommandLedStripDynamic!: boolean;
+  rval_mlpc_periphCommandLight1!: boolean;
+  rval_mlpc_periphCommandLight2!: boolean;
+  rval_mlpc_periphCommandRGBIndic!: boolean;
 
-  rval_mlpc_verifParam_weightRangeBot: number;
-  rval_mlpc_verifParam_weightRangeUp: number;
-  rval_mlpc_verifParam_exactWeight: number;
+  rval_mlpc_verifParam_weightRangeBot!: number;
+  rval_mlpc_verifParam_weightRangeUp!: number;
+  rval_mlpc_verifParam_exactWeight!: number;
 
 
   checkingWeightLoading: any = {};
   passwordValid: boolean = false;
-  checkParamWeightRange: boolean;
+  checkParamWeightRange!: boolean;
   passwordString: string = 'password';
   //hide/show varaibles
-  isVisibleTabSet: any;
-  isVisibleTabInfo: any;
-  isActifVibrate: any;
+  isVisibleTabSet!: any;
+  isVisibleTabInfo!: any;
+  isActifVibrate!: any;
 
   device: any = {};
   //localisation
-  localisation: string;
+  localisation!: string;
   stringLoc: string = '';
 
   //logic connection
   loading: any = {};
   presentResetLoading: any = {};
   promptReading: any = {};
-  peripheralNameAff: any;
+  peripheralNameAff!: any;
   retry: boolean = false;
   retryConnection: number = 6;
-  menuType: string;
-  paramSubmenuType: string;;
+  menuType!: string;
+  paramSubmenuType!: string;
 
 
-  dispOptionalCom_MO: boolean;
-  dispOptionalCom_LC: boolean;
-  dispOptionalCom_LLB: boolean;
+  dispOptionalCom_MO!: boolean;
+  dispOptionalCom_LC!: boolean;
+  dispOptionalCom_LLB!: boolean;
 
   //date maintenance
-  todayDate: string;
-  todayDateUint8Array: Uint8Array;
+  todayDate!: string;
+  todayDateUint8Array!: Uint8Array;
 
   //test a effacer 
-  ackData_SHDO_usercom: Uint8Array;
-  test_val_sub: Uint8Array;
-  ackData_SHDO_usercom_val: string;
+  ackData_SHDO_usercom!: Uint8Array;
+  test_val_sub!: Uint8Array;
+  ackData_SHDO_usercom_val!: string;
 
 
   constructor(
@@ -307,11 +310,11 @@ export class WidoorPage implements OnInit {
 
     this.platform.ready().then(() => {
       this.platform.pause.subscribe(() => {
-        console.log('****UserdashboardPage PAUSED****');
+        this.logger.debug(this.TAG, '****UserdashboardPage PAUSED****');
         //this.disconnectBeforeSleep();
       });
       this.platform.resume.subscribe(() => {
-        console.log('****UserdashboardPage RESUMED****');
+        this.logger.debug(this.TAG, '****UserdashboardPage RESUMED****');
       });
     });
 
@@ -345,7 +348,7 @@ export class WidoorPage implements OnInit {
   //********************************************************lifeCycle*****************************************************************************/
   ionViewDidEnter() {
 
-    console.log('[Widoor] ionViewDidEnter');
+    this.logger.debug(this.TAG, '[Widoor] ionViewDidEnter');
 
     //disable swipe back button
     this.navCtrl.swipeBackEnabled = false;
@@ -368,7 +371,7 @@ export class WidoorPage implements OnInit {
 
       this.device = navDevice;
       this.peripheral = navDevice; 
-      console.log('[Widoor] Peripheral set:', this.peripheral.address);
+      this.logger.debug(this.TAG, '[Widoor] Peripheral set:', this.peripheral.address);
       
       this.peripheralNameAff = this.navParams.get('displayName') || (this.peripheral ? (this.peripheral.customName || this.peripheral.name) : '') ||'';
 
@@ -376,7 +379,7 @@ export class WidoorPage implements OnInit {
         (this.bleConnectService as any).setNeedConnect(false);
       }
     } else {
-      console.error('[Widoor] Aucun device trouvé dans navParams / service');
+      this.logger.error(this.TAG, '[Widoor] Aucun device trouvé dans navParams / service');
     }
 
     if (this.bleConnectService.getNeedConnect()) {
@@ -406,13 +409,11 @@ export class WidoorPage implements OnInit {
 
     this.todayDate = moment().format('DD-MM-YYYY');
     this.todayDateArray = moment().toArray(); //[year, month, day, hour, minute, second, millisecond]
-    console.log('todayArray' + this.todayDateArray);
-    console.log('todayArrayYear' + this.todayDateArray[0]);
+    this.logger.debug(this.TAG, 'todayArray' + this.todayDateArray);
+    this.logger.debug(this.TAG, 'todayArrayYear' + this.todayDateArray[0]);
     this.todayDateArray[0] = this.todayDateArray[0] - 2000;
     this.todayDateUint8Array = this.todayDateArray;
-    console.log('todayArrayYearArray' + this.todayDateUint8Array[0]);
-
-
+    this.logger.debug(this.TAG, 'todayArrayYearArray' + this.todayDateUint8Array[0]);
   }
 
 
@@ -449,7 +450,7 @@ export class WidoorPage implements OnInit {
     let device = this.navParams.get('device');
 
     if (!device || !device.address) {
-      console.error("No device address found in navParams");
+      this.logger.error(this.TAG, "No device address found in navParams");
       return;
     }
 
@@ -458,7 +459,7 @@ export class WidoorPage implements OnInit {
 
       if (this.retryConnection > 0) {
         this.retryConnection--;
-        console.log('Reconnection try remaining:', this.retryConnection);
+        this.logger.debug(this.TAG, 'Reconnection try remaining:', this.retryConnection);
 
         this.randble.stopScan().catch(() => {})
           .then(() => this.randble.close({ address: device.address }))
@@ -471,7 +472,7 @@ export class WidoorPage implements OnInit {
                 }
               },
               (err) => {
-                console.log('[BLE] Connection error, retrying in 1.5s...');
+                this.logger.debug(this.TAG, '[BLE] Connection error, retrying in 1.5s...');
                 setTimeout(() => this.bleConnect(), 1500);
               }
             );
@@ -489,10 +490,10 @@ export class WidoorPage implements OnInit {
   bleConnectClose() {
     this.randble.close({ address: this.peripheral.address }).then(
       (conStates) => {
-        console.log('Close' + conStates.status);
+        this.logger.debug(this.TAG, 'Close' + conStates.status);
       },
       () => {
-        console.log('Close connection error');
+        this.logger.debug(this.TAG, 'Close connection error');
       }
     )
   }
@@ -502,18 +503,18 @@ export class WidoorPage implements OnInit {
 
 
 
-  errorOnConnection(peripheral) {
+  errorOnConnection(peripheral: any) {
     this.peripheral = peripheral;
   }
 
-  onConnected(peripheral) {
-    console.log('[STEP 1] Connected to hardware');
+  onConnected(peripheral: any) {
+    this.logger.debug(this.TAG, '[STEP 1] Connected to hardware');
     this.peripheral = peripheral;
 
     setTimeout(() => {
       this.randble.discover({ address: peripheral.address })
         .then((data) => {
-          console.log('[STEP 2] Discovery Success', data);
+          this.logger.debug(this.TAG, '[STEP 2] Discovery Success', data);
           
           if (data.services && data.services.length > 0) {
             this.onDiscovered(peripheral);
@@ -522,14 +523,14 @@ export class WidoorPage implements OnInit {
           }
         })
         .catch(err => {
-          console.error('[STEP 2] Discovery Failed', err);
+          this.logger.error(this.TAG, '[STEP 2] Discovery Failed', err);
           this.handleConnectionError();
         });
     }, 500);
   }
 
-  onDiscovered(peripheral) {
-    console.log('[STEP 3] Starting Data Sync');
+  onDiscovered(peripheral: any) {
+    this.logger.debug(this.TAG, '[STEP 3] Starting Data Sync');
     this.readAll();
     
     if (this.loading) {
@@ -701,9 +702,9 @@ export class WidoorPage implements OnInit {
             this.rval_mlpc_proParam_weightRangeUp = dataStringB[D_MLPC_PROPARAM_WR_00_HOF];
             this.rval_mlpc_proParam_breakForceAtOpen = dataStringB[D_MLPC_PROPARAM_EW_HOF];
             this.rval_mlpc_proParam_nearOpenSpeed = dataStringB[D_MLPC_PROPARAM_NOS_HOF];
-            console.log('rval_mlpc_proParam_nearOpenSpeed' + this.rval_mlpc_proParam_nearOpenSpeed)
+            this.logger.debug(this.TAG, 'rval_mlpc_proParam_nearOpenSpeed' + this.rval_mlpc_proParam_nearOpenSpeed)
             this.rval_mlpc_proParam_nearCloseSpeed = dataStringB[D_MLPC_PROPARAM_NCS_HOF];
-            console.log('rval_mlpc_proParam_nearCloseSpeed' + this.rval_mlpc_proParam_nearCloseSpeed)
+            this.logger.debug(this.TAG, 'rval_mlpc_proParam_nearCloseSpeed' + this.rval_mlpc_proParam_nearCloseSpeed)
             this.rval_mlpc_proParam_nearOpenTorque = dataStringB[D_MLPC_PROPARAM_NOT_HOF];
             this.rval_mlpc_proParam_nearCloseTorque = dataStringB[D_MLPC_PROPARAM_NCT_HOF];
             this.rval_mlpc_proParam_nearOpenProportionnal = dataStringB[D_MLPC_PROPARAM_NOP_HOF];
@@ -728,7 +729,7 @@ export class WidoorPage implements OnInit {
     this.randble.subscribe({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_MOTORSTATE_CHARACTERISTIC }).subscribe(
       parameter => {
         let value = parameter.value;
-        console.log('Subscribed SHDO_MOTORSTATE_CHARACTERISTIC')
+        this.logger.debug(this.TAG, 'Subscribed SHDO_MOTORSTATE_CHARACTERISTIC')
         if (typeof value != "undefined") {
           let dataStringBytes = this.randble.encodedStringToBytes(value);
           this.ngZone.run(() => {
@@ -752,7 +753,7 @@ export class WidoorPage implements OnInit {
 
         }
       },
-      () => (this.loading.dismiss(), this.navCtrl.push('ScanPage'), console.log('dismiss debug1'))
+      () => (this.loading.dismiss(), this.navCtrl.push('ScanPage'), this.logger.debug(this.TAG, 'dismiss debug1'))
     );
 
 
@@ -763,10 +764,10 @@ export class WidoorPage implements OnInit {
     this.randble.subscribe({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_VERIFPARAM_CHARACTERISTIC }).subscribe(
       parameter => {
         let value = parameter.value;
-        console.log('Subscribed MLPC_VERIFPARAM_CHARACTERISTIC')
+        this.logger.debug(this.TAG, 'Subscribed MLPC_VERIFPARAM_CHARACTERISTIC')
         if (typeof value != "undefined") {
           let dataBytes = this.randble.encodedStringToBytes(value);
-          console.log('MLPC_VERIFPARAM WR : b0 ' + dataBytes[0] + 'b1 ' + dataBytes[1]);
+          this.logger.debug(this.TAG, 'MLPC_VERIFPARAM WR : b0 ' + dataBytes[0] + 'b1 ' + dataBytes[1]);
           this.ngZone.run(() => {
             this.rval_mlpc_verifParam_weightRangeBot = dataBytes[0];
             this.rval_mlpc_verifParam_weightRangeUp = dataBytes[1];
@@ -774,7 +775,7 @@ export class WidoorPage implements OnInit {
           });
         }
       },
-      () => (this.loading.dismiss(), this.navCtrl.push('ScanPage'), { animate: false }, console.log('dismiss debug2'))
+      () => (this.loading.dismiss(), this.navCtrl.push('ScanPage'), { animate: false }, this.logger.debug(this.TAG, 'dismiss debug2'))
     );
   }
 
@@ -787,10 +788,10 @@ export class WidoorPage implements OnInit {
 
   setShutterOpenStime() {
     if ((this.device.isDemo) == "true") return;
-    console.log('SetDoorOpenStime');
+    this.logger.debug(this.TAG, 'SetDoorOpenStime');
 
     if (!this.peripheral || (!this.peripheral.address && !this.peripheral.id)) {
-      console.error('[Widoor] peripheral/deviceId absent au moment de Ouvrir', this.peripheral);
+      this.logger.error(this.TAG, '[Widoor] peripheral/deviceId absent au moment de Ouvrir', this.peripheral);
       return;
     }
     if (!this.peripheral.address && this.peripheral.id) {
@@ -816,9 +817,9 @@ export class WidoorPage implements OnInit {
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
           //let returnString = this.randble.bytesToString(bytes); //DEBUG
-          console.log('page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
+          this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
           if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
-            console.log('BLE transmission OK')
+            this.logger.debug(this.TAG, 'BLE transmission OK')
           }
         },
       );
@@ -827,7 +828,7 @@ export class WidoorPage implements OnInit {
 
   setShutterOpen() {
     if ((this.device.isDemo) == "true") return;
-    console.log('SetDoorOpen');
+    this.logger.debug(this.TAG, 'SetDoorOpen');
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
     else {
@@ -842,9 +843,9 @@ export class WidoorPage implements OnInit {
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
           //let returnString = this.randble.bytesToString(bytes); //DEBUG
-          console.log('page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
+          this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
           if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
-            console.log('BLE transmission OK')
+            this.logger.debug(this.TAG, 'BLE transmission OK')
           }
         },
       );
@@ -852,7 +853,7 @@ export class WidoorPage implements OnInit {
   }
 
   setShutterOpenLtime() {
-    console.log('SetDoorOpenLtime');
+    this.logger.debug(this.TAG, 'SetDoorOpenLtime');
     if ((this.device.isDemo) != "true") return;
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
@@ -868,9 +869,9 @@ export class WidoorPage implements OnInit {
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
           //let returnString = this.randble.bytesToString(bytes); //DEBUG
-          console.log('page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
+          this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
           if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
-            console.log('BLE transmission OK')
+            this.logger.debug(this.TAG, 'BLE transmission OK')
           }
         },
       );
@@ -878,7 +879,7 @@ export class WidoorPage implements OnInit {
   }
 
   setShutterLearning() {
-    console.log('SetDoorLearning');
+    this.logger.debug(this.TAG, 'SetDoorLearning');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
 
@@ -894,16 +895,16 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page : ' + bytes[0] + 'setDoorLearning: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
+        this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorLearning: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
         if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
-          console.log('BLE transmission OK')
+          this.logger.debug(this.TAG, 'BLE transmission OK')
         }
       },
     );
   }
 
   setShutterResetParam() {
-    console.log('SetDoorResetParam');
+    this.logger.debug(this.TAG, 'SetDoorResetParam');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
 
@@ -919,9 +920,9 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page : ' + bytes[0] + 'setDoorResetParam ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
+        this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorResetParam ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
         if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
-          console.log('BLE transmission OK');
+          this.logger.debug(this.TAG, 'BLE transmission OK');
           this.presentReset();
           this.readAll();
         }
@@ -931,7 +932,7 @@ export class WidoorPage implements OnInit {
 
 
   setShdoMaintenanceDate() {
-    console.log('setShdoMaintenanceDate');
+    this.logger.debug(this.TAG, 'setShdoMaintenanceDate');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
 
@@ -947,21 +948,21 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('pageSel: ' + bytes[0] + 'setLastMaintDate YY: ' + bytes[1] + 'MM: ' + bytes[2] + 'DD: ' + bytes[3] + 'hh: ' + bytes[4]);
+        this.logger.debug(this.TAG, 'pageSel: ' + bytes[0] + 'setLastMaintDate YY: ' + bytes[1] + 'MM: ' + bytes[2] + 'DD: ' + bytes[3] + 'hh: ' + bytes[4]);
       },
     );
   }
 
 
   setShdoFirstDate() {
-    console.log('setShdoFirstDate');
+    this.logger.debug(this.TAG, 'setShdoFirstDate');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
-    console.log('this.rval_shDo_userDatesCycles[5]:' + this.rval_shDo_userDatesCycles[5]);
-    console.log('this.rval_shDo_userDatesCycles[4]:' + this.rval_shDo_userDatesCycles[4]);
-    console.log('this.rval_shDo_userDatesCycles[3]:' + this.rval_shDo_userDatesCycles[3]);
+    this.logger.debug(this.TAG, 'this.rval_shDo_userDatesCycles[5]:' + this.rval_shDo_userDatesCycles[5]);
+    this.logger.debug(this.TAG, 'this.rval_shDo_userDatesCycles[4]:' + this.rval_shDo_userDatesCycles[4]);
+    this.logger.debug(this.TAG, 'this.rval_shDo_userDatesCycles[3]:' + this.rval_shDo_userDatesCycles[3]);
     if ((this.rval_shDo_userDatesCycles[5] == 0) && (this.rval_shDo_userDatesCycles[4] == 0) && (this.rval_shDo_userDatesCycles[3] == 0)) {
-      console.log('firstUse');
+      this.logger.debug(this.TAG, 'firstUse');
       let commandData = new Uint8Array(5);
       commandData[0] = 1;
       commandData[1] = this.todayDateUint8Array[0];
@@ -974,14 +975,14 @@ export class WidoorPage implements OnInit {
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
           let returnString = this.randble.bytesToString(bytes);
-          console.log('pageSel: ' + bytes[0] + 'setFirstUseDate YY: ' + bytes[1] + 'MM: ' + bytes[2] + 'DD: ' + bytes[3] + 'hh: ' + bytes[4]);
+          this.logger.debug(this.TAG, 'pageSel: ' + bytes[0] + 'setFirstUseDate YY: ' + bytes[1] + 'MM: ' + bytes[2] + 'DD: ' + bytes[3] + 'hh: ' + bytes[4]);
         },
       );
     }
   }
 
   setShutterClose() {
-    console.log('SetDoorClose');
+    this.logger.debug(this.TAG, 'SetDoorClose');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
     if (this.lockClose == 2) { this.lockAlert(); }
@@ -997,7 +998,7 @@ export class WidoorPage implements OnInit {
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
           let returnString = this.randble.bytesToString(bytes);
-          console.log('page: ' + bytes[0] + 'setDoorClose b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
+          this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'setDoorClose b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
         },
       );
 
@@ -1007,7 +1008,7 @@ export class WidoorPage implements OnInit {
 
 
   setLockClose() {
-    console.log('SetLockClose');
+    this.logger.debug(this.TAG, 'SetLockClose');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
 
@@ -1033,13 +1034,13 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'setLockClose b0: ' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'setLockClose b0: ' + bytes[1]);
       },
     );
   }
 
   setLockOpen() {
-    console.log('SetLockOpen');
+    this.logger.debug(this.TAG, 'SetLockOpen');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
 
@@ -1065,7 +1066,7 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'setLockClose b0: ' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'setLockClose b0: ' + bytes[1]);
       },
     );
   }
@@ -1073,7 +1074,7 @@ export class WidoorPage implements OnInit {
 
 
   setOpenSpeedTune() {
-    console.log('SetSpeedOpenTune');
+    this.logger.debug(this.TAG, 'SetSpeedOpenTune');
 
     if ((this.device.isDemo) == "true") return;
 
@@ -1088,7 +1089,7 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'SetSpeedOpenTune b0: ' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetSpeedOpenTune b0: ' + bytes[1]);
       },
     );
   }
@@ -1097,7 +1098,7 @@ export class WidoorPage implements OnInit {
 
 
   setCloseSpeedTune() {
-    console.log('SetSpeedCloseTune');
+    this.logger.debug(this.TAG, 'SetSpeedCloseTune');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
 
@@ -1112,7 +1113,7 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'SetSpeedCloseTune b0: ' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetSpeedCloseTune b0: ' + bytes[1]);
       },
     );
   }
@@ -1120,7 +1121,7 @@ export class WidoorPage implements OnInit {
 
   setNearOpenSpeed() {
 
-    console.log('setNearOpenSpeed');
+    this.logger.debug(this.TAG, 'setNearOpenSpeed');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
 
@@ -1141,7 +1142,7 @@ export class WidoorPage implements OnInit {
   }
 
   setNearCloseSpeed() {
-    console.log('setNearCloseSpeed');
+    this.logger.debug(this.TAG, 'setNearCloseSpeed');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
 
@@ -1162,7 +1163,7 @@ export class WidoorPage implements OnInit {
   }
 
   setNearOpenTorque() {
-    console.log('setNearOpenSpeed');
+    this.logger.debug(this.TAG, 'setNearOpenSpeed');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
 
@@ -1183,7 +1184,7 @@ export class WidoorPage implements OnInit {
   }
 
   setNearCloseTorque() {
-    console.log('setNearCloseSpeed');
+    this.logger.debug(this.TAG, 'setNearCloseSpeed');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
 
@@ -1206,7 +1207,7 @@ export class WidoorPage implements OnInit {
 
 
   setShortTiming() {
-    console.log('SetShortTiming');
+    this.logger.debug(this.TAG, 'SetShortTiming');
     this.vibrate();
 
     if ((this.device.isDemo) == "true") return;
@@ -1221,13 +1222,13 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
       },
     );
   }
 
   setLongTiming() {
-    console.log('SetShortTiming');
+    this.logger.debug(this.TAG, 'SetShortTiming');
 
     if ((this.device.isDemo) == "true") return;
 
@@ -1242,14 +1243,14 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
       },
     );
   }
 
 
   setUserStaticLight() {
-    console.log('setUserStaticLight');
+    this.logger.debug(this.TAG, 'setUserStaticLight');
     this.vibrate();
 
     if ((this.device.isDemo) == "true") return;
@@ -1273,13 +1274,13 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph MSB set ' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph MSB set ' + bytes[1]);
       },
     );
   }
 
   setUserDynLight() {
-    console.log('setUserDynLight');
+    this.logger.debug(this.TAG, 'setUserDynLight');
     this.vibrate();
 
     if ((this.device.isDemo) == "true") return;
@@ -1303,13 +1304,13 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph set ' + bytes[1] + 'periph set ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph set ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
   }
 
   setUserbutOrRadar1() {
-    console.log('setUserbutOrRadar1');
+    this.logger.debug(this.TAG, 'setUserbutOrRadar1');
     this.vibrate();
 
     if ((this.device.isDemo) == "true") return;
@@ -1333,13 +1334,13 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
   }
 
   setUserbutOrRadar2() {
-    console.log('setUserbutOrRadar2');
+    this.logger.debug(this.TAG, 'setUserbutOrRadar2');
     this.vibrate();
 
     if ((this.device.isDemo) == "true") return;
@@ -1363,13 +1364,13 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
   }
 
   setUserLock() {
-    console.log('setUserLocker');
+    this.logger.debug(this.TAG, 'setUserLocker');
     this.vibrate();
 
     if ((this.device.isDemo) == "true") return;
@@ -1393,13 +1394,13 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
   }
 
   setUserRadarTest1() {
-    console.log('setUserRadarTest1');
+    this.logger.debug(this.TAG, 'setUserRadarTest1');
     this.vibrate();
 
     if ((this.device.isDemo) == "true") return;
@@ -1423,13 +1424,13 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
   }
 
   setUserRadarTest2() {
-    console.log('setUserRadarTest1');
+    this.logger.debug(this.TAG, 'setUserRadarTest1');
     this.vibrate();
 
     if ((this.device.isDemo) == "true") return;
@@ -1453,13 +1454,13 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
   }
 
   setUserRGBIndic() {
-    console.log('setUserRGBIndic');
+    this.logger.debug(this.TAG, 'setUserRGBIndic');
     this.vibrate();
 
     if ((this.device.isDemo) == "true") return;
@@ -1483,13 +1484,13 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'periph MSB set ' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph MSB set ' + bytes[1]);
       },
     );
   }
 
   setBreakForceAtOpen() {
-    console.log('setBreakForceAtOpen');
+    this.logger.debug(this.TAG, 'setBreakForceAtOpen');
     this.vibrate();
 
     if ((this.device.isDemo) == "true") return;
@@ -1505,7 +1506,7 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('page: ' + bytes[0] + 'open break force range' + bytes[1]);
+        this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'open break force range' + bytes[1]);
       },
     );
 
@@ -1513,7 +1514,7 @@ export class WidoorPage implements OnInit {
 
 
   SetName() {
-    console.log('SetName');
+    this.logger.debug(this.TAG, 'SetName');
 
     let bytes = this.randble.stringToBytes(this.userConfig.mlpcName.concat(this.stringLoc));
     let encodedString = this.randble.bytesToEncodedString(bytes); //convertion bytes -> base64 string
@@ -1522,7 +1523,7 @@ export class WidoorPage implements OnInit {
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         let returnString = this.randble.bytesToString(bytes);
-        console.log('setName :' + returnString);
+        this.logger.debug(this.TAG, 'setName :' + returnString);
       },
     );
 
@@ -1665,11 +1666,11 @@ export class WidoorPage implements OnInit {
 
 
   disconnectBeforeSleep() {
-    console.log('disconnectBeforeSleep()');
+    this.logger.debug(this.TAG, 'disconnectBeforeSleep()');
 
 
     if (this.peripheral) { //if there is a peripheral 
-      console.log('peripheralExist');
+      this.logger.debug(this.TAG, 'peripheralExist');
       let peripheralAddress = '';
       peripheralAddress = this.peripheral.address;
       //iOS and android use 2 differents flow to disconnect
@@ -1677,21 +1678,21 @@ export class WidoorPage implements OnInit {
         setTimeout(() => { //add 50 ms between disconnect and close( force disconnect to 50ms delay)
           this.randble.disconnect({ address: peripheralAddress }).then(
             (val) => {
-              console.log('Disconnect status' + val.status);
+              this.logger.debug(this.TAG, 'Disconnect status' + val.status);
               setTimeout(() => {
                 this.randble.close({ address: peripheralAddress }).then(
                   (conStates) => {
-                    console.log('Close' + conStates.status);
+                    this.logger.debug(this.TAG, 'Close' + conStates.status);
                     this.showDeconnectedToast();
                   },
                   () => {
-                    console.log('Close connection error');
+                    this.logger.debug(this.TAG, 'Close connection error');
                   },
                 )
               }, 50);
             },
             () => {
-              console.log('Disconnect error');
+              this.logger.debug(this.TAG, 'Disconnect error');
             },
           )
         }, 50);
@@ -1700,17 +1701,17 @@ export class WidoorPage implements OnInit {
       else if (this.platform.is('android')) {
         this.randble.close({ address: peripheralAddress }).then(
           (conStates) => {
-            console.log('Close' + conStates.status);
+            this.logger.debug(this.TAG, 'Close' + conStates.status);
             this.showDeconnectedToast();
           },
           () => {
-            console.log('Close connection eroor');
+            this.logger.debug(this.TAG, 'Close connection eroor');
           },
         )
 
       }
     }
-    else console.log('peripheralDontExist');
+    else this.logger.debug(this.TAG, 'peripheralDontExist');
 
   }
 
@@ -1745,8 +1746,8 @@ export class WidoorPage implements OnInit {
   }
 
 
-  setStatus(message) {
-    console.log(message);
+  setStatus(message: string) {
+    this.logger.debug(this.TAG, message);
     this.ngZone.run(() => {
       this.statusMessage = message;
     });
@@ -1766,14 +1767,14 @@ export class WidoorPage implements OnInit {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.TEXT"],
                 role: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.ROLE"],
                 handler: () => {
-                  console.log('clicked Cancel');
+                  this.logger.debug(this.TAG, 'clicked Cancel');
                 }
               },
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES"],
                 handler: () => {
                   //faire nécessaire maintenance 
-                  console.log('clicked go maintenance done')
+                  this.logger.debug(this.TAG, 'clicked go maintenance done')
                   this.setShdoMaintenanceDate();
                   this.setShdoFirstDate();//La fonction check si c'est bien la première mise en service
                 }
@@ -1794,14 +1795,14 @@ export class WidoorPage implements OnInit {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.TEXT"],
                 role: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.ROLE"],
                 handler: () => {
-                  console.log('clicked Cancel');
+                  this.logger.debug(this.TAG, 'clicked Cancel');
                 }
               },
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES"],
                 handler: () => {
                   //faire nécessaire maintenance 
-                  console.log('clicked go setup done')
+                  this.logger.debug(this.TAG, 'clicked go setup done')
                   this.setShdoMaintenanceDate();
                   this.setShdoFirstDate();//La fonction check si c'est bien la première mise en service
                   this.readAll();
@@ -1836,11 +1837,11 @@ export class WidoorPage implements OnInit {
     setTimeout(() => {
       this.randble.stopScan().then(
         () => {
-          console.log("Scanning has stopped");
+          this.logger.debug(this.TAG, "Scanning has stopped");
 
         },
         () => {
-          console.log("Error at stop scan");
+          this.logger.debug(this.TAG, "Error at stop scan");
 
         }
       );
@@ -1850,21 +1851,21 @@ export class WidoorPage implements OnInit {
   }
 
   paramOnClick() {
-    console.log("paramOnClick()");
+    this.logger.debug(this.TAG, "paramOnClick()");
     this.readAll();
     this.content.scrollToTop();
     this.paramSubmenuType = 'basic';
   }
 
   paramBasicOnclick() {
-    console.log("paramBAsicOnClick()");
+    this.logger.debug(this.TAG, "paramBAsicOnClick()");
     this.readAll();
     this.content.scrollToTop();
 
   }
 
   paramAdvancedOnclick() {
-    console.log("paramAdvancedOnClick()");
+    this.logger.debug(this.TAG, "paramAdvancedOnClick()");
     this.readAll();
     this.content.scrollToTop();
     this.advancedAlert();
@@ -1912,68 +1913,69 @@ export class WidoorPage implements OnInit {
 
 
   onSubmitformName() {
-    console.log('submitting form Name');
+    this.logger.debug(this.TAG, 'submitting form Name');
     this.SetName();
   }
 
   onSubmitformPassword() {
-    console.log('submitting form password');
-    console.log(this.userPassword);
+    this.logger.debug(this.TAG, 'submitting form password');
+    this.logger.debug(this.TAG, this.userPassword);
     if (this.userPassword == 'password') {
       this.passwordValid = true;
-      console.log('Password ok');
+      this.logger.debug(this.TAG, 'Password ok');
     }
     else {
       this.passwordValid = false;
-      console.log('Password nok');
+      this.logger.debug(this.TAG, 'Password nok');
     }
   }
 
   onSubmitformPasswordBCrypt() {
-    console.log('submitting form password');
-    console.log(this.userPassword);
+    this.logger.debug(this.TAG, 'submitting form password');
+    this.logger.debug(this.TAG, this.userPassword);
 
 
-    bcrypt.compare("wisavdoor", "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (err: Error, match: boolean) => {
-      console.log('BCryptCompare');
-      console.log(match);
+    bcrypt.compare("wisavdoor", "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (err: Error | null, match: boolean) => {
+      this.logger.debug(this.TAG, 'BCryptCompare');
+      this.logger.debug(this.TAG, 'Match result: ' + match);
       if (match == true) {
         // passwords match
         this.passwordValid = true;
-        console.log(' match Password BCrypt');
+        this.logger.debug(this.TAG, ' match Password BCrypt');
       } else {
         // passwords do not match
-        console.log('Password BCrypt');
+        this.logger.debug(this.TAG, 'Password BCrypt');
       }
     });
   }
 
   private isPasswordValid(field: string) {
     let formField = this.formPassword.get(field);
-    console.log('formField');
+    this.logger.debug(this.TAG, 'formField');
     return true
 
   }
 
 
   isValid(field: string) {
-    let formField = this.formName.get(field);
-    return formField.valid || formField.pristine;
+    const formField = this.formName.get(field);
+    return !!formField && (formField.valid || formField.pristine);
   }
 
 
-  nameValidator(control: FormControl): { [s: string]: boolean } {
+  nameValidator(control: FormControl): { [s: string]: boolean } | null {
     if (!control.value.match('[a-zA-Z0-9,.;:_-]*')) {
       return { invalidName: true };
     }
+    return null;
   }
 
 
 
 
 
-  onLocChange(event) {
-    console.log("Selected localisation");
+  onLocChange(event: any) {
+    this.logger.debug(this.TAG, "Selected localisation");
 
     switch (this.localisation) {
       case "locValRoom":
@@ -2017,7 +2019,7 @@ export class WidoorPage implements OnInit {
 
 
   //*******************  ConversionFct  *********************  
-  stringToBytes(string) {
+  stringToBytes(string: string) {
     var array = new Uint8Array(string.length);
     for (var i = 0, l = string.length; i < l; i++) {
       array[i] = string.charCodeAt(i);
@@ -2026,13 +2028,13 @@ export class WidoorPage implements OnInit {
   }
 
 
-  bytesToString(buffer) {
-    return String.fromCharCode.apply(null, new Uint8Array(buffer));
+  bytesToString(buffer: ArrayBuffer) {
+    return String.fromCharCode.apply(null, Array.from(new Uint8Array(buffer)));
   }
 
 
   //*******************  Popover/loader/toasts  *********************  
-  presentPopover(ev) {
+  presentPopover(ev: any) {
     let popover = this.popoverCtrl.create('PopoverPage', {
       fromConnected: true
     });
@@ -2056,7 +2058,7 @@ export class WidoorPage implements OnInit {
       });
 
     this.loading.present();
-    console.log('this.loading.present() : connection');
+    this.logger.debug(this.TAG, 'this.loading.present() : connection');
   }
 
   presentReadingDefault() {
@@ -2106,7 +2108,7 @@ export class WidoorPage implements OnInit {
       });
 
     this.presentResetLoading.present();
-    console.log('this.loadingReset.present() : connection');
+    this.logger.debug(this.TAG, 'this.loadingReset.present() : connection');
   }
 
   advancedAlert() {
@@ -2120,7 +2122,7 @@ export class WidoorPage implements OnInit {
               text: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.TEXT"],
               role: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.ROLE"],
               handler: () => {
-                console.log('clicked Cancel');
+                this.logger.debug(this.TAG, 'clicked Cancel');
                 this.paramSubmenuType = 'basic';
 
               }
@@ -2148,7 +2150,7 @@ export class WidoorPage implements OnInit {
               text: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.RESETALERT.BUTTONS.NO.TEXT"],
               role: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.RESETALERT.BUTTONS.NO.ROLE"],
               handler: () => {
-                console.log('clicked Cancel');
+                this.logger.debug(this.TAG, 'clicked Cancel');
 
 
               }
@@ -2167,10 +2169,10 @@ export class WidoorPage implements OnInit {
   }
 
   async delay(ms: number) {
-    await new Promise<void>(resolve => setTimeout(() => resolve(), ms)).then(() => console.log("fired"));
+    await new Promise<void>(resolve => setTimeout(() => resolve(), ms)).then(() => this.logger.debug(this.TAG, "fired"));
   }
 
-  isGreaterVersion3e(majorA, minorA, patchA, majorB, minorB, patchB) {
+  isGreaterVersion3e(majorA: number, minorA: number, patchA: number, patchB: number, majorB: number, minorB: number,) {
     let AisBigger = false;
     if (majorA > majorB) {
       AisBigger = true;

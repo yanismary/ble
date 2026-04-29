@@ -11,7 +11,27 @@ import { LoggerService } from '../../providers/logger/logger.service';
 
 
 // --- CONFIGURATION DES PRODUITS ---
-export const PRODUCTS_CONFIG = [
+interface ProductConfig {
+  id: string;
+  name: string;
+  serviceUUID: string;
+  page: string;
+  demoName: string;
+}
+
+interface ScanDevice {
+  id?: string;
+  address?: string;
+  name?: string;
+  rssi?: number;
+  status?: string;
+  isBonded?: boolean;
+  isDemo?: boolean | string;
+  advertising?: any;
+  advertisement?: any;
+  [key: string]: any;
+}
+export const PRODUCTS_CONFIG: ProductConfig[] = [
   {
     id: 'widoor',
     name: 'Widoor',
@@ -50,10 +70,10 @@ export const PRODUCTS_CONFIG = [
 })
 export class ScanPage {
 
-  devices: any[] = [];
-  device: any;
-  viewisIos: boolean;
-  statusMessage: string;
+  devices: ScanDevice[] = [];
+  device: ScanDevice = {};
+  viewisIos: boolean = false;
+  statusMessage: string = '';
   isVisibleMac: any;
   isVisiblePaired: any;
   isScanning: boolean = false;
@@ -65,7 +85,21 @@ export class ScanPage {
   private permissionPopupShown = false;
   private locationPopupShown = false;
   private initScanInProgress = false;
+  private permissionDeniedCount = 0;
+  private scanTimeoutHandle: any = null;			
   private TAG = 'ScanPage';
+  private UI_MESSAGES = {
+    scanSearching: 'Recherche en cours...',
+    scanPermissionDenied: 'Autorisations Bluetooth et localisation manquantes',
+    scanPermissionPermanentlyDenied: 'Autorisations Bluetooth et localisation refusées définitivement',
+    scanLocationDisabled: 'Localisation désactivée',
+    scanPrepareFailed: 'Préparation Bluetooth impossible',
+    scanError: 'Recherche Bluetooth impossible pour le moment',
+    pairingInProgress: 'Appairage en cours...',
+    pairingSuccess: 'Appairage réussi',
+    pairingFailed: 'Échec de l\'appairage',
+    missingIdentifier: 'Identifiant Bluetooth introuvable'
+  };
 
   unbondOrBondColor: string = "mantionSmtRed";
 
@@ -146,9 +180,13 @@ export class ScanPage {
   }
 
   disconnect() {
-    let peripheralAddress = this.bleConnectService.getConnectedPeripheral() || null;
-    if (peripheralAddress) {
-      this.disconnectSpecific(peripheralAddress);
+    const peripheral = this.bleConnectService.getConnectedPeripheral() || null;
+    const address = (peripheral && peripheral.address) ? peripheral.address : peripheral;
+
+    if (address) {
+      this.disconnectSpecific(String(address));
+    } else {
+      this.logger.warn(this.TAG, 'Disconnect ignored: no connected peripheral address');
     }
   }
 
@@ -170,12 +208,13 @@ export class ScanPage {
         this.settingsPopupShown = false;
         this.permissionPopupShown = false;
         this.locationPopupShown = false;
+		this.permissionDeniedCount = 0;							   
         this.logger.info(this.TAG, 'Pre-scan check passed, launching scan');
         this.scan();
         return;
       }
 
-      const reason = precheck && precheck.reason ? precheck.reason : 'PRECHECK_FAILED';
+      const reason = precheck && precheck.reason ? String(precheck.reason) : 'PRECHECK_FAILED';
 
       if (reason === 'BLE_DISABLED') {
         this.logger.warn(this.TAG, 'Init scan blocked: bluetooth disabled', precheck ? precheck.details : null);
@@ -189,42 +228,69 @@ export class ScanPage {
       }
 
       if (reason === 'PERMISSION_DENIED') {
-        this.logger.warn(this.TAG, 'Init scan blocked: permission denied', precheck ? precheck.details : null);
-        this.setStatus('Autorisation Bluetooth refusée');
-        this.showPermissionSettingsPopup(precheck ? precheck.details : null);
+        this.permissionDeniedCount++;
+        this.logger.warn(this.TAG, 'Init scan blocked: permission denied', {
+          details: precheck ? precheck.details : null,
+          permissionDeniedCount: this.permissionDeniedCount
+        });
+
+        this.setStatus(this.UI_MESSAGES.scanPermissionDenied);
+
+        if (this.platform.is('ios') || this.permissionDeniedCount >= 2) {
+          this.showPermissionSettingsPopup(precheck ? precheck.details : null, this.permissionDeniedCount >= 2);
+        } else {
+          this.showToast(
+            'Impossible de lancer la recherche tant que les autorisations Bluetooth et localisation ne sont pas accordées.',
+            3500
+          );
+        }
+        return;
+      }
+
+      if (reason === 'PERMISSION_PERMANENTLY_DENIED') {
+        this.permissionDeniedCount = Math.max(this.permissionDeniedCount, 2);
+        this.logger.warn(this.TAG, 'Init scan blocked: permission permanently denied', precheck ? precheck.details : null);
+        this.setStatus(this.UI_MESSAGES.scanPermissionPermanentlyDenied);
+        this.showPermissionSettingsPopup(precheck ? precheck.details : null, true);
         return;
       }
 
       if (reason === 'LOCATION_DISABLED') {
         this.logger.warn(this.TAG, 'Init scan blocked: location disabled', precheck ? precheck.details : null);
-        this.setStatus('Localisation désactivée');
+        this.setStatus(this.UI_MESSAGES.scanLocationDisabled);
         this.showLocationSettingsPopup(precheck ? precheck.details : null);
         return;
       }
 
       this.logger.error(this.TAG, 'Init scan blocked: pre-check failed', precheck ? precheck.details : null);
-      this.setStatus('Préparation Bluetooth impossible');
-      this.toastCtrl.create({
-        message: 'La préparation Bluetooth est incomplète. Vérifiez les réglages puis relancez la recherche.',
-        duration: 3500,
-        position: 'bottom'
-      }).present();
+      this.setStatus(this.UI_MESSAGES.scanPrepareFailed);					 
+      this.showToast('La préparation Bluetooth est incomplète. Vérifiez les réglages, puis relancez la recherche.', 3500);			   	   
     } catch (error) {
       this.logger.error(this.TAG, 'Init scan failed unexpectedly', error);
-      this.setStatus('Préparation Bluetooth impossible');
-      this.toastCtrl.create({
-        message: 'Une erreur est survenue lors de la préparation Bluetooth.',
-        duration: 3000,
-        position: 'bottom'
-      }).present();
+      this.setStatus(this.UI_MESSAGES.scanPrepareFailed);				 
+      this.showToast('Une erreur est survenue pendant la préparation Bluetooth.', 3000);	   
     } finally {
       this.initScanInProgress = false;
     }
   }
 
 
+
+
+
+
+
+
+
+
   scan() {
-    this.setStatus('Recherche des appareils...');
+    if (this.isScanning) {
+      this.logger.debug(this.TAG, 'Scan request ignored: already scanning');
+      return;
+    }
+
+    this.clearScanTimeout();
+    this.setStatus(this.UI_MESSAGES.scanSearching);
     this.isScanning = true;
     this.isPushOnce = false;
     this.devices = []; 
@@ -244,11 +310,11 @@ export class ScanPage {
     this.randble.startScan(scanParams).subscribe(
       device => {
         if (device.status === 'scanResult') {
-           this.logger.debug(this.TAG, 'Scan result', {
+           /*this.logger.debug(this.TAG, 'Scan result', {
              id: device.id || device.address,
              name: device.name,
              rssi: device.rssi
-           });
+           });*/
            this.onDeviceDiscovered(device);
         }
         else if (device.id || device.address) {
@@ -267,22 +333,30 @@ export class ScanPage {
         }
 
         if (code === 'BLE_PERMISSION_DENIED') {
-          this.logger.warn(this.TAG, 'Scan failed: bluetooth permission denied', error);
-          this.setStatus('Autorisation Bluetooth refusée');
-          this.toastCtrl.create({
-            message: 'Autorisation Bluetooth refusée. Activez-la dans les réglages du téléphone puis relancez la recherche.',
-            duration: 3500,
-            position: 'bottom'
-          }).present();
+          this.logger.warn(this.TAG, 'Scan failed: bluetooth/location permission denied', error);
+          this.setStatus(this.UI_MESSAGES.scanPermissionDenied);
+          this.showToast(
+            'Les autorisations Bluetooth ou localisation ont été refusées. Veuillez relancer la recherche.',
+            3500
+          );
+          this.initScan();
+          return;
+        }
+
+        if (code === 'BLE_NOT_INITIALIZED') {
+          this.logger.warn(this.TAG, 'Scan failed: BLE not initialized', error);
+          this.setStatus(this.UI_MESSAGES.scanPrepareFailed);
+          this.showToast('Le Bluetooth de l\'application n\'est pas prêt. Veuillez relancer la recherche.', 3000);
           return;
         }
 
         this.logger.error(this.TAG, 'Scan failed', error);
-        this.setStatus('Erreur scan Bluetooth');
+        this.setStatus(this.UI_MESSAGES.scanError);
+		this.showToast('La recherche Bluetooth a échoué. Veuillez réessayer.', 3000);																				
       }
     );
 
-    setTimeout(() => {
+    this.scanTimeoutHandle = setTimeout(() => {
       if (this.isScanning) {
         this.randble.stopScan().then(() => {
           this.logger.info(this.TAG, 'Scan timeout reached, scan stopped');
@@ -290,27 +364,34 @@ export class ScanPage {
         }).catch((err) => {
           this.logger.error(this.TAG, 'Scan timeout stop failed', err);
           this.ngZone.run(() => { this.isScanning = false; });
+		}).then(() => {
+          this.clearScanTimeout();			   					  
         });
       }
     }, 8000);
   }
 
-  isDeviceBonded(device) {
+  isDeviceBonded(device: ScanDevice): void {
     if ((device.status) == "scanStarted") {
-      return
+      return;
     }
 
     if (this.platform.is('android') && typeof (this.randble as any).isBonded === 'function') {
+	  const address = device && (device.address || device.id) ? String(device.address || device.id) : '';
+      if (!address) {
+        this.logger.warn(this.TAG, 'Bond status skipped: missing address', { device: device });
+        return;
+      }																								 
 
-      (this.randble as any).isBonded({ address: device.address }).subscribe(
-        deviceBond => {
-          this.onDeviceDiscovered(Object.assign(device, deviceBond));
+      this.randble.isBonded({ address: address }).then(
+        (deviceBond: { isBonded: boolean }) => {
+          this.onDeviceDiscovered(Object.assign(device, deviceBond) as ScanDevice);
           this.logger.debug(this.TAG, 'Bond status resolved', {
             address: device ? device.address : null,
             isBonded: device ? device.isBonded : null
           });
         },
-        (error) => {
+        (error: any) => {
           this.logger.warn(this.TAG, 'Bond status check failed', {
             address: device ? device.address : null,
             error: error
@@ -328,7 +409,7 @@ export class ScanPage {
 
   }
 
-  onDeviceDiscovered(device) {
+  onDeviceDiscovered(device: ScanDevice): void {
     this.ngZone.run(() => {
       
       if (this.platform.is('android')) {
@@ -336,7 +417,7 @@ export class ScanPage {
          // Mais pour l'affichage initial, on peut laisser undefined
       }
 
-      let existingDevice = this.devices.find(d => 
+      let existingDevice = this.devices.find((d: ScanDevice) => 
         (d.id && device.id && d.id === device.id) || 
         (d.address && device.address && d.address === device.address)
       );
@@ -355,14 +436,27 @@ export class ScanPage {
     });
   }
 
-  checkBondStatus(device) {
+  checkBondStatus(device: ScanDevice): void {
       if (this.platform.is('android')) {
-          this.randble.isBonded({ address: device.address }).then(res => {
+          const address = device && (device.address || device.id) ? String(device.address || device.id) : '';
+          if (!address) {
+            this.logger.warn(this.TAG, 'Bond status async check skipped: missing address', { device: device });
+            return;
+          }
+
+          this.randble.isBonded({ address: address }).then((res: { isBonded: boolean }) => {
               this.ngZone.run(() => {
-                  let target = this.devices.find(d => d.address === device.address);
+                  let target = this.devices.find((d: ScanDevice) =>
+                    (d.address && d.address === address) || (d.id && d.id === address)
+                  );
                   if (target) {
                       target.isBonded = res.isBonded;
                   }
+              });
+          }).catch((error: any) => {
+              this.logger.warn(this.TAG, 'Bond status async check failed', {
+                address: device ? device.address : null,
+                error: error
               });
           });
       }
@@ -395,12 +489,13 @@ export class ScanPage {
   }*/
 
   // If location permission is denied, you'll end up here
-  scanError(error) {
-    this.setStatus('Erreur Bluetooth : ' + error);
-    //toast.present();
+  scanError(error: any): void {
+    this.logger.error(this.TAG, 'scanError callback invoked', error);
+    this.setStatus(this.UI_MESSAGES.scanError);
+    this.showToast('Une erreur Bluetooth est survenue. Veuillez réessayer.', 3000);
   }
 
-  setStatus(message) {
+  setStatus(message: string): void {
     this.logger.debug(this.TAG, 'Status update', message);
     this.ngZone.run(() => {
       this.statusMessage = message;
@@ -408,43 +503,50 @@ export class ScanPage {
   }
 
 
-  unbondOrBond(device) {
+  unbondOrBond(device: ScanDevice): void {
     if (!this.platform.is('android')) {
         return;
     }
 
     if (device.isBonded) {
-        let toast = this.toastCtrl.create({
-            message: 'Pour désappairer, allez dans les Réglages Bluetooth de votre téléphone et faites "Oublier l\'appareil".',
-            duration: 4000,
-            position: 'bottom'
-        });
-        toast.present();
+										   
+        this.showToast('Pour désappairer, ouvrez les réglages Bluetooth du téléphone puis choisissez "Oublier cet appareil".', 4000);
+						   
+							  
+		   
+						
         return;
     }
 
-        this.setStatus('Appairage en cours...');
+        this.setStatus(this.UI_MESSAGES.pairingInProgress);
     
-    this.randble.bond({ address: device.address }).then(() => {
+    const address = device && (device.address || device.id) ? String(device.address || device.id) : '';
+    if (!address) {
+      this.setStatus(this.UI_MESSAGES.missingIdentifier);
+      this.showToast('Impossible d\'appairer cet appareil. Identifiant Bluetooth manquant.', 2500);
+      return;
+    }
+
+    this.randble.bond({ address: address }).then(() => {
         this.ngZone.run(() => {
             device.isBonded = true;
             this.unbondOrBondColor = "mantionSmtgreen";
         });
-        this.setStatus('Appairage réussi !');
-        
-        let toast = this.toastCtrl.create({
-            message: 'Appairage réussi',
-            duration: 2000, position: 'bottom'
-        });
-        toast.present();
+        this.setStatus(this.UI_MESSAGES.pairingSuccess);
+        this.showToast(this.UI_MESSAGES.pairingSuccess, 2000);
+		
+		
+		
+		
+		
 
     }).catch((err) => {
         this.logger.error(this.TAG, 'Bonding failed', err);
-        this.setStatus('Échec de l’appairage');
+        this.setStatus(this.UI_MESSAGES.pairingFailed);
         
         let alert = this.alertCtrl.create({
-            title: 'Échec de l’appairage',
-            message: 'Avez-vous bien appuyé sur le bouton du produit pour autoriser la connexion ?',
+            title: this.UI_MESSAGES.pairingFailed,
+            message: 'Vérifiez que le produit est prêt à être appairé puis réessayez.',
             buttons: ['OK']
         });
         alert.present();
@@ -455,8 +557,8 @@ export class ScanPage {
     this.logger.debug(this.TAG, 'Swipe action detected');
 
   }
-
-  async deviceSelected(device) {
+  
+  async deviceSelected(device: ScanDevice): Promise<void> {
     this.logger.info(this.TAG, 'Device selected', {
       name: device ? device.name : null,
       address: device ? device.address : null,
@@ -520,6 +622,7 @@ export class ScanPage {
 
       await dismissLoadingSafely();
       this.isScanning = false;
+	  this.clearScanTimeout();					  
       this.isPushOnce = false;
       this.isConnectionFlowInProgress = false;
 
@@ -548,12 +651,12 @@ export class ScanPage {
 
       await new Promise(r => setTimeout(r, 400)); // evite erreur gatt 133
 
-      let detectedConfig = null;
+      let detectedConfig: ProductConfig | undefined;
       let name = (device.name || "").toUpperCase();
 
       if (device.isDemo === true || device.isDemo === "true") {
         let demoProductId = device.demoProductId || device.productType;
-        detectedConfig = demoProductId ? PRODUCTS_CONFIG.find(p => p.id === demoProductId) : null;
+        detectedConfig = demoProductId ? PRODUCTS_CONFIG.find(p => p.id === demoProductId) : undefined;
 
         if (!detectedConfig && name.indexOf("GAR") > -1) {
           detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'garline');
@@ -587,7 +690,7 @@ export class ScanPage {
 
       if (!detectedConfig) {
         this.toastCtrl.create({
-          message: 'Produit non reconnu',
+          message: 'Produit non reconnu.',
           duration: 2000, position: 'bottom'
         }).present();
         await cleanupConnectionFlow('unknown_product', true);
@@ -636,7 +739,7 @@ export class ScanPage {
           device: device
         });
         this.toastCtrl.create({
-          message: 'Impossible de vous connecter : identifiant Bluetooth manquant pour cet appareil.',
+          message: 'Connexion impossible. Identifiant Bluetooth manquant pour cet appareil.',
           duration: 3000,
           position: 'bottom'
         }).present();
@@ -723,7 +826,7 @@ export class ScanPage {
                       error: navErr
                     });
                     this.toastCtrl.create({
-                      message: 'Connexion établie, mais l’ouverture de la page a échoué.',
+                      message: 'Connexion établie, mais ouverture de la page impossible.',
                       duration: 3000,
                       position: 'bottom'
                     }).present();
@@ -745,7 +848,7 @@ export class ScanPage {
                   });
 
                   this.toastCtrl.create({
-                    message: 'Échec de la découverte des services Bluetooth.',
+                    message: 'Decouverte des services Bluetooth impossible.',
                     duration: 3000,
                     position: 'bottom'
                   }).present();
@@ -766,7 +869,7 @@ export class ScanPage {
             });
 
             this.toastCtrl.create({
-              message: 'Connexion Bluetooth interrompue avant finalisation.',
+              message: 'Connexion Bluetooth interrompue. Veuillez réessayer.',
               duration: 3000,
               position: 'bottom'
             }).present();
@@ -786,7 +889,7 @@ export class ScanPage {
           });
 
           this.toastCtrl.create({
-            message: 'Échec de la connexion Bluetooth.',
+            message: 'Connexion Bluetooth impossible. Veuillez réessayer.',
             duration: 3000,
             position: 'bottom'
           }).present();
@@ -800,7 +903,7 @@ export class ScanPage {
         phase: phase
       });
       this.toastCtrl.create({
-        message: 'Erreur inattendue pendant la connexion Bluetooth.',
+        message: 'Erreur inattendue pendant la connexion Bluetooth. Veuillez réessayer.',
         duration: 3000,
         position: 'bottom'
       }).present();
@@ -812,30 +915,11 @@ export class ScanPage {
 
   ionViewDidEnter() {
     this.logger.debug(this.TAG, 'ionViewDidEnter');
-
     this.isPushOnce = false;
-
-    if (this.platform.is('android')) {
-      this.storage.get('StoredIsAutoBluetooth').then((val) => {
-        let bleON = JSON.parse(val);
-        this.randble.isEnabled().then((val) => {
-          if (!val.isEnabled && bleON) {
-              this.randble.enable(); // Tente d'ouvrir les settings
-          }
-        });
-      });
-    }
-
-    // Init BLE stack
-    // On passe un objet vide ou basic, notre wrapper gère le reste
-    this.randble.initialize({ request: true }).then(
-        (val) => { this.logger.info(this.TAG, 'BLE initialized', val); },
-        (err) => { this.logger.error(this.TAG, 'BLE init error', err); }
-    );
   }
 
 
-  presentPopover(ev) {
+  presentPopover(ev: any): void {
     let popover = this.popoverCtrl.create('PopoverPage', {
       fromConnected: false
     });
@@ -936,7 +1020,7 @@ export class ScanPage {
     });
   }
 
-  private createDemoDevice(productConfig) {
+  private createDemoDevice(productConfig: any) {
     return {
       rssi: -45,
       name: productConfig.demoName,
@@ -983,7 +1067,7 @@ export class ScanPage {
   private showEnableBluetoothPopup() {
     this.alertCtrl.create({
       title: 'Bluetooth désactivé',
-      message: 'Le Bluetooth est actuellement désactivé sur le téléphone. Voulez-vous l’activer et lancer une recherche ?',
+      message: 'Le Bluetooth est actuellement désactivé sur le téléphone. Voulez-vous l\’activer et lancer une recherche ?',
       buttons: [
         {
           text: 'Annuler',
@@ -1022,7 +1106,7 @@ export class ScanPage {
 
     this.alertCtrl.create({
       title: 'Activation nécessaire',
-      message: 'Le Bluetooth n’a pas été activé automatiquement. Activez-le dans les paramètres Bluetooth puis relancez la recherche.',
+      message: 'Le Bluetooth n\’a pas été activé automatiquement. Activez-le dans les paramètres Bluetooth puis relancez la recherche.',
       buttons: [
         {
           text: 'OK',
@@ -1033,14 +1117,14 @@ export class ScanPage {
           }
         },
         {
-          text: 'Ouvrir paramètres Bluetooth',
+          text: 'Ouvrir les paramètres Bluetooth',
           handler: () => this.openBluetoothSettings()
         }
       ]
     }).present();
   }
 
-  private showPermissionSettingsPopup(details?: any) {
+  private showPermissionSettingsPopup(details?: any, isPermanent: boolean = false) {
     if (this.permissionPopupShown) {
       this.logger.debug(this.TAG, 'Permission popup skipped: already visible');
       return;
@@ -1049,10 +1133,14 @@ export class ScanPage {
     this.permissionPopupShown = true;
     this.logger.warn(this.TAG, 'Permission settings action requested before scan', details || {});
 
+    const message = isPermanent
+      ? 'Impossible de lancer la recherche tant que les autorisations Bluetooth et localisation ne sont pas accordées. Veuillez les activer dans les réglages de l\'application.'
+      : 'Activez les autorisations Bluetooth et localisation de l\'application dans les réglages, puis relancez la recherche.';
+
     this.alertCtrl.create({
-      title: 'Autorisation requise',
-      message: 'Activez les autorisations Bluetooth de l’application dans les réglages, puis relancez la recherche.',
-      buttons: [
+      title: 'Autorisations requises',
+      message: message,
+	  buttons: [
         {
           text: 'Annuler',
           role: 'cancel',
@@ -1061,7 +1149,7 @@ export class ScanPage {
           }
         },
         {
-          text: 'Ouvrir les réglages de l’application',
+          text: 'Ouvrir les réglages de l\’application',
           handler: () => {
             this.logger.info(this.TAG, 'Opening app settings from permission popup');
             this.randble.openAppSettings().catch((error) => {
@@ -1123,5 +1211,19 @@ export class ScanPage {
 
     this.enablePopupAlreadyShown = false;
     this.settingsPopupShown = false;
+  }
+  private showToast(message: string, duration: number = 3000): void {
+    this.toastCtrl.create({
+      message: message,
+      duration: duration,
+      position: 'bottom'
+    }).present();
+  }
+
+  private clearScanTimeout(): void {
+    if (this.scanTimeoutHandle) {
+      clearTimeout(this.scanTimeoutHandle);
+      this.scanTimeoutHandle = null;
+    }
   }
 }

@@ -19,20 +19,20 @@ import { LoggerService } from '../../providers/logger/logger.service';
 })
 export class ContactPage {
 
-  @ViewChild(Navbar) navBar: Navbar;
+  @ViewChild(Navbar) navBar!: Navbar;
   //translate string
-  translate_cp_c1_sc: string;
-  translate_cp_c1_to: string;
-  translate_cp_c1_cc: string;
-  translate_cp_c1_s: string;
-  translate_cp_c1_body: string;
-  translate_cp_c2_sc: string;
-  translate_cp_c2_to: string;
-  translate_cp_c2_cc: string;
-  translate_cp_c2_s: string;
-  translate_cp_c2_body: string;
+  translate_cp_c1_sc: string = '';
+  translate_cp_c1_to: string = '';
+  translate_cp_c1_cc: string = '';
+  translate_cp_c1_s: string = '';
+  translate_cp_c1_body: string = '';
+  translate_cp_c2_sc: string = '';
+  translate_cp_c2_to: string = '';
+  translate_cp_c2_cc: string = '';
+  translate_cp_c2_s: string = '';
+  translate_cp_c2_body: string = '';
 
-  fromConnected: boolean;
+  fromConnected: boolean = false;
 
   private TAG = 'ContactPage';
 

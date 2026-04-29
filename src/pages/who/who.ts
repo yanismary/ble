@@ -1,5 +1,6 @@
 import { Component, ViewChild } from '@angular/core';
 import { IonicPage, NavController, NavParams, Platform, Navbar } from 'ionic-angular';
+import { LoggerService } from '../../providers/logger/logger.service';
 
 
 /**
@@ -15,8 +16,10 @@ import { IonicPage, NavController, NavParams, Platform, Navbar } from 'ionic-ang
   templateUrl: 'who.html',
 })
 export class WhoPage {
+  private TAG = 'WhoPage';
+  private logger: LoggerService = new LoggerService();
 
-  @ViewChild(Navbar) navBar: Navbar;
+  @ViewChild(Navbar) navBar!: Navbar;
 
   constructor(
     public navCtrl: NavController,
@@ -28,13 +31,13 @@ export class WhoPage {
 
   //page life cycle
   ionViewDidLoad() {
-    console.log('ionViewDidLoad WhoPage');
+    this.logger.debug(this.TAG, 'ionViewDidLoad WhoPage');
   }
 
   ionViewWillEnter() {
     this.platform.registerBackButtonAction(() => this.setBackButtonActionHW());
     this.setBackButtonActionSW();
-    console.log('ionViewWillEnter');
+    this.logger.debug(this.TAG, 'ionViewWillEnter');
   }
 
   ionViewDidEnter() {
@@ -51,7 +54,7 @@ export class WhoPage {
   private setBackButtonActionSW() {
     this.navBar.backButtonClick = () => {
       //Write here wherever you wanna do
-      console.log('backButtonFunc()');
+      this.logger.debug(this.TAG, 'backButtonFunc()');
       this.navCtrl.pop();
     }
   }
@@ -63,3 +66,4 @@ export class WhoPage {
   }
 
 }
+
