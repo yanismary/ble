@@ -1,0 +1,1127 @@
+import { Component, NgZone } from '@angular/core';
+import { LoadingController, NavController, AlertController, ToastController, NavParams, Platform } from 'ionic-angular';
+import { Storage } from '@ionic/storage';
+import { PopoverController } from 'ionic-angular';
+import { TranslateService } from '@ngx-translate/core';
+import { IonicPage } from 'ionic-angular';
+
+import { RandBLE } from '../../providers/randble/randble';
+import { BleconnectserviceProvider } from '../../providers/bleconnectservice/bleconnectservice';
+import { LoggerService } from '../../providers/logger/logger.service';
+
+
+// --- CONFIGURATION DES PRODUITS ---
+export const PRODUCTS_CONFIG = [
+  {
+    id: 'widoor',
+    name: 'Widoor',
+    serviceUUID: '3206890A-650E-46F3-9C73-2BC0840E3B8E', 
+    page: 'WidoorPage',
+    demoName: 'WidoorExemple'
+  },
+  {
+    id: 'moventiv',
+    name: 'Moventiv',
+    serviceUUID: '978AE765-664C-45D8-9157-3B9031E6478E',
+    page: 'MoventivPage',
+    demoName: 'MoventivExemple'
+  },
+  {
+    id: 'garline',
+    name: 'Garline',
+    serviceUUID: '978AE765-664C-45D8-9157-3B9031E6478E', // même que Moventiv
+    page: 'MoventivPage',
+    demoName: 'GarlineExemple'
+  },
+  /*{
+    id: 'nouveau_produit',
+    name: 'Nouveau Produit',
+    serviceUUID: '00000000-0000-0000-0000-000000000000',
+    page: 'NouveauProduitPage'
+  }*/
+];
+
+@IonicPage({
+  priority: 'high'
+})
+@Component({
+  selector: 'page-scan',
+  templateUrl: 'scan.html'
+})
+export class ScanPage {
+
+  devices: any[] = [];
+  device: any;
+  viewisIos: boolean;
+  statusMessage: string;
+  isVisibleMac: any;
+  isVisiblePaired: any;
+  isScanning: boolean = false;
+  isPushOnce: boolean = false;
+  private isConnectionFlowInProgress: boolean = false;
+
+  private enablePopupAlreadyShown = false;
+  private settingsPopupShown = false;
+  private permissionPopupShown = false;
+  private locationPopupShown = false;
+  private initScanInProgress = false;
+  private TAG = 'ScanPage';
+
+  unbondOrBondColor: string = "mantionSmtRed";
+
+  //translation strings 
+
+  constructor(
+    public navCtrl: NavController,
+    public loadingCtrl: LoadingController,
+    private randble: RandBLE,
+    private ngZone: NgZone,
+    private storage: Storage,
+    private popoverCtrl: PopoverController,
+    public navParams: NavParams,
+    private platform: Platform,
+    private alertCtrl: AlertController,
+    private translate: TranslateService,
+    private toastCtrl: ToastController,
+    public bleConnectService: BleconnectserviceProvider,
+    private logger: LoggerService
+  ) {
+    this.storage.get('StoredIsVisibleMAC').then((val) => {
+      this.isVisibleMac = JSON.parse(val);
+    });
+
+  }
+
+  //rafraichissement des paramètres
+  ionViewWillEnter() {
+
+    if (this.bleConnectService.getConnectionStatus()=="connecting")
+    {
+    this.devices = [];  // clear list
+    this.bleConnectService.setConnectionStatus("unknown");
+  }
+
+    this.logger.debug(this.TAG, 'ionViewWillEnter');
+
+    this.storage.get('StoredIsVisibleMAC').then((val) => {
+      this.isVisibleMac = JSON.parse(val);
+    });
+
+    if (this.platform.is('android')) {
+      this.isVisiblePaired = true;
+    }
+    else { 
+      this.isVisiblePaired = false; 
+    }
+
+    if (this.platform.is('ios')) {
+      this.viewisIos = true;
+    }
+    else {
+      this.viewisIos = false;
+    }
+
+    if (this.bleConnectService.getWasConnected()) {
+      let peripheral = this.bleConnectService.getConnectedPeripheral();
+      // On récupère l'adresse que ce soit un objet ou une string
+      let address = (peripheral && peripheral.address) ? peripheral.address : peripheral;
+      if (address) {
+        this.disconnectSpecific(address);
+      }
+    }
+  }
+
+  disconnectSpecific(address: string) {
+    // Force disconnect logic
+    this.randble.close({ address: address }).then(
+      () => {
+        this.logger.info(this.TAG, 'Peripheral connection closed', { address: address });
+        this.bleConnectService.setWasConnected(false);
+        this.showDeconnectedToast();
+      },
+      (error) => {
+        this.logger.warn(this.TAG, 'Peripheral close failed', { address: address, error: error });
+      }
+    );
+  }
+
+  disconnect() {
+    let peripheralAddress = this.bleConnectService.getConnectedPeripheral() || null;
+    if (peripheralAddress) {
+      this.disconnectSpecific(peripheralAddress);
+    }
+  }
+
+  async initScan() {
+    if (this.initScanInProgress) {
+      this.logger.debug(this.TAG, 'Init scan ignored: pre-check already running');
+      return;
+    }
+
+    this.initScanInProgress = true;
+    this.logger.info(this.TAG, 'Init scan started');
+
+    try {
+      const precheck = await this.randble.prepareForScan();
+      this.logger.info(this.TAG, 'Pre-scan check result', precheck);
+
+      if (precheck && precheck.ready && precheck.reason === 'READY') {
+        this.enablePopupAlreadyShown = false;
+        this.settingsPopupShown = false;
+        this.permissionPopupShown = false;
+        this.locationPopupShown = false;
+        this.logger.info(this.TAG, 'Pre-scan check passed, launching scan');
+        this.scan();
+        return;
+      }
+
+      const reason = precheck && precheck.reason ? precheck.reason : 'PRECHECK_FAILED';
+
+      if (reason === 'BLE_DISABLED') {
+        this.logger.warn(this.TAG, 'Init scan blocked: bluetooth disabled', precheck ? precheck.details : null);
+        if (!this.enablePopupAlreadyShown) {
+          this.enablePopupAlreadyShown = true;
+          this.showEnableBluetoothPopup();
+        } else {
+          this.showBluetoothSettingsPopup();
+        }
+        return;
+      }
+
+      if (reason === 'PERMISSION_DENIED') {
+        this.logger.warn(this.TAG, 'Init scan blocked: permission denied', precheck ? precheck.details : null);
+        this.setStatus('Autorisation Bluetooth refusée');
+        this.showPermissionSettingsPopup(precheck ? precheck.details : null);
+        return;
+      }
+
+      if (reason === 'LOCATION_DISABLED') {
+        this.logger.warn(this.TAG, 'Init scan blocked: location disabled', precheck ? precheck.details : null);
+        this.setStatus('Localisation désactivée');
+        this.showLocationSettingsPopup(precheck ? precheck.details : null);
+        return;
+      }
+
+      this.logger.error(this.TAG, 'Init scan blocked: pre-check failed', precheck ? precheck.details : null);
+      this.setStatus('Préparation Bluetooth impossible');
+      this.toastCtrl.create({
+        message: 'La préparation Bluetooth est incomplète. Vérifiez les réglages puis relancez la recherche.',
+        duration: 3500,
+        position: 'bottom'
+      }).present();
+    } catch (error) {
+      this.logger.error(this.TAG, 'Init scan failed unexpectedly', error);
+      this.setStatus('Préparation Bluetooth impossible');
+      this.toastCtrl.create({
+        message: 'Une erreur est survenue lors de la préparation Bluetooth.',
+        duration: 3000,
+        position: 'bottom'
+      }).present();
+    } finally {
+      this.initScanInProgress = false;
+    }
+  }
+
+
+  scan() {
+    this.setStatus('Recherche des appareils...');
+    this.isScanning = true;
+    this.isPushOnce = false;
+    this.devices = []; 
+
+    const targetServices = PRODUCTS_CONFIG.map(p => p.serviceUUID);
+
+    let scanParams = {
+      services : targetServices,
+      allowDuplicates: true, 
+      matchNum: this.randble.MATCH_NUM_MAX_ADVERTISEMENT,
+      callbackType: this.randble.CALLBACK_TYPE_ALL_MATCHES,
+      scanMode: this.randble.SCAN_MODE_BALANCED,
+    };
+
+    this.logger.info(this.TAG, 'Starting BLE scan', scanParams);
+
+    this.randble.startScan(scanParams).subscribe(
+      device => {
+        if (device.status === 'scanResult') {
+           this.logger.debug(this.TAG, 'Scan result', {
+             id: device.id || device.address,
+             name: device.name,
+             rssi: device.rssi
+           });
+           this.onDeviceDiscovered(device);
+        }
+        else if (device.id || device.address) {
+           this.onDeviceDiscovered(device);
+        }
+      },
+      error => {
+        const code = (error && error.code) ? String(error.code) : '';
+
+        this.ngZone.run(() => this.isScanning = false);
+
+        if (code === 'BLE_DISABLED') {
+          this.logger.warn(this.TAG, 'Scan failed: bluetooth disabled', error);
+          this.initScan();
+          return;
+        }
+
+        if (code === 'BLE_PERMISSION_DENIED') {
+          this.logger.warn(this.TAG, 'Scan failed: bluetooth permission denied', error);
+          this.setStatus('Autorisation Bluetooth refusée');
+          this.toastCtrl.create({
+            message: 'Autorisation Bluetooth refusée. Activez-la dans les réglages du téléphone puis relancez la recherche.',
+            duration: 3500,
+            position: 'bottom'
+          }).present();
+          return;
+        }
+
+        this.logger.error(this.TAG, 'Scan failed', error);
+        this.setStatus('Erreur scan Bluetooth');
+      }
+    );
+
+    setTimeout(() => {
+      if (this.isScanning) {
+        this.randble.stopScan().then(() => {
+          this.logger.info(this.TAG, 'Scan timeout reached, scan stopped');
+          this.ngZone.run(() => { this.isScanning = false; });
+        }).catch((err) => {
+          this.logger.error(this.TAG, 'Scan timeout stop failed', err);
+          this.ngZone.run(() => { this.isScanning = false; });
+        });
+      }
+    }, 8000);
+  }
+
+  isDeviceBonded(device) {
+    if ((device.status) == "scanStarted") {
+      return
+    }
+
+    if (this.platform.is('android') && typeof (this.randble as any).isBonded === 'function') {
+
+      (this.randble as any).isBonded({ address: device.address }).subscribe(
+        deviceBond => {
+          this.onDeviceDiscovered(Object.assign(device, deviceBond));
+          this.logger.debug(this.TAG, 'Bond status resolved', {
+            address: device ? device.address : null,
+            isBonded: device ? device.isBonded : null
+          });
+        },
+        (error) => {
+          this.logger.warn(this.TAG, 'Bond status check failed', {
+            address: device ? device.address : null,
+            error: error
+          });
+        }
+      );
+    }
+    else {
+      this.onDeviceDiscovered(device);
+      this.logger.debug(this.TAG, 'Device discovered without bond status check', {
+        address: device ? device.address : null,
+        id: device ? device.id : null
+      });
+    }
+
+  }
+
+  onDeviceDiscovered(device) {
+    this.ngZone.run(() => {
+      
+      if (this.platform.is('android')) {
+         // On ne force pas la valeur, on attend la réponse asynchrone ci-dessous
+         // Mais pour l'affichage initial, on peut laisser undefined
+      }
+
+      let existingDevice = this.devices.find(d => 
+        (d.id && device.id && d.id === device.id) || 
+        (d.address && device.address && d.address === device.address)
+      );
+
+      if (existingDevice) {
+        if (device.rssi) existingDevice.rssi = device.rssi;
+        if (device.advertising) existingDevice.advertising = device.advertising;
+      } else {
+        if (device.isBonded === undefined) {
+           device.isBonded = false;
+        }
+        this.devices.push(device);
+        
+        this.checkBondStatus(device);
+      }
+    });
+  }
+
+  checkBondStatus(device) {
+      if (this.platform.is('android')) {
+          this.randble.isBonded({ address: device.address }).then(res => {
+              this.ngZone.run(() => {
+                  let target = this.devices.find(d => d.address === device.address);
+                  if (target) {
+                      target.isBonded = res.isBonded;
+                  }
+              });
+          });
+      }
+  }
+  /*
+  onDeviceDiscovered(device) {
+    this.ngZone.run(() => {
+
+      let existingDevice = this.devices.find(d => 
+        (d.id && device.id && d.id === device.id) || 
+        (d.address && device.address && d.address === device.address)
+      );
+
+      if (existingDevice) {
+        if (device.rssi) {
+          existingDevice.rssi = device.rssi;
+        }
+        
+        if (device.advertising) existingDevice.advertising = device.advertising;
+        if (device.advertisement) existingDevice.advertisement = device.advertisement;
+
+      } else {
+          if (device.isBonded === undefined) {
+            device.isBonded = false; 
+          }
+
+        this.devices.push(device);
+      }
+    });
+  }*/
+
+  // If location permission is denied, you'll end up here
+  scanError(error) {
+    this.setStatus('Erreur Bluetooth : ' + error);
+    //toast.present();
+  }
+
+  setStatus(message) {
+    this.logger.debug(this.TAG, 'Status update', message);
+    this.ngZone.run(() => {
+      this.statusMessage = message;
+    });
+  }
+
+
+  unbondOrBond(device) {
+    if (!this.platform.is('android')) {
+        return;
+    }
+
+    if (device.isBonded) {
+        let toast = this.toastCtrl.create({
+            message: 'Pour désappairer, allez dans les Réglages Bluetooth de votre téléphone et faites "Oublier l\'appareil".',
+            duration: 4000,
+            position: 'bottom'
+        });
+        toast.present();
+        return;
+    }
+
+        this.setStatus('Appairage en cours...');
+    
+    this.randble.bond({ address: device.address }).then(() => {
+        this.ngZone.run(() => {
+            device.isBonded = true;
+            this.unbondOrBondColor = "mantionSmtgreen";
+        });
+        this.setStatus('Appairage réussi !');
+        
+        let toast = this.toastCtrl.create({
+            message: 'Appairage réussi',
+            duration: 2000, position: 'bottom'
+        });
+        toast.present();
+
+    }).catch((err) => {
+        this.logger.error(this.TAG, 'Bonding failed', err);
+        this.setStatus('Échec de l’appairage');
+        
+        let alert = this.alertCtrl.create({
+            title: 'Échec de l’appairage',
+            message: 'Avez-vous bien appuyé sur le bouton du produit pour autoriser la connexion ?',
+            buttons: ['OK']
+        });
+        alert.present();
+    });
+  }
+
+  swipe() {
+    this.logger.debug(this.TAG, 'Swipe action detected');
+
+  }
+
+  async deviceSelected(device) {
+    this.logger.info(this.TAG, 'Device selected', {
+      name: device ? device.name : null,
+      address: device ? device.address : null,
+      id: device ? device.id : null
+    });
+
+    if (this.isPushOnce || this.isConnectionFlowInProgress) {
+      this.logger.warn(this.TAG, 'Device selection ignored: connection flow already in progress', {
+        isPushOnce: this.isPushOnce,
+        isConnectionFlowInProgress: this.isConnectionFlowInProgress
+      });
+      return;
+    }
+
+    this.isPushOnce = true;
+    this.isConnectionFlowInProgress = true;
+
+    let loading: any = null;
+    let connectSubscription: any = null;
+    let phase = 'selected';
+    let flowActive = true;
+    let cleanupDone = false;
+
+    const dismissLoadingSafely = async () => {
+      if (!loading) return;
+      try {
+        await loading.dismiss();
+      } catch (e) {
+        this.logger.debug(this.TAG, 'Loading dismiss ignored (already closed)', {
+          phase: phase,
+          error: e
+        });
+      } finally {
+        loading = null;
+      }
+    };
+
+    const cleanupConnectionFlow = async (reason: string, setConnectionStatusUnknown: boolean) => {
+      if (cleanupDone) {
+        this.logger.debug(this.TAG, 'Cleanup skipped (already done)', {
+          reason: reason,
+          phase: phase
+        });
+        return;
+      }
+
+      cleanupDone = true;
+      flowActive = false;
+
+      if (connectSubscription && typeof connectSubscription.unsubscribe === 'function') {
+        try {
+          connectSubscription.unsubscribe();
+          this.logger.debug(this.TAG, 'Connect subscription unsubscribed', { reason: reason });
+        } catch (e) {
+          this.logger.warn(this.TAG, 'Error while unsubscribing connect subscription', {
+            reason: reason,
+            error: e
+          });
+        }
+      }
+
+      await dismissLoadingSafely();
+      this.isScanning = false;
+      this.isPushOnce = false;
+      this.isConnectionFlowInProgress = false;
+
+      if (setConnectionStatusUnknown) {
+        this.bleConnectService.setConnectionStatus('unknown');
+      }
+
+      this.logger.info(this.TAG, 'Connection flow cleanup completed', {
+        reason: reason,
+        phase: phase,
+        setConnectionStatusUnknown: setConnectionStatusUnknown
+      });
+    };
+
+    try {
+      phase = 'stoppingScan';
+      try {
+        await this.randble.stopScan();
+      } catch (e) {
+        this.logger.warn(this.TAG, 'stopScan before connect failed (ignored)', {
+          error: e,
+          device: device
+        });
+      }
+      this.isScanning = false;
+
+      await new Promise(r => setTimeout(r, 400)); // evite erreur gatt 133
+
+      let detectedConfig = null;
+      let name = (device.name || "").toUpperCase();
+
+      if (device.isDemo === true || device.isDemo === "true") {
+        let demoProductId = device.demoProductId || device.productType;
+        detectedConfig = demoProductId ? PRODUCTS_CONFIG.find(p => p.id === demoProductId) : null;
+
+        if (!detectedConfig && name.indexOf("GAR") > -1) {
+          detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'garline');
+        }
+        else if (!detectedConfig && name.indexOf("MOV") > -1) {
+          detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'moventiv');
+        }
+        else if (!detectedConfig && name.indexOf("WID") > -1) {
+          detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'widoor');
+        }
+        else if (!detectedConfig) {
+          detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'widoor');
+        }
+      }
+      else if (name.indexOf("GAR") > -1) {
+        detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'garline');
+      }
+      else if (name.indexOf("MOV") > -1) {
+        detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'moventiv');
+      }
+      else if (name.indexOf("WID") > -1) {
+        detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'widoor');
+      }
+      /*nouveau produit
+      else if (name.indexOf("NOUVEAU") > -1) {
+        detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'nouveau_produit');
+      }*/
+      else {
+        this.logger.warn(this.TAG, 'Unknown product selected from scan', { name: name, device: device });
+      }
+
+      if (!detectedConfig) {
+        this.toastCtrl.create({
+          message: 'Produit non reconnu',
+          duration: 2000, position: 'bottom'
+        }).present();
+        await cleanupConnectionFlow('unknown_product', true);
+        return;
+      }
+
+      this.logger.info(this.TAG, 'Product page resolved for selected device', {
+        productType: detectedConfig.id,
+        productName: detectedConfig.name
+      });
+
+      // Si c'est un appareil de demo, on ouvre directement la page sans connecter
+      if (device.isDemo === true || device.isDemo === "true") {
+        phase = 'navigating';
+        this.navCtrl.push(detectedConfig.page, {
+          device: device,
+          productType: detectedConfig.id,
+          productName: detectedConfig.name
+        }).then(async () => {
+          this.logger.info(this.TAG, 'Demo navigation success');
+          await cleanupConnectionFlow('demo_navigation_success', false);
+        }).catch(async (navErr) => {
+          this.logger.error(this.TAG, 'Demo navigation failed', navErr);
+          await cleanupConnectionFlow('demo_navigation_failed', true);
+        });
+        return;
+      }
+
+      loading = this.loadingCtrl.create({ content: 'Connexion en cours...' });
+      try {
+        await loading.present();
+      } catch (loadingErr) {
+        this.logger.warn(this.TAG, 'Loading present failed, continuing flow', loadingErr);
+      }
+
+      // Securisation de l'adresse (ID pour iOS, Address pour Android)
+      let targetAddress = (device && (device.address || device.id)) ? String(device.address || device.id).trim() : '';
+      this.logger.info(this.TAG, 'Selected device identifier', {
+        targetAddress: targetAddress,
+        productType: detectedConfig.id
+      });
+
+      if (!targetAddress) {
+        this.logger.error(this.TAG, 'Missing device id/address in selected device', {
+          code: 'BLE_DEVICE_ID_MISSING',
+          device: device
+        });
+        this.toastCtrl.create({
+          message: 'Impossible de vous connecter : identifiant Bluetooth manquant pour cet appareil.',
+          duration: 3000,
+          position: 'bottom'
+        }).present();
+        await cleanupConnectionFlow('missing_device_id', true);
+        return;
+      }
+
+      phase = 'connecting';
+      this.bleConnectService.setConnectionStatus('connecting');
+      this.logger.info(this.TAG, 'Connecting to selected device', { address: targetAddress });
+
+      connectSubscription = this.randble.connect({ address: targetAddress }).subscribe(
+        (res) => {
+          if (!flowActive) {
+            this.logger.warn(this.TAG, 'Connect event ignored: flow already inactive', {
+              event: res,
+              phase: phase
+            });
+            return;
+          }
+
+          this.logger.debug(this.TAG, 'Connect event', {
+            event: res,
+            phase: phase
+          });
+
+          if (res.status === 'connected') {
+            if (phase !== 'connecting') {
+              this.logger.warn(this.TAG, 'Connected event ignored: unexpected phase', { phase: phase });
+              return;
+            }
+
+            phase = 'discovering';
+            this.logger.info(this.TAG, 'Connection succeeded, discovery starting', { address: targetAddress });
+
+            // Ajout d'un delai pour stabiliser la connexion (fix frequent sur Android)
+            setTimeout(() => {
+              if (!flowActive) {
+                this.logger.warn(this.TAG, 'Discovery skipped: flow inactive before start', { address: targetAddress });
+                return;
+              }
+
+              this.randble.discover({ address: targetAddress })
+                .then((discoverRes) => {
+                  if (!flowActive) {
+                    this.logger.warn(this.TAG, 'Discovery success ignored: flow inactive', { address: targetAddress });
+                    return;
+                  }
+
+                  this.logger.info(this.TAG, 'Discovery success after connect', {
+                    address: targetAddress,
+                    status: discoverRes ? discoverRes.status : null
+                  });
+
+                  if (!device.address && device.id) {
+                    device.address = device.id;
+                  }
+
+                  this.bleConnectService.setWasConnected(true);
+                  this.bleConnectService.setConnectedPeripheral(device);
+                  this.bleConnectService.setConnectionStatus('connected');
+
+                  phase = 'navigating';
+                  this.logger.info(this.TAG, 'Connection context updated, navigating to product page', {
+                    address: targetAddress,
+                    productType: detectedConfig.id
+                  });
+
+                  this.navCtrl.push(detectedConfig.page, {
+                    device: device,
+                    productType: detectedConfig.id,
+                    productName: detectedConfig.name
+                  }).then(async () => {
+                    this.logger.info(this.TAG, 'Navigation success after BLE connection', {
+                      address: targetAddress,
+                      productType: detectedConfig.id
+                    });
+                    phase = 'completed';
+                    await cleanupConnectionFlow('navigation_success', false);
+                  }).catch(async (navErr) => {
+                    this.logger.error(this.TAG, 'Navigation failed after BLE connection', {
+                      address: targetAddress,
+                      productType: detectedConfig.id,
+                      error: navErr
+                    });
+                    this.toastCtrl.create({
+                      message: 'Connexion établie, mais l’ouverture de la page a échoué.',
+                      duration: 3000,
+                      position: 'bottom'
+                    }).present();
+                    await cleanupConnectionFlow('navigation_failed', true);
+                  });
+                })
+                .catch((err) => {
+                  if (!flowActive) {
+                    this.logger.warn(this.TAG, 'Discovery error ignored: flow inactive', {
+                      address: targetAddress,
+                      error: err
+                    });
+                    return;
+                  }
+
+                  this.logger.error(this.TAG, 'Discovery failed after connect', {
+                    address: targetAddress,
+                    error: err
+                  });
+
+                  this.toastCtrl.create({
+                    message: 'Échec de la découverte des services Bluetooth.',
+                    duration: 3000,
+                    position: 'bottom'
+                  }).present();
+
+                  cleanupConnectionFlow('discovery_failed', true);
+                });
+            }, 500);
+          } else if (res.status === 'disconnected') {
+            if (!flowActive) {
+              this.logger.warn(this.TAG, 'Runtime disconnection ignored: flow inactive', { address: targetAddress });
+              return;
+            }
+
+            this.logger.warn(this.TAG, 'Runtime disconnection during connection flow', {
+              address: targetAddress,
+              phase: phase,
+              event: res
+            });
+
+            this.toastCtrl.create({
+              message: 'Connexion Bluetooth interrompue avant finalisation.',
+              duration: 3000,
+              position: 'bottom'
+            }).present();
+
+            cleanupConnectionFlow('runtime_disconnected', true);
+          }
+        },
+        (err) => {
+          if (!flowActive) {
+            this.logger.warn(this.TAG, 'Connect error ignored: flow inactive', { error: err, phase: phase });
+            return;
+          }
+
+          this.logger.error(this.TAG, 'Connect failed on selected device', {
+            address: targetAddress,
+            error: err
+          });
+
+          this.toastCtrl.create({
+            message: 'Échec de la connexion Bluetooth.',
+            duration: 3000,
+            position: 'bottom'
+          }).present();
+
+          cleanupConnectionFlow('connect_failed', true);
+        }
+      );
+    } catch (unexpectedError) {
+      this.logger.error(this.TAG, 'Unexpected error in deviceSelected flow', {
+        error: unexpectedError,
+        phase: phase
+      });
+      this.toastCtrl.create({
+        message: 'Erreur inattendue pendant la connexion Bluetooth.',
+        duration: 3000,
+        position: 'bottom'
+      }).present();
+      await cleanupConnectionFlow('unexpected_error', true);
+    }
+  }
+
+
+
+  ionViewDidEnter() {
+    this.logger.debug(this.TAG, 'ionViewDidEnter');
+
+    this.isPushOnce = false;
+
+    if (this.platform.is('android')) {
+      this.storage.get('StoredIsAutoBluetooth').then((val) => {
+        let bleON = JSON.parse(val);
+        this.randble.isEnabled().then((val) => {
+          if (!val.isEnabled && bleON) {
+              this.randble.enable(); // Tente d'ouvrir les settings
+          }
+        });
+      });
+    }
+
+    // Init BLE stack
+    // On passe un objet vide ou basic, notre wrapper gère le reste
+    this.randble.initialize({ request: true }).then(
+        (val) => { this.logger.info(this.TAG, 'BLE initialized', val); },
+        (err) => { this.logger.error(this.TAG, 'BLE init error', err); }
+    );
+  }
+
+
+  presentPopover(ev) {
+    let popover = this.popoverCtrl.create('PopoverPage', {
+      fromConnected: false
+    });
+    popover.present({
+      ev: ev
+    });
+  }
+
+
+  pushInfoSlide() {
+    this.navCtrl.push('InfoSlidePage');
+  }
+
+  showDeconnectedToast() {
+    this.translate.get('PROMPT.DISCONNECTED.TITLE').subscribe(
+      res => {
+        let toast = this.toastCtrl.create({
+          message: res,
+          duration: 500,
+          position: 'middle',
+          cssClass: "yourtoastclass"
+        });
+        toast.present();
+      });
+  }
+
+
+  launchDemoMode() {
+    this.logger.info(this.TAG, 'Demo mode selection requested');
+
+    let alert = this.alertCtrl.create({
+      title: 'Exemple',
+      message: 'Choisissez un produit',
+      buttons: [
+        {
+          text: 'Widoor',
+          handler: () => {
+            this.openDemoProduct('widoor');
+          }
+        },
+        {
+          text: 'Moventiv',
+          handler: () => {
+            this.openDemoProduct('moventiv');
+          }
+        },
+        {
+          text: 'Garline',
+          handler: () => {
+            this.openDemoProduct('garline');
+          }
+        },
+        {
+          text: 'Annuler',
+          role: 'cancel'
+        }
+      ]
+    });
+
+    alert.present();
+  }
+
+  private openDemoProduct(productId: string) {
+    const productConfig = PRODUCTS_CONFIG.find(p => p.id === productId);
+
+    if (!productConfig) {
+      this.logger.warn(this.TAG, 'Demo product not found', { productId: productId });
+      this.toastCtrl.create({
+        message: 'Exemple non disponible',
+        duration: 2000,
+        position: 'bottom'
+      }).present();
+      return;
+    }
+
+    let demoDevice = this.createDemoDevice(productConfig);
+
+    this.logger.info(this.TAG, 'Opening demo product page', {
+      productType: productConfig.id,
+      productName: productConfig.name,
+      demoName: demoDevice.name
+    });
+
+    this.ngZone.run(() => {
+      this.navCtrl.push(productConfig.page, {
+        device: demoDevice,
+        productType: productConfig.id,
+        productName: productConfig.name,
+        displayName: demoDevice.name
+      }).catch((navErr) => {
+        this.logger.error(this.TAG, 'Demo navigation failed', navErr);
+        this.toastCtrl.create({
+          message: 'Impossible d’ouvrir cet exemple.',
+          duration: 2500,
+          position: 'bottom'
+        }).present();
+      });
+    });
+  }
+
+  private createDemoDevice(productConfig) {
+    return {
+      rssi: -45,
+      name: productConfig.demoName,
+      address: productConfig.id.toUpperCase() + '-EXEMPLE-0001',
+      id: productConfig.id.toUpperCase() + '-EXEMPLE-0001',
+      isBonded: true,
+      advertisement: {
+        serviceUuids: [productConfig.serviceUUID]
+      },
+      advertising: {
+        serviceUuids: [productConfig.serviceUUID]
+      },
+      isDemo: "true",
+      demoProductId: productConfig.id,
+      productType: productConfig.id
+    };
+  }
+
+  bleIsNotEnabledAlert() {
+    this.translate.get(['SCAN_PAGE.ALERT.BLENOTENABLE.TITLE', 'SCAN_PAGE.ALERT.BLENOTENABLE.MESSAGE', 'SCAN_PAGE.ALERT.BLENOTENABLE.BUTTONS.NO.TEXT', 'SCAN_PAGE.ALERT.BLENOTENABLE.BUTTONS.YES']).subscribe(
+      res => {
+        let alert = this.alertCtrl.create({
+          title: res["SCAN_PAGE.ALERT.BLENOTENABLE.TITLE"],
+          message: res["SCAN_PAGE.ALERT.BLENOTENABLE.MESSAGE"],
+          buttons: [
+            {
+              text: res["SCAN_PAGE.ALERT.BLENOTENABLE.BUTTONS.NO.TEXT"],
+              role: 'cancel'
+            },
+            {
+              text: res["SCAN_PAGE.ALERT.BLENOTENABLE.BUTTONS.YES"],
+              handler: () => {
+                this.randble.enable().then(() => {
+                   setTimeout(() => this.initScan(), 1000); 
+                });
+              }
+            }
+          ],
+        });
+        alert.present();
+      });
+  }
+
+  private showEnableBluetoothPopup() {
+    this.alertCtrl.create({
+      title: 'Bluetooth désactivé',
+      message: 'Le Bluetooth est actuellement désactivé sur le téléphone. Voulez-vous l’activer et lancer une recherche ?',
+      buttons: [
+        {
+          text: 'Annuler',
+          role: 'cancel',
+          handler: () => {
+            // si l'user annule, on autorise une nouvelle tentative plus tard
+            this.enablePopupAlreadyShown = false;
+          }
+        },
+        {
+          text: 'Activer',
+          handler: () => {
+            this.randble.enableAndWait().then((ok) => {
+
+              if (ok) {
+                this.enablePopupAlreadyShown = false;
+                this.settingsPopupShown = false;
+                this.permissionPopupShown = false;
+                this.locationPopupShown = false;
+                this.logger.info(this.TAG, 'Bluetooth enabled from popup, re-running pre-scan check');
+                this.initScan();
+              } else {
+                this.showBluetoothSettingsPopup();
+              }
+
+            });
+          }
+        }
+      ]
+    }).present();
+  }
+
+  private showBluetoothSettingsPopup() {
+    if (this.settingsPopupShown) return;
+    this.settingsPopupShown = true;
+
+    this.alertCtrl.create({
+      title: 'Activation nécessaire',
+      message: 'Le Bluetooth n’a pas été activé automatiquement. Activez-le dans les paramètres Bluetooth puis relancez la recherche.',
+      buttons: [
+        {
+          text: 'OK',
+          handler: () => {
+            // autorise une nouvelle tentative plus tard
+            this.enablePopupAlreadyShown = false;
+            this.settingsPopupShown = false;
+          }
+        },
+        {
+          text: 'Ouvrir paramètres Bluetooth',
+          handler: () => this.openBluetoothSettings()
+        }
+      ]
+    }).present();
+  }
+
+  private showPermissionSettingsPopup(details?: any) {
+    if (this.permissionPopupShown) {
+      this.logger.debug(this.TAG, 'Permission popup skipped: already visible');
+      return;
+    }
+
+    this.permissionPopupShown = true;
+    this.logger.warn(this.TAG, 'Permission settings action requested before scan', details || {});
+
+    this.alertCtrl.create({
+      title: 'Autorisation requise',
+      message: 'Activez les autorisations Bluetooth de l’application dans les réglages, puis relancez la recherche.',
+      buttons: [
+        {
+          text: 'Annuler',
+          role: 'cancel',
+          handler: () => {
+            this.permissionPopupShown = false;
+          }
+        },
+        {
+          text: 'Ouvrir les réglages de l’application',
+          handler: () => {
+            this.logger.info(this.TAG, 'Opening app settings from permission popup');
+            this.randble.openAppSettings().catch((error) => {
+              this.logger.error(this.TAG, 'Open app settings failed from permission popup', error);
+            });
+            this.permissionPopupShown = false;
+          }
+        }
+      ]
+    }).present();
+  }
+
+  private showLocationSettingsPopup(details?: any) {
+    if (this.locationPopupShown) {
+      this.logger.debug(this.TAG, 'Location popup skipped: already visible');
+      return;
+    }
+
+    this.locationPopupShown = true;
+    this.logger.warn(this.TAG, 'Location settings action requested before scan', details || {});
+
+    this.alertCtrl.create({
+      title: 'Localisation désactivée',
+      message: 'Activez la localisation du téléphone pour autoriser le scan Bluetooth, puis relancez la recherche.',
+      buttons: [
+        {
+          text: 'Annuler',
+          role: 'cancel',
+          handler: () => {
+            this.locationPopupShown = false;
+          }
+        },
+        {
+          text: 'Ouvrir les réglages de localisation',
+          handler: () => {
+            this.logger.info(this.TAG, 'Opening location settings from location popup');
+            this.randble.openLocationSettings().catch((error) => {
+              this.logger.error(this.TAG, 'Open location settings failed from location popup', error);
+            });
+            this.locationPopupShown = false;
+          }
+        }
+      ]
+    }).present();
+  }
+
+  private openBluetoothSettings() {
+    if (this.platform.is('android')) {
+      this.logger.info(this.TAG, 'Opening bluetooth settings from popup');
+      this.randble.openBluetoothSettings().catch((error) => {
+        this.logger.error(this.TAG, 'Open bluetooth settings failed from popup', error);
+      });
+    } else {
+      this.logger.info(this.TAG, 'Opening app settings from popup (iOS)');
+      this.randble.openAppSettings().catch((error) => {
+        this.logger.error(this.TAG, 'Open app settings failed from popup (iOS)', error);
+      });
+    }
+
+    this.enablePopupAlreadyShown = false;
+    this.settingsPopupShown = false;
+  }
+}

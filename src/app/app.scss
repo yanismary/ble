@@ -1,0 +1,109 @@
+// http://ionicframework.com/docs/theming/
+
+
+// App Global Sass
+// --------------------------------------------------
+// Put style rules here that you want to apply globally. These
+// styles are for the entire app and not just one component.
+// Additionally, this file can be also used as an entry point
+// to import other Sass files to be included in the output CSS.
+//
+// Shared Sass variables, which can be used to adjust Ionic's
+// default Sass variables, belong in "theme/variables.scss".
+//
+// To declare rules for a specific mode, create a child rule
+// for the .md, .ios, or .wp mode classes. The mode class is
+// automatically applied to the <body> element in the app.
+
+
+
+
+
+.alert-ios .alert-checkbox-label,
+.alert-md .alert-checkbox-label {
+  white-space: pre-wrap !important;
+}
+
+.tabs-ios .tab-button, 
+.tabs-md .tab-button {
+    color: #32db64 ;
+   }
+  
+   .tabs-ios .tab-button-icon
+   .tabs-md .tab-button-icon {
+    color: #32db64;
+   }
+
+   //selected color
+   .tabs-ios .tab-button[aria-selected=true],
+   .tabs-md .tab-button[aria-selected=true] {
+     color: #FFFFFF;
+   }
+
+   .tabs-ios .tab-button-icon[aria-selected=true],
+   .tabs-md .tab-button-icon[aria-selected=true] {
+    color: #FFFFFF ;
+   }
+
+   ion-icon {
+    &[class*="moventiv-"] {
+        // Instead of using the font-based icons
+        // We're applying SVG masks
+        mask-size: contain;
+        mask-position: 50% 50%;
+        mask-repeat: no-repeat;
+        background: currentColor;
+        width: 1em;
+        height: 1em;
+        transform: translate3d(0,0,0); //à partir d'iOS 11 corrige les bordures sur les SVG, pas vraiment de logique à priori...
+    }
+    // custom icons
+    &[class*="moventiv-light_off"] {
+        mask-image: url(../assets/img/icon_light_off.svg);
+    }
+    &[class*="moventiv-light_on"] {
+        mask-image: url(../assets/img/icon_light_on.svg);
+    }
+    &[class*="moventiv-lock_off"] {
+      mask-image: url(../assets/img/icon_lock_off.svg);
+  }
+  &[class*="moventiv-lock_on"] {
+      mask-image: url(../assets/img/icon_lock_on.svg);
+  }
+  &[class*="moventiv-delay"] {
+    mask-image: url(../assets/img/icon_delay.svg);
+}
+&[class*="moventiv-force"] {
+  mask-image: url(../assets/img/icon_force.svg);
+}
+&[class*="moventiv-speed"] {
+  mask-image: url(../assets/img/icon_speed.svg);
+}
+&[class*="moventiv-room_other"] {
+  mask-image: url(../assets/img/icon_room_other.svg);
+}
+&[class*="moventiv-command_open"] {
+  mask-image: url(../assets/img/icon_command_open.svg);
+}
+&[class*="moventiv-command_openThenClose"] {
+  mask-image: url(../assets/img/icon_command_openThenClose.svg);
+}
+&[class*="moventiv-command_close"] {
+  mask-image: url(../assets/img/icon_command_close.svg);
+}
+&[class*="moventiv-button"] {
+  mask-image: url(../assets/img/icon_button.svg);
+}
+&[class*="moventiv-radar"] {
+  mask-image: url(../assets/img/icon_radar.svg);
+}
+&[class*="moventiv-test_on"] {
+  mask-image: url(../assets/img/icon_test_on.svg);
+}
+&[class*="moventiv-test_off"] {
+  mask-image: url(../assets/img/icon_test_off.svg);
+}
+}
+
+
+@import "../theme/icons"

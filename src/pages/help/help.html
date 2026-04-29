@@ -1,0 +1,33 @@
+<!--
+  Generated template for the HelpPage page.
+
+  See http://ionicframework.com/docs/components/#navigation for more info on
+  Ionic pages and navigation.
+-->
+<ion-header>
+  <ion-navbar color="navBarColor">
+    <ion-title>{{"HELP_PAGE.TITLE"| translate}}</ion-title>
+  </ion-navbar>
+</ion-header>
+
+
+<span [innerHTML]="'title' | translate"></span>
+
+<ion-content padding>
+   
+    <ion-list> 
+        <ion-item text-wrap (click)="hsPairing()">
+          <h2 text-wrap>{{"HELP_PAGE.PAIRING.TITLE"| translate}}</h2>
+          <div *ngIf="showPairing"><br/> </div>
+        <span  *ngIf="showPairing && isIos" text-wrap [innerHtml]="'HELP_PAGE.PAIRING.IOS.TEXT' | translate"></span>
+        <span  *ngIf="showPairing && isAndroid" text-wrap [innerHtml]="'HELP_PAGE.PAIRING.ANDROID.TEXT' | translate"></span>
+        </ion-item>
+        <ion-item text-wrap (click)="hsPairingTroubles()">
+            <h2 text-wrap>{{"HELP_PAGE.PAIRINGTROUBLES.TITLE"| translate}}</h2>
+            <div *ngIf="showPairingTroubles"><br/> </div>
+          <span  *ngIf="showPairingTroubles && isIos" text-wrap [innerHtml]="'HELP_PAGE.PAIRINGTROUBLES.IOS.TEXT' | translate"></span>
+          <span  *ngIf="showPairingTroubles && isAndroid" text-wrap [innerHtml]="'HELP_PAGE.PAIRINGTROUBLES.ANDROID.TEXT' | translate"></span>
+          </ion-item>
+        </ion-list> 
+
+</ion-content>

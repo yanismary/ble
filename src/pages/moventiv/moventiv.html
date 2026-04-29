@@ -1,0 +1,998 @@
+<ion-header>
+  <ion-navbar color="navBarColor">
+    <ion-title>{{ "MOVENTIV_PAGE.NAVBAR_TITLE" | translate }}</ion-title>
+    <ion-buttons end>
+      <button ion-button icon-only (click)="presentPopover($event)">
+        <ion-icon name="ai-param"></ion-icon>
+      </button>
+    </ion-buttons>
+  </ion-navbar>
+     
+  <ion-toolbar color="navBarColor" no-border-top class="scrollable-segments command-header-segments">
+    <ion-segment class="command-main-segment" color="light" [(ngModel)]="menuType" textwrap>
+      <!-- <ion-segment-button (click)="readAll()" color="light" value="pro" textwrap>
+        {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.TAB_TITLE" | translate }}
+      </ion-segment-button> -->
+      <ion-segment-button (click)="readAll()" color="light" value="com">
+        {{ "MOVENTIV_PAGE.COMMANDS_TAB.COMMANDS_TAB_TITLE" | translate }}
+      </ion-segment-button>
+      <ion-segment-button (click)="readAll()" [hidden]=!isVisibleTabSet color="light" value="param">
+        {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ADJUSTMENTS_TAB_TITLE" | translate }}
+      </ion-segment-button>
+      <ion-segment-button (click)="readAll()" [hidden]=!isVisibleTabInfo color="light" value="info">
+        {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.INFORMATIONS_TAB_TITLE" | translate }}
+      </ion-segment-button>
+    </ion-segment>
+        &nbsp;
+    <div [ngSwitch]="menuType">
+      <ion-toolbar class="command-sub-toolbar" *ngSwitchCase="'param'">
+        <ion-segment class="command-sub-segment" color="mantionSmtgreen" [(ngModel)]="paramSubmenuType" textwrap>
+          <ion-segment-button (click)="paramBasicOnclick()" color="light" value="basic" textwrap>
+            {{"WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.TITLE" | translate }}
+          </ion-segment-button>
+          <ion-segment-button (click)="paramAdvancedOnclick()" color="light" value="advanced" text-wrap>
+            {{"WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.TITLE" | translate }}
+          </ion-segment-button>
+        </ion-segment>
+        &nbsp;
+      </ion-toolbar>
+    </div>
+  </ion-toolbar>
+
+  <!-- Header nav - nom porte -->
+  <ion-item no-lines text-wrap>
+    <b text-wrap>{{ "MOVENTIV_PAGE.CONTROLLED_DOOR" | translate }}</b>
+    {{peripheralNameAff || ("MOVENTIV_PAGE.CONTROLLED_DOOR_NOCONNECTEDDOOR" | translate)}}
+  </ion-item>
+ 
+</ion-header>
+
+
+<ion-content class="outer-content" no-bounce has-bouncing="false" forceOverscroll="false">
+
+  <div [ngSwitch]="menuType">
+
+    <!-- Onglet COMMANDES : Bouton ouverture fermeture-->
+    <div *ngSwitchCase="'com'">
+      <ion-grid>
+        <ion-row>
+          <ion-col col-1>
+          </ion-col>
+          <ion-col col-4>
+              <button ion-button class="rounded-button" block style="height:100px;" color="navBarColor"
+              (click)="setShutterOpen()" button-rounded>
+              <ion-icon name="moventiv-command_open" style="zoom:4;"></ion-icon>   
+            </button>       
+          </ion-col>
+          <ion-col col-2>
+          </ion-col>
+          <ion-col col-4>
+            <button ion-button class="rounded-button" block style="height:100px;" color="navBarColor"
+              (click)="setShutterClose()" button-rounded>
+              <ion-icon name="moventiv-command_close" style="zoom:4;"></ion-icon>
+            </button>
+          </ion-col>
+          <ion-col col-1>
+          </ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col col-1>
+          </ion-col>
+          <ion-col text-center col-4 text-wrap>
+            {{ "MOVENTIV_PAGE.COMMANDS_TAB.COMBUTTON_OPEN" | translate }} 
+          </ion-col>
+          <ion-col col-2>
+          </ion-col>
+          <ion-col text-center col-4 text-wrap>
+            {{ "MOVENTIV_PAGE.COMMANDS_TAB.COMBUTTON_CLOSE" | translate }}
+          </ion-col>
+          <ion-col col-1>
+          </ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col col-4>
+          </ion-col>
+          <ion-col col-4>
+              <button ion-button class="rounded-button" block style="height:100px;" color="navBarColor"
+              (click)="setShutterOpenStime()" button-rounded>
+              <ion-icon name="moventiv-command_openThenClose" style="zoom:4;"></ion-icon>
+            </button>
+          </ion-col>
+          <ion-col col-4>
+          </ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col col-4>
+          </ion-col>
+          <ion-col text-center col-4 text-wrap>
+            {{ "MOVENTIV_PAGE.COMMANDS_TAB.COMBUTTON_OPEN" | translate }} {{rval_mlpc_userParam_openTimeShort}}s
+          </ion-col>
+          <ion-col col-4>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </div>
+
+    <ion-item-group *ngSwitchCase="'com'">
+      <ion-list lines="none">
+        <!-- Commande - Maintien ouverture -->
+        <!-- <ion-item>
+          <ion-icon [name]="lockOpen ? 'moventiv-lock_off' : 'moventiv-lock_on'" item-start color="wimGreyColor">
+          </ion-icon>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.COMMANDS_TAB.COMTOOGLE_MAINTAINOPEN" | translate }}</ion-label>
+          <ion-toggle [disabled]="lockClose" [(ngModel)]="lockOpen" (ionChange)="setLockOpen($event)"
+            color="mantionSmtgreen"></ion-toggle>
+        </ion-item> -->
+
+        <!-- Commande - Maintien fermeture -->
+        <ion-item>
+          <ion-icon [name]="lockClose ? 'moventiv-lock_off' : 'moventiv-lock_on'" item-start color="wimGreyColor">
+          </ion-icon>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.COMMANDS_TAB.COMTOOGLE_LOCKCLOSE" | translate }}</ion-label>
+          <ion-toggle [disabled]="lockOpen" [(ngModel)]="lockClose" (ionChange)="setLockClose($event)"
+            color="mantionSmtgreen"></ion-toggle>
+        </ion-item>
+
+        <!-- Commande - bandeau LED -->
+        <ion-item>
+          <ion-icon name="moventiv-light_off" item-start
+            [color]="rval_mlpc_periphCommandLedStripStatic ? 'wimoveYellowColor' : 'wimGreyColor'"></ion-icon>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.COMMANDS_TAB.COMTOOGLE_LEDLIGHTBAND" | translate }}</ion-label>
+          <ion-toggle [(ngModel)]="rval_mlpc_periphCommandLedStripStatic" (ionChange)="setUserStaticLight($event)"
+            color="mantionSmtgreen">
+          </ion-toggle>
+        </ion-item>
+      </ion-list>
+    </ion-item-group>
+
+    <!-- JDU : SOUS ONGLET -->
+    <!-- ONGLET REGLAGE -->
+    <ion-list lines="none" *ngSwitchCase="'param'">
+      <!-- JDU : ajout de sous onglet dans Reglage -->
+      <div [ngSwitch]="paramSubmenuType">
+        <!-- Sous-onglet BASIC -->
+        <div *ngSwitchCase="'basic'">
+
+          <ion-list-header text-wrap>
+          <!-- ion-list-header vide pour décallage avec ss-menu réglage -->
+          </ion-list-header>
+
+          <!-- Réglage - Eclairage à l'ouverture -->
+          <ion-item>
+            <ion-icon name="moventiv-light_off" item-start
+              [color]="rval_mlpc_periphCommandLedStripDynamic? 'wimoveYellowColor' : 'wimGreyColor'">
+            </ion-icon>
+            <ion-label text-wrap>{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.COMTOOGLE_DYNLEDLIGHTBAND" | translate }}</ion-label>
+            <ion-toggle [(ngModel)]="rval_mlpc_periphCommandLedStripDynamic" (ionChange)="setUserDynLight($event)"
+              color="mantionSmtgreen">
+            </ion-toggle>
+          </ion-item>
+
+          <!-- Réglage - Indicateur LED -->
+          <ion-item no-lines>
+            <ion-icon name="sunny" item-start
+              [color]="rval_mlpc_periphCommandRGBIndic? 'wimoveYellowColor' : 'wimGreyColor'">
+            </ion-icon>
+            <ion-label text-wrap>{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.COMTOOGLE_RGBINDIC" | translate }}</ion-label>
+            <ion-toggle [(ngModel)]="rval_mlpc_periphCommandRGBIndic" (ionChange)="setUserRGBIndic($event)"
+              color="mantionSmtgreen">
+            </ion-toggle>
+          </ion-item>
+
+          <!-- Réglage - Vitesse de fermeture  -->
+          <ion-list-header text-wrap>
+            {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.CLOSE_SPEED_LABEL" | translate }}
+            <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_userParam_speedCloseTune}} %</ion-badge>
+          </ion-list-header>
+
+          <ion-item-sliding #item>
+            <ion-item>
+              <ion-icon item-end name="arrow-dropleft" style="zoom:1.0;" color="wimGreyColor"></ion-icon>
+              <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
+              <ion-range min='50' max="100" debounce="300" (ionChange)="setCloseSpeedTune($event)"
+                [(ngModel)]="rval_mlpc_userParam_speedCloseTune" color="mantionSmtblue"> </ion-range>
+            </ion-item>
+
+            <ion-item-options>
+              <button ion-button color="mantionSmtgreen" (click)="closeSpeedTuneInc()">
+                <ion-icon name="add"></ion-icon>
+                {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
+              </button>
+              <button ion-button color="mantionSmtRed" (click)="closeSpeedTuneDec()">
+                <ion-icon name="remove"></ion-icon>
+                {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
+              </button>
+            </ion-item-options>
+          </ion-item-sliding>
+          <!--END- Réglage - Vitesse de fermeture  -->
+
+          <!-- Réglage - Vitese d'ouverture -->
+          <ion-list-header text-wrap>
+            {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.OPEN_SPEED_LABEL" | translate }}
+            <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_userParam_speedOpenTune}} % </ion-badge>
+          </ion-list-header>
+          <ion-item-sliding #item>
+            <ion-item>
+              <ion-icon item-end name="arrow-dropleft" style="zoom:1.0;" color="wimGreyColor"></ion-icon>
+              <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
+              <ion-range min="50" max="100" debounce="300" (ionChange)="setOpenSpeedTune($event)"
+                [(ngModel)]="rval_mlpc_userParam_speedOpenTune" color="mantionSmtblue"></ion-range>
+            </ion-item>
+            <ion-item-options>
+              <button ion-button color="mantionSmtgreen" (click)="openSpeedTuneInc()">
+                <ion-icon name="add"></ion-icon>
+                {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
+              </button>
+              <button ion-button color="mantionSmtRed" (click)="openSpeedTuneDec()">
+                <ion-icon name="remove"></ion-icon>
+                {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
+              </button>
+            </ion-item-options>
+          </ion-item-sliding>
+          <!--END- Réglage - Vitese d'ouverture -->
+
+          <!-- Réglage - tempo courte -->
+          <ion-list-header text-wrap>
+            {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.AUTOCLOSING_TIMEDELAYSHORT_LABEL" | translate }}
+            <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_userParam_openTimeShort}} s</ion-badge>
+          </ion-list-header>
+          <ion-item-sliding #item>
+            <ion-item>
+              <ion-icon item-end name="arrow-dropleft" style="zoom:1.0;" color="wimGreyColor"></ion-icon>
+              <ion-icon name="moventiv-delay" item-start color="wimGreyColor"></ion-icon>
+              <ion-range min="0" max="60" debounce="300" [(ngModel)]="rval_mlpc_userParam_openTimeShort"
+                (ionChange)="setShortTiming($event)" color="mantionSmtblue">
+              </ion-range>
+            </ion-item>
+            <ion-item-options>
+              <button ion-button color="mantionSmtgreen" (click)="shortTimingInc()">
+                <ion-icon name="add"></ion-icon>
+                {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
+              </button>
+              <button ion-button color="mantionSmtRed" (click)="shortTimingDec()">
+                <ion-icon name="remove"></ion-icon>
+                {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
+              </button>
+            </ion-item-options>
+          </ion-item-sliding>
+          <!--END- Réglage - tempo courte -->
+
+          <!-- Réglage - Tempo longue -->
+          <!-- <ion-list-header text-wrap>
+              {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.AUTOCLOSING_TIMEDELAYLONG_LABEL" | translate }}
+              <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_userParam_openTimeLong}} m</ion-badge>
+            </ion-list-header>
+            <ion-item-sliding #item>
+              <ion-item>
+                <ion-icon item-end name="arrow-dropleft" style="zoom:1.0;" color="wimGreyColor"></ion-icon>
+                <ion-icon name="moventiv-delay" item-start color="wimGreyColor"></ion-icon>
+                <ion-range min="0" max="60" debounce="300" [(ngModel)]="rval_mlpc_userParam_openTimeLong"
+                  (ionChange)="setLongTiming($event)" color="mantionSmtblue">
+                </ion-range>
+              </ion-item>
+              <ion-item-options>
+                <button ion-button color="mantionSmtgreen" (click)="longTimingInc()">
+                  <ion-icon name="add"></ion-icon>
+                  {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
+                </button>
+                <button ion-button color="mantionSmtRed" (click)="longTimingDec()">
+                  <ion-icon name="remove"></ion-icon>
+                  {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
+                </button>
+              </ion-item-options>
+            </ion-item-sliding>-->
+          <!--END- Réglage - Tempo longue -->
+
+          <!-- Réglage - Nom et localisation -->
+          <ion-list-header>
+            {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.NAME_AND_LOCALIZATION_LABEL" | translate }}
+          </ion-list-header>
+          <form [formGroup]="formName" (ngSubmit)="onSubmitformName()">
+            <ion-item>
+              <ion-label text-wrap floating>{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.MODIFY_NAME_FORMLABEL" | translate }}
+              </ion-label>
+              <ion-input [(ngModel)]="userConfig.mlpcName" formControlName="mlpcName" type="string" id="mlpcName">
+              </ion-input>
+            </ion-item>
+
+            <div *ngFor="let validation of validation_messages.mlpcName">
+              <ion-item text-wrap
+                *ngIf="formName.get('mlpcName').hasError(validation.type) && (formName.get('mlpcName').dirty ||formName.get('mlpcName').touched)">
+                <p ion-text color="danger">{{validation.message}}</p>
+              </ion-item>
+            </div>
+
+            <ion-item>
+              <ion-label floating>{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATE_FORMLABEL" | translate }}</ion-label>
+              <ion-select cancelText="{{ 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.CANCELTEXT' | translate }}"
+                okText="{{ 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.OKTEXT' | translate }}" [(ngModel)]="localisation"
+                [ngModelOptions]="{standalone: true}" (ionChange)="onLocChange($event)">
+                <ion-option value="locValRoom">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ROOM_TYPE.BEDROOM" | translate }}
+                </ion-option>
+                <ion-option value="locValLivingRoom">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ROOM_TYPE.LIVING_ROOM" | translate }}
+                </ion-option>
+                <ion-option value="locValDiningRoom">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ROOM_TYPE.DINING_ROOM" | translate }}
+                </ion-option>
+                <ion-option value="locValKitchen">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ROOM_TYPE.KITCHEN" | translate }}
+                </ion-option>
+                <ion-option value="locValBathroom">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ROOM_TYPE.BATHROOM" | translate }}
+                </ion-option>
+                <ion-option value="locValToilet">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ROOM_TYPE.TOILET" | translate }}
+                </ion-option>
+                <ion-option value="LocValGarage_UtilityRoom">
+                  {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ROOM_TYPE.GARAGE_UTILITYROOM" | translate }}</ion-option>
+                <ion-option value="LocValPlayroom">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ROOM_TYPE.PLAYROOM" | translate }}
+                </ion-option>
+              </ion-select>
+            </ion-item>
+
+            <div padding>
+              <button ion-button type="submit" block primary
+                [disabled]="!formName.valid">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.FORMBUTTON_VALIDATE" | translate }}</button>
+            </div>
+          </form>
+          <!--END- Réglage - Nom et localisation -->
+
+        </div>
+        <!-- END- Sous-onglet BASIC -->
+
+        <!-- Sous-onglet ADVANCED -->
+        <div *ngSwitchCase="'advanced'">
+
+          <ion-list-header text-wrap>
+          <!-- ion-list-header vide pour décallage avec ss-menu réglage -->
+          </ion-list-header>
+
+          <!-- REGLAGE/ADV - Plage de poids -->
+          <ion-list-header color='danger' ion-text color='white'>
+            {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.TITLE" | translate }}
+          </ion-list-header>
+
+          <ion-list no-lines>
+            <ion-item>
+              <ion-label text-wrap>{{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.SELECTION_PAGE" | translate }}
+              </ion-label>
+              <!-- JDU V1.3.0 #App-10 : Ajout de selectOption pour  -->
+              <ion-select [(ngModel)]="userRangeWeight" (ionChange)="setWeightRange($event)"
+                [selectOptions]="weightAlertOptions"
+                interface="alert"
+                okText='{{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.BUTTONS.OK" | translate }}'
+                cancelText='{{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.BUTTONS.CANCEL" | translate }}'>
+
+                <div *ngIf="currentProductType == 'garline'">
+                  <ion-option value="6">60-80 Kg</ion-option>
+                  <ion-option value="7">80-100 Kg</ion-option>
+                  <ion-option value="8">100-120 Kg</ion-option>
+                  <ion-option value="9">120-140 Kg</ion-option>
+              </div>
+
+              <div *ngIf="currentProductType == 'moventiv'">
+                  <ion-option value="1">&lt; 20Kg</ion-option>
+                  <ion-option value="2">20-30Kg</ion-option>
+                  <ion-option value="3">30-40Kg</ion-option>
+                  <ion-option value="4">40-50Kg</ion-option>
+                  <ion-option value="5">50-60Kg</ion-option>
+                  <ion-option value="6">60-80Kg</ion-option>
+
+              </div>
+
+              </ion-select>
+            </ion-item>
+          </ion-list>
+          <!--END- REGLAGE/ADV - Plage de poids -->
+          
+          <!-- REGLAGE/ADV - Bouton/radar -->
+          <ion-list-header>
+            {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.HEADER" | translate }}
+          </ion-list-header>
+
+          <ion-item>
+            <ion-badge *ngIf="(rval_mlpc_proParam_periphs1_butOrRadar1 )" item-end
+              [color]="rval_mlpc_proParam_periphs1_butOrRadar1  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+              {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.RADAR" | translate }}</ion-badge>
+            <ion-badge *ngIf="(!rval_mlpc_proParam_periphs1_butOrRadar1 )" item-end
+              [color]="rval_mlpc_proParam_periphs1_butOrRadar1  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+              {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.BUTTON" | translate }}</ion-badge>
+            <ion-icon [name]="rval_mlpc_proParam_periphs1_butOrRadar1 ? 'moventiv-radar' : 'moventiv-button'" item-start
+              color="wimGreyColor"></ion-icon>
+
+
+            <ion-label text-wrap>{{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.NAME" | translate }}
+
+            </ion-label>
+            <ion-toggle [(ngModel)]="rval_mlpc_proParam_periphs1_butOrRadar1" (ionChange)="setUserbutOrRadar1($event)"
+              color="mantionSmtgreen">
+            </ion-toggle>
+
+          </ion-item>
+
+          <ion-item no-lines>
+            <ion-badge *ngIf="(rval_mlpc_proParam_periphs1_butOrRadar2 )" item-end
+              [color]="rval_mlpc_proParam_periphs1_butOrRadar2  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+              {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.RADAR" | translate }}</ion-badge>
+            <ion-badge *ngIf="(!rval_mlpc_proParam_periphs1_butOrRadar2 )" item-end
+              [color]="rval_mlpc_proParam_periphs1_butOrRadar2  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+              {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.BUTTON" | translate }}</ion-badge>
+            <ion-icon [name]="rval_mlpc_proParam_periphs1_butOrRadar2 ? 'moventiv-radar' : 'moventiv-button'" item-start
+              color="wimGreyColor"></ion-icon>
+            <ion-label text-wrap>{{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT2.NAME" | translate }}
+            </ion-label>
+            <ion-toggle [(ngModel)]="rval_mlpc_proParam_periphs1_butOrRadar2" (ionChange)="setUserbutOrRadar2($event)"
+              color="mantionSmtgreen">
+            </ion-toggle>
+          </ion-item>
+          <!--END- REGLAGE/ADV - Bouton/radar -->
+
+          <!-- REGLAGE/ADV - Apprentissage/maintenance -->
+          <ion-list-header>
+            {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.EXTRA_COMMANDS.TITLE" | translate }}
+          </ion-list-header>
+          <ion-item no-lines>
+            <div col text-center>
+              <button ion-button style="height:60px;" (click)=" setShutterLearning()" color="navBarColor">
+                <div class="swap" text-wrap>
+                  {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.EXTRA_COMMANDS.LEARNING_BUTTON" | translate }}</div>
+              </button>
+            </div>
+          </ion-item>
+          <ion-item no-lines>
+            <div col text-center>
+              <button ion-button style="height:60px;" (click)="maintenancePrompt()" color="warning">
+                <div
+                  *ngIf="(rval_shDo_userDatesCycles[5] != 255) && (rval_shDo_userDatesCycles[4] != 255) && (rval_shDo_userDatesCycles[3] != 255)"
+                  class="swap" text-wrap>
+                  {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.EXTRA_COMMANDS.MAINTENANCE_BUTTON" | translate }}</div>
+                <div
+                  *ngIf="(rval_shDo_userDatesCycles[5] == 255) && (rval_shDo_userDatesCycles[4] == 255) && (rval_shDo_userDatesCycles[3] == 255)"
+                  class="swap" text-wrap>
+                  {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.EXTRA_COMMANDS.SETUP_BUTTON" | translate }}</div>
+              </button>
+            </div>
+          </ion-item>
+          <!--END- REGLAGE/ADV - Apprentissage/maintenance -->
+
+          <!-- REGLAGE/ADV - Vitesse fin ouverture/fermeture -->
+          <ion-list-header>
+            {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.ADVANCEDTUNING.TITLE" | translate }}
+          </ion-list-header>
+
+          <ion-item no-lines>
+            <ion-list>
+              <ion-list-header text-wrap>
+                {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.ADVANCEDTUNING.SPEEDNEAROPEN" | translate }}
+                <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_proParam_nearOpenSpeed}} %</ion-badge>
+              </ion-list-header>
+              
+              <ion-item-sliding #item>
+                <ion-item>
+                  <ion-icon item-end name="arrow-dropleft" style="zoom:1.0;" color="wimGreyColor"></ion-icon>
+                    <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
+                    <ion-range min='1' max="100" debounce="300" (ionChange)="setNearOpenSpeed($event)"
+                    [(ngModel)]="rval_mlpc_proParam_nearOpenSpeed" color="mantionSmtblue"> </ion-range>
+                  </ion-item>
+                  <ion-item-options>
+                    <button ion-button color="mantionSmtgreen" (click)="NearOpenSpeedInc()">
+                      <ion-icon name="add"></ion-icon>
+                      {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
+                    </button>
+                    <button ion-button color="mantionSmtRed" (click)="NearOpenSpeedDec()">
+                      <ion-icon name="remove"></ion-icon>
+                      {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
+                    </button>
+                  </ion-item-options>
+                </ion-item-sliding>
+              </ion-list>
+              
+              <ion-list-header text-wrap>
+                {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.ADVANCEDTUNING.SPEEDNEARCLOSE" | translate }}
+                <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_proParam_nearCloseSpeed}} %</ion-badge>
+              </ion-list-header>
+              <ion-list>
+
+              <ion-item-sliding #item>
+                <ion-item>
+                  <ion-icon item-end name="arrow-dropleft" style="zoom:1.0;" color="wimGreyColor"></ion-icon>
+                  <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
+                  <ion-range min='1' max="100" debounce="300" (ionChange)="setNearCloseSpeed($event)"
+                    [(ngModel)]="rval_mlpc_proParam_nearCloseSpeed" color="mantionSmtblue"> </ion-range>
+                </ion-item>
+                <ion-item-options>
+                  <button ion-button color="mantionSmtgreen" (click)="NearCloseSpeedInc()">
+                    <ion-icon name="add"></ion-icon>
+                    {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
+                  </button>
+                  <button ion-button color="mantionSmtRed" (click)="NearCloseSpeedDec()">
+                    <ion-icon name="remove"></ion-icon>
+                    {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
+                  </button>
+                </ion-item-options>
+              </ion-item-sliding>
+            </ion-list>
+
+          </ion-item>
+          <!--END- REGLAGE/ADV - Vitesse fin ouverture/fermeture -->
+
+          <!-- Demande de MDP -->
+          <ion-list-header>
+            {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.SUPERADVANCEDTUNING.TITLE" | translate }}
+          </ion-list-header>
+
+          <!-- <form [formGroup]="formPassword" (ngSubmit)="onSubmitformPasswordBCrypt()">  -->
+          <form [formGroup]="formPassword" (ngSubmit)="onSubmitformPassword()"> 
+
+            <ion-item no-lines>
+              <ion-label text-wrap floating>
+                {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.SUPERADVANCEDTUNING.ASKPASSWORD" | translate }}
+              </ion-label>
+              <ion-input clearinput [(ngModel)]="userPassword" formControlName="mlpcPassword" type="password"
+                id="mlpcPassword">
+              </ion-input>
+            </ion-item>
+
+            <div *ngFor="let validation of validation_messages.mlpcPassword">
+              <ion-item text-wrap
+                *ngIf="formPassword.get('mlpcPassword').hasError(validation.type) && (formPassword.get('mlpcPassword').dirty ||formPassword.get('mlpcPassword').touched)">
+                <p ion-text color="danger">{{validation.message}}</p>
+              </ion-item>
+            </div>
+
+            <div padding>
+              <button ion-button type="submit" block primary
+                [disabled]="!formPassword.valid">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.FORMBUTTON_VALIDATE" | translate }}</button>
+            </div>
+
+          </form>
+
+          <!-- Reglages experts caches par MDP -->
+          <!-- REGALGE/ADV - Couple fin fermeture -->
+          <ion-item *ngIf="passwordValid">
+            <ion-list no-lines>
+              <ion-list-header text-wrap>
+                {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.ADVANCEDTUNING.TORQUENEARCLOSE" | translate }}
+                <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_proParam_nearCloseTorque}} %</ion-badge>
+              </ion-list-header>
+
+              <ion-item-sliding #item>
+                <ion-item>
+                  <ion-icon item-end name="arrow-dropleft" style="zoom:1.0;" color="wimGreyColor"></ion-icon>
+                  <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
+                  <ion-range min='1' max="200" debounce="300" (ionChange)="setNearCloseTorque($event)"
+                    [(ngModel)]="rval_mlpc_proParam_nearCloseTorque" color="mantionSmtblue"> </ion-range>
+                </ion-item>
+                <ion-item-options>
+                  <button ion-button color="mantionSmtgreen" (click)="NearCloseTorqueInc()">
+                    <ion-icon name="add"></ion-icon>
+                    {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
+                  </button>
+                  <button ion-button color="mantionSmtRed" (click)="NearCloseTorqueDec()">
+                    <ion-icon name="remove"></ion-icon>
+                    {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
+                  </button>
+                </ion-item-options>
+              </ion-item-sliding>
+
+            </ion-list>
+          </ion-item>
+
+          
+          <!--END- REGALGE/ADV - Couple fin fermeture -->
+
+          <!-- REGALGE/ADV - Couple fin ouverture -->
+          <ion-item *ngIf="passwordValid">
+            <ion-list no-lines>
+              <ion-list-header text-wrap>
+                {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.ADVANCEDTUNING.TORQUENEAROPEN" | translate }}
+                <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_proParam_nearOpenTorque}} %</ion-badge>
+              </ion-list-header>
+
+              <ion-item-sliding #item>
+                <ion-item>
+                  <ion-icon item-end name="arrow-dropleft" style="zoom:1.0;" color="wimGreyColor"></ion-icon>
+                  <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
+                  <ion-range min='1' max="200" debounce="300" (ionChange)="setNearOpenTorque($event)"
+                    [(ngModel)]="rval_mlpc_proParam_nearOpenTorque" color="mantionSmtblue"> </ion-range>
+                </ion-item>
+                <ion-item-options>
+                  <button ion-button color="mantionSmtgreen" (click)="NearOpenTorqueInc()">
+                    <ion-icon name="add"></ion-icon>
+                    {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
+                  </button>
+                  <button ion-button color="mantionSmtRed" (click)="NearOpenTorqueDec()">
+                    <ion-icon name="remove"></ion-icon>
+                    {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
+                  </button>
+                </ion-item-options>
+              </ion-item-sliding>
+
+            </ion-list>
+          </ion-item>
+          <!--END- REGALGE/ADV - Couple fin ouverture -->
+
+          <!-- REGALGE/ADV - freinage en ouverture -->
+          <ion-item *ngIf="passwordValid">
+            <ion-list no-lines>
+
+              <ion-list-header text-wrap>
+                {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.ADVANCEDTUNING.BRAKINGPOWER" | translate }}
+                <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_proParam_brakingOpenPower}} %</ion-badge>
+              </ion-list-header>
+
+              <ion-item-sliding #item>
+                <ion-item>
+                  <ion-icon item-end name="arrow-dropleft" style="zoom:1.0;" color="wimGreyColor"></ion-icon>
+                  <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
+                  <ion-range min='1' max="100" debounce="300" (ionChange)="setBrakingOpenPower($event)"
+                    [(ngModel)]="rval_mlpc_proParam_brakingOpenPower" color="mantionSmtblue"> </ion-range>
+                </ion-item>
+                <ion-item-options>
+                  <button ion-button color="mantionSmtgreen" (click)="BrakingPowerInc()">
+                    <ion-icon name="add"></ion-icon>
+                    {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
+                  </button>
+                  <button ion-button color="mantionSmtRed" (click)="BrakingPowerDec()">
+                    <ion-icon name="remove"></ion-icon>
+                    {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
+                  </button>
+                </ion-item-options>
+              </ion-item-sliding>
+
+            </ion-list>
+          </ion-item>
+          <!--END- REGALGE/ADV - freinage en ouverture  -->
+
+          <!-- REGALGE/ADV - Sensibilité de la detection d'obstacle -->
+          <ion-item *ngIf="passwordValid">
+            <ion-list no-lines>
+
+              <ion-list-header text-wrap>
+                {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.ADVANCEDTUNING.OBSTACLESENSI" | translate }}
+                <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_proParam_obstacleSensibility}}</ion-badge>
+              </ion-list-header>
+
+              <ion-item-sliding #item>
+                <ion-item>
+                  <ion-icon item-end name="arrow-dropleft" style="zoom:1.0;" color="wimGreyColor"></ion-icon>
+                  <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
+                  <ion-range min='1' max="5" debounce="300" (ionChange)="setObstacleSensibility($event)"
+                    [(ngModel)]="rval_mlpc_proParam_obstacleSensibility" color="mantionSmtblue"> </ion-range>
+                </ion-item>
+                <ion-item-options>
+                  <button ion-button color="mantionSmtgreen" (click)="ObstacleSensiInc()">
+                    <ion-icon name="add"></ion-icon>
+                    {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
+                  </button>
+                  <button ion-button color="mantionSmtRed" (click)="ObstacleSensiDec()">
+                    <ion-icon name="remove"></ion-icon>
+                    {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
+                  </button>
+                </ion-item-options>
+              </ion-item-sliding>
+
+            </ion-list>
+          </ion-item>
+          <!--END- REGALGE/ADV - Sensibilité de la detection d'obstacle  -->
+
+          <!-- Réglage PID a ENLEVER-->
+          <!-- <ion-item *ngIf="passwordValid">
+            <ion-label>PID CLOSE P</ion-label>
+            <ion-input type="number" [(ngModel)]="rval_mlpc_proParam_nearOpenProportionnal"
+              name="rval_mlpc_proParam_nearOpenProportionnal"></ion-input>
+          </ion-item>
+
+          <ion-item *ngIf="passwordValid">
+            <ion-label>PID OPEN P</ion-label>
+            <ion-input type="number" [(ngModel)]="rval_mlpc_proParam_nearCloseProportionnal"
+              name="rval_mlpc_proParam_nearCloseProportionnal"></ion-input>
+          </ion-item>
+
+          <ion-item *ngIf="passwordValid">
+            <ion-label>PID CLOSE I</ion-label>
+            <ion-input type="number" [(ngModel)]="rval_mlpc_proParam_nearOpenIntegral"
+              name="rval_mlpc_proParam_nearOpenIntegral"></ion-input>
+          </ion-item>
+
+          <ion-item *ngIf="passwordValid">
+            <ion-label>PID OPEN I</ion-label>
+            <ion-input type="number" [(ngModel)]="rval_mlpc_proParam_nearCloseIntegral"
+              name="rval_mlpc_proParam_nearCloseIntegral"></ion-input>
+          </ion-item> -->
+          <!-- END- Reglage par MDP -->
+
+
+
+        </div>
+        <!-- END- Sous-onglet ADVANCED -->
+      </div>
+    </ion-list>
+
+    <!-- Information -->
+    <div *ngSwitchCase="'info'">
+      <ion-list>
+        <ion-list-header text-wrap>
+          {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.HEADER" | translate }}
+        </ion-list-header>
+
+        <!-- Etats des switchs -->
+        <ion-item>
+          <ion-badge *ngIf="(rval_shdo_motorState_switch_PushAGo)" item-end
+            [color]="rval_shdo_motorState_switch_PushAGo ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+            {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.PUSHAGO.STATE.ON" | translate }}
+          </ion-badge>
+          <ion-badge *ngIf="(!rval_shdo_motorState_switch_PushAGo)" item-end
+            [color]="rval_shdo_motorState_switch_PushAGo ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+            {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.PUSHAGO.STATE.OFF" | translate }}
+          </ion-badge>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.PUSHAGO.LABEL" | translate }}</ion-label>
+        </ion-item>
+
+        <ion-item>
+          <ion-badge *ngIf="(rval_shdo_motorState_switch_BLE )" item-end
+            [color]="rval_shdo_motorState_switch_BLE  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+            {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.BLE.STATE.ON" | translate }}</ion-badge>
+          <ion-badge *ngIf="(!rval_shdo_motorState_switch_BLE )" item-end
+            [color]="rval_shdo_motorState_switch_BLE  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+            {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.BLE.STATE.OFF" | translate }}</ion-badge>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.BLE.LABEL" | translate }}</ion-label>
+        </ion-item>
+
+        <ion-item>
+          <ion-badge *ngIf="(rval_shdo_motorState_switch_autoManu)" item-end
+            [color]="rval_shdo_motorState_switch_direction ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+            {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.CLOSEMODE.STATE.MANUAL"| translate }}
+          </ion-badge>
+          <ion-badge *ngIf="(!rval_shdo_motorState_switch_autoManu)" item-end
+            [color]="rval_shdo_motorState_switch_direction ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+            {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.CLOSEMODE.STATE.AUTO" | translate }}</ion-badge>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.CLOSEMODE.LABEL" | translate }}
+          </ion-label>
+        </ion-item>
+
+        <ion-item>
+          <ion-badge *ngIf="(rval_shdo_motorState_switch_direction)" item-end
+            [color]="rval_shdo_motorState_switch_direction ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+            {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.OPENDIRECTION.STATE.RIGHT"| translate }}
+          </ion-badge>
+          <ion-badge *ngIf="(!rval_shdo_motorState_switch_direction)" item-end
+            [color]="rval_shdo_motorState_switch_direction ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+            {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.OPENDIRECTION.STATE.LEFT" | translate }}
+          </ion-badge>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.OPENDIRECTION.LABEL" | translate }}
+          </ion-label>
+        </ion-item>
+
+        <ion-item>
+          <ion-badge *ngIf="(!rval_shdo_motorState_switch_pairing)" item-end
+            [color]="rval_shdo_motorState_switch_pairing? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+            {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.PAIRLEARN.STATE.LEARN"| translate }}</ion-badge>
+          <ion-badge *ngIf="(rval_shdo_motorState_switch_pairing)" item-end
+            [color]="rval_shdo_motorState_switch_pairing ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
+            {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.PAIRLEARN.STATE.PEER"| translate }}
+          </ion-badge>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.PAIRLEARN.LABEL"| translate }}
+          </ion-label>
+        </ion-item>
+      </ion-list>
+
+      <!-- Informations generales -->
+      <ion-list>
+        <ion-list-header>
+          {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.GENERAL_INFORMATIONS_SUBTITLE" | translate }}
+        </ion-list-header>
+
+        <!-- Profil actuel -->
+        <ion-item>
+          <ion-label text-wrap>
+            {{"MOVENTIV_PAGE.INFORMATIONS_TAB.GENERAL_INFORMATIONS.ACTUAL_WEIGHTPROFILE" | translate }}</ion-label>
+          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 255)&&(rval_mlpc_proParam_weightRangeUp == 255)"
+            item-end text-wrap>inconnu kg </ion-note>
+          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 10)&&(rval_mlpc_proParam_weightRangeUp == 20)" item-end
+            text-wrap>20 kgs</ion-note>
+          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 20)&&(rval_mlpc_proParam_weightRangeUp == 30)" item-end
+            text-wrap>20-30 kg</ion-note>
+          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 30)&&(rval_mlpc_proParam_weightRangeUp == 40)" item-end
+            text-wrap>30-40 kg</ion-note>
+          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 40)&&(rval_mlpc_proParam_weightRangeUp == 50)" item-end
+            text-wrap>40-50 kg</ion-note>
+          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 50)&&(rval_mlpc_proParam_weightRangeUp == 60)"item-end 
+            text-wrap>50-60 kg</ion-note>
+          <!-- JDU MLPC 80kg : Ajout d'info pour la plage 60-80kg -->
+          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 60)&&(rval_mlpc_proParam_weightRangeUp == 80)"item-end 
+            text-wrap>60-80 kg</ion-note>
+          <!-- JDU GARLINE : Ajout d'info pour les plages 80-140kg -->
+          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 80)&&(rval_mlpc_proParam_weightRangeUp == 100)"
+            item-end text-wrap>80-100 kg</ion-note>
+          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 100)&&(rval_mlpc_proParam_weightRangeUp == 120)"
+            item-end text-wrap>100-120 kg</ion-note>
+          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 120)&&(rval_mlpc_proParam_weightRangeUp == 140)"
+            item-end text-wrap>120-140 kg</ion-note>
+        </ion-item>
+
+        <!-- Poids max autorise -->
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.GENERAL_INFORMATIONS.MAX_WEIGHT" | translate }}
+          </ion-label>
+          <ion-note *ngIf="(rval_shDo_version[12] == 00) && (rval_shDo_version[13] == 00)" item-end text-wrap>60 kg
+          </ion-note>
+          <!--  JDU MLPC 80kg -->
+          <ion-note *ngIf="(rval_shDo_version[12] == 01) && (rval_shDo_version[13] == 00)" item-end text-wrap>80 kg
+          </ion-note>
+          <!--  JDU GARLINE : Modif de la version pour GARLINE -->
+          <!-- Test sur MOTOR_ID et non sur MOTOR_ID_SPE  -->
+          <ion-note
+            *ngIf="(rval_shDo_version[12] == 02) && (rval_shDo_version[13] == 00) "item-end text-wrap>140 kg
+          </ion-note>
+        </ion-item>
+
+        <!-- Date de la 1ere mise en service -->
+        <ion-item>
+          <ion-label text-wrap>
+            {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.GENERAL_INFORMATIONS.DATEOF_FIRSTUSE" | translate }}
+          </ion-label>
+          <ion-note
+            *ngIf="(rval_shDo_userDatesCycles[5] != 255) && (rval_shDo_userDatesCycles[4] != 256) && (rval_shDo_userDatesCycles[3] != 256)"
+            item-end text-wrap>
+            {{rval_shDo_userDatesCycles[5] | number : '2.0-0' }}/{{(rval_shDo_userDatesCycles[4]+1)| number : '2.0-0' || 'ND'}}/20{{rval_shDo_userDatesCycles[3]| number : '2.0-0'|| 'ND'}}
+          </ion-note>
+          <ion-note
+            *ngIf="(rval_shDo_userDatesCycles[5] == 256) || (rval_shDo_userDatesCycles[4] == 256) || (rval_shDo_userDatesCycles[3] == 256)"
+            item-end text-wrap>Pas effectuée</ion-note>
+        </ion-item>
+
+        <!-- Nombre de cycles total -->
+        <ion-item>
+          <!-- JDU V1.1.0 : affichage nombre cycle sans "," pour les miliers (suppr. de : "number : '2.0-0") -->
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.GENERAL_INFORMATIONS.NB_CYCLE_TOT" | translate }}
+          </ion-label>
+          <ion-note item-end text-wrap>{{rval_shDo_userDatesCycles_totCyc}} </ion-note>
+        </ion-item>
+      </ion-list>
+
+      <!-- Maintenance -->
+      <ion-list>
+        <ion-list-header text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.MAINTENANCE_SUBTITLE" | translate }}
+        </ion-list-header>
+
+        <!-- Date de la derniere maintenance -->
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.MAINTENANCE.DATEOF_LASTMAINT" | translate }}
+          </ion-label>
+          <ion-note item-end text-wrap>
+            {{rval_shDo_userDatesCycles[9]| number : '2.0-0'}}/{{(rval_shDo_userDatesCycles[8]+1)| number : '2.0-0'}}/20{{rval_shDo_userDatesCycles[7]| number : '2.0-0'}}
+          </ion-note>
+        </ion-item>
+
+        <!-- Nombre de cycle depuis la derniere maintenance -->
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.MAINTENANCE.NB_CYCLES_SINCELASTMAINT" | translate }}
+          </ion-label>
+          <ion-note *ngIf="(rval_shDo_userDatesCycles_maintCyc<100000)" item-end text-wrap color="secondary">
+            {{rval_shDo_userDatesCycles_maintCyc}}</ion-note>
+          <ion-note *ngIf="(rval_shDo_userDatesCycles_maintCyc<200000) && (rval_shDo_userDatesCycles_maintCyc>= 100000)"
+            item-end text-wrap color="warning">{{rval_shDo_userDatesCycles_maintCyc}}</ion-note>
+          <ion-note *ngIf="(rval_shDo_userDatesCycles_maintCyc>=200000)" item-end text-wrap color="danger">
+            {{rval_shDo_userDatesCycles_maintCyc}}</ion-note>
+        </ion-item>
+      </ion-list>
+
+      <!-- Version logiciels -->
+      <ion-list>
+        <ion-list-header text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.FIRMWARE_REV_SUBTITLE" | translate }}
+        </ion-list-header>
+
+        <!-- Version soft moteur -->
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.FIRMWARE_REV.MOTOR" | translate }}</ion-label>
+          <ion-note item-end text-wrap>
+            {{rval_shDo_version[14]| number : '2.0-0'}}.{{rval_shDo_version[15]| number : '2.0-0'}}.{{rval_shDo_version[16]| number : '2.0-0'}}.{{rval_shDo_version[17]| number : '2.0-0'}}
+          </ion-note>
+        </ion-item>
+
+        <!-- Version stack BLE -->
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.FIRMWARE_REV.STACKBLE" | translate }}</ion-label>
+          <ion-note item-end text-wrap>
+            {{rval_shDo_version_bleStack_major| number : '1.0-0'}}.{{rval_shDo_version_bleStack_minor | number : '1.0-0'}}.{{rval_shDo_version_bleStack_patch | number : '1.0-0'}}.{{rval_shDo_version_bleStack_build | number : '1.0-0'}}
+          </ion-note>
+        </ion-item>
+
+        <!-- Version soft module BLE -->
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.FIRMWARE_REV.BLE" | translate }}</ion-label>
+          <ion-note item-end text-wrap>
+            {{rval_shDo_version[8]| number : '2.0-0'}}.{{rval_shDo_version[9]| number : '2.0-0'}}.{{rval_shDo_version[10]| number : '2.0-0'}}.{{rval_shDo_version[11]| number : '2.0-0'}}
+          </ion-note>
+        </ion-item>
+      </ion-list>
+
+      <!-- Materiel -->
+      <ion-list>
+        <ion-list-header text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.HARD_REV_SUBTITLE" | translate }}
+        </ion-list-header>
+
+        <!-- identifiant materiel -->
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.HARD_REV.CONTROL" | translate }}</ion-label>
+          <ion-note item-end text-wrap>
+            {{rval_shDo_version[12]| number : '2.0-0'}}.{{rval_shDo_version[13]| number : '2.0-0'}}</ion-note>
+        </ion-item>
+
+          <!-- JDU V1.2.0 - Ajout code unique (addrress Device module BLE ) -->
+        <!-- Numéro de serie -->
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.HARD_REV.SN" | translate }}</ion-label>
+          <ion-note item-end text-wrap>
+            {{rval_shDo_version_motAddress_0 | uppercase}}.{{rval_shDo_version_motAddress_1 | uppercase}}.{{rval_shDo_version_motAddress_2 | uppercase}}.{{rval_shDo_version_motAddress_3 | uppercase}}.{{rval_shDo_version_motAddress_4 | uppercase}}.{{rval_shDo_version_motAddress_5 | uppercase}}</ion-note>
+        </ion-item>
+
+      </ion-list>
+
+      <!-- Info supplementaires -->
+      <ion-list>
+        <ion-list-header text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.HEADER" | translate }}
+        </ion-list-header>
+
+        <!-- Nombre de redemarrages -->
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.INIT" | translate }}</ion-label>
+          <!-- JDU V1.1.0 : affichage nombre cycle sans "," pour les miliers (suppr. de : "number : '2.0-0") -->
+          <ion-note item-end text-wrap>
+            {{rval_shDo_proMaintenance_NbInit}}
+          </ion-note>
+        </ion-item>
+
+        <!-- Nb cycle depuis dernier redemarrage -->
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.CINIT" | translate }}</ion-label>
+          <!-- JDU V1.1.0 : affichage nombre cycle sans "," pour les miliers (suppr. de : "number : '2.0-0") -->
+          <ion-note item-end text-wrap>
+            {{rval_shDo_proMaintenance_NbCyclesSinceInit}}
+          </ion-note>
+        </ion-item>
+
+        <!-- Nombre detection obstacle -->
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.OBSDETECT" | translate }}</ion-label>
+          <!-- JDU V1.1.0 : affichage nombre cycle sans "," pour les miliers (suppr. de : "number : '2.0-0") -->
+          <ion-note item-end text-wrap>
+            {{rval_shDo_proMaintenance_NbObsDetect}}
+          </ion-note>
+        </ion-item>
+
+        <!-- Nombre d'apprentissage -->
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.LC" | translate }}</ion-label>
+          <!-- JDU V1.1.0 : affichage nombre cycle sans "," pour les miliers (suppr. de : "number : '2.0-0") -->
+          <ion-note item-end text-wrap>
+            {{rval_shDo_proMaintenance_NbLearningCycle}}
+          </ion-note>
+        </ion-item>
+        
+        <!-- <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.WSO" | translate }}</ion-label>
+          <ion-note item-end text-wrap>
+            {{rval_shDo_proMaintenance_NbWrongStopOpen| number : '2.0-0'}}
+          </ion-note>
+        </ion-item>
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.WSC" | translate }}</ion-label>
+          <ion-note item-end text-wrap>
+            {{rval_shDo_proMaintenance_NbWrongStopClose | number : '2.0-0'}}
+          </ion-note>
+        </ion-item> -->
+        <!-- <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.EC" | translate }}</ion-label>
+          <ion-note item-end text-wrap>
+            {{rval_shDo_proMaintenance_NbErrorEncoder | number : '2.0-0'}}
+          </ion-note>
+        </ion-item>
+        <ion-item>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.EM" | translate }}</ion-label>
+          <ion-note item-end text-wrap>
+            {{rval_shDo_proMaintenance_NbErrorMotor | number : '2.0-0'}}
+          </ion-note>
+        </ion-item> -->
+      </ion-list>
+    </div>
+
+  </div>
+</ion-content>

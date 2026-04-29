@@ -1,0 +1,127 @@
+<ion-header>
+  <ion-navbar hideBackButton color="navBarColor">
+    <ion-title>
+      {{ "SCAN_PAGE.NAVBAR.SELECTION" | translate }}
+    </ion-title>
+    <ion-buttons end>
+      <button ion-button icon-only (click)="presentPopover($event)">
+        <ion-icon name="ai-param"></ion-icon>
+      </button>
+    </ion-buttons>
+
+  </ion-navbar>
+  <ion-toolbar no-border-top color="navBarColor">
+    <ion-grid>
+      <ion-row>
+        <ion-col>
+        </ion-col>
+        <ion-col>
+
+          <button justify-content-center align-items-center icon-start [disabled]="isScanning" ion-button
+            style="width:100%; height:60px" (click)="initScan()" color="light">
+            <ion-icon color="navBarColor" name="search"></ion-icon>
+            <div class="searchText" color="navBarColor">{{ "SCAN_PAGE.NAVBAR.SEARCH" | translate }}</div>
+          </button>
+
+        </ion-col>
+        <ion-col >
+          <ion-spinner color="light" [hidden]="!isScanning" name="crescent" style="zoom:1.5;"></ion-spinner>
+        </ion-col>
+       
+      </ion-row>
+    </ion-grid>
+  </ion-toolbar>
+</ion-header>
+
+
+<ion-content class="outer-content">
+  <ion-list *ngIf='devices.length !== 0'>
+    <ion-item-sliding *ngFor="let device of devices" (ionDrag)="itemDragged($event, device)" (ionSwipe)="swipe()">
+      <button ion-item (click)="deviceSelected(device)">
+        <h2 text-wrap>
+          <b>{{ "SCAN_PAGE.NAME" | translate }}</b> {{device?.name?.replace('#CHA','').replace('#CUI','').replace('#SDB','').replace('#ENT','').replace('#SAL','').replace('#WCS','').replace('#SDJ','').replace('#SLL','').replace('#GAR','').replace('#SAM','')
+            || 'Unnamed' }}</h2>
+        <div *ngIf="isVisiblePaired" [ngSwitch]="device.isBonded">
+          <p *ngSwitchCase="true">{{ "SCAN_PAGE.PAIRED" | translate }}
+            <span ion-text color="secondary">{{"SCAN_PAGE.PAIRED_YN.YES" | translate }}</span>
+          </p>
+          <p *ngSwitchCase="false">{{ "SCAN_PAGE.PAIRED" | translate }}
+            <span ion-text color="danger">{{"SCAN_PAGE.PAIRED_YN.NO" | translate }}</span>
+          </p>
+          <p *ngSwitchDefault>{{ "SCAN_PAGE.PAIRED_NA" | translate }}</p>
+        </div>
+
+        <p text-wrap *ngIf="(isVisibleMac) && (!viewisIos)">
+          {{ "SCAN_PAGE.MAC_ADDRESS" | translate }}
+          {{device?.address}}
+        </p>
+        <p text-wrap *ngIf="(isVisibleMac) && (viewisIos)">
+          {{ "SCAN_PAGE.UUID_ADDRESS" | translate }}
+          {{device?.address}}
+        </p>
+
+        <p *ngIf="(device.rssi<-90)">{{ "SCAN_PAGE.SIGNAL_QUALITY" | translate }}
+          <span> <img src="assets/img/img_ble_strenght_0_4.svg" class="img-full"> </span>
+        </p>
+        <p *ngIf="(device.rssi<-80) && (device?.rssi>=-90)">{{ "SCAN_PAGE.SIGNAL_QUALITY" | translate }}
+          <span> <img src="assets/img/img_ble_strenght_1_4.svg" class="img-full"> </span>
+        </p>
+        <p *ngIf="(device.rssi<-67) && (device?.rssi>=-80) ">{{ "SCAN_PAGE.SIGNAL_QUALITY" | translate }}
+          <span> <img src="assets/img/img_ble_strenght_2_4.svg" class="img-full"> </span>
+        </p>
+
+        <p *ngIf="(device.rssi<-52) && (device?.rssi>=-67) ">{{ "SCAN_PAGE.SIGNAL_QUALITY" | translate }}
+          <span> <img src="assets/img/img_ble_strenght_3_4.svg" class="img-full"> </span>          
+        </p>
+        <p *ngIf="(device.rssi>=-52)">{{ "SCAN_PAGE.SIGNAL_QUALITY" | translate }}
+          <span> <img src="assets/img/img_ble_strenght_4_4.svg" class="img-full"> </span>
+        </p>
+
+        <ion-icon item-start *ngIf="device?.name?.match('#CHA')" name="ai-loc-cha" large color="wimGreyColor">
+        </ion-icon>
+        <ion-icon item-start *ngIf="device?.name?.match('#SAL')" name="ai-loc-sal" large color="wimGreyColor">
+        </ion-icon>
+        <ion-icon item-start *ngIf="device?.name?.match('#CUI')" name="ai-loc-cui" large color="wimGreyColor">
+        </ion-icon>
+        <ion-icon item-start *ngIf="device?.name?.match('#SAM')" name="ai-loc-sam" large color="wimGreyColor">
+        </ion-icon>
+        <ion-icon item-start *ngIf="device?.name?.match('#SDB')" name="ai-loc-sdb" large color="wimGreyColor">
+        </ion-icon>
+        <ion-icon item-start *ngIf="device?.name?.match('#WCS')" name="ai-loc-wcs" large color="wimGreyColor">
+        </ion-icon>
+        <ion-icon item-start *ngIf="device?.name?.match('#GAR')" name="ai-loc-garage" large color="wimGreyColor">
+        </ion-icon>
+        <ion-icon item-start *ngIf="!device?.name?.match('#')" name="moventiv-room_other" large color="wimGreyColor">
+        </ion-icon>
+      </button>
+
+
+    </ion-item-sliding>
+  </ion-list>
+  <div *ngIf='devices.length === 0'>
+    <div *ngIf="isScanning" class="noMotDiv" text-center justify-content-center align-items-center>
+      <p justify-content-center align-items-center style="height: 100%">
+        {{ "SCAN_PAGE.SEARCHING_INPROGRESS" | translate }}</p>
+    </div>
+
+    <div *ngIf="!isScanning" class="noMotDiv" text-center justify-content-center align-items-center>
+      <p justify-content-center align-items-center style="height: 100%">{{ "SCAN_PAGE.SEARCHING_NOMOT" | translate }}
+      </p>
+    </div>
+
+  </div>
+
+
+  <ion-fab right bottom>
+    <button ion-fab color="mantionSmtgreen" (click)="pushInfoSlide()">
+      Infos
+    </button>
+  </ion-fab>
+
+  <ion-fab left bottom>
+      <button ion-fab color="mantionSmtblue" (click)="launchDemoMode()">
+          {{ "SCAN_PAGE.CIRCLEBUTTONS.EXAMPLE" | translate }}
+      </button>
+    </ion-fab>
+
+</ion-content>

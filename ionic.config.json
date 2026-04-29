@@ -1,0 +1,8 @@
+{
+  "name": "mantion_smt",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "ionic-angular",
+  "id": "be7e5ef6"
+}

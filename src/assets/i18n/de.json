@@ -1,0 +1,607 @@
+{
+	"GENERIC": {
+		"BACK": "Zurück"
+	},
+	"SCAN_PAGE": {
+		"NAVBAR": {
+			"SELECTION": "Auswahl",
+			"SEARCH": "Suche"
+		},
+		"SEARCHING_INPROGRESS": "Suche läuft...",
+		"SEARCHING_NOMOT": "Kein Motor gefunden.",
+		"NAME": "Name : ",
+		"MAC_ADDRESS": "MAC:",
+		"UUID_ADDRESS": "UUID:",
+		"PAIRED": "Verbunden : ",
+        "PAIRED_NA": "Verbunden : ",
+		"PAIRED_YN": {
+			"NO": "Nein",
+			"YES": "Ja"
+		},
+		"SIGNAL_QUALITY": "Signalstärke : ",
+		"SIGNAL_QUALITY_VERYBAD": "Sehr schlecht",
+		"SIGNAL_QUALITY_BAD": "Schlecht",
+		"SIGNAL_QUALITY_GOOD": "Gut",
+		"SIGNAL_QUALITY_VERYGOOD": "Sehr gut",
+		"SIGNAL_QUALITY_EXCELLENT": "Exzellent",
+		"PAIR": "Verbinden",
+		"UNPAIR": "Entfernen",
+		"PERM_PROMPT": {
+			"TITLE": "Autorisierung benötigt",
+			"MESSAGE": "Es ist notwendig den Zugriff auf die Ortungsfunktion zu autorisieren, damit das Gerät Bluetooth nutzen kann. Keine persönlichen Daten werden von der App genutzt oder weitergegeben.",
+			"BUTTONS": {
+				"NO": {
+					"TEXT": "Verweigern",
+					"ROLE": "Verweigern"
+				},
+				"YES": "Erreichte Anfrage auf Autorisierung"
+			}
+		},
+		"QUIT_PROMPT": {
+			"MESSAGE": "Möchten Sie die Anwendung beenden?",
+			"BUTTONS": {
+				"NO": "Abbrechen",
+				"YES": "Beenden"
+			}			
+		},
+		"ALERT": {
+			"BLENOTENABLE": {
+				"TITLE": "Bluetooth ist nicht aktiviert",
+				"MESSAGE": "Bluetooth ist auf dem Smartphone nicht aktiviert, bitte aktiereven Sie Blootooth und suchen Sie nach dem Motor.",
+				"BUTTONS": {
+					"NO": {
+						"TEXT": "Abbrechen",
+						"ROLE": "Abbrechen"
+					},
+					"YES": "Aktivieren"
+				}
+			}
+		},
+		"CIRCLEBUTTONS": {
+			"EXAMPLE": "Beispiel"
+		}
+	},
+	"POPOVER": {
+		"PARAMETERS": "App Einstellungen",
+		"HELP": "Hilfe",
+		"ABOUT": "Über uns",
+		"WHO" : "Wer sind wir?",
+		"CONTACTS": "Kontakt",
+		"LEGAL_NOTICE": "AGB"
+	},
+	"MOVENTIV_PAGE": {
+		"NAVBAR_TITLE": "Befehle",
+		"CONTROLLED_DOOR": "Verbundene Tür : ",
+		"CONTROLLED_DOOR_NOCONNECTEDDOOR": "Keine Tür verbunden",
+		"COMMANDS_TAB": {
+			"COMMANDS_TAB_TITLE": "Befehle",
+			"DOOR_STATE": "Tür Status : ",
+			"DOOR_STATE_UNKNOW": "Unbekannt",
+			"DOOR_STATE_OPEN": "Öffnen",
+			"DOOR_STATE_OPENING": "Öffnet sich",
+			"DOOR_STATE_OPENINGDETECTOBS": "Auf ein Hindernis beim Öffnen gestoßen",
+			"DOOR_STATE_OPENINGBACKAFTEROBS": "Tür schließt sich nachdem beim Öffnen auf ein Hindernis gestoßen wurde",
+			"DOOR_STATE_CLOSE": "Schließen",
+			"DOOR_STATE_CLOSING": "Schließt sich",
+			"DOOR_STATE_CLOSINGDETECTOBS": "Auf ein Hindernis beim Schließen gestoßen",
+			"DOOR_STATE_CLOSINGBACKAFTEROBS": "Tür öffnet sich nachdem beim Schließen auf ein Hindernis gestoßen wurde",
+			"COMBUTTON_OPEN": "Öffnen",
+			"COMBUTTON_CLOSE": "Schließen",
+			"COMTOOGLE_MAINTAINOPEN": "Tür geöffnet halten",
+			"COMTOOGLE_LOCKCLOSE": "Tür geschlossen halten",
+			"COMTOOGLE_LEDLIGHTBAND": "Aktivierung des LED",
+			"COMTOOGLE_DYNLEDLIGHTBAND": "Licht beim Öffnen",
+			"LOCK_PROMPT": {
+				"TITLE": "Dieser Befehl kann nicht ausgeführt werden",
+				"SUBTITLE": "Deaktivieren Sie \"Tür geöffnet halten\" bevor",
+				"BUTTON_OK": "OK"
+			},
+			"LOCK_CONFIRM":{
+				"TITLE": "Tür geschlossen halten",
+				"SUBTITLE" : "Die Tür wird verriegelt und kann ohne Deaktivierung dieser Option nicht mehr geöffnet werden.",
+				"BUTTON_OK" : "OK"
+			},
+			"RETENTION_PROMPT": {
+				"TITLE": "Dieser Befehl kann nicht ausgeführt werden",
+				"SUBTITLE": "Deaktivieren Sie \"Tür geschlossen halten\" bevor",
+				"BUTTON_OK": "OK"
+			}
+		},
+		"ADJUSTMENTS_TAB": {
+			"INCDECBUTTON": {
+				"INC": "Incr",
+				"DEC": "Decr"
+			},
+			"ADJUSTMENTS_TAB_TITLE": "Einstellungen",
+			"COMTOOGLE_DYNLEDLIGHTBAND": "LED Leuchte während des Öffnens",
+			"COMTOOGLE_RGBINDIC": "Haupt LED",
+			"CLOSE_SPEED_LABEL": "Schließgeschwindigkeit",
+			"OPEN_SPEED_LABEL": "Öffnungsgeschwindigkeit",
+			"AUTOCLOSING_TIMEDELAYSHORT_LABEL": "Schließverzögerung",
+			"AUTOCLOSING_TIMEDELAYLONG_LABEL": "Lange Schließverzögerung",
+			"NAME_AND_LOCALIZATION_LABEL": "Name und Ort",
+			"MODIFY_NAME_FORMLABEL": "Ändern Sie den Namen Ihres MOVENTIV",
+			"ASSOCIATE_FORMLABEL": "Ihren MOVENTIV mit einem Raum verknüpfen",
+			"ASSOCIATEFORM": {
+				"CANCELTEXT": "Abbrechen",
+				"OKTEXT": "Bestätigen",
+				"VALMESSAGE": {
+					"REQUIRED": "Ein Name wird benötigt.",
+					"MINLENGHT": "Der Name muss aus mindestens fünf Zeichen bestehen.",
+					"MAXLENGHT": "Der Name darf nicht aus mehr als 15 Zeichen bestehen.",
+					"PATTERN": "Der Name darf nur aus Standard-Zeichen bestehen."
+				}
+			},
+			"ROOM_TYPE": {
+				"BEDROOM": "Schlafzimmer",
+				"LIVING_ROOM": "Wohnzimmer",
+				"DINING_ROOM": "Esszimmer",
+				"KITCHEN": "Küche",
+				"BATHROOM": "Badezimmer",
+				"TOILET": "Bad",
+				"GARAGE_UTILITYROOM": "Garage / Abstellraum",
+				"PLAYROOM": "Spielzimmer"
+			},
+			"FORMBUTTON_VALIDATE": "BESTÄTIGEN"
+		},
+		"INFORMATIONS_TAB": {
+			"INFORMATIONS_TAB_TITLE": "Informationen",
+			"GENERAL_INFORMATIONS_SUBTITLE": "Allgemeine Informationen",
+			"SWITCHSTATES": {
+				"HEADER": "Status",
+				"PUSHAGO": {
+					"LABEL": "Push'n Go",
+					"STATE": {
+						"ON": "Aktiviert",
+						"OFF": "Deaktiviert"
+					}
+				},
+				"BLE": {
+					"LABEL": "Bluetooth",
+					"STATE": {
+						"ON": "Aktiviert",
+						"OFF": "Deaktiviert"
+					}
+				},
+				"CLOSEMODE": {
+					"LABEL": "Schließmodus",
+					"STATE": {
+						"MANUAL": "Manuell",
+						"AUTO": "Automatisch"
+					}
+				},
+				"OPENDIRECTION": {
+					"LABEL": "Öffnen",
+					"STATE": {
+						"LEFT": "gegenüber dem Kabelausgang",
+						"RIGHT": "zum Kabelausgang"
+					}
+				},
+				"PAIRLEARN": {
+					"LABEL": "Verbunden / Anlernen",
+					"STATE": {
+						"PEER": "Anlernen",
+						"LEARN": "Verbunden"
+					}
+				}
+			},
+			"GENERAL_INFORMATIONS_SUBTITLE": "Allgemeine Informationen",
+			"GENERAL_INFORMATIONS": {
+				"ACTUAL_WEIGHTPROFILE": "Gewichtsprofil",
+				"MAX_WEIGHT": "Maximales Gewicht",
+				"DATEOF_FIRSTUSE": "Datum der ersten Nutzung",
+				"NB_CYCLE_TOT": "Anzahl der Öffnungs- und Schließzyklen seit erster Nutzung"
+			},
+			"MAINTENANCE_SUBTITLE": "Wartung",
+			"MAINTENANCE": {
+				"DATEOF_LASTMAINT": "Datum der letzten Wartung",
+				"NB_CYCLES_SINCELASTMAINT": "Anzahl der Öffnungs- und Schließzyklen seit erster Nutzung"
+			},
+			"FIRMWARE_REV_SUBTITLE": "Firmware Versionen",
+			"FIRMWARE_REV": {
+				"MOTOR": "Tür Fernbedienung Firmware",
+				"BLE": "Bluetooth Firmware",
+				"STACKBLE": "Bluetooth Stack Version"
+			},
+			"HARD_REV_SUBTITLE": "Hardware Version",
+			"HARD_REV": {
+				"CONTROL": "Tür Fernbedienung",
+				"SN" : "Seriennummer"
+			},
+			"SUPINFO": {
+				"HEADER": "Zusatzinformationen",
+				"INIT": "Anzahl Neustarts",
+				"CINIT": "Anzahl der Öffnungs- und Schließzyklen seit dem letzten Neustart",
+				"OBSDETECT": "Anzahl erkannter Hindernisse",
+				"WSO": "Anzahl falscher Öffnungen",
+				"WSC": "Anzahl falscher Schließungen",
+				"OHM": "Anzahl überhitzter Motor",
+				"LC" : "Lernanzahl",
+				"EC": "Anzahl Encoder Fehler",
+				"EM": "Anzahl Motorfehler"
+			}
+		},
+		"PUTTINGINTOSERVICE_TAB": {
+			"TAB_TITLE": "Einrichtung",
+			"WEIGHT_TUNING": {
+				"TITLE": "Justierung des Gewichts",
+				"SELECTION_PAGE": "Türgewicht auswählen",
+				"UNDER20": "< 20 kg",
+				"20TO40": "20 - 30 kg",
+				"40TO50": "30 - 40 kg",
+				"50TO60": "40 - 50 kg",
+				"40TO60": "40 - 60 kg",
+				"60MORE": "50 - 60 kg",
+				"WARNING": "ACHTUNG: Wenn Sie diesen Parameter ändern, werden die Geschwindigkeitseinstellungen zurückgesetzt!",
+				"BUTTONS": {
+					"CANCEL": "Abbrechen",
+					"OK": "Bestätigen"
+				},
+				"WEIGHTCHECK": {
+					"LOADER": "Überprfen ob Parameter korrekt gespeichert wurden",
+					"OK": {
+						"TITLE": "Bestätigung erforderlich",
+						"MESSAGE": "Parameter wurde erfolgreich gespeichert"
+					},
+					"BUTTON": {
+						"OK": "OK"
+					},
+					"ERROR": {
+						"TITLE": "Bestätigung erforderlich",
+						"MESSAGE": "Ein Problem ist aufgetreten, bitte versuchen Sie es erneut"
+					}
+				}
+			},
+			"MAINTENANCE": {
+				"PROMPT": {
+					"TITLE": "Bestätigung erforderlich",
+					"MESSAGE": "Bestätigen Sie, dass die Wartung durchgeführt wurde am: ",
+					"MESSAGE2": "Anzahl der Öffnungs- und Schließzyklen seit der letzten Wartung wird zurückgesetzt."
+				},
+				"MESSAGE_SETUP": {
+					"MESSAGE": "Bestätigen Sie, dass die Wartung durchgeführt wurde am:",
+					"MESSAGE2": "Das Datum der letzten Wartung wird zurückgesetzt."
+				},
+				"BUTTONS": {
+					"NO": {
+						"TEXT": "Ablehnen",
+						"ROLE": "Ablehnen"
+					},
+					"YES": "Bestätigen"
+				}
+			},
+			"RADARORBUTTON": {
+				"HEADER": "Eingänge konfigurieren",
+				"INPUT1": {
+					"NAME": "Eingang 1",
+					"RADAR": "Funk",
+					"BUTTON": "Kabel"
+				},
+				"INPUT2": {
+					"NAME": "Eingang 2",
+					"RADAR": "Funk",
+					"BUTTON": "Kabel"
+				}
+			},
+			"EXTRA_COMMANDS": {
+				"TITLE": "Weitere Befehle",
+				"LEARNING_BUTTON": "Anschläge erlernen",
+				"RESET_BUTTON": "Alle Parameter zurücksetzen",
+				"MAINTENANCE_BUTTON": "Wartung abgeschlossen",
+				"SETUP_BUTTON": "Einstellungen abgeschlossen"
+			},
+			"ADVANCEDTUNING": {
+				"TITLE": "Fortgeschrittene Justierung",
+				"SPEEDNEARCLOSE": "Endgeschwindigkeit beim Schließen",				
+				"SPEEDNEAROPEN": "Endgeschwindigkeit beim Öffnen",
+				"TORQUENEARCLOSE": "Schließungsende Drehmoment",
+				"TORQUENEAROPEN": "Öffnungsende Drehmoment",
+				"BRAKINGPOWER": "Braking in open",
+				"OBSTACLESENSI" : "Obstacle detection sensibility"
+			},
+			"SUPERADVANCEDTUNING": {
+				"TITLE": "Experten Einstellungen",
+				"ASKPASSWORD": "Passwort eingeben",
+				"PASSWORD.VALMESSAGE": "Ein Passwort ist notwendig",
+				"PASSWORD.MAXLENGHT": "Passwort darf eine max. Länge von 35 Zeichen haben"
+			}
+		}
+	},
+	"WIDOOR_PAGE": {
+			"COMMANDS_TAB": {
+				"COMMANDS_TAB_TITLE": "Fernbedienungen",
+				"DOOR_STATE": "Türposition: ",
+				"DOOR_STATE_UNKNOW": "Unbekannt",
+				"DOOR_STATE_OPEN": "Offen",
+				"DOOR_STATE_OPENING": "Öffnen",
+				"DOOR_STATE_LEARNINGFIRSTSTOP": "Suche nach erstem Stop",
+				"DOOR_STATE_LEARNINGSECONDSTOP": "Suche nach zweitem Stop",
+				"DOOR_STATE_LEARNINGSINGLESTOP": "Initialisierung des Anlernens",
+				"DOOR_STATE_WAITINGLEARNINGSTOP": "Warte auf Anlernen des Stops",
+				"DOOR_STATE_OPENINGDETECTOBS": "Hindernis während des Öffnens",
+				"DOOR_STATE_OPENINGBACKAFTEROBS": "Tür wird nach Hindernis geöffnet",
+				"DOOR_STATE_STOPINOPENOBS": "Tür wird nach mehreren Hindernissen geöffnet",
+				"DOOR_STATE_CLOSE": "Geschlossen",
+				"DOOR_STATE_CLOSING": "Schließen",
+				"DOOR_STATE_CLOSINGDETECTOBS": "Hindernis während des Schließens",
+				"DOOR_STATE_CLOSINGBACKAFTEROBS": "Tür wird nach Hindernis wieder geschlossen"			
+				},
+		"ADJUSTMENTS_TAB": {
+			"BASIC": {
+				"TITLE": "Grundeinstellungen",
+				"MODIFY_NAME_FORMLABEL": "Ändern Sie den Namen Ihres WIDOOR Motors",
+				"ASSOCIATE_FORMLABEL": "Verknüpfen Sie den Raum Ihres WIDOOR Motors"
+			},
+			"ADVANCED": {
+				"TITLE": "Fortgeschrittene Einstellungen",
+				"BREAKFORCEATOPEN": {
+					"TITLE": "Abbremsung beim Öffnen"
+				},
+				"ALERT": {
+					"TITLE": "Achtung",
+					"SUBTITLE": "Bitte seien Sie sorgfältig bei Nutzung der fortgeschrittenen Einstellungen, da diese die Führung der Tür beeinflussen können. Lesen Sie die Bedienungsanleitung sorgfältig, bevor Sie Änderungen vornehmen.",
+					"BUTTONS": {
+						"NO": {
+							"TEXT": "Abbrechen",
+							"ROLE": "Abbrechen"
+						},
+						"YES": "Fortsetzen"
+					},
+					"PRESENT": "Parameter werden zurückgesetzt..."
+				},
+				"RESETALERT": {
+					"TITLE": "ACHTUNG",
+					"SUBTITLE": "Es werden alle Einstellungen zurückgesetzt.",
+					"BUTTONS": {
+						"NO": {
+							"TEXT": "Abbrechen",
+							"ROLE": "Abbrechen"
+						},
+						"YES": "Fortsetzen"
+					}
+				},
+				"LOCK": {
+					"TITLE": "Ausgänge konfigurieren",
+					"STATE_ENABLED": "Aktivieren",
+					"STATE_DISABLED": "Deaktivieren",
+					"NAME": "Schloss"
+				},
+				"RADAR_TEST": {
+					"TITLE": "Konfiguration des Bewegungsmelder Test Ausgangs",
+					"STATE_ENABLED": "Aktivieren",
+					"STATE_DISABLED": "Deaktivieren",
+					"OUTPUT1": {
+						"NAME": "T1"
+					},
+					"OUTPUT2": {
+						"NAME": "T2"
+					}
+				}
+			}
+		},
+		"INFORMATIONS_TAB": {
+			"SWITCHSTATES": {
+				"OPENDIRECTION": {
+					"STATE": {
+						"CCW": "CCW",
+						"CW": "CW"
+					},
+					"LABEL": "Im Uhrzeigersinn"
+				}
+			}
+		}
+	},
+	"HELP_PAGE": {
+		"TITLE": "Hilfe",
+		"PAIRING": {
+			"TITLE": "Verbindung",
+			"ANDROID": {
+				"TEXT": "<h6>So verbinden Sie Ihr Smartphone mit dem Motor</h6><br><p>Gehen Sie in die Verbindungseinstellungen Ihres Smartphones: Einstellungen > Verbindungen > Bluetooth > Suchen. Stellen Sie beim Motor den SWITCH 1 in die OFF Position, drücken Sie den Programmierknopf (die LED Lampe sollte dauerhaft magenta leuchten). Wählen Sie dann in Ihrer App WIDOOR aus." 
+			},
+			"IOS": {				
+				"TEXT": "<h6>So verbinden Sie Ihr iPhone mit dem Motor</h6><br><p>Gehen Sie in die Verbindungseinstellungen Ihres iPhones: Einstellungen > Verbindungen > Bluetooth > Suchen. Stellen Sie beim Motor den SWITCH 1 in die OFF Position, drücken Sie den Programmierknopf (die LED Lampe sollte dauerhaft magenta leuchten). Wählen Sie in Ihrer App dann WIDOOR und akzeptieren Sie die Verbindung. </p>"
+			}
+		},
+		"PAIRINGTROUBLES": {
+			"TITLE": "Verbindungsprobleme",
+			"ANDROID": {
+				"TEXT": "<h6>1.</h6><br><p>Bitte prüfen Sie, ob Bluetooth auf Ihrem Smartphone aktiviert ist<p>"
+			},
+			"IOS": {				
+				"TEXT": "<h6>1.</h6><br><p>Bitte prüfen Sie, ob Bluetooth auf Ihrem iPhone aktiviert ist</p>"
+			}
+		}
+	},
+		"ABOUT_PAGE": {
+			"NAVBAR_TITLE": "Über",
+			"CONTENT_TITLE": "MOVENTIV",
+			"VERSION": "Version :",
+			"LAST_MODIFICATION": "Letzte Änderungen : ",
+			"PARAGRAPHE1": "Die Gewichtsauswahlliste zeigt nun die zuletzt getroffene Auswahl an.",
+			"PARAGRAPHE2": "Hinzufügen einer Warnung beim Ändern des Gewichts",
+			"PARAGRAPHE2_LIST": {
+				"ITEM1": "",
+				"ITEM2": "",
+				"ITEM3": ""
+			},
+			"PARAGRAPHE3": "Hinzufügen dieser Seite (Über), Hinzufügen der Seite: Wer sind wir?",
+			"PARAGRAPHE4": "Gewichtsbereich 60-80kg hinzugefügt (nur Motor nach SN-2307)"
+		},
+		"WHO_PAGE": {
+			"NAVBAR_TITLE": "Wer sind wir?",
+			"CONTENT_TITLE": "MANTION SMT",
+			"CONTENT_SUBTITLE": "Der Spezialist für Heimmotoren",
+			"PARGRAPH1": "Vom Design bis zur Entwicklung, von der Herstellung bis zum Marketing, unterstützt Sie MANTION SMT bei Ihren Projekten mit einem Team, das sich vollstens um Ihre Zufriedenheit bemüht.",
+			"PARGRAPH2": "MANTION SMT bietet ein breites Sortiment an Qualitätsprodukten mit 5 Jahren Garantie.",
+			"PARGRAPH2_LIST": {
+				"ITEM1": "Motoren für Klappläden",
+				"ITEM2": "Motoren für Schiebeläden",
+				"ITEM3": "Motoren für Schiebetüren im Innenbereich"
+			},
+			"PARGRAPH3": "MANTION SMT Produkte sind innovativ und patentiert. Sie bieten wichtigen Komfort und echten Fortschritt im Bereich der Motorisierung Ihres Zuhauses.",
+			"PARGRAPH4": "MANTION SMT bieten Ihnen von einfachen bis komplexen Lösungen alles, um Ihren Ansprüchen gerecht zu werden. MANTION SMT stellt auch auf Ihre Wünsche individuell zugeschnitten Produkte her. (Preis auf Anfrage.)",
+			"ADDRESS": {
+				"PRESENTATION": "Alle kommerziellen Dienstleistungen, die Forschungs- und Entwicklungsabteilung, die Herstellung sowie alle administrativen Dienste haben Ihren Standort hier:",
+				"LOCALIZATION": "2, rue des métiers, ZA de la Tille, 21110 GENLIS (Frankreich)"
+			}
+		},
+		"CONTACT_PAGE": {
+			"NAVBAR_TITLE": "Kontakt",
+			"SEND_A_MESSAGE": "Senden Sie eine Nachricht",	
+			"CONTACT_1": {
+				"PHONE": {
+					"USERSEE": "Tél +33 (0)3 81 50 56 77",
+					"SYSTEMCALL": "492056582690"
+				},
+				"ADDRESS": {
+					"NAME": "MANTION SAS",
+					"STATE": "FRANCE",
+					"STREET": "7 rue Gay Lussac",
+					"CITY": "25000 BESANÇON"
+				},
+				"SEND_MESSAGE": {
+					"TO": "contact@mantion.com",
+					"CC": "contact@mantion-smt.com",
+					"SUBJECT": "Produkt Motor WIDOOR",
+					"BODY": "Guten Tag!"
+				}
+			},
+			"CONTACT_2": {
+				"PHONE": {
+					"USERSEE": "Tel +49 2056 582690",
+					"SYSTEMCALL": "492056582690"
+				},
+				"ADDRESS": {
+					"NAME": "MANTION Baubeschläge GmbH",
+					"STATE": "Deutschland",
+					"STREET": "Dieselstr. 18",
+					"CITY": "42579 Heiligenhaus"
+				},
+				"SEND_MESSAGE": {
+					"TO": "into@mantion.de",
+					"CC": "",
+					"SUBJECT": "Produkt Motor WIDOOR",
+					"BODY": "Guten Tag!"
+				}
+			}
+		},
+		"PARAM_PAGE": {
+			"NAVBAR_TITLE": "App Einstellungen",
+			"LISTHEADER_LANG": "Sprache",
+			"OPT_TAB": {
+				"HEADER": "Ansicht der Tabs",
+				"ADJUST": "Einstellungen",
+				"INFOS": "Informationen"
+			},
+			"SCAN_PAGE": {
+				"HEADER": {
+					"ANDROID": "Anzeige der MAC Adresse",
+					"IOS": "Anzeige der UUID"
+				},
+				"MACADDRESS": "Anzeige der MAC Adresse",
+				"UUID": "Anzeige der UUID"
+			},
+			"LISTHEADER_OPT_COM": "Anzeige der optionalen Befehle",
+			"LABEL_COM": "Befehl Tab",
+			"LABEL_LANG": "Sprache automatisch auswählen",
+			"SELECTLANG_FORMLABEL": "Sprache auswählen",
+			"LANGUAGE_MENU": {
+				"CANCELTEXT": "Abbrechen",
+				"OKTEXT": "OK"
+			},
+			"LANGUAGE": {
+				"DE": "Deutsch",
+				"ENG": "English",
+				"FR": "Français"
+			},
+			"OTHER_OPTION": {
+				"HEADER": "Optionen",
+				"VIBRATE": "Vibration",
+				"BLUETOOTH": "Aktiviere/deaktiviere Bluetooth automatisch"
+			},
+			"LOADINGTEXT_REBOOT": "plus utilisé"
+		},
+		"GCU_PAGE": {
+			"NAVBAR_TITLE": "AGB",
+			"TITLE": "Generelle Bestimmungen bei Nutzung der App",
+			"SUB_TITLE_1": "1. Gegenstand",
+			"CHAPTER_1": {
+				"PARA_1": "Die generellen Bestimmungen gelten für die App sowie alle weiteren Leistungen von Mantion SMT sowie deren Vertriebspartner. Bei Nutzung der App gelten die Allgemeinen Geschäftsbedingungen von Mantion SMT sowie dazugehöriger Leistungen. ",
+				"PARA_2": "Die App kann nur genutzt werden, wenn die Allgemeinen Geschäftsbedingungen akzeptiert werden.",
+				"PARA_3": "Die aktuelle Version gilt so lange, bis sie durch eine neue Version ersetzt wird."
+			},
+			"SUB_TITLE_2": "2. Hinweise",
+			"CHAPTER_2": {
+				"PARA_1": "Die App wurde von MANTION SMT entwickelt. Der Entwicklet behält sich alle Rechte an der App sowie dazugehörige Leistungen vor."
+			},
+			"SUB_TITLE_3": "3. Definition",
+			"CHAPTER_3": {
+				"DEF_OBJECT_1": "App: ",
+				"DEF_1": "Die mobile Applikationssoftware, wie Sie im App Store oder bei Google Play zum Herunterladen angeboten wird, sowieso die dazugehörigen Leistungen. Dazu gehört die Software sowie alle verbunden Dateien und nachfolgende Elemente: Texte, Bilder, Fotos, Videos, Funktionen.",
+				"DEF_OBJECT_2": "Nutzer: ",
+				"DEF_2": "Alle physischen Personen welche die App nutzen.",
+				"DEF_OBJECT_3": "Entwickler: ",
+				"DEF_3": "MANTION SMT"
+			}
+		},
+		"PROMPT": {
+			"CONNECTION": {
+				"TITLE": "Verbinden"
+			},
+			"DISCONNECTED": {
+				"TITLE": "Nicht verbunden"
+			}
+		},
+		"INFOSLIDE": {
+			"SKIP": "Überspringen",
+			"END": {
+				"READY": "Sind Sie bereit Ihren WIDOOR zu benutzen?",
+				"CONTINUE": "Fortfahren"
+			},
+			"SLIDE1": {
+				"TITLE": "Willkommen zum Tutorial!",
+				"DESC": "Dieses Tutorial stellt Ihnen die zentralen Funktionen der App vor."
+			},
+			"SLIDE2": {
+				"TITLE": "Motor bedienen",
+				"DESC": "Sie können Ihren Motor mit dem Smartphone oder einer Fernbedienung nutzen."
+			},
+			"SLIDE3": {
+				"TITLE": "Justieren Sie Ihren Motor",
+				"DESC": "Sie können die Geschwindigkeit, die Zeit bis zum automatischen Schließen und anderes einstellen."
+			},
+			"SLIDE4": {
+				"TITLE": "Konfigurieren Sie Ihren Motor",
+				"DESC": "Ändern Sie die Zuordnung der Terminals, beginnen Sie das Anerlernen etc."
+			},
+			"SLIDE5": {
+				"TITLE": "Informationen zum Motor",
+				"DESC": "Beispielsweise die SWITCH POSITIONS"
+			},
+			"SLIDE6": {
+				"TITLE": "App Einstellungen",
+				"DESC": "Deaktivieren Sie nicht genutzte Menüs."
+			},
+			"SLIDE7": {
+				"ANDROID": {
+					"TITLE": "Mit WIDOOR verbinden",
+					"DESC": "Gehen Sie in Ihrem Smartphone in die Bluetooth-Verbindungen (Einstellungen -> Bluetooth -> Meine Geräte) Stellen Sie den SWITCH 1 in die OFF Position beim Motor, drücken Sie den Programmierknopf (die LED Lampe sollte dauerhaft magenta leuchten). Wählen Sie in Ihrem Smartphone dann WIDOOR aus, dann sollte der Motor sich mit Ihrem Smartphone verbinden."
+								
+				},
+				"IOS": {
+					"TITLE": "Mit WIDOOR verbinden",
+					"DESC": "Gehen Sie in Ihrem iPhone in die Bluetooth-Verbindungen (Einstellungen -> Bluetooth -> Meine Geräte) Stellen Sie den SWITCH 1 in die OFF Position beim Motor, drücken Sie den Programmierknopf (die LED Lampe sollte dauerhaft magenta leuchten). Wählen Sie in Ihrer App dann WIDOR und akzeptieren Sie die Verbindung."
+				}
+			},
+			"SLIDE8": {
+				"ANDROID": {
+					"TITLE": "Ändern Sie den Namen Ihres WIDOORS",
+					"DESC": "Sobald der WIDOOR verbunden ist, können Sie den Namen ändern und ihn einem Raum zuordnen"
+				},
+				"IOS": {
+					"TITLE": "Ändern Sie den Namen Ihres WIDOORS",
+					"DESC": "Sobald der WIDOOR verbunden ist, können Sie den Namen ändern und ihn einem Raum zuordnen (es kann einige Minuten dauern, bis der neue Name im iPhone sichtbar ist)."
+				}
+			}
+		}
+	}
