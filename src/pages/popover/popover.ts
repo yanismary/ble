@@ -1,5 +1,5 @@
-import { Component, ViewChild } from '@angular/core';
-import { NavController, NavParams, App,Navbar } from 'ionic-angular';
+import { Component } from '@angular/core';
+import { NavController, NavParams, App } from 'ionic-angular';
 import { IonicPage, ViewController } from 'ionic-angular';
 import { LoggerService } from '../../providers/logger/logger.service';
 
@@ -35,16 +35,17 @@ export class PopoverPage {
   }
   //@ViewChild(Navbar) navBar: Navbar;
 
-  private rootNav(): NavController | null {
-    const nav = this.app.getRootNavById('rootNav') as NavController;
+  private openPage(page: string): void {
+    this.logger.info(this.TAG, 'Clic menu', { page: page });
 
-    if (nav) {
-      this.logger.info(this.TAG, 'Navigation rootNav utilisée');
-    } else {
-      this.logger.warn(this.TAG, 'Navigation rootNav introuvable');
-    }
+    const nav = this.app.getRootNav();
+    this.logger.info(this.TAG, 'Navigation menu via root nav', { page: page });
 
-    return nav || null;
+    this.viewCtrl.dismiss().then(() => {
+      return nav.push(page);
+    }).catch(error => {
+      this.logger.error(this.TAG, 'Erreur navigation menu', error);
+    });
   }
 
 /*
@@ -62,94 +63,35 @@ export class PopoverPage {
 */
 
   pushParamsPage(){
-    if ( this.navCtrl.canGoBack()) {
-      this.logger.debug(this.TAG, 'can go back true');
-    this.viewCtrl.dismiss('popover').then(() => {
-      const nav = this.rootNav();
-      if (!nav) {
-        return;
-      }
-      nav.push('ParamPage').then(() => {
-        this.navCtrl.remove(1, 1);
-      }); //we push from RootPage and not from PopoverNav, allow to use BackButton 
-    });
-    }
-    else {
-      this.logger.debug(this.TAG, 'can go back false');
-      this.viewCtrl.dismiss('popover').then(() => {
-        const nav = this.rootNav();
-        if (nav) {
-          nav.push('ParamPage');
-        }
-      }); 
-    }
+    this.logger.info(this.TAG, 'Clic pushParamsPage');
+    this.openPage('ParamPage');
   }
 
 
   pushAboutPage(){
-    this.viewCtrl.dismiss('popover').then(() => {
-      const nav = this.rootNav();
-      if (nav) {
-        nav.push('AboutPage');
-      }
-      //.then(() => {
-        //const startIndex = this.navCtrl.getActive().index - 1;
-        //this.navCtrl.remove(startIndex, 1);
-      }); //we push from RootPage and not from PopoverNav, allow to use BackButton 
-   // });
+    this.logger.info(this.TAG, 'Clic pushAboutPage');
+    this.openPage('AboutPage');
   }
 
   pushWhoPage(){
-    this.viewCtrl.dismiss('popover').then(() => {
-      const nav = this.rootNav();
-      if (nav) {
-        nav.push('WhoPage');
-      }
-      //.then(() => {
-        //const startIndex = this.navCtrl.getActive().index - 1;
-        //this.navCtrl.remove(startIndex, 1);
-      }); //we push from RootPage and not from PopoverNav, allow to use BackButton 
-   // });
+    this.logger.info(this.TAG, 'Clic pushWhoPage');
+    this.openPage('WhoPage');
   }
   
   pushContactPage(){
-    this.viewCtrl.dismiss('popover').then(() => {
-      const nav = this.rootNav();
-      if (nav) {
-        nav.push('ContactPage');
-      }
-      //.then(() => {
-      //  const startIndex = this.navCtrl.getActive().index - 1;
-      // this.navCtrl.remove(startIndex, 1);
-      }); //we push from RootPage and not from PopoverNav, allow to use BackButton 
-    //}); 
+    this.logger.info(this.TAG, 'Clic pushContactPage');
+    this.openPage('ContactPage');
   }
 
 
   pushGcuPage(){
-    this.viewCtrl.dismiss('popover').then(() => {
-      const nav = this.rootNav();
-      if (nav) {
-        nav.push('GcuPage');
-      }
-      //.then(() => {
-      //  const startIndex = this.navCtrl.getActive().index - 1;
-       // this.navCtrl.remove(startIndex, 1);
-      }); //we push from RootPage and not from PopoverNav, allow to use BackButton 
-    //}); 
+    this.logger.info(this.TAG, 'Clic pushGcuPage');
+    this.openPage('GcuPage');
   }
 
   pushHelpPage(){
-    this.viewCtrl.dismiss('popover').then(() => {
-      const nav = this.rootNav();
-      if (nav) {
-        nav.push('HelpPage');
-      }
-      //.then(() => {
-      //  const startIndex = this.navCtrl.getActive().index - 1;
-       // this.navCtrl.remove(startIndex, 1);
-      }); //we push from RootPage and not from PopoverNav, allow to use BackButton 
-    //}); 
+    this.logger.info(this.TAG, 'Clic pushHelpPage');
+    this.openPage('HelpPage');
   }
 
 
