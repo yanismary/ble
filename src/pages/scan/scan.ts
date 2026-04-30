@@ -343,6 +343,13 @@ export class ScanPage {
           return;
         }
 
+        if (code === 'BLE_LOCATION_DISABLED') {
+          this.logger.warn(this.TAG, 'Scan failed: location disabled', error);
+          this.setStatus(this.UI_MESSAGES.scanLocationDisabled);
+          this.showLocationSettingsPopup(error);
+          return;
+        }
+
         if (code === 'BLE_NOT_INITIALIZED') {
           this.logger.warn(this.TAG, 'Scan failed: BLE not initialized', error);
           this.setStatus(this.UI_MESSAGES.scanPrepareFailed);

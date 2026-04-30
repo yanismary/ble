@@ -35,6 +35,18 @@ export class PopoverPage {
   }
   //@ViewChild(Navbar) navBar: Navbar;
 
+  private rootNav(): NavController | null {
+    const nav = this.app.getRootNavById('rootNav') as NavController;
+
+    if (nav) {
+      this.logger.info(this.TAG, 'Navigation rootNav utilisée');
+    } else {
+      this.logger.warn(this.TAG, 'Navigation rootNav introuvable');
+    }
+
+    return nav || null;
+  }
+
 /*
   onViewDidLoad() {
     this.navBar.backButtonClick = () => {
@@ -53,7 +65,11 @@ export class PopoverPage {
     if ( this.navCtrl.canGoBack()) {
       this.logger.debug(this.TAG, 'can go back true');
     this.viewCtrl.dismiss('popover').then(() => {
-      this.app.getRootNav().push('ParamPage').then(() => {
+      const nav = this.rootNav();
+      if (!nav) {
+        return;
+      }
+      nav.push('ParamPage').then(() => {
         this.navCtrl.remove(1, 1);
       }); //we push from RootPage and not from PopoverNav, allow to use BackButton 
     });
@@ -61,7 +77,10 @@ export class PopoverPage {
     else {
       this.logger.debug(this.TAG, 'can go back false');
       this.viewCtrl.dismiss('popover').then(() => {
-        this.app.getRootNav().push('ParamPage');
+        const nav = this.rootNav();
+        if (nav) {
+          nav.push('ParamPage');
+        }
       }); 
     }
   }
@@ -69,7 +88,10 @@ export class PopoverPage {
 
   pushAboutPage(){
     this.viewCtrl.dismiss('popover').then(() => {
-      this.app.getRootNav().push('AboutPage');
+      const nav = this.rootNav();
+      if (nav) {
+        nav.push('AboutPage');
+      }
       //.then(() => {
         //const startIndex = this.navCtrl.getActive().index - 1;
         //this.navCtrl.remove(startIndex, 1);
@@ -79,7 +101,10 @@ export class PopoverPage {
 
   pushWhoPage(){
     this.viewCtrl.dismiss('popover').then(() => {
-      this.app.getRootNav().push('WhoPage');
+      const nav = this.rootNav();
+      if (nav) {
+        nav.push('WhoPage');
+      }
       //.then(() => {
         //const startIndex = this.navCtrl.getActive().index - 1;
         //this.navCtrl.remove(startIndex, 1);
@@ -89,7 +114,10 @@ export class PopoverPage {
   
   pushContactPage(){
     this.viewCtrl.dismiss('popover').then(() => {
-      this.app.getRootNav().push('ContactPage');
+      const nav = this.rootNav();
+      if (nav) {
+        nav.push('ContactPage');
+      }
       //.then(() => {
       //  const startIndex = this.navCtrl.getActive().index - 1;
       // this.navCtrl.remove(startIndex, 1);
@@ -100,7 +128,10 @@ export class PopoverPage {
 
   pushGcuPage(){
     this.viewCtrl.dismiss('popover').then(() => {
-      this.app.getRootNav().push('GcuPage');
+      const nav = this.rootNav();
+      if (nav) {
+        nav.push('GcuPage');
+      }
       //.then(() => {
       //  const startIndex = this.navCtrl.getActive().index - 1;
        // this.navCtrl.remove(startIndex, 1);
@@ -110,7 +141,10 @@ export class PopoverPage {
 
   pushHelpPage(){
     this.viewCtrl.dismiss('popover').then(() => {
-      this.app.getRootNav().push('HelpPage');
+      const nav = this.rootNav();
+      if (nav) {
+        nav.push('HelpPage');
+      }
       //.then(() => {
       //  const startIndex = this.navCtrl.getActive().index - 1;
        // this.navCtrl.remove(startIndex, 1);

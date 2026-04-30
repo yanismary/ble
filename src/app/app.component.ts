@@ -13,7 +13,7 @@ import { LoggerService } from '../providers/logger/logger.service';
 
 @Component({
   //templateUrl: 'app.html'
-  template: '<ion-nav #myNav [root]="rootPage"></ion-nav>'
+  template: '<ion-nav id="rootNav" #myNav [root]="rootPage"></ion-nav>'
 })
 export class MyApp {
   @ViewChild('myNav') nav: NavController

@@ -48,7 +48,11 @@ export class RandBLE {
   constructor(public platform: Platform, private logger: LoggerService) {
     this.platform.ready().then(async () => {
       try {
-        await BleClient.initialize({ androidNeverForLocation: true });
+        if (this.platform.is('android')) {
+          this.logger.info(this.TAG, 'BleClient initialization deferred until scan on Android');
+          return;
+        }
+        await this.initializeBleClient('constructor');
         this.logger.info(this.TAG, 'BleClient initialized');
       } catch (e) {
         this.logger.error(this.TAG, 'BleClient initialization error', e);
@@ -59,7 +63,7 @@ export class RandBLE {
   // --- INITIALISATION ---
 
   initialize(params?: any): Promise<any> {
-    return BleClient.initialize().then(() => {
+    return this.initializeBleClient('initialize').then(() => {
       return BleClient.isEnabled().then(enabled => {
         return { 
             status: enabled ? 'enabled' : 'disabled' 
@@ -69,6 +73,19 @@ export class RandBLE {
         return { status: 'disabled', message: error };
     });
 }
+
+  private initializeBleClient(context: string): Promise<void> {
+    this.logger.info(this.TAG, 'BLE permission initialization requested', {
+      context: context,
+      androidNeverForLocation: false
+    });
+
+    return BleClient.initialize({ androidNeverForLocation: false }).then(() => {
+      this.logger.info(this.TAG, 'BLE permissions accepted and client initialized', {
+        context: context
+      });
+    });
+  }
 
   isEnabled(): Promise<{ isEnabled: boolean }> {
     return BleClient.isEnabled().then(isEnabled => {
@@ -116,10 +133,14 @@ export class RandBLE {
     this.logger.info(this.TAG, 'Pre-scan check started');
 
     try {
-      await BleClient.initialize({ androidNeverForLocation: true });
+      await this.initializeBleClient('prepareForScan');
+      if (this.platform.is('android')) {
+        this.logger.info(this.TAG, 'Android location permission granted for BLE scan');
+        this.logger.info(this.TAG, 'Android bluetooth permission granted for BLE scan');
+      }
     } catch (error) {
       if (this.isPermissionDeniedError(error)) {
-        this.logger.warn(this.TAG, 'Pre-scan blocked: permission denied during initialize', error);
+        this.logger.warn(this.TAG, 'Pre-scan blocked: location/bluetooth permission denied during initialize', error);
         return { ready: false, reason: 'PERMISSION_DENIED', details: { stage: 'initialize', error: error } };
       }
       this.logger.error(this.TAG, 'Pre-scan failed during initialize', error);
@@ -142,6 +163,7 @@ export class RandBLE {
       this.logger.warn(this.TAG, 'Pre-scan blocked: bluetooth disabled');
       return { ready: false, reason: 'BLE_DISABLED', details: { stage: 'isEnabled' } };
     }
+    this.logger.info(this.TAG, 'Pre-scan bluetooth permission/state check passed');
 
     if (this.platform.is('android')) {
       const androidMajor = await this.getAndroidMajorVersion();
@@ -160,6 +182,9 @@ export class RandBLE {
             });
             return { ready: false, reason: 'LOCATION_DISABLED', details: { stage: 'isLocationEnabled', androidMajor: androidMajor } };
           }
+          this.logger.info(this.TAG, 'Pre-scan Android location services enabled', {
+            androidMajor: androidMajor
+          });
         } catch (error) {
           if (this.isPermissionDeniedError(error)) {
             this.logger.warn(this.TAG, 'Pre-scan blocked: permission denied during location check', error);
@@ -245,6 +270,30 @@ export class RandBLE {
     };
   }
 
+  private createPreScanBlockedError(precheck: IPreScanCheckResult): any {
+    const reason = precheck && precheck.reason ? precheck.reason : 'PRECHECK_FAILED';
+    let code = 'BLE_PRECHECK_FAILED';
+    let message = 'BLE pre-scan check failed';
+
+    if (reason === 'BLE_DISABLED') {
+      code = 'BLE_DISABLED';
+      message = 'Bluetooth is disabled';
+    } else if (reason === 'PERMISSION_DENIED') {
+      code = 'BLE_PERMISSION_DENIED';
+      message = 'Bluetooth/location permission denied';
+    } else if (reason === 'LOCATION_DISABLED') {
+      code = 'BLE_LOCATION_DISABLED';
+      message = 'Location services disabled';
+    }
+
+    return {
+      code: code,
+      message: message,
+      reason: reason,
+      raw: precheck
+    };
+  }
+
   private createMissingDeviceIdError(context: string, params?: any): any {
     const error: any = new Error('Identifiant Bluetooth manquant (deviceId/address/id).');
     error.code = 'BLE_DEVICE_ID_MISSING';
@@ -302,19 +351,13 @@ export class RandBLE {
         allowDuplicates: allowDuplicates
       });
 
-      observer.next({ status: 'scanStarted' });
-
       (async () => {
         try {
-          const enabled = await BleClient.isEnabled();
-          if (!enabled) {
-            const disabledError = {
-              code: 'BLE_DISABLED',
-              message: 'Bluetooth is disabled',
-              raw: null
-            };
-            this.logger.warn(this.TAG, 'Scan blocked: Bluetooth disabled', disabledError);
-            observer.error(disabledError);
+          const precheck = await this.prepareForScan();
+          if (!precheck.ready) {
+            const blockedError = this.createPreScanBlockedError(precheck);
+            this.logger.warn(this.TAG, 'Scan blocked before requestLEScan', blockedError);
+            observer.error(blockedError);
             return;
           }
         } catch (e) {
@@ -323,6 +366,13 @@ export class RandBLE {
           observer.error(normalizedError);
           return;
         }
+
+        this.logger.info(this.TAG, 'Scan launched after permissions check', {
+          services: services,
+          scanMode: scanMode,
+          allowDuplicates: allowDuplicates
+        });
+        observer.next({ status: 'scanStarted' });
 
         BleClient.requestLEScan(
           {
