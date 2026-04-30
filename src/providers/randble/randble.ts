@@ -74,16 +74,20 @@ export class RandBLE {
     });
 }
 
-  private initializeBleClient(context: string): Promise<void> {
+  private async initializeBleClient(context: string): Promise<void> {
     this.logger.info(this.TAG, 'BLE permission initialization requested', {
       context: context,
       androidNeverForLocation: false
     });
 
-    return BleClient.initialize({ androidNeverForLocation: false }).then(() => {
-      this.logger.info(this.TAG, 'BLE permissions accepted and client initialized', {
-        context: context
-      });
+    if (this.platform.is('android')) {
+      await BleClient.initialize({ androidNeverForLocation: false });
+    } else {
+      await BleClient.initialize();
+    }
+
+    this.logger.info(this.TAG, 'BLE initialized', {
+      context: context
     });
   }
 
