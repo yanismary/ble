@@ -14,13 +14,23 @@
 <span [innerHTML]="'title' | translate"></span>
 
 <ion-content padding>
+
+    <div class="product-choice">
+      <p text-wrap>{{"HELP_PAGE.PRODUCT_CHOICE.TITLE"| translate}}</p>
+      <button ion-button block [outline]="productName !== 'WIDOOR'" (click)="selectProduct('WIDOOR')">
+        {{"HELP_PAGE.PRODUCT_CHOICE.WIDOOR"| translate}}
+      </button>
+      <button ion-button block [outline]="productName !== 'MOVENTIV'" (click)="selectProduct('MOVENTIV')">
+        {{"HELP_PAGE.PRODUCT_CHOICE.MOVENTIV"| translate}}
+      </button>
+    </div>
    
-    <ion-list> 
+    <ion-list *ngIf="productName"> 
         <ion-item text-wrap (click)="hsPairing()">
           <h2 text-wrap>{{"HELP_PAGE.PAIRING.TITLE"| translate}}</h2>
           <div *ngIf="showPairing"><br/> </div>
-        <span  *ngIf="showPairing && isIos" text-wrap [innerHtml]="'HELP_PAGE.PAIRING.IOS.TEXT' | translate"></span>
-        <span  *ngIf="showPairing && isAndroid" text-wrap [innerHtml]="'HELP_PAGE.PAIRING.ANDROID.TEXT' | translate"></span>
+        <span  *ngIf="showPairing && isIos" text-wrap [innerHtml]="'HELP_PAGE.PAIRING.IOS.TEXT' | translate:{productName: productName}"></span>
+        <span  *ngIf="showPairing && isAndroid" text-wrap [innerHtml]="'HELP_PAGE.PAIRING.ANDROID.TEXT' | translate:{productName: productName}"></span>
         </ion-item>
         <ion-item text-wrap (click)="hsPairingTroubles()">
             <h2 text-wrap>{{"HELP_PAGE.PAIRINGTROUBLES.TITLE"| translate}}</h2>

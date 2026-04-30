@@ -1,6 +1,28 @@
 page-infoSlide {
 
  
+    .tutorial-choice {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 100%;
+        text-align: center;
+    }
+
+    .tutorial-choice h2 {
+        color: #0159a1;
+        margin-bottom: 32px;
+    }
+
+    .tutorial-choice-buttons {
+        width: 100%;
+        max-width: 320px;
+        margin: 0 auto;
+    }
+
+    .tutorial-choice-buttons button {
+        margin-bottom: 14px;
+    }
 
     .toolbar-background {
         background: rgb(255, 255, 255);

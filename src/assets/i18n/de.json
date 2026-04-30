@@ -393,13 +393,18 @@
 	},
 	"HELP_PAGE": {
 		"TITLE": "Hilfe",
+		"PRODUCT_CHOICE": {
+			"TITLE": "Welches Produkt moechten Sie verbinden?",
+			"WIDOOR": "WIDOOR",
+			"MOVENTIV": "MOVENTIV"
+		},
 		"PAIRING": {
 			"TITLE": "Verbindung",
 			"ANDROID": {
-				"TEXT": "<h6>So verbinden Sie Ihr Smartphone mit dem Motor</h6><br><p>Gehen Sie in die Verbindungseinstellungen Ihres Smartphones: Einstellungen > Verbindungen > Bluetooth > Suchen. Stellen Sie beim Motor den SWITCH 1 in die OFF Position, drücken Sie den Programmierknopf (die LED Lampe sollte dauerhaft magenta leuchten). Wählen Sie dann in Ihrer App WIDOOR aus." 
+				"TEXT": "<h6>So verbinden Sie Ihr Smartphone mit dem Motor</h6><br><p>Gehen Sie in die Verbindungseinstellungen Ihres Smartphones: Einstellungen > Verbindungen > Bluetooth > Suchen. Stellen Sie beim Motor den SWITCH 1 in die OFF Position, drücken Sie den Programmierknopf (die LED Lampe sollte dauerhaft magenta leuchten). Wählen Sie dann in Ihrer App {{productName}} aus." 
 			},
 			"IOS": {				
-				"TEXT": "<h6>So verbinden Sie Ihr iPhone mit dem Motor</h6><br><p>Gehen Sie in die Verbindungseinstellungen Ihres iPhones: Einstellungen > Verbindungen > Bluetooth > Suchen. Stellen Sie beim Motor den SWITCH 1 in die OFF Position, drücken Sie den Programmierknopf (die LED Lampe sollte dauerhaft magenta leuchten). Wählen Sie in Ihrer App dann WIDOOR und akzeptieren Sie die Verbindung. </p>"
+				"TEXT": "<h6>So verbinden Sie Ihr iPhone mit dem Motor</h6><br><p>Gehen Sie in die Verbindungseinstellungen Ihres iPhones: Einstellungen > Verbindungen > Bluetooth > Suchen. Stellen Sie beim Motor den SWITCH 1 in die OFF Position, drücken Sie den Programmierknopf (die LED Lampe sollte dauerhaft magenta leuchten). Wählen Sie in Ihrer App dann {{productName}} und akzeptieren Sie die Verbindung. </p>"
 			}
 		},
 		"PAIRINGTROUBLES": {
@@ -554,6 +559,11 @@
 		},
 		"INFOSLIDE": {
 			"SKIP": "Überspringen",
+			"CHOICE": {
+				"TITLE": "Tutorial auswahlen",
+				"WIDOOR": "Widoor Tutorial",
+				"MOVENTIV": "Moventiv Tutorial"
+			},
 			"END": {
 				"READY": "Sind Sie bereit Ihren WIDOOR zu benutzen?",
 				"CONTINUE": "Fortfahren"

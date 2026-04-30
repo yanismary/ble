@@ -398,13 +398,18 @@
 	},
 	"HELP_PAGE": {
 		"TITLE": "Aide",
+		"PRODUCT_CHOICE": {
+			"TITLE": "Quel produit souhaitez-vous appairer ?",
+			"WIDOOR": "WIDOOR",
+			"MOVENTIV": "MOVENTIV"
+		},
 		"PAIRING": {
 			"TITLE": "Appairage",
 			"ANDROID": {
-				"TEXT": "<h6>Opération d'appairage</h6><br><p>Du coté du téléphone se rendre dans le menu d'appairage(généralement : paramètres > connexions > Bluetooth > ANALYSER). Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement). Ensuite du coté du téléphone appuyer sur MOVENTIV, celui-ci doit migrer dans PERIPHERIQUES<p>"
+				"TEXT": "<h6>Opération d'appairage</h6><br><p>Du coté du téléphone se rendre dans le menu d'appairage(généralement : paramètres > connexions > Bluetooth > ANALYSER). Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement). Ensuite du coté du téléphone appuyer sur {{productName}}, celui-ci doit migrer dans PERIPHERIQUES<p>"
 			},
 			"IOS": {				
-				"TEXT": "<h6>Opération d'appairage</h6><br><p>Du coté de votre Iphone, effectuer un recherche des motorisation via l'appli. Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement).Ensuite dans l'application appuyer sur MOVENTIV et accepter la demande de jumelage.</p><br><br><h6>Opération de dé-appairage</h6><br><p>Du coté de votre smartphone, aller dans le menu réglage > Bluetooth. Dans CONNEXION A MES APPAREILS : appuyer sur i > oublier cet appareil. Du coté de la motorisation, effectuer un effacement de tous les appareils (cela effacera aussi les émetteurs radio) : mettre le switch 1 sur OFF >appuyer et relacher le bouton prg (la LED passe en magenta), ensuite rester appuyer sur le bouton prg au moins 10 secondes puis le ralcher (la led doit clignoter très rapidement en magenta indiquant la réussite de l'opération) </p>"
+				"TEXT": "<h6>Opération d'appairage</h6><br><p>Du coté de votre Iphone, effectuer un recherche des motorisation via l'appli. Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement).Ensuite dans l'application appuyer sur {{productName}} et accepter la demande de jumelage.</p><br><br><h6>Opération de dé-appairage</h6><br><p>Du coté de votre smartphone, aller dans le menu réglage > Bluetooth. Dans CONNEXION A MES APPAREILS : appuyer sur i > oublier cet appareil. Du coté de la motorisation, effectuer un effacement de tous les appareils (cela effacera aussi les émetteurs radio) : mettre le switch 1 sur OFF >appuyer et relacher le bouton prg (la LED passe en magenta), ensuite rester appuyer sur le bouton prg au moins 10 secondes puis le ralcher (la led doit clignoter très rapidement en magenta indiquant la réussite de l'opération) </p>"
 			}
 		},
 		"PAIRINGTROUBLES": {
@@ -559,8 +564,13 @@
 	},
 	"INFOSLIDE": {
 		"SKIP": "Passer",
+		"CHOICE": {
+			"TITLE": "Choisissez un tutoriel",
+			"WIDOOR": "Tuto Widoor",
+			"MOVENTIV": "Tuto Moventiv"
+		},
 		"END": {
-			"READY": "Prêt à utiliser votre Moventiv ?",
+			"READY": "Prêt à utiliser votre Widoor ?",
 			"CONTINUE": "Continuer"
 		},
 		"SLIDE1": {
@@ -589,22 +599,22 @@
 		},
 		"SLIDE7": {
 			"ANDROID": {
-				"TITLE": "Appairage avec votre Moventiv",
-				"DESC": "Du coté du smartphone se rendre dans le menu Bluetooth (généralement : paramètres > connexions > Bluetooth > ANALYSER). Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement). Ensuite du coté du téléphone appuyer sur MOVENTIV, celui-ci doit migrer dans PERIPHERIQUES Associés. "
+				"TITLE": "Appairage avec votre Widoor",
+				"DESC": "Du coté du smartphone se rendre dans le menu Bluetooth (généralement : paramètres > connexions > Bluetooth > ANALYSER). Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement). Ensuite du coté du téléphone appuyer sur Widoor, celui-ci doit migrer dans PERIPHERIQUES Associés. "
 			},
 			"IOS": {
-				"TITLE": "Appairage avec votre Moventiv",
-				"DESC": "Du coté de votre samrtphone, effectuer une recherche de motorisation via l'appli. Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement). Ensuite dans l'application appuyer sur MOVENTIV et accepter la demande de jumelage. "
+				"TITLE": "Appairage avec votre Widoor",
+				"DESC": "Du coté de votre smartphone, effectuer une recherche de motorisation via l'appli. Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement). Ensuite dans l'application appuyer sur Widoor et accepter la demande de jumelage. "
 			}
 		},
 		"SLIDE8": {
 			"ANDROID": {
-				"TITLE": "Renommer votre Moventiv",
-				"DESC": "Une fois connecté vous pouver renommer votre MOVENTIV et l'associer à une pièce"
+				"TITLE": "Renommer votre Widoor",
+				"DESC": "Une fois connecté vous pouver renommer votre Widoor et l'associer à une pièce"
 			},
 			"IOS": {
-				"TITLE": "Renommer votre Moventiv",
-				"DESC": "Une fois connecté vous pouver renommer votre Moventiv et l'associer à une pièce. (Le renommage peut mettre quelques minutes à être visible depuis votre smartphone)"
+				"TITLE": "Renommer votre Widoor",
+				"DESC": "Une fois connecté vous pouver renommer votre Widoor et l'associer à une pièce. (Le renommage peut mettre quelques minutes à être visible depuis votre smartphone)"
 			}
 		}
 	}

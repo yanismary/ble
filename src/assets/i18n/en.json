@@ -393,13 +393,18 @@
 	},
 	"HELP_PAGE": {
 		"TITLE": "Help",
+		"PRODUCT_CHOICE": {
+			"TITLE": "Which product do you want to pair?",
+			"WIDOOR": "WIDOOR",
+			"MOVENTIV": "MOVENTIV"
+		},
 		"PAIRING": {
 			"TITLE": "Pairing",
 			"ANDROID": {
-				"TEXT": "<h6>Pairing operation</h6><br><p>On the phone side, go to the bluetooth menu (usually: settings > connections > Bluetooth > Analysis). On the motor side, set the Switch 1 OFF, press the prg butoon (the LED light in magenta). Then press MOVENTIV on the phone, it should move to Associated peripherials.<p>"
+				"TEXT": "<h6>Pairing operation</h6><br><p>On the phone side, go to the bluetooth menu (usually: settings > connections > Bluetooth > Analysis). On the motor side, set the Switch 1 OFF, press the prg butoon (the LED light in magenta). Then press {{productName}} on the phone, it should move to Associated peripherials.<p>"
 			},
 			"IOS": {				
-				"TEXT": "<h6>Pairing operation</h6><br><p>On the phone side, go to the bluetooth menu (usually: settings > connections > Bluetooth > Analysis). On the motor side, set the Switch 1 OFF, press the prg butoon (the LED light in magenta). Then press MOVENTIV on the phone, it should move to Associated peripherials.<p>"
+				"TEXT": "<h6>Pairing operation</h6><br><p>On the phone side, go to the bluetooth menu (usually: settings > connections > Bluetooth > Analysis). On the motor side, set the Switch 1 OFF, press the prg butoon (the LED light in magenta). Then press {{productName}} on the phone, it should move to Associated peripherials.<p>"
 			}
 		},
 		"PAIRINGTROUBLES": {
@@ -554,8 +559,13 @@
 		},
 		"INFOSLIDE": {
 			"SKIP": "Skip",
+			"CHOICE": {
+				"TITLE": "Choose a tutorial",
+				"WIDOOR": "Widoor tutorial",
+				"MOVENTIV": "Moventiv tutorial"
+			},
 			"END": {
-				"READY": "Ready to use your MOVENTIV ?",
+				"READY": "Ready to use your Widoor ?",
 				"CONTINUE": "Continue"
 			},
 			"SLIDE1": {
@@ -584,23 +594,23 @@
 			},
 			"SLIDE7": {
 				"ANDROID": {
-					"TITLE": "Pair with MOVENTIV",
-					"DESC": "On the phone side go to the pairing menu (usually : parameters-> connections->Bluetooth-> search devices. On the motorization side, put the Switch 1 on OFF state, press the prg button (LED indicator should be static magenta). Then on the phone side, select the MOVENTIV device. It should translate to the PAIRED DEVICES"
+					"TITLE": "Pair with Widoor",
+					"DESC": "On the phone side go to the pairing menu (usually : parameters-> connections->Bluetooth-> search devices. On the motorization side, put the Switch 1 on OFF state, press the prg button (LED indicator should be static magenta). Then on the phone side, select the Widoor device. It should translate to the PAIRED DEVICES"
 								
 				},
 				"IOS": {
-					"TITLE": "Pair with MOVENTIV",
-					"DESC": "On the Iphone side, search motorizations with the APP. On the Moventiv side, mput the switch 1 OFF, push and release the prg button(lED indicator should be magenta). Then in the APP clic on MOVENTIV and accept the pairing request. "
+					"TITLE": "Pair with WIDOOR",
+					"DESC": "On the Iphone side, search motorizations with the APP. On the Moventiv side, mput the switch 1 OFF, push and release the prg button(lED indicator should be magenta). Then in the APP clic on WIDOOR and accept the pairing request. "
 				}
 			},
 			"SLIDE8": {
 				"ANDROID": {
-					"TITLE": "Rename your Moventiv",
-					"DESC": "Once connected you can rename your MOVENTIV and associate it with a room"
+					"TITLE": "Rename your Widoor",
+					"DESC": "Once connected you can rename your Widoor and associate it with a room"
 				},
 				"IOS": {
-					"TITLE": "Rename your Moventiv",
-					"DESC": "Once connected you can rename your MOVENTIV and associate it with a room (new name could take some minutes to be visible on your iPhone)"
+					"TITLE": "Rename your Widoor",
+					"DESC": "Once connected you can rename your Widoor and associate it with a room (new name could take some minutes to be visible on your iPhone)"
 				}
 			}
 		}
