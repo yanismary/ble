@@ -330,7 +330,14 @@
 			"BASIC": {
 				"TITLE": "Grundeinstellungen",
 				"MODIFY_NAME_FORMLABEL": "Ändern Sie den Namen Ihres WIDOOR Motors",
-				"ASSOCIATE_FORMLABEL": "Verknüpfen Sie den Raum Ihres WIDOOR Motors"
+				"ASSOCIATE_FORMLABEL": "Verknüpfen Sie den Raum Ihres WIDOOR Motors",
+				"SAVE_SUCCESS_NAME": "Name erfolgreich gespeichert. Es kann notwendig sein, die Suche erneut zu starten, um den neuen Namen zu sehen.",
+				"SAVE_SUCCESS_ROOM": "Raum erfolgreich gespeichert.",
+				"SAVE_SUCCESS_NAME_ROOM": "Name und Raum erfolgreich gespeichert. Es kann notwendig sein, die Suche erneut zu starten, um den neuen Namen zu sehen.",
+				"SAVE_ERROR": "Die Änderung konnte nicht gespeichert werden.",
+				"SAVE_NOT_CONNECTED": "Die Motorisierung ist nicht mehr verbunden. Bitte starten Sie eine neue Verbindung.",
+				"SAVE_INVALID_NAME": "Der eingegebene Name ist nicht gültig.",
+				"NAME_REQUIRED": "Bitte geben Sie vor dem Speichern einen Namen ein."
 			},
 			"ADVANCED": {
 				"TITLE": "Fortgeschrittene Einstellungen",

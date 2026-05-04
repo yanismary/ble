@@ -334,8 +334,15 @@
 		"ADJUSTMENTS_TAB": {
 			"BASIC": {
 				"TITLE": "Basiques",
-				"MODIFY_NAME_FORMLABEL": "Modifier le nom de votre MOVENTIV",
-				"ASSOCIATE_FORMLABEL": "Associer votre MOVENTIV à une pièce"
+				"MODIFY_NAME_FORMLABEL": "Modifier le nom de votre WIDOOR",
+				"ASSOCIATE_FORMLABEL": "Associer votre WIDOOR à une pièce",
+				"SAVE_SUCCESS_NAME": "Nom enregistré avec succès. Il peut être nécessaire de relancer une recherche pour voir le nouveau nom.",
+				"SAVE_SUCCESS_ROOM": "Pièce enregistrée avec succès.",
+				"SAVE_SUCCESS_NAME_ROOM": "Nom et pièce enregistrés avec succès. Il peut être nécessaire de relancer une recherche pour voir le nouveau nom.",
+				"SAVE_ERROR": "La modification n'a pas pu être enregistrée.",
+				"SAVE_NOT_CONNECTED": "La motorisation n'est plus connectée. Veuillez relancer une connexion.",
+				"SAVE_INVALID_NAME": "Le nom saisi n'est pas valide.",
+				"NAME_REQUIRED": "Veuillez saisir un nom avant d'enregistrer."
 			},
 			"ADVANCED": {
 				"TITLE": "Avancés",

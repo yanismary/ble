@@ -87,6 +87,8 @@ export class ScanPage {
   private initScanInProgress = false;
   private permissionDeniedCount = 0;
   private scanTimeoutHandle: any = null;			
+  private scanSubscription: any = null;
+  private detectedDeviceIds: { [key: string]: boolean } = {};
   private TAG = 'ScanPage';
   private UI_MESSAGES = {
     scanSearching: 'Recherche en cours...',
@@ -290,10 +292,10 @@ export class ScanPage {
     }
 
     this.clearScanTimeout();
+    this.resetScanResults('new_scan');
     this.setStatus(this.UI_MESSAGES.scanSearching);
     this.isScanning = true;
     this.isPushOnce = false;
-    this.devices = []; 
 
     const targetServices = PRODUCTS_CONFIG.map(p => p.serviceUUID);
 
@@ -307,7 +309,7 @@ export class ScanPage {
 
     this.logger.info(this.TAG, 'Starting BLE scan', scanParams);
 
-    this.randble.startScan(scanParams).subscribe(
+    this.scanSubscription = this.randble.startScan(scanParams).subscribe(
       device => {
         if (device.status === 'scanResult') {
            /*this.logger.debug(this.TAG, 'Scan result', {
@@ -325,6 +327,7 @@ export class ScanPage {
         const code = (error && error.code) ? String(error.code) : '';
 
         this.ngZone.run(() => this.isScanning = false);
+        this.clearScanSubscription('scan_error');
 
         if (code === 'BLE_DISABLED') {
           this.logger.warn(this.TAG, 'Scan failed: bluetooth disabled', error);
@@ -368,9 +371,11 @@ export class ScanPage {
         this.randble.stopScan().then(() => {
           this.logger.info(this.TAG, 'Scan timeout reached, scan stopped');
           this.ngZone.run(() => { this.isScanning = false; });
+          this.clearScanSubscription('scan_timeout');
         }).catch((err) => {
           this.logger.error(this.TAG, 'Scan timeout stop failed', err);
           this.ngZone.run(() => { this.isScanning = false; });
+          this.clearScanSubscription('scan_timeout_error');
 		}).then(() => {
           this.clearScanTimeout();			   					  
         });
@@ -424,19 +429,91 @@ export class ScanPage {
          // Mais pour l'affichage initial, on peut laisser undefined
       }
 
+      const deviceKey = this.getDeviceKey(device);
+      const nameInfo = this.resolveScanDeviceName(device);
+
       let existingDevice = this.devices.find((d: ScanDevice) => 
         (d.id && device.id && d.id === device.id) || 
         (d.address && device.address && d.address === device.address)
       );
 
+      const oldName = existingDevice ? existingDevice.name : '';
+      const knownBefore = !!(deviceKey && this.detectedDeviceIds[deviceKey]);
+
+      if (deviceKey) {
+        this.detectedDeviceIds[deviceKey] = true;
+      }
+
+      this.logger.info(this.TAG, 'Device detected during scan', {
+        deviceKey: deviceKey,
+        knownBefore: knownBefore,
+        oldName: oldName,
+        newName: nameInfo.name,
+        nameSource: nameInfo.source,
+        isFreshName: nameInfo.isFresh,
+        rssi: device ? device.rssi : null
+      });
+
       if (existingDevice) {
-        if (device.rssi) existingDevice.rssi = device.rssi;
-        if (device.advertising) existingDevice.advertising = device.advertising;
+        let wasUpdated = false;
+
+        if (!existingDevice.id && device.id) {
+          existingDevice.id = device.id;
+          wasUpdated = true;
+        }
+        if (!existingDevice.address && device.address) {
+          existingDevice.address = device.address;
+          wasUpdated = true;
+        }
+        if (device.rssi !== undefined) {
+          existingDevice.rssi = device.rssi;
+          wasUpdated = true;
+        }
+        if (device.advertising) {
+          existingDevice.advertising = device.advertising;
+          wasUpdated = true;
+        }
+        if (device.advertisement) {
+          existingDevice.advertisement = device.advertisement;
+          wasUpdated = true;
+        }
+        if (device.isBonded !== undefined) {
+          existingDevice.isBonded = device.isBonded;
+          wasUpdated = true;
+        }
+        if (this.shouldUpdateDisplayedName(existingDevice.name, nameInfo, !!existingDevice._hasFreshLocalName)) {
+          existingDevice.name = nameInfo.name;
+          wasUpdated = true;
+        }
+        if (nameInfo.name) {
+          existingDevice._scanNameSource = nameInfo.source;
+          existingDevice._hasFreshLocalName = !!existingDevice._hasFreshLocalName || nameInfo.isFresh;
+        }
+
+        if (wasUpdated) {
+          this.logger.info(this.TAG, 'Existing scan device updated', {
+            deviceKey: deviceKey,
+            oldName: oldName,
+            newName: existingDevice.name,
+            nameSource: nameInfo.source
+          });
+          this.devices = this.devices.slice();
+        }
       } else {
+        if (nameInfo.name) {
+          device.name = nameInfo.name;
+          device._scanNameSource = nameInfo.source;
+          device._hasFreshLocalName = nameInfo.isFresh;
+        }
         if (device.isBonded === undefined) {
            device.isBonded = false;
         }
         this.devices.push(device);
+        this.logger.info(this.TAG, 'New scan device added', {
+          deviceKey: deviceKey,
+          name: device.name,
+          nameSource: nameInfo.source
+        });
         
         this.checkBondStatus(device);
       }
@@ -1232,5 +1309,103 @@ export class ScanPage {
       clearTimeout(this.scanTimeoutHandle);
       this.scanTimeoutHandle = null;
     }
+  }
+
+  private clearScanSubscription(reason: string): void {
+    if (this.scanSubscription && typeof this.scanSubscription.unsubscribe === 'function') {
+      try {
+        this.scanSubscription.unsubscribe();
+        this.logger.debug(this.TAG, 'Scan subscription cleared', { reason: reason });
+      } catch (error) {
+        this.logger.warn(this.TAG, 'Scan subscription clear failed', { reason: reason, error: error });
+      }
+    }
+    this.scanSubscription = null;
+  }
+
+  private resetScanResults(reason: string): void {
+    const previousDevices = this.devices || [];
+    const previousSelectedDevice = this.device || {};
+
+    this.clearScanSubscription(reason);
+    this.devices = [];
+    this.device = {};
+    this.detectedDeviceIds = {};
+
+    this.logger.info(this.TAG, 'Scan device list cleared', {
+      reason: reason,
+      previousCount: previousDevices.length,
+      previousSelectedId: previousSelectedDevice.id || previousSelectedDevice.address || '',
+      previousSelectedName: previousSelectedDevice.name || ''
+    });
+  }
+
+  private getDeviceKey(device: ScanDevice): string {
+    return device && (device.address || device.id)
+      ? String(device.address || device.id).trim()
+      : '';
+  }
+
+  private firstNonEmptyString(values: any[]): string {
+    for (let i = 0; i < values.length; i++) {
+      if (values[i] !== undefined && values[i] !== null) {
+        const value = String(values[i]).trim();
+        if (value && value !== 'Unknown' && value !== 'Unnamed') {
+          return value;
+        }
+      }
+    }
+    return '';
+  }
+
+  private resolveScanDeviceName(device: ScanDevice): { name: string, source: string, isFresh: boolean } {
+    const advertisement = device && device.advertisement ? device.advertisement : {};
+    const advertising = device && device.advertising ? device.advertising : {};
+    const deviceObject = device && device.device ? device.device : {};
+
+    const localName = this.firstNonEmptyString([
+      advertisement.localName,
+      advertising.localName,
+      device ? device.localName : '',
+      deviceObject.localName
+    ]);
+
+    if (localName) {
+      return {
+        name: localName,
+        source: 'localName',
+        isFresh: true
+      };
+    }
+
+    const fallbackName = this.firstNonEmptyString([
+      device ? device.name : '',
+      deviceObject.name
+    ]);
+
+    return {
+      name: fallbackName,
+      source: fallbackName ? 'name' : 'empty',
+      isFresh: false
+    };
+  }
+
+  private shouldUpdateDisplayedName(currentName: string | undefined, nameInfo: { name: string, source: string, isFresh: boolean }, currentHasFreshLocalName: boolean): boolean {
+    const current = currentName ? String(currentName).trim() : '';
+    const next = nameInfo && nameInfo.name ? String(nameInfo.name).trim() : '';
+
+    if (!next) {
+      return false;
+    }
+
+    if (!current || current === 'Unknown' || current === 'Unnamed') {
+      return true;
+    }
+
+    if (nameInfo.isFresh && current !== next) {
+      return true;
+    }
+
+    return !currentHasFreshLocalName && current !== next;
   }
 }

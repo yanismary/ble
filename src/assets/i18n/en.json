@@ -329,8 +329,15 @@
 		"ADJUSTMENTS_TAB": {
 			"BASIC": {
 				"TITLE": "Basic",
-				"MODIFY_NAME_FORMLABEL": "Change your MOVENTIV's name",
-				"ASSOCIATE_FORMLABEL": "Associate your MOVENTIV's room"
+				"MODIFY_NAME_FORMLABEL": "Change your WIDOOR's name",
+				"ASSOCIATE_FORMLABEL": "Associate your WIDOOR with a room",
+				"SAVE_SUCCESS_NAME": "Name saved successfully. You may need to scan again to see the new name.",
+				"SAVE_SUCCESS_ROOM": "Room saved successfully.",
+				"SAVE_SUCCESS_NAME_ROOM": "Name and room saved successfully. You may need to scan again to see the new name.",
+				"SAVE_ERROR": "The change could not be saved.",
+				"SAVE_NOT_CONNECTED": "The motor is no longer connected. Please start a new connection.",
+				"SAVE_INVALID_NAME": "The entered name is not valid.",
+				"NAME_REQUIRED": "Please enter a name before saving."
 			},
 			"ADVANCED": {
 				"TITLE": "Advanced",

@@ -15,6 +15,9 @@ import { LoggerService } from '../../providers/logger/logger.service';
 import * as bcrypt from 'bcryptjs';
 import moment from 'moment';
 
+declare var require: any;
+const BleClient = require('@capacitor-community/bluetooth-le').BleClient;
+
 
 // HANDLE OFFSET
 const D_SHDO_VERSION_STACK_MAJORMSB_HOF = 0;
@@ -122,6 +125,9 @@ const WIDOOR_SERVICE = '3206890a-650e-46f3-9c73-2bc0840e3b8e';
 const MLPC_USERPARAM_CHARACTERISTIC = '7c7679a6-5a0d-4cbd-8cbe-93b6d6b4b80f';
 const MLPC_PROPARAM_CHARACTERISTIC = '15e9eef3-939b-4e66-baf9-772d8bd18c41';
 const MLPC_VERIFPARAM_CHARACTERISTIC = 'cc942243-7656-441f-880c-4617eeb8bacc';
+const NAME_WRITE_TIMEOUT_MS = 15000;
+const NAME_READ_TIMEOUT_MS = 5000;
+const NAME_READBACK_DELAY_MS = 800;
 
 
 @IonicPage({
@@ -265,12 +271,15 @@ export class WidoorPage implements OnInit {
   //localisation
   localisation!: string;
   stringLoc: string = '';
+  private currentLocationSuffix: string = '';
+  private locationSuffixes: string[] = ['#CHA', '#ENT', '#SAL', '#CUI', '#SAM', '#SDB', '#WCS', '#GAR', '#SLL', '#SDJ'];
 
   //logic connection
   loading: any = {};
   presentResetLoading: any = {};
   promptReading: any = {};
   peripheralNameAff!: any;
+  isNameWriteInProgress: boolean = false;
   retry: boolean = false;
   retryConnection: number = 6;
   menuType!: string;
@@ -374,6 +383,7 @@ export class WidoorPage implements OnInit {
       this.logger.debug(this.TAG, '[Widoor] Peripheral set:', this.peripheral.address);
       
       this.peripheralNameAff = this.navParams.get('displayName') || (this.peripheral ? (this.peripheral.customName || this.peripheral.name) : '') ||'';
+      this.syncNameInputFromDisplayName();
 
       if (this.bleConnectService && (this.bleConnectService as any).setNeedConnect) {
         (this.bleConnectService as any).setNeedConnect(false);
@@ -509,15 +519,18 @@ export class WidoorPage implements OnInit {
 
   onConnected(peripheral: any) {
     this.logger.debug(this.TAG, '[STEP 1] Connected to hardware');
-    this.peripheral = peripheral;
+    this.peripheral = this.normalizeBleDevice(Object.assign(this.peripheral || {}, peripheral || {}));
+    this.device = this.normalizeBleDevice(Object.assign(this.device || {}, this.peripheral || {}));
+    this.bleConnectService.setConnectedPeripheral(this.peripheral);
+    this.bleConnectService.setConnectionStatus('connected');
 
     setTimeout(() => {
-      this.randble.discover({ address: peripheral.address })
+      this.randble.discover({ address: this.getDeviceIdFromDevice(this.peripheral) })
         .then((data) => {
           this.logger.debug(this.TAG, '[STEP 2] Discovery Success', data);
           
           if (data.services && data.services.length > 0) {
-            this.onDiscovered(peripheral);
+            this.onDiscovered(this.peripheral);
           } else {
             throw new Error("Empty services");
           }
@@ -1512,20 +1525,389 @@ export class WidoorPage implements OnInit {
 
   }
 
+  private isDemoDevice(): boolean {
+    return !!(this.device && (this.device.isDemo === true || this.device.isDemo === "true"));
+  }
 
-  SetName() {
-    this.logger.debug(this.TAG, 'SetName');
+  private getDeviceIdFromDevice(device: any): string {
+    return device && (device.deviceId || device.address || device.id)
+      ? String(device.deviceId || device.address || device.id).trim()
+      : '';
+  }
 
-    let bytes = this.randble.stringToBytes(this.userConfig.mlpcName.concat(this.stringLoc));
+  private normalizeBleDevice(device: any): any {
+    const deviceId = this.getDeviceIdFromDevice(device);
+
+    if (device && deviceId) {
+      device.deviceId = device.deviceId || deviceId;
+      device.address = device.address || deviceId;
+      device.id = device.id || deviceId;
+    }
+
+    return device;
+  }
+
+  private resolveNameWriteDeviceId(): string {
+    const connectedPeripheral = this.bleConnectService ? this.bleConnectService.getConnectedPeripheral() : null;
+    const navDevice = this.navParams.get('device') || this.navParams.get('peripheral');
+    const candidates = [
+      { source: 'this.peripheral', device: this.peripheral },
+      { source: 'this.device', device: this.device },
+      { source: 'navParams.device', device: navDevice },
+      { source: 'bleConnectService.connectedPeripheral', device: connectedPeripheral }
+    ];
+
+    for (let i = 0; i < candidates.length; i++) {
+      const deviceId = this.getDeviceIdFromDevice(candidates[i].device);
+
+      if (deviceId) {
+        if (!this.getDeviceIdFromDevice(this.peripheral) && candidates[i].device) {
+          this.peripheral = this.normalizeBleDevice(Object.assign({}, candidates[i].device));
+        }
+        if (!this.getDeviceIdFromDevice(this.device) && candidates[i].device) {
+          this.device = this.normalizeBleDevice(Object.assign({}, candidates[i].device));
+        }
+
+        this.logger.info(this.TAG, 'DeviceId Widoor retenu avant ecriture', {
+          deviceId: deviceId,
+          source: candidates[i].source
+        });
+
+        return deviceId;
+      }
+    }
+
+    this.logger.error(this.TAG, 'DeviceId Widoor absent avant ecriture', {
+      peripheral: this.peripheral,
+      device: this.device,
+      connectedPeripheral: connectedPeripheral
+    });
+    return '';
+  }
+
+  private isDeviceConnected(deviceId: string): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      let subscription: any = null;
+      let settled = false;
+
+      subscription = this.randble.isConnected({ address: deviceId }).subscribe(
+        (res) => {
+          if (!settled) {
+            settled = true;
+            resolve(!!(res && res.isConnected));
+          }
+          if (subscription) {
+            subscription.unsubscribe();
+          }
+        },
+        (error) => {
+          this.logger.warn(this.TAG, 'Verification connexion Widoor impossible', {
+            deviceId: deviceId,
+            error: error
+          });
+          if (!settled) {
+            settled = true;
+            resolve(false);
+          }
+          if (subscription) {
+            subscription.unsubscribe();
+          }
+        }
+      );
+    });
+  }
+
+  private createNameWriteError(message: string, translationKey: string): any {
+    const error: any = new Error(message);
+    error.translationKey = translationKey;
+    return error;
+  }
+
+  private createNameWriteToastError(message: string, toastMessage: string): any {
+    const error: any = new Error(message);
+    error.toastMessage = toastMessage;
+    return error;
+  }
+
+  private isNameWriteTimeoutError(error: any): boolean {
+    const message = String(error && (error.message || error.errorMessage || error.toString()) || '').toLowerCase();
+    return message.indexOf('timeout') > -1;
+  }
+
+  private normalizeNameWriteError(error: any): any {
+    if (error && error.toastMessage) {
+      return error;
+    }
+
+    if (this.isNameWriteTimeoutError(error)) {
+      return this.createNameWriteToastError(
+        'Timeout ecriture nom/piece Widoor',
+        "La motorisation n'a pas confirmé l'enregistrement du nom. Veuillez réessayer en restant connecté."
+      );
+    }
+
+    return error;
+  }
+
+  private bytesToDataView(bytes: Uint8Array): DataView {
+    const buffer = new ArrayBuffer(bytes.length);
+    const view = new Uint8Array(buffer);
+    view.set(bytes);
+    return new DataView(buffer);
+  }
+
+  private waitForNameReadback(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      setTimeout(() => resolve(), NAME_READBACK_DELAY_MS);
+    });
+  }
+
+  private dataViewToString(dataView: DataView): string {
+    let value = '';
+    for (let i = 0; i < dataView.byteLength; i++) {
+      value += String.fromCharCode(dataView.getUint8(i));
+    }
+    return value;
+  }
+
+  private normalizeReadNameValue(value: string): string {
+    const stringValue = value || '';
+    const nullIndex = stringValue.indexOf('\0');
+    const withoutPadding = nullIndex > -1
+      ? stringValue.substring(0, nullIndex)
+      : stringValue.replace(/\0/g, '');
+
+    return withoutPadding.trim();
+  }
+
+  private logNameCharacteristicProperties(deviceId: string): Promise<any> {
+    return BleClient.getServices(deviceId).then((services: any[]) => {
+      let properties: any = null;
+
+      for (let i = 0; i < services.length; i++) {
+        const service = services[i];
+        const serviceUuid = service && service.uuid ? String(service.uuid).toLowerCase() : '';
+
+        if (serviceUuid !== SHDO_SERVICE.toLowerCase()) {
+          continue;
+        }
+
+        const characteristics = service.characteristics || [];
+        for (let j = 0; j < characteristics.length; j++) {
+          const characteristic = characteristics[j];
+          const characteristicUuid = characteristic && characteristic.uuid ? String(characteristic.uuid).toLowerCase() : '';
+
+          if (characteristicUuid === SHDO_NAME_CHARACTERISTIC.toLowerCase()) {
+            properties = characteristic.properties || null;
+            break;
+          }
+        }
+      }
+
+      this.logger.info(this.TAG, 'Proprietes caracteristique nom Widoor', {
+        deviceId: deviceId,
+        service: SHDO_SERVICE,
+        characteristic: SHDO_NAME_CHARACTERISTIC,
+        properties: properties
+      });
+
+      return properties;
+    }).catch((error) => {
+      this.logger.warn(this.TAG, 'Lecture proprietes caracteristique nom Widoor impossible', {
+        deviceId: deviceId,
+        error: error
+      });
+      return null;
+    });
+  }
+
+  private readNameAfterWrite(deviceId: string, expectedName: string): Promise<any> {
+    this.logger.info(this.TAG, 'Relecture nom Widoor apres ecriture demandee', {
+      deviceId: deviceId,
+      expectedName: expectedName
+    });
+
+    return BleClient.read(
+      deviceId,
+      SHDO_SERVICE,
+      SHDO_NAME_CHARACTERISTIC,
+      { timeout: NAME_READ_TIMEOUT_MS }
+    ).then((dataView: DataView) => {
+      const rawName = this.dataViewToString(dataView);
+      const readName = this.normalizeReadNameValue(rawName);
+      const expected = this.normalizeReadNameValue(expectedName);
+      const confirmed = readName === expected;
+
+      this.logger.info(this.TAG, confirmed ? 'Relecture nom Widoor confirmee' : 'Relecture nom Widoor non conforme', {
+        deviceId: deviceId,
+        expectedName: expected,
+        readName: readName,
+        rawLength: dataView.byteLength
+      });
+
+      return {
+        confirmed: confirmed,
+        value: readName,
+        rawValue: rawName
+      };
+    }).catch((error) => {
+      this.logger.warn(this.TAG, 'Relecture nom Widoor impossible apres ecriture', {
+        deviceId: deviceId,
+        error: error
+      });
+
+      return {
+        confirmed: null,
+        value: '',
+        rawValue: '',
+        error: error
+      };
+    });
+  }
+
+  private writeNameWithResponse(deviceId: string, bytes: Uint8Array, encodedString: string, valueToWrite: string): Promise<any> {
+    this.logger.info(this.TAG, 'Ecriture nom/piece Widoor avec reponse', {
+      deviceId: deviceId,
+      service: SHDO_SERVICE,
+      characteristic: SHDO_NAME_CHARACTERISTIC,
+      value: valueToWrite,
+      length: bytes.length,
+      timeout: NAME_WRITE_TIMEOUT_MS
+    });
+
+    return BleClient.write(
+      deviceId,
+      SHDO_SERVICE,
+      SHDO_NAME_CHARACTERISTIC,
+      this.bytesToDataView(bytes),
+      { timeout: NAME_WRITE_TIMEOUT_MS }
+    ).then(() => {
+      return {
+        status: 'written',
+        value: encodedString,
+        mode: 'writeWithResponse'
+      };
+    });
+  }
+
+  private ensureNameWriteConnection(deviceId: string): Promise<void> {
+    const connectionStatus = this.bleConnectService ? this.bleConnectService.getConnectionStatus() : 'unknown';
+
+    this.logger.info(this.TAG, 'Etat connexion Widoor avant ecriture', {
+      deviceId: deviceId,
+      connectionStatus: connectionStatus
+    });
+
+    if (!deviceId) {
+      return Promise.reject(this.createNameWriteError(
+        'DeviceId absent pour ecriture nom/piece Widoor',
+        'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_NOT_CONNECTED'
+      ));
+    }
+
+    return this.isDeviceConnected(deviceId).then((isConnected) => {
+      this.logger.info(this.TAG, 'Etat connecte Widoor verifie avant ecriture', {
+        deviceId: deviceId,
+        connectionStatus: connectionStatus,
+        isConnected: isConnected
+      });
+
+      if (!isConnected) {
+        throw this.createNameWriteError(
+          'Motorisation Widoor non connectee avant ecriture nom/piece',
+          'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_NOT_CONNECTED'
+        );
+      }
+    });
+  }
+
+
+  SetName(nameToWrite?: string, deviceIdToUse?: string): Promise<any> {
+    const valueToWrite = typeof nameToWrite === 'string' ? nameToWrite : this.userConfig.mlpcName.concat(this.stringLoc);
+    this.logger.info(this.TAG, 'Ecriture nom/piece Widoor demandee', { value: valueToWrite });
+
+    let bytes = this.randble.stringToBytes(valueToWrite);
     let encodedString = this.randble.bytesToEncodedString(bytes); //convertion bytes -> base64 string
 
-    this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_NAME_CHARACTERISTIC, value: encodedString }).then(
+    if (this.isDemoDevice()) {
+      this.logger.info(this.TAG, 'Ecriture nom/piece Widoor simulee en mode demo', { value: valueToWrite });
+      return Promise.resolve({ value: encodedString });
+    }
+
+    const deviceId = deviceIdToUse || this.resolveNameWriteDeviceId();
+
+    return this.ensureNameWriteConnection(deviceId).then(() => {
+      return this.logNameCharacteristicProperties(deviceId);
+    }).then(() => {
+      return this.writeNameWithResponse(deviceId, bytes, encodedString, valueToWrite).then((returnObj) => {
+        return {
+          returnObj: returnObj,
+          timeoutError: null
+        };
+      }).catch((error) => {
+        if (!this.isNameWriteTimeoutError(error)) {
+          throw error;
+        }
+
+        this.logger.warn(this.TAG, 'Timeout ecriture nom Widoor: verification par relecture', {
+          deviceId: deviceId,
+          value: valueToWrite,
+          error: error
+        });
+
+        return {
+          returnObj: null,
+          timeoutError: error
+        };
+      });
+    }).then((writeResult) => {
+      return this.waitForNameReadback().then(() => {
+        return this.readNameAfterWrite(deviceId, valueToWrite);
+      }).then((readResult) => {
+        if (readResult.confirmed === true) {
+          return writeResult.returnObj || {
+            status: 'writtenConfirmedAfterTimeout',
+            value: encodedString,
+            mode: 'writeWithResponseTimeoutVerified'
+          };
+        }
+
+        if (readResult.confirmed === false) {
+          throw this.createNameWriteToastError(
+            'Nom Widoor non sauvegarde apres relecture',
+            "Le nom n'a pas été confirmé par la motorisation. Veuillez réessayer en restant connecté."
+          );
+        }
+
+        if (writeResult.timeoutError) {
+          throw writeResult.timeoutError;
+        }
+
+        this.logger.warn(this.TAG, 'Ecriture nom Widoor reussie mais relecture non disponible', {
+          deviceId: deviceId,
+          value: valueToWrite,
+          readError: readResult.error
+        });
+
+        return writeResult.returnObj;
+      });
+    }).then(
       (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-        this.logger.debug(this.TAG, 'setName :' + returnString);
+        this.logger.info(this.TAG, 'Succes ecriture nom/piece Widoor', {
+          deviceId: deviceId,
+          value: valueToWrite,
+          mode: returnObj && returnObj.mode ? returnObj.mode : 'writeWithResponse'
+        });
+        return returnObj;
       },
-    );
+    ).catch((error) => {
+      const normalizedError = this.normalizeNameWriteError(error);
+      this.logger.error(this.TAG, 'Erreur ecriture nom/piece Widoor', {
+        deviceId: deviceId,
+        error: normalizedError
+      });
+      throw normalizedError;
+    });
 
 
   }
@@ -1901,20 +2283,174 @@ export class WidoorPage implements OnInit {
 
 
     this.formName = this.formBuilder.group({
-      'mlpcName': ['wtf', [Validators.required, Validators.minLength(5), Validators.maxLength(15), Validators.pattern('[a-zA-Z0-9,.;:_-]*')]]
+      'mlpcName': ['', [Validators.minLength(5), Validators.maxLength(15), Validators.pattern('[a-zA-Z0-9,.;:_-]*')]]
     });
     this.formPassword = this.formBuilder.group({
       'mlpcPassword': ['', [Validators.required, Validators.maxLength(20)]]
     });
+    this.syncNameInputFromDisplayName();
   }
 
 
 
 
 
-  onSubmitformName() {
-    this.logger.debug(this.TAG, 'submitting form Name');
-    this.SetName();
+  private getCurrentDisplayName(): string {
+    return String(
+      this.peripheralNameAff
+      || (this.peripheral ? (this.peripheral.customName || this.peripheral.name) : '')
+      || ''
+    );
+  }
+
+  private stripLocationSuffix(name: string): string {
+    let value = name || '';
+    for (let i = 0; i < this.locationSuffixes.length; i++) {
+      value = value.replace(this.locationSuffixes[i], '');
+    }
+    return value;
+  }
+
+  private extractLocationSuffix(name: string): string {
+    const value = name || '';
+    for (let i = 0; i < this.locationSuffixes.length; i++) {
+      if (value.indexOf(this.locationSuffixes[i]) > -1) {
+        return this.locationSuffixes[i];
+      }
+    }
+    return '';
+  }
+
+  private getCurrentBaseName(): string {
+    return this.stripLocationSuffix(this.getCurrentDisplayName()).trim();
+  }
+
+  private syncNameInputFromDisplayName(): void {
+    const displayName = this.getCurrentDisplayName();
+    const locationSuffix = this.extractLocationSuffix(displayName);
+    const baseName = this.stripLocationSuffix(displayName).trim();
+
+    if (locationSuffix) {
+      this.currentLocationSuffix = locationSuffix;
+    }
+
+    if (!baseName) {
+      return;
+    }
+
+    this.peripheralNameAff = baseName;
+    this.userConfig.mlpcName = baseName;
+    const control = this.formName ? this.formName.get('mlpcName') : null;
+    if (control) {
+      control.setValue(baseName, { emitEvent: false });
+      control.markAsPristine();
+    }
+  }
+
+  private updateLocalNameDisplay(baseName: string, locationSuffix: string): void {
+    const fullName = baseName + (locationSuffix || '');
+    this.currentLocationSuffix = locationSuffix || '';
+
+    this.ngZone.run(() => {
+      this.peripheralNameAff = baseName;
+      this.userConfig.mlpcName = baseName;
+
+      if (this.peripheral) {
+        this.peripheral.customName = fullName;
+        this.peripheral.name = fullName;
+      }
+
+      const control = this.formName ? this.formName.get('mlpcName') : null;
+      if (control) {
+        control.setValue(baseName, { emitEvent: false });
+        control.markAsPristine();
+      }
+    });
+  }
+
+  canSubmitNameAssociation(): boolean {
+    if (this.isNameWriteInProgress) {
+      return false;
+    }
+
+    const control = this.formName ? this.formName.get('mlpcName') : null;
+    const typedName = (this.userConfig.mlpcName || '').trim();
+
+    if (typedName && control && !control.valid) {
+      return false;
+    }
+
+    return !!typedName || !!this.stringLoc || !!this.getCurrentBaseName();
+  }
+
+  async onSubmitformName() {
+    if (this.isNameWriteInProgress) {
+      this.logger.warn(this.TAG, 'Validation nom/piece Widoor ignoree: ecriture deja en cours');
+      return;
+    }
+
+    this.isNameWriteInProgress = true;
+    this.logger.info(this.TAG, 'Debut validation nom/piece Widoor');
+
+    try {
+      const control = this.formName ? this.formName.get('mlpcName') : null;
+      const typedName = (this.userConfig.mlpcName || '').trim();
+      const currentDisplayName = this.getCurrentDisplayName();
+      const currentBaseName = this.stripLocationSuffix(currentDisplayName).trim();
+      const baseName = typedName || currentBaseName;
+      const locationSuffix = this.stringLoc || this.currentLocationSuffix || this.extractLocationSuffix(currentDisplayName);
+      const nameChanged = !!typedName && typedName !== currentBaseName;
+      const roomChanged = !!this.stringLoc;
+      const deviceId = this.resolveNameWriteDeviceId();
+
+      this.logger.info(this.TAG, 'DeviceId utilise validation nom/piece Widoor', { deviceId: deviceId });
+      this.logger.info(this.TAG, nameChanged ? 'Nom Widoor a ecrire' : 'Nom Widoor ignore car inchange', { name: baseName });
+      this.logger.info(this.TAG, roomChanged ? 'Piece Widoor a ecrire' : 'Piece Widoor ignoree car inchangee', { room: locationSuffix });
+
+      if (typedName && control && !control.valid) {
+        control.markAsTouched();
+        this.logger.warn(this.TAG, 'Validation nom/piece Widoor bloquee: nom invalide');
+        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_INVALID_NAME');
+        return;
+      }
+
+      if (!baseName) {
+        this.logger.warn(this.TAG, 'Validation nom/piece Widoor bloquee: nom absent');
+        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.NAME_REQUIRED');
+        return;
+      }
+
+      if (!nameChanged && !roomChanged) {
+        this.logger.info(this.TAG, 'Validation nom/piece Widoor terminee sans ecriture: aucune modification');
+        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME');
+        return;
+      }
+
+      await this.SetName(baseName + locationSuffix, deviceId);
+
+      this.updateLocalNameDisplay(baseName, locationSuffix);
+      this.logger.info(this.TAG, nameChanged ? 'Succes ecriture nom Widoor' : 'Ecriture nom Widoor non necessaire');
+      this.logger.info(this.TAG, roomChanged ? 'Succes ecriture piece Widoor' : 'Ecriture piece Widoor non necessaire');
+      this.logger.info(this.TAG, 'Validation nom/piece Widoor reussie');
+
+      if (nameChanged && roomChanged) {
+        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME_ROOM');
+      } else if (roomChanged) {
+        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_ROOM');
+      } else {
+        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME');
+      }
+    } catch (error) {
+      this.logger.error(this.TAG, 'Validation nom/piece Widoor en erreur sans deconnexion', error);
+      if (error && error.toastMessage) {
+        this.showWidoorNameToastMessage(error.toastMessage);
+      } else {
+        this.showWidoorNameToast(error && error.translationKey ? error.translationKey : 'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_ERROR');
+      }
+    } finally {
+      this.isNameWriteInProgress = false;
+      this.logger.info(this.TAG, 'Fin validation nom/piece Widoor');
+    }
   }
 
   onSubmitformPassword() {
@@ -2075,6 +2611,27 @@ export class WidoorPage implements OnInit {
       });
 
     this.promptReading.present();
+  }
+
+  private showWidoorNameToast(translationKey: string): void {
+    this.translate.get(translationKey).subscribe(
+      res => {
+        let toast = this.toastCtrl.create({
+          message: res,
+          duration: 3500,
+          position: 'bottom'
+        });
+        toast.present();
+      });
+  }
+
+  private showWidoorNameToastMessage(message: string): void {
+    let toast = this.toastCtrl.create({
+      message: message,
+      duration: 3500,
+      position: 'bottom'
+    });
+    toast.present();
   }
 
 
