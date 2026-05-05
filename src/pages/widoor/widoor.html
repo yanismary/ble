@@ -250,7 +250,7 @@
 
             <div padding>
               <button ion-button type="submit" block primary color="navBarColor"
-                [disabled]="!canSubmitNameAssociation()">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.FORMBUTTON_VALIDATE" | translate }}</button>
+                [disabled]="isBleBusy || isNameWriteInProgress || !canSubmitNameAssociation()">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.FORMBUTTON_VALIDATE" | translate }}</button>
             </div>
           </form>
 

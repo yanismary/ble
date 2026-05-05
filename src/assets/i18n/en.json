@@ -129,7 +129,7 @@
 					"REQUIRED": "A name is required.",
 					"MINLENGHT": "The name must be composed of at least 5 characters.",
 					"MAXLENGHT": "The name cannot be composed of more than 15 characters.",
-					"PATTERN": "The name must be composed of only standard characters."
+					"PATTERN": "The name can contain only letters, digits, spaces or hyphens."
 				}
 			},
 			"ROOM_TYPE": {
@@ -142,7 +142,22 @@
 				"GARAGE_UTILITYROOM": "Garage / utilityroom",
 				"PLAYROOM": "Playroom"
 			},
-			"FORMBUTTON_VALIDATE": "VALIDATE"
+			"FORMBUTTON_VALIDATE": "VALIDATE",
+			"BASIC": {
+				"SAVE_SUCCESS_NAME": "Name saved successfully. You may need to run a new search to see the new name.",
+				"SAVE_SUCCESS_ROOM": "Room saved successfully.",
+				"SAVE_SUCCESS_NAME_ROOM": "Configuration saved successfully. You may need to run a new search to see the new name.",
+				"SAVE_ERROR": "The change could not be saved.",
+				"SAVE_NOT_CONNECTED": "The motor is no longer connected. Please start a new connection.",
+				"SAVE_INVALID_NAME": "The entered name is not valid.",
+				"SAVE_INVALID_CHARACTERS": "The name can contain only letters, digits, spaces or hyphens.",
+				"NAME_REQUIRED": "Please enter a name before saving.",
+				"NAME_TOO_LONG": "The full name cannot exceed 15 characters, including the room.",
+				"NO_CHANGE": "No changes to save.",
+				"WRITE_IN_PROGRESS": "Write already in progress.",
+				"BLE_BUSY": "Operation in progress, please wait.",
+				"RECONNECT_REQUIRED": "The change could not be saved. Please reconnect to the motor."
+			}
 		},
 		"INFORMATIONS_TAB": {
 			"INFORMATIONS_TAB_TITLE": "Informations",
@@ -337,7 +352,13 @@
 				"SAVE_ERROR": "The change could not be saved.",
 				"SAVE_NOT_CONNECTED": "The motor is no longer connected. Please start a new connection.",
 				"SAVE_INVALID_NAME": "The entered name is not valid.",
-				"NAME_REQUIRED": "Please enter a name before saving."
+				"SAVE_INVALID_CHARACTERS": "The name can contain only letters, digits, spaces or hyphens.",
+				"NAME_REQUIRED": "Please enter a name before saving.",
+				"NAME_TOO_LONG": "The full name cannot exceed 15 characters, including the room.",
+				"NO_CHANGE": "No changes to save.",
+				"WRITE_IN_PROGRESS": "Write already in progress.",
+				"BLE_BUSY": "Operation in progress, please wait.",
+				"RECONNECT_REQUIRED": "The change could not be saved. Please reconnect to the motor."
 			},
 			"ADVANCED": {
 				"TITLE": "Advanced",

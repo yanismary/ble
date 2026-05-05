@@ -131,7 +131,7 @@
 					"REQUIRED": "Un nom est obligatoirement requis.",
 					"MINLENGHT": "Le nom doit être composé de au moins 5 caractères.",
 					"MAXLENGHT": "Le nom ne peut pas comporter plus de 15 caractères.",
-					"PATTERN": "Le nom ne peut être composé que de caractères standards."
+					"PATTERN": "Le nom ne peut contenir que des lettres, chiffres, espaces ou tirets."
 				}
 			},
 			"ROOM_TYPE": {
@@ -144,7 +144,22 @@
 				"GARAGE_UTILITYROOM": "Garage / Buanderie",
 				"PLAYROOM": "Salle de jeux"
 			},
-			"FORMBUTTON_VALIDATE": "VALIDER"
+			"FORMBUTTON_VALIDATE": "VALIDER",
+			"BASIC": {
+				"SAVE_SUCCESS_NAME": "Nom enregistré avec succès. Il peut être nécessaire de relancer une recherche pour voir le nouveau nom.",
+				"SAVE_SUCCESS_ROOM": "Pièce enregistrée avec succès.",
+				"SAVE_SUCCESS_NAME_ROOM": "Configuration enregistrée avec succès. Il peut être nécessaire de relancer une recherche pour voir le nouveau nom.",
+				"SAVE_ERROR": "La modification n'a pas pu être enregistrée.",
+				"SAVE_NOT_CONNECTED": "La motorisation n'est plus connectée. Veuillez relancer une connexion.",
+				"SAVE_INVALID_NAME": "Le nom saisi n'est pas valide.",
+				"SAVE_INVALID_CHARACTERS": "Le nom ne peut contenir que des lettres, chiffres, espaces ou tirets.",
+				"NAME_REQUIRED": "Veuillez saisir un nom avant d'enregistrer.",
+				"NAME_TOO_LONG": "Le nom complet ne peut pas dépasser 15 caractères, pièce comprise.",
+				"NO_CHANGE": "Aucune modification à enregistrer.",
+				"WRITE_IN_PROGRESS": "Écriture déjà en cours.",
+				"BLE_BUSY": "Opération en cours, veuillez patienter.",
+				"RECONNECT_REQUIRED": "La modification n'a pas pu être enregistrée. Veuillez vous reconnecter à la motorisation."
+			}
 		},
 		"INFORMATIONS_TAB": {
 			"INFORMATIONS_TAB_TITLE": "Informations",
@@ -342,7 +357,13 @@
 				"SAVE_ERROR": "La modification n'a pas pu être enregistrée.",
 				"SAVE_NOT_CONNECTED": "La motorisation n'est plus connectée. Veuillez relancer une connexion.",
 				"SAVE_INVALID_NAME": "Le nom saisi n'est pas valide.",
-				"NAME_REQUIRED": "Veuillez saisir un nom avant d'enregistrer."
+				"SAVE_INVALID_CHARACTERS": "Le nom ne peut contenir que des lettres, chiffres, espaces ou tirets.",
+				"NAME_REQUIRED": "Veuillez saisir un nom avant d'enregistrer.",
+				"NAME_TOO_LONG": "Le nom complet ne peut pas dépasser 15 caractères, pièce comprise.",
+				"NO_CHANGE": "Aucune modification à enregistrer.",
+				"WRITE_IN_PROGRESS": "Écriture déjà en cours.",
+				"BLE_BUSY": "Opération en cours, veuillez patienter.",
+				"RECONNECT_REQUIRED": "La modification n'a pas pu être enregistrée. Veuillez vous reconnecter à la motorisation."
 			},
 			"ADVANCED": {
 				"TITLE": "Avancés",

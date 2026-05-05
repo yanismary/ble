@@ -129,7 +129,7 @@
 					"REQUIRED": "Ein Name wird benötigt.",
 					"MINLENGHT": "Der Name muss aus mindestens fünf Zeichen bestehen.",
 					"MAXLENGHT": "Der Name darf nicht aus mehr als 15 Zeichen bestehen.",
-					"PATTERN": "Der Name darf nur aus Standard-Zeichen bestehen."
+					"PATTERN": "Der Name darf nur Buchstaben, Ziffern, Leerzeichen oder Bindestriche enthalten."
 				}
 			},
 			"ROOM_TYPE": {
@@ -142,7 +142,22 @@
 				"GARAGE_UTILITYROOM": "Garage / Abstellraum",
 				"PLAYROOM": "Spielzimmer"
 			},
-			"FORMBUTTON_VALIDATE": "BESTÄTIGEN"
+			"FORMBUTTON_VALIDATE": "BESTÄTIGEN",
+			"BASIC": {
+				"SAVE_SUCCESS_NAME": "Name erfolgreich gespeichert. Möglicherweise müssen Sie eine neue Suche starten, um den neuen Namen zu sehen.",
+				"SAVE_SUCCESS_ROOM": "Raum erfolgreich gespeichert.",
+				"SAVE_SUCCESS_NAME_ROOM": "Konfiguration erfolgreich gespeichert. Möglicherweise müssen Sie eine neue Suche starten, um den neuen Namen zu sehen.",
+				"SAVE_ERROR": "Die Änderung konnte nicht gespeichert werden.",
+				"SAVE_NOT_CONNECTED": "Die Motorisierung ist nicht mehr verbunden. Bitte starten Sie eine neue Verbindung.",
+				"SAVE_INVALID_NAME": "Der eingegebene Name ist nicht gültig.",
+				"SAVE_INVALID_CHARACTERS": "Der Name darf nur Buchstaben, Ziffern, Leerzeichen oder Bindestriche enthalten.",
+				"NAME_REQUIRED": "Bitte geben Sie vor dem Speichern einen Namen ein.",
+				"NAME_TOO_LONG": "Der vollständige Name darf einschließlich Raum maximal 15 Zeichen lang sein.",
+				"NO_CHANGE": "Keine Änderungen zum Speichern.",
+				"WRITE_IN_PROGRESS": "Schreibvorgang läuft bereits.",
+				"BLE_BUSY": "Vorgang läuft, bitte warten.",
+				"RECONNECT_REQUIRED": "Die Änderung konnte nicht gespeichert werden. Bitte verbinden Sie sich erneut mit der Motorisierung."
+			}
 		},
 		"INFORMATIONS_TAB": {
 			"INFORMATIONS_TAB_TITLE": "Informationen",
@@ -337,7 +352,13 @@
 				"SAVE_ERROR": "Die Änderung konnte nicht gespeichert werden.",
 				"SAVE_NOT_CONNECTED": "Die Motorisierung ist nicht mehr verbunden. Bitte starten Sie eine neue Verbindung.",
 				"SAVE_INVALID_NAME": "Der eingegebene Name ist nicht gültig.",
-				"NAME_REQUIRED": "Bitte geben Sie vor dem Speichern einen Namen ein."
+				"SAVE_INVALID_CHARACTERS": "Der Name darf nur Buchstaben, Ziffern, Leerzeichen oder Bindestriche enthalten.",
+				"NAME_REQUIRED": "Bitte geben Sie vor dem Speichern einen Namen ein.",
+				"NAME_TOO_LONG": "Der vollständige Name darf einschließlich Raum maximal 15 Zeichen lang sein.",
+				"NO_CHANGE": "Keine Änderungen zum Speichern.",
+				"WRITE_IN_PROGRESS": "Schreibvorgang läuft bereits.",
+				"BLE_BUSY": "Vorgang läuft, bitte warten.",
+				"RECONNECT_REQUIRED": "Die Änderung konnte nicht gespeichert werden. Bitte verbinden Sie sich erneut mit der Motorisierung."
 			},
 			"ADVANCED": {
 				"TITLE": "Fortgeschrittene Einstellungen",

@@ -328,7 +328,7 @@
 
             <div padding>
               <button ion-button type="submit" block primary
-                [disabled]="!formName.valid">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.FORMBUTTON_VALIDATE" | translate }}</button>
+                [disabled]="isBleBusy || isNameWriteInProgress || !canSubmitNameAssociation()">{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.FORMBUTTON_VALIDATE" | translate }}</button>
             </div>
           </form>
           <!--END- Réglage - Nom et localisation -->

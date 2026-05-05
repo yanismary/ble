@@ -16,6 +16,9 @@ import { LoggerService } from '../../providers/logger/logger.service';
 import * as bcrypt from 'bcryptjs';
 import moment from 'moment';
 
+declare var require: any;
+const BleClient = require('@capacitor-community/bluetooth-le').BleClient;
+
 
 // HANDLE OFFSET
 const D_SHDO_VERSION_STACK_MAJORMSB_HOF = 0;
@@ -123,6 +126,11 @@ const MLPC_USERPARAM_CHARACTERISTIC = '7c7679a6-5a0d-4cbd-8cbe-93b6d6b4b80f';
 const MLPC_PROPARAM_CHARACTERISTIC = '15e9eef3-939b-4e66-baf9-772d8bd18c41';
 // const MLPC_VERIFPARAM_CHARACTERISTIC = 'cc942243-7656-441f-880c-4617eeb8bacc';
 const MLPC_PROPARAMALL_CHARACTERISTIC = 'cc942243-7656-441f-880c-4617eeb8bacc';
+const NAME_WRITE_TIMEOUT_MS = 15000;
+const NAME_WRITE_PRE_DELAY_MS = 200;
+const NAME_WRITE_COOLDOWN_MS = 1800;
+const NAME_WRITE_MAX_LENGTH = 15;
+const NAME_ALLOWED_PATTERN = /^[A-Za-z0-9 -]*$/;
 
 
 @IonicPage({
@@ -274,11 +282,16 @@ export class MoventivPage implements OnInit {
   //localisation
   localisation!: string;
   stringLoc: string = '';
+  private currentLocationSuffix: string = '';
+  private locationSuffixes: string[] = ['#CHA', '#ENT', '#SAL', '#CUI', '#SAM', '#SDB', '#WCS', '#GAR', '#SLL', '#SDJ'];
 
   //logic connection
   loading: any = {};
   promptReading: any = {};
   peripheralNameAff!: any;
+  isNameWriteInProgress: boolean = false;
+  isBleBusy: boolean = false;
+  isBleConnectionUnstable: boolean = false;
   retry: boolean = false;
   retryConnection: number = 6;
   menuType!: string;
@@ -443,6 +456,7 @@ export class MoventivPage implements OnInit {
 
     this.peripheralNameAff =
     this.navParams.get('displayName') || (this.peripheral ? (this.peripheral.customName || this.peripheral.name) : '') || '';
+    this.syncNameInputFromDisplayName();
   }
 
 
@@ -534,10 +548,13 @@ export class MoventivPage implements OnInit {
 
   onConnected(peripheral: any) {
     this.logger.debug(this.TAG, '[STEP 1] Connected to hardware');
+    this.isBleConnectionUnstable = false;
+    this.isBleBusy = false;
     this.peripheral = peripheral;
 
     this.peripheralNameAff =
     this.navParams.get('displayName') || peripheral.customName || peripheral.name || '';
+    this.syncNameInputFromDisplayName();
 
     setTimeout(() => {
       this.randble.discover({ address: peripheral.address })
@@ -573,6 +590,10 @@ export class MoventivPage implements OnInit {
 
 
   readAll() {
+    if (this.isBleActionBlocked('readAll')) {
+      return;
+    }
+
     if (!this.peripheral || !this.peripheral.address) {
       const navDevice = this.navParams.get('device') || this.bleConnectService.getConnectedPeripheral();
       if (navDevice) {
@@ -599,6 +620,9 @@ export class MoventivPage implements OnInit {
   }
 
   readMotorState() {
+    if (this.isBleActionBlocked('readMotorState')) {
+      return;
+    }
     this.randble.read({ address: this.peripheral.address, 
                         service: SHDO_SERVICE, 
                         characteristic: SHDO_MOTORSTATE_CHARACTERISTIC 
@@ -629,6 +653,9 @@ export class MoventivPage implements OnInit {
 
 
   readVersion() {
+    if (this.isBleActionBlocked('readVersion')) {
+      return;
+    }
     this.randble.read({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_VERSION_CHARACTERISTIC }).then
       (
         buffer => {
@@ -659,6 +686,9 @@ export class MoventivPage implements OnInit {
   }
 
   readProMaintenance() {
+    if (this.isBleActionBlocked('readProMaintenance')) {
+      return;
+    }
     this.randble.read({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_PROMAINTENANCE_CHARACTERISTIC }).then
       (
         buffer => {
@@ -687,6 +717,9 @@ export class MoventivPage implements OnInit {
   }
 
   readUserDatesCycles() {
+    if (this.isBleActionBlocked('readUserDatesCycles')) {
+      return;
+    }
     this.randble.read({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_USERDATESCYCLES_CHARACTERISTIC }).then(
       buffer => {
         let data_shDo_userDatesCycles = this.randble.encodedStringToBytes(buffer.value)
@@ -702,6 +735,9 @@ export class MoventivPage implements OnInit {
   }
 
   readUserParam() {
+    if (this.isBleActionBlocked('readUserParam')) {
+      return;
+    }
     this.randble.read({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC }).then(
       buffer => {
         let dataBytes = this.randble.encodedStringToBytes(buffer.value)
@@ -741,6 +777,9 @@ export class MoventivPage implements OnInit {
   }
 
   readProParam() {
+    if (this.isBleActionBlocked('readProParam')) {
+      return;
+    }
     this.randble.read({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC }).then
       (
         buffer => {
@@ -893,6 +932,9 @@ export class MoventivPage implements OnInit {
   // }
 
   setShutterOpen() {
+    if (this.isBleActionBlocked('setShutterOpen')) {
+      return;
+    }
     if ((this.device.isDemo) == "true") return;
     this.logger.debug(this.TAG, 'SetDoorOpen');
     if (this.lockClose == 1) { this.lockAlert(); }
@@ -924,6 +966,9 @@ export class MoventivPage implements OnInit {
   
 
   setShutterOpenStime() {
+    if (this.isBleActionBlocked('setShutterOpenStime')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetDoorOpenStime');
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
@@ -949,6 +994,9 @@ export class MoventivPage implements OnInit {
   }
 
   setShutterOpenLtime() {
+    if (this.isBleActionBlocked('setShutterOpenLtime')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetDoorOpenLtime');
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
@@ -974,6 +1022,9 @@ export class MoventivPage implements OnInit {
   }
 
   setShutterLearning() {
+    if (this.isBleActionBlocked('setShutterLearning')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetDoorLearning');
 
     this.vibrate();
@@ -997,6 +1048,9 @@ export class MoventivPage implements OnInit {
   }
 
   setShdoMaintenanceDate() {
+    if (this.isBleActionBlocked('setShdoMaintenanceDate')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setShdoMaintenanceDate');
 
     let commandData = new Uint8Array(5);
@@ -1018,6 +1072,9 @@ export class MoventivPage implements OnInit {
 
 
   setShdoFirstDate() {
+    if (this.isBleActionBlocked('setShdoFirstDate')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setShdoFirstDate');
     if ((this.rval_shDo_userDatesCycles[5] == 0xFF) && (this.rval_shDo_userDatesCycles[4] == 0xFF) && (this.rval_shDo_userDatesCycles[3] == 0xFF)) {
       this.logger.debug(this.TAG, 'firstUse');
@@ -1040,6 +1097,9 @@ export class MoventivPage implements OnInit {
   }
 
   setShutterClose() {
+    if (this.isBleActionBlocked('setShutterClose')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetDoorClose');
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
@@ -1064,6 +1124,9 @@ export class MoventivPage implements OnInit {
 
 
   setLockClose() {
+    if (this.isBleActionBlocked('setLockClose')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetLockClose');
 
     if (this.lockClose != 0){
@@ -1111,6 +1174,9 @@ export class MoventivPage implements OnInit {
   }
 
   setLockOpen() {
+    if (this.isBleActionBlocked('setLockOpen')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetLockOpen');
 
     this.vibrate();
@@ -1143,6 +1209,9 @@ export class MoventivPage implements OnInit {
 
 
   setOpenSpeedTune() {
+    if (this.isBleActionBlocked('setOpenSpeedTune')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetSpeedOpenTune');
 
     this.vibrate();
@@ -1165,6 +1234,9 @@ export class MoventivPage implements OnInit {
 
 
   setCloseSpeedTune() {
+    if (this.isBleActionBlocked('setCloseSpeedTune')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetSpeedCloseTune');
 
     this.vibrate();
@@ -1185,6 +1257,9 @@ export class MoventivPage implements OnInit {
 
 
   setNearOpenSpeed() {
+    if (this.isBleActionBlocked('setNearOpenSpeed')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setNearOpenSpeed');
 
     this.vibrate();
@@ -1204,6 +1279,9 @@ export class MoventivPage implements OnInit {
   }
 
   setNearCloseSpeed() {
+    if (this.isBleActionBlocked('setNearCloseSpeed')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setNearCloseSpeed');
 
     this.vibrate();
@@ -1222,6 +1300,9 @@ export class MoventivPage implements OnInit {
   }
 
   setNearOpenTorque() {
+    if (this.isBleActionBlocked('setNearOpenTorque')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setNearOpenTorque');
 
     this.vibrate();
@@ -1241,6 +1322,9 @@ export class MoventivPage implements OnInit {
   }
 
   setBrakingOpenPower() {
+    if (this.isBleActionBlocked('setBrakingOpenPower')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setBrakingOpenPowe');
 
     this.vibrate();
@@ -1260,6 +1344,9 @@ export class MoventivPage implements OnInit {
   }
 
   setObstacleSensibility(){
+    if (this.isBleActionBlocked('setObstacleSensibility')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setBrakingOpenPowe');
 
     this.vibrate();
@@ -1279,6 +1366,9 @@ export class MoventivPage implements OnInit {
   }
 
   setNearCloseTorque() {
+    if (this.isBleActionBlocked('setNearCloseTorque')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setNearCloseTorque');
 
     this.vibrate();
@@ -1301,6 +1391,9 @@ export class MoventivPage implements OnInit {
 
 
   setShortTiming() {
+    if (this.isBleActionBlocked('setShortTiming')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetShortTiming');
 
     this.vibrate();
@@ -1320,6 +1413,9 @@ export class MoventivPage implements OnInit {
   }
 
   setLongTiming() {
+    if (this.isBleActionBlocked('setLongTiming')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetShortTiming');
 
     this.vibrate();
@@ -1340,6 +1436,9 @@ export class MoventivPage implements OnInit {
 
 
   setUserStaticLight() {
+    if (this.isBleActionBlocked('setUserStaticLight')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserStaticLight');
 
     this.vibrate();
@@ -1367,6 +1466,9 @@ export class MoventivPage implements OnInit {
   }
 
   setUserDynLight() {
+    if (this.isBleActionBlocked('setUserDynLight')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserDynLight');
 
     this.vibrate();
@@ -1394,6 +1496,9 @@ export class MoventivPage implements OnInit {
   }
 
   setUserbutOrRadar1() {
+    if (this.isBleActionBlocked('setUserbutOrRadar1')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserbutOrRadar1');
 
     this.vibrate();
@@ -1421,6 +1526,9 @@ export class MoventivPage implements OnInit {
   }
 
   setUserbutOrRadar2() {
+    if (this.isBleActionBlocked('setUserbutOrRadar2')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserbutOrRadar2');
 
     this.vibrate();
@@ -1449,6 +1557,9 @@ export class MoventivPage implements OnInit {
 
 
   setUserRGBIndic() {
+    if (this.isBleActionBlocked('setUserRGBIndic')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserRGBIndic');
 
     this.vibrate();
@@ -1476,6 +1587,9 @@ export class MoventivPage implements OnInit {
   }
 
   setWeightRange() {
+    if (this.isBleActionBlocked('setWeightRange')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setWeightRange');
 
     if (this.userRangeWeight == 255)
@@ -1643,19 +1757,374 @@ export class MoventivPage implements OnInit {
   }
 
 
-  SetName() {
-    this.logger.debug(this.TAG, 'SetName');
+  private isDemoDevice(): boolean {
+    return !!(this.device && (this.device.isDemo === true || this.device.isDemo === "true"));
+  }
 
-    let bytes = this.randble.stringToBytes(this.userConfig.mlpcName.concat(this.stringLoc));
-    let encodedString = this.randble.bytesToEncodedString(bytes); //convertion bytes -> base64 string
+  private getDeviceIdFromDevice(device: any): string {
+    return device && (device.deviceId || device.address || device.id)
+      ? String(device.deviceId || device.address || device.id).trim()
+      : '';
+  }
 
-    this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_NAME_CHARACTERISTIC, value: encodedString }).then(
+  private normalizeBleDevice(device: any): any {
+    const deviceId = this.getDeviceIdFromDevice(device);
+
+    if (device && deviceId) {
+      device.deviceId = device.deviceId || deviceId;
+      device.address = device.address || deviceId;
+      device.id = device.id || deviceId;
+    }
+
+    return device;
+  }
+
+  private resolveNameWriteDeviceId(): string {
+    const connectedPeripheral = this.bleConnectService ? this.bleConnectService.getConnectedPeripheral() : null;
+    const navDevice = this.navParams.get('device') || this.navParams.get('peripheral');
+    const candidates = [
+      { source: 'this.peripheral', device: this.peripheral },
+      { source: 'this.device', device: this.device },
+      { source: 'navParams.device', device: navDevice },
+      { source: 'bleConnectService.connectedPeripheral', device: connectedPeripheral }
+    ];
+
+    for (let i = 0; i < candidates.length; i++) {
+      const deviceId = this.getDeviceIdFromDevice(candidates[i].device);
+
+      if (deviceId) {
+        if (!this.getDeviceIdFromDevice(this.peripheral) && candidates[i].device) {
+          this.peripheral = this.normalizeBleDevice(Object.assign({}, candidates[i].device));
+        }
+        if (!this.getDeviceIdFromDevice(this.device) && candidates[i].device) {
+          this.device = this.normalizeBleDevice(Object.assign({}, candidates[i].device));
+        }
+
+        this.logger.info(this.TAG, 'DeviceId Moventiv retenu avant ecriture', {
+          deviceId: deviceId,
+          source: candidates[i].source
+        });
+
+        return deviceId;
+      }
+    }
+
+    this.logger.error(this.TAG, 'DeviceId Moventiv absent avant ecriture', {
+      peripheral: this.peripheral,
+      device: this.device,
+      connectedPeripheral: connectedPeripheral
+    });
+    return '';
+  }
+
+  private isDeviceConnected(deviceId: string): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      let subscription: any = null;
+      let settled = false;
+
+      subscription = this.randble.isConnected({ address: deviceId }).subscribe(
+        (res) => {
+          if (!settled) {
+            settled = true;
+            resolve(!!(res && res.isConnected));
+          }
+          if (subscription) {
+            subscription.unsubscribe();
+          }
+        },
+        (error) => {
+          this.logger.warn(this.TAG, 'Verification connexion Moventiv impossible', {
+            deviceId: deviceId,
+            error: error
+          });
+          if (!settled) {
+            settled = true;
+            resolve(false);
+          }
+          if (subscription) {
+            subscription.unsubscribe();
+          }
+        }
+      );
+    });
+  }
+
+  private createNameWriteError(message: string, translationKey: string): any {
+    const error: any = new Error(message);
+    error.translationKey = translationKey;
+    return error;
+  }
+
+  private createNameWriteToastError(message: string, toastMessage: string): any {
+    const error: any = new Error(message);
+    error.toastMessage = toastMessage;
+    return error;
+  }
+
+  private createNameWriteUnstableError(message: string, translationKey: string, originalError?: any): any {
+    const error = this.createNameWriteError(message, translationKey);
+    error.unstableConnection = true;
+    error.originalError = originalError;
+    return error;
+  }
+
+  private isNameWriteTimeoutError(error: any): boolean {
+    const message = String(error && (error.message || error.errorMessage || error.toString()) || '').toLowerCase();
+    return message.indexOf('timeout') > -1;
+  }
+
+  private normalizeNameWriteError(error: any): any {
+    if (error && error.unstableConnection) {
+      return error;
+    }
+
+    if (error && error.toastMessage) {
+      return error;
+    }
+
+    if (this.isNameWriteTimeoutError(error)) {
+      return this.createNameWriteUnstableError(
+        'Timeout ecriture nom/piece Moventiv',
+        'MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.RECONNECT_REQUIRED',
+        error
+      );
+    }
+
+    return error;
+  }
+
+  private bytesToDataView(bytes: Uint8Array): DataView {
+    const buffer = new ArrayBuffer(bytes.length);
+    const view = new Uint8Array(buffer);
+    view.set(bytes);
+    return new DataView(buffer);
+  }
+
+  private writeNameWithResponse(deviceId: string, bytes: Uint8Array, encodedString: string, valueToWrite: string): Promise<any> {
+    this.logger.info(this.TAG, 'Ecriture nom/piece Moventiv avec reponse', {
+      deviceId: deviceId,
+      service: SHDO_SERVICE,
+      characteristic: SHDO_NAME_CHARACTERISTIC,
+      value: valueToWrite,
+      length: bytes.length,
+      timeout: NAME_WRITE_TIMEOUT_MS
+    });
+
+    return BleClient.write(
+      deviceId,
+      SHDO_SERVICE,
+      SHDO_NAME_CHARACTERISTIC,
+      this.bytesToDataView(bytes),
+      { timeout: NAME_WRITE_TIMEOUT_MS }
+    ).then(() => {
+      return {
+        status: 'written',
+        value: encodedString,
+        mode: 'writeWithResponse'
+      };
+    });
+  }
+
+  private ensureNameWriteConnection(deviceId: string): Promise<void> {
+    const connectionStatus = this.bleConnectService ? this.bleConnectService.getConnectionStatus() : 'unknown';
+
+    this.logger.info(this.TAG, 'Etat connexion Moventiv avant ecriture', {
+      deviceId: deviceId,
+      connectionStatus: connectionStatus
+    });
+
+    if (!deviceId) {
+      return Promise.reject(this.createNameWriteError(
+        'DeviceId absent pour ecriture nom/piece Moventiv',
+        'MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_NOT_CONNECTED'
+      ));
+    }
+
+    return this.isDeviceConnected(deviceId).then((isConnected) => {
+      this.logger.info(this.TAG, 'Etat connecte Moventiv verifie avant ecriture', {
+        deviceId: deviceId,
+        connectionStatus: connectionStatus,
+        isConnected: isConnected
+      });
+
+      if (!isConnected) {
+        throw this.createNameWriteError(
+          'Motorisation Moventiv non connectee avant ecriture nom/piece',
+          'MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_NOT_CONNECTED'
+        );
+      }
+    });
+  }
+
+  private isBleActionBlocked(action: string): boolean {
+    if (this.isBleBusy) {
+      this.logger.warn(this.TAG, 'Action BLE Moventiv bloquee: operation en cours', { action: action });
+      this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.BLE_BUSY');
+      return true;
+    }
+
+    if (this.isBleConnectionUnstable) {
+      this.logger.warn(this.TAG, 'Action BLE Moventiv bloquee: connexion instable', { action: action });
+      this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.RECONNECT_REQUIRED');
+      return true;
+    }
+
+    return false;
+  }
+
+  private async handleNameWriteConnectionUnstable(deviceId: string, error: any): Promise<void> {
+    this.isBleConnectionUnstable = true;
+
+    if (this.peripheral) {
+      this.peripheral.status = 'disconnected';
+      this.peripheral.isConnected = false;
+    }
+    if (this.device) {
+      this.device.status = 'disconnected';
+      this.device.isConnected = false;
+    }
+    if (this.bleConnectService) {
+      this.bleConnectService.setConnectionStatus('disconnected');
+      this.bleConnectService.setNeedConnect(false);
+    }
+
+    this.logger.warn(this.TAG, 'Connexion BLE Moventiv declaree instable apres ecriture nom/piece', {
+      deviceId: deviceId,
+      error: error
+    });
+
+    if (deviceId) {
+      this.logger.warn(this.TAG, 'Deconnexion propre Moventiv demandee apres timeout/erreur ecriture nom/piece', {
+        deviceId: deviceId
+      });
+
+      try {
+        await BleClient.disconnect(deviceId);
+        this.logger.info(this.TAG, 'Deconnexion propre Moventiv effectuee apres ecriture nom/piece instable', {
+          deviceId: deviceId
+        });
+      } catch (disconnectError) {
+        this.logger.warn(this.TAG, 'Deconnexion propre Moventiv impossible apres ecriture nom/piece instable', {
+          deviceId: deviceId,
+          error: disconnectError
+        });
+      }
+    }
+
+    this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.RECONNECT_REQUIRED');
+
+    try {
+      this.logger.warn(this.TAG, 'Retour page scan Moventiv apres connexion instable nom/piece');
+      await this.navCtrl.push('ScanPage');
+    } catch (navigationError) {
+      this.logger.warn(this.TAG, 'Retour page scan Moventiv impossible apres connexion instable nom/piece', navigationError);
+    }
+  }
+
+  SetName(nameToWrite?: string, deviceIdToUse?: string): Promise<any> {
+    const valueToWrite = (typeof nameToWrite === 'string' ? nameToWrite : this.userConfig.mlpcName.concat(this.stringLoc)).trim();
+    const deviceId = deviceIdToUse || this.resolveNameWriteDeviceId();
+
+    this.logger.info(this.TAG, 'Debut ecriture nom/piece Moventiv', {
+      deviceId: deviceId,
+      value: valueToWrite,
+      length: valueToWrite.length
+    });
+
+    if (!valueToWrite) {
+      return Promise.reject(this.createNameWriteError(
+        'Valeur vide pour ecriture nom/piece Moventiv',
+        'MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.NAME_REQUIRED'
+      ));
+    }
+
+    if (valueToWrite.length > NAME_WRITE_MAX_LENGTH) {
+      return Promise.reject(this.createNameWriteError(
+        'Valeur trop longue pour ecriture nom/piece Moventiv',
+        'MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.NAME_TOO_LONG'
+      ));
+    }
+
+    const baseNameToWrite = this.stripLocationSuffix(valueToWrite).trim();
+    if (!baseNameToWrite) {
+      return Promise.reject(this.createNameWriteError(
+        'Nom absent pour ecriture nom/piece Moventiv',
+        'MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.NAME_REQUIRED'
+      ));
+    }
+
+    if (!this.isNameBaseValid(baseNameToWrite)) {
+      return Promise.reject(this.createNameWriteError(
+        'Caracteres interdits pour ecriture nom/piece Moventiv',
+        'MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_INVALID_CHARACTERS'
+      ));
+    }
+
+    let bytes = this.randble.stringToBytes(valueToWrite);
+    let encodedString = this.randble.bytesToEncodedString(bytes);
+
+    if (this.isDemoDevice()) {
+      this.logger.info(this.TAG, 'Ecriture nom/piece Moventiv simulee en mode demo', { value: valueToWrite });
+      return Promise.resolve({ value: encodedString });
+    }
+
+    return this.ensureNameWriteConnection(deviceId).then(() => {
+      return this.writeNameWithResponse(deviceId, bytes, encodedString, valueToWrite).then((returnObj) => {
+        return {
+          returnObj: returnObj
+        };
+      }).catch((error) => {
+        if (this.isNameWriteTimeoutError(error)) {
+          this.logger.warn(this.TAG, 'Timeout ecriture nom Moventiv detecte: connexion declaree instable, aucune relecture', {
+            deviceId: deviceId,
+            value: valueToWrite,
+            error: error
+          });
+
+          throw this.createNameWriteUnstableError(
+            'Timeout ecriture nom/piece Moventiv',
+            'MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.RECONNECT_REQUIRED',
+            error
+          );
+        }
+
+        this.logger.error(this.TAG, 'Erreur ecriture nom Moventiv: connexion declaree instable', {
+          deviceId: deviceId,
+          value: valueToWrite,
+          error: error
+        });
+
+        throw this.createNameWriteUnstableError(
+          'Erreur ecriture nom/piece Moventiv',
+          'MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.RECONNECT_REQUIRED',
+          error
+        );
+      });
+    }).then((writeResult) => {
+      return writeResult.returnObj || {
+        status: 'written',
+        value: encodedString,
+        mode: 'writeWithResponse'
+      };
+    }).then(
       (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-        this.logger.debug(this.TAG, 'setName :' + returnString);
+        this.logger.info(this.TAG, 'Succes ecriture nom/piece Moventiv', {
+          deviceId: deviceId,
+          value: valueToWrite,
+          mode: returnObj && returnObj.mode ? returnObj.mode : 'writeWithResponse'
+        });
+        this.logger.info(this.TAG, 'Fin ecriture nom/piece Moventiv');
+        return returnObj;
       },
-    );
+    ).catch((error) => {
+      const normalizedError = this.normalizeNameWriteError(error);
+      this.logger.error(this.TAG, 'Erreur ecriture nom/piece Moventiv', {
+        deviceId: deviceId,
+        error: normalizedError
+      });
+      this.logger.info(this.TAG, 'Fin ecriture nom/piece Moventiv en erreur');
+      throw normalizedError;
+    });
   }
 
   //dec and inc buttons fct
@@ -2123,20 +2592,247 @@ export class MoventivPage implements OnInit {
 
 
     this.formName = this.formBuilder.group({
-      'mlpcName': ['wtf', [Validators.required, Validators.minLength(5), Validators.maxLength(15), Validators.pattern('[a-zA-Z0-9,.;:_-]*')]]
+      'mlpcName': ['', [Validators.minLength(5), Validators.maxLength(15), Validators.pattern(NAME_ALLOWED_PATTERN)]]
     });
     this.formPassword = this.formBuilder.group({
       'mlpcPassword': ['', [Validators.required, Validators.maxLength(20)]]
     });
+    this.syncNameInputFromDisplayName();
   }
 
 
 
 
 
-  onSubmitformName() {
-    this.logger.debug(this.TAG, 'submitting form Name');
-    this.SetName();
+  private getCurrentDisplayName(): string {
+    return String(
+      this.peripheralNameAff
+      || (this.peripheral ? (this.peripheral.customName || this.peripheral.name) : '')
+      || ''
+    );
+  }
+
+  private stripLocationSuffix(name: string): string {
+    let value = name || '';
+    for (let i = 0; i < this.locationSuffixes.length; i++) {
+      const suffix = this.locationSuffixes[i];
+      if (value.lastIndexOf(suffix) === value.length - suffix.length) {
+        value = value.substring(0, value.length - suffix.length);
+      }
+    }
+    return value;
+  }
+
+  private extractLocationSuffix(name: string): string {
+    const value = name || '';
+    for (let i = 0; i < this.locationSuffixes.length; i++) {
+      const suffix = this.locationSuffixes[i];
+      if (value.lastIndexOf(suffix) === value.length - suffix.length) {
+        return suffix;
+      }
+    }
+    return '';
+  }
+
+  private getCurrentBaseName(): string {
+    return this.stripLocationSuffix(this.getCurrentDisplayName()).trim();
+  }
+
+  private isNameBaseValid(name: string): boolean {
+    return NAME_ALLOWED_PATTERN.test(name || '');
+  }
+
+  private syncNameInputFromDisplayName(): void {
+    const displayName = this.getCurrentDisplayName();
+    const locationSuffix = this.extractLocationSuffix(displayName);
+    const baseName = this.stripLocationSuffix(displayName).trim();
+
+    if (locationSuffix) {
+      this.currentLocationSuffix = locationSuffix;
+    }
+
+    if (!baseName) {
+      return;
+    }
+
+    this.peripheralNameAff = baseName;
+    this.userConfig.mlpcName = baseName;
+    const control = this.formName ? this.formName.get('mlpcName') : null;
+    if (control) {
+      control.setValue(baseName, { emitEvent: false });
+      control.markAsPristine();
+    }
+  }
+
+  private updateLocalNameDisplay(baseName: string, locationSuffix: string): void {
+    const fullName = baseName + (locationSuffix || '');
+    this.currentLocationSuffix = locationSuffix || '';
+
+    this.ngZone.run(() => {
+      this.peripheralNameAff = baseName;
+      this.userConfig.mlpcName = baseName;
+
+      if (this.peripheral) {
+        this.peripheral.customName = fullName;
+        this.peripheral.name = fullName;
+      }
+
+      const control = this.formName ? this.formName.get('mlpcName') : null;
+      if (control) {
+        control.setValue(baseName, { emitEvent: false });
+        control.markAsPristine();
+      }
+    });
+  }
+
+  canSubmitNameAssociation(): boolean {
+    if (this.isBleBusy || this.isNameWriteInProgress || this.isBleConnectionUnstable) {
+      return false;
+    }
+
+    const control = this.formName ? this.formName.get('mlpcName') : null;
+    const typedName = (this.userConfig.mlpcName || '').trim();
+    const currentBaseName = this.getCurrentBaseName();
+
+    if (typedName && control && !control.valid) {
+      return false;
+    }
+
+    if ((typedName || currentBaseName) && !this.isNameBaseValid(typedName || currentBaseName)) {
+      return false;
+    }
+
+    return !!typedName || !!this.stringLoc || !!currentBaseName;
+  }
+
+  async onSubmitformName() {
+    if (this.isNameWriteInProgress) {
+      this.logger.warn(this.TAG, 'Validation nom/piece Moventiv ignoree: ecriture deja en cours');
+      this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.WRITE_IN_PROGRESS');
+      return;
+    }
+
+    if (this.isBleBusy) {
+      this.logger.warn(this.TAG, 'Validation nom/piece Moventiv ignoree: operation BLE en cours');
+      this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.BLE_BUSY');
+      return;
+    }
+
+    this.isNameWriteInProgress = true;
+    this.isBleBusy = true;
+    let writeSucceeded = false;
+    let deviceId = '';
+    this.logger.info(this.TAG, 'Debut validation nom/piece Moventiv');
+
+    try {
+      const control = this.formName ? this.formName.get('mlpcName') : null;
+      const typedName = (this.userConfig.mlpcName || '').trim();
+      const currentDisplayName = this.getCurrentDisplayName();
+      const currentBaseName = this.stripLocationSuffix(currentDisplayName).trim();
+      const baseName = typedName || currentBaseName;
+      const locationSuffix = this.stringLoc || this.currentLocationSuffix || this.extractLocationSuffix(currentDisplayName);
+      const valueToWrite = (baseName + locationSuffix).trim();
+      const nameChanged = !!typedName && typedName !== currentBaseName;
+      const roomChanged = !!this.stringLoc;
+      deviceId = this.resolveNameWriteDeviceId();
+
+      this.logger.info(this.TAG, 'DeviceId utilise validation nom/piece Moventiv', { deviceId: deviceId });
+      this.logger.info(this.TAG, nameChanged ? 'Nom Moventiv a ecrire' : 'Nom Moventiv ignore car inchange', { name: baseName });
+      this.logger.info(this.TAG, roomChanged ? 'Piece Moventiv a ecrire' : 'Piece Moventiv ignoree car inchangee', { room: locationSuffix });
+      this.logger.info(this.TAG, 'Valeur nom/piece Moventiv preparee', {
+        deviceId: deviceId,
+        value: valueToWrite,
+        length: valueToWrite.length
+      });
+
+      if (typedName && control && control.hasError('pattern')) {
+        control.markAsTouched();
+        this.logger.warn(this.TAG, 'Validation nom/piece Moventiv bloquee: caracteres interdits', {
+          name: typedName
+        });
+        this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_INVALID_CHARACTERS');
+        return;
+      }
+
+      if (baseName && !this.isNameBaseValid(baseName)) {
+        if (control) {
+          control.markAsTouched();
+        }
+        this.logger.warn(this.TAG, 'Validation nom/piece Moventiv bloquee: nom courant contient des caracteres interdits', {
+          name: baseName
+        });
+        this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_INVALID_CHARACTERS');
+        return;
+      }
+
+      if (typedName && control && !control.valid) {
+        control.markAsTouched();
+        this.logger.warn(this.TAG, 'Validation nom/piece Moventiv bloquee: nom invalide');
+        this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_INVALID_NAME');
+        return;
+      }
+
+      if (!baseName) {
+        this.logger.warn(this.TAG, 'Validation nom/piece Moventiv bloquee: nom absent');
+        this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.NAME_REQUIRED');
+        return;
+      }
+
+      if (!nameChanged && !roomChanged) {
+        this.logger.info(this.TAG, 'Validation nom/piece Moventiv terminee sans ecriture: aucune modification');
+        this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.NO_CHANGE');
+        return;
+      }
+
+      if (!valueToWrite) {
+        this.logger.warn(this.TAG, 'Validation nom/piece Moventiv bloquee: valeur vide');
+        this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.NAME_REQUIRED');
+        return;
+      }
+
+      if (valueToWrite.length > NAME_WRITE_MAX_LENGTH) {
+        this.logger.warn(this.TAG, 'Validation nom/piece Moventiv bloquee: valeur trop longue', {
+          value: valueToWrite,
+          length: valueToWrite.length,
+          maxLength: NAME_WRITE_MAX_LENGTH
+        });
+        this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.NAME_TOO_LONG');
+        return;
+      }
+
+      await this.delay(NAME_WRITE_PRE_DELAY_MS);
+      await this.SetName(valueToWrite, deviceId);
+      writeSucceeded = true;
+
+      this.updateLocalNameDisplay(baseName, locationSuffix);
+      this.logger.info(this.TAG, nameChanged ? 'Succes ecriture nom Moventiv' : 'Ecriture nom Moventiv non necessaire');
+      this.logger.info(this.TAG, roomChanged ? 'Succes ecriture piece Moventiv' : 'Ecriture piece Moventiv non necessaire');
+      this.logger.info(this.TAG, 'Validation nom/piece Moventiv reussie');
+
+      if (nameChanged && roomChanged) {
+        this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME_ROOM');
+      } else if (roomChanged) {
+        this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_ROOM');
+      } else {
+        this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME');
+      }
+    } catch (error) {
+      this.logger.error(this.TAG, 'Validation nom/piece Moventiv en erreur', error);
+      if (error && error.unstableConnection) {
+        await this.handleNameWriteConnectionUnstable(deviceId, error);
+      } else if (error && error.toastMessage) {
+        this.showMoventivNameToastMessage(error.toastMessage);
+      } else {
+        this.showMoventivNameToast(error && error.translationKey ? error.translationKey : 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_ERROR');
+      }
+    } finally {
+      if (writeSucceeded) {
+        await this.delay(NAME_WRITE_COOLDOWN_MS);
+      }
+      this.isNameWriteInProgress = false;
+      this.isBleBusy = false;
+      this.logger.info(this.TAG, 'Fin validation nom/piece Moventiv');
+    }
   }
 
 
@@ -2191,7 +2887,7 @@ export class MoventivPage implements OnInit {
 
 
   nameValidator(control: FormControl): { [s: string]: boolean } | null {
-    if (!control.value.match('[a-zA-Z0-9,.;:_-]*')) {
+    if (control.value && !NAME_ALLOWED_PATTERN.test(control.value)) {
       return { invalidName: true };
     }
     return null;
@@ -2369,6 +3065,23 @@ export class MoventivPage implements OnInit {
         });
     }
 
+  }
+
+  private showMoventivNameToast(translationKey: string): void {
+    this.translate.get(translationKey).subscribe(
+      res => {
+        this.showMoventivNameToastMessage(res);
+      });
+  }
+
+  private showMoventivNameToastMessage(message: string): void {
+    let toast = this.toastCtrl.create({
+      message: message,
+      duration: 2500,
+      position: 'middle',
+      cssClass: "yourtoastclass"
+    });
+    toast.present(toast);
   }
 
   showDeconnectedToast() {

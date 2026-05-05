@@ -126,8 +126,10 @@ const MLPC_USERPARAM_CHARACTERISTIC = '7c7679a6-5a0d-4cbd-8cbe-93b6d6b4b80f';
 const MLPC_PROPARAM_CHARACTERISTIC = '15e9eef3-939b-4e66-baf9-772d8bd18c41';
 const MLPC_VERIFPARAM_CHARACTERISTIC = 'cc942243-7656-441f-880c-4617eeb8bacc';
 const NAME_WRITE_TIMEOUT_MS = 15000;
-const NAME_READ_TIMEOUT_MS = 5000;
-const NAME_READBACK_DELAY_MS = 800;
+const NAME_WRITE_PRE_DELAY_MS = 200;
+const NAME_WRITE_COOLDOWN_MS = 1800;
+const NAME_WRITE_MAX_LENGTH = 15;
+const NAME_ALLOWED_PATTERN = /^[A-Za-z0-9 -]*$/;
 
 
 @IonicPage({
@@ -280,6 +282,8 @@ export class WidoorPage implements OnInit {
   promptReading: any = {};
   peripheralNameAff!: any;
   isNameWriteInProgress: boolean = false;
+  isBleBusy: boolean = false;
+  isBleConnectionUnstable: boolean = false;
   retry: boolean = false;
   retryConnection: number = 6;
   menuType!: string;
@@ -519,6 +523,8 @@ export class WidoorPage implements OnInit {
 
   onConnected(peripheral: any) {
     this.logger.debug(this.TAG, '[STEP 1] Connected to hardware');
+    this.isBleConnectionUnstable = false;
+    this.isBleBusy = false;
     this.peripheral = this.normalizeBleDevice(Object.assign(this.peripheral || {}, peripheral || {}));
     this.device = this.normalizeBleDevice(Object.assign(this.device || {}, this.peripheral || {}));
     this.bleConnectService.setConnectedPeripheral(this.peripheral);
@@ -560,6 +566,10 @@ export class WidoorPage implements OnInit {
   readAll() {
     this.resizeContent();
 
+    if (this.isBleActionBlocked('readAll')) {
+      return;
+    }
+
     if ((this.device.isDemo) == "true") return;
 
     this.readMotorState();
@@ -571,6 +581,9 @@ export class WidoorPage implements OnInit {
   }
 
   readMotorState() {
+    if (this.isBleActionBlocked('readMotorState')) {
+      return;
+    }
     if ((this.device.isDemo) == "true") return;
     this.randble.read({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_MOTORSTATE_CHARACTERISTIC }).then(
       buffer => {
@@ -599,6 +612,9 @@ export class WidoorPage implements OnInit {
 
 
   readVersion() {
+    if (this.isBleActionBlocked('readVersion')) {
+      return;
+    }
     if ((this.device.isDemo) == "true") return;
     this.randble.read({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_VERSION_CHARACTERISTIC }).then
       (
@@ -624,6 +640,9 @@ export class WidoorPage implements OnInit {
   }
 
   readProMaintenance() {
+    if (this.isBleActionBlocked('readProMaintenance')) {
+      return;
+    }
     this.randble.read({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_PROMAINTENANCE_CHARACTERISTIC }).then
       (
         buffer => {
@@ -647,6 +666,9 @@ export class WidoorPage implements OnInit {
   }
 
   readUserDatesCycles() {
+    if (this.isBleActionBlocked('readUserDatesCycles')) {
+      return;
+    }
     if ((this.device.isDemo) == "true") return;
     this.randble.read({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_USERDATESCYCLES_CHARACTERISTIC }).then(
       buffer => {
@@ -664,6 +686,9 @@ export class WidoorPage implements OnInit {
   }
 
   readUserParam() {
+    if (this.isBleActionBlocked('readUserParam')) {
+      return;
+    }
     if ((this.device.isDemo) == "true") return;
     this.randble.read({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC }).then(
       buffer => {
@@ -704,6 +729,9 @@ export class WidoorPage implements OnInit {
   }
 
   readProParam() {
+    if (this.isBleActionBlocked('readProParam')) {
+      return;
+    }
     if ((this.device.isDemo) == "true") return;
     this.randble.read({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC }).then
       (
@@ -800,6 +828,9 @@ export class WidoorPage implements OnInit {
 
 
   setShutterOpenStime() {
+    if (this.isBleActionBlocked('setShutterOpenStime')) {
+      return;
+    }
     if ((this.device.isDemo) == "true") return;
     this.logger.debug(this.TAG, 'SetDoorOpenStime');
 
@@ -840,6 +871,9 @@ export class WidoorPage implements OnInit {
   }
 
   setShutterOpen() {
+    if (this.isBleActionBlocked('setShutterOpen')) {
+      return;
+    }
     if ((this.device.isDemo) == "true") return;
     this.logger.debug(this.TAG, 'SetDoorOpen');
     if (this.lockClose == 1) { this.lockAlert(); }
@@ -866,6 +900,9 @@ export class WidoorPage implements OnInit {
   }
 
   setShutterOpenLtime() {
+    if (this.isBleActionBlocked('setShutterOpenLtime')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetDoorOpenLtime');
     if ((this.device.isDemo) != "true") return;
     if (this.lockClose == 1) { this.lockAlert(); }
@@ -892,6 +929,9 @@ export class WidoorPage implements OnInit {
   }
 
   setShutterLearning() {
+    if (this.isBleActionBlocked('setShutterLearning')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetDoorLearning');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
@@ -917,6 +957,9 @@ export class WidoorPage implements OnInit {
   }
 
   setShutterResetParam() {
+    if (this.isBleActionBlocked('setShutterResetParam')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetDoorResetParam');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
@@ -945,6 +988,9 @@ export class WidoorPage implements OnInit {
 
 
   setShdoMaintenanceDate() {
+    if (this.isBleActionBlocked('setShdoMaintenanceDate')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setShdoMaintenanceDate');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
@@ -968,6 +1014,9 @@ export class WidoorPage implements OnInit {
 
 
   setShdoFirstDate() {
+    if (this.isBleActionBlocked('setShdoFirstDate')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setShdoFirstDate');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
@@ -995,6 +1044,9 @@ export class WidoorPage implements OnInit {
   }
 
   setShutterClose() {
+    if (this.isBleActionBlocked('setShutterClose')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetDoorClose');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
@@ -1021,6 +1073,9 @@ export class WidoorPage implements OnInit {
 
 
   setLockClose() {
+    if (this.isBleActionBlocked('setLockClose')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetLockClose');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
@@ -1053,6 +1108,9 @@ export class WidoorPage implements OnInit {
   }
 
   setLockOpen() {
+    if (this.isBleActionBlocked('setLockOpen')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetLockOpen');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
@@ -1087,6 +1145,9 @@ export class WidoorPage implements OnInit {
 
 
   setOpenSpeedTune() {
+    if (this.isBleActionBlocked('setOpenSpeedTune')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetSpeedOpenTune');
 
     if ((this.device.isDemo) == "true") return;
@@ -1111,6 +1172,9 @@ export class WidoorPage implements OnInit {
 
 
   setCloseSpeedTune() {
+    if (this.isBleActionBlocked('setCloseSpeedTune')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetSpeedCloseTune');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
@@ -1133,6 +1197,9 @@ export class WidoorPage implements OnInit {
 
 
   setNearOpenSpeed() {
+    if (this.isBleActionBlocked('setNearOpenSpeed')) {
+      return;
+    }
 
     this.logger.debug(this.TAG, 'setNearOpenSpeed');
     this.vibrate();
@@ -1155,6 +1222,9 @@ export class WidoorPage implements OnInit {
   }
 
   setNearCloseSpeed() {
+    if (this.isBleActionBlocked('setNearCloseSpeed')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setNearCloseSpeed');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
@@ -1176,6 +1246,9 @@ export class WidoorPage implements OnInit {
   }
 
   setNearOpenTorque() {
+    if (this.isBleActionBlocked('setNearOpenTorque')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setNearOpenSpeed');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
@@ -1197,6 +1270,9 @@ export class WidoorPage implements OnInit {
   }
 
   setNearCloseTorque() {
+    if (this.isBleActionBlocked('setNearCloseTorque')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setNearCloseSpeed');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
@@ -1220,6 +1296,9 @@ export class WidoorPage implements OnInit {
 
 
   setShortTiming() {
+    if (this.isBleActionBlocked('setShortTiming')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetShortTiming');
     this.vibrate();
 
@@ -1241,6 +1320,9 @@ export class WidoorPage implements OnInit {
   }
 
   setLongTiming() {
+    if (this.isBleActionBlocked('setLongTiming')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'SetShortTiming');
 
     if ((this.device.isDemo) == "true") return;
@@ -1263,6 +1345,9 @@ export class WidoorPage implements OnInit {
 
 
   setUserStaticLight() {
+    if (this.isBleActionBlocked('setUserStaticLight')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserStaticLight');
     this.vibrate();
 
@@ -1293,6 +1378,9 @@ export class WidoorPage implements OnInit {
   }
 
   setUserDynLight() {
+    if (this.isBleActionBlocked('setUserDynLight')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserDynLight');
     this.vibrate();
 
@@ -1323,6 +1411,9 @@ export class WidoorPage implements OnInit {
   }
 
   setUserbutOrRadar1() {
+    if (this.isBleActionBlocked('setUserbutOrRadar1')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserbutOrRadar1');
     this.vibrate();
 
@@ -1353,6 +1444,9 @@ export class WidoorPage implements OnInit {
   }
 
   setUserbutOrRadar2() {
+    if (this.isBleActionBlocked('setUserbutOrRadar2')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserbutOrRadar2');
     this.vibrate();
 
@@ -1383,6 +1477,9 @@ export class WidoorPage implements OnInit {
   }
 
   setUserLock() {
+    if (this.isBleActionBlocked('setUserLock')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserLocker');
     this.vibrate();
 
@@ -1413,6 +1510,9 @@ export class WidoorPage implements OnInit {
   }
 
   setUserRadarTest1() {
+    if (this.isBleActionBlocked('setUserRadarTest1')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserRadarTest1');
     this.vibrate();
 
@@ -1443,6 +1543,9 @@ export class WidoorPage implements OnInit {
   }
 
   setUserRadarTest2() {
+    if (this.isBleActionBlocked('setUserRadarTest2')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserRadarTest1');
     this.vibrate();
 
@@ -1473,6 +1576,9 @@ export class WidoorPage implements OnInit {
   }
 
   setUserRGBIndic() {
+    if (this.isBleActionBlocked('setUserRGBIndic')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setUserRGBIndic');
     this.vibrate();
 
@@ -1503,6 +1609,9 @@ export class WidoorPage implements OnInit {
   }
 
   setBreakForceAtOpen() {
+    if (this.isBleActionBlocked('setBreakForceAtOpen')) {
+      return;
+    }
     this.logger.debug(this.TAG, 'setBreakForceAtOpen');
     this.vibrate();
 
@@ -1629,20 +1738,32 @@ export class WidoorPage implements OnInit {
     return error;
   }
 
+  private createNameWriteUnstableError(message: string, translationKey: string, originalError?: any): any {
+    const error = this.createNameWriteError(message, translationKey);
+    error.unstableConnection = true;
+    error.originalError = originalError;
+    return error;
+  }
+
   private isNameWriteTimeoutError(error: any): boolean {
     const message = String(error && (error.message || error.errorMessage || error.toString()) || '').toLowerCase();
     return message.indexOf('timeout') > -1;
   }
 
   private normalizeNameWriteError(error: any): any {
+    if (error && error.unstableConnection) {
+      return error;
+    }
+
     if (error && error.toastMessage) {
       return error;
     }
 
     if (this.isNameWriteTimeoutError(error)) {
-      return this.createNameWriteToastError(
+      return this.createNameWriteUnstableError(
         'Timeout ecriture nom/piece Widoor',
-        "La motorisation n'a pas confirmé l'enregistrement du nom. Veuillez réessayer en restant connecté."
+        'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.RECONNECT_REQUIRED',
+        error
       );
     }
 
@@ -1654,115 +1775,6 @@ export class WidoorPage implements OnInit {
     const view = new Uint8Array(buffer);
     view.set(bytes);
     return new DataView(buffer);
-  }
-
-  private waitForNameReadback(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), NAME_READBACK_DELAY_MS);
-    });
-  }
-
-  private dataViewToString(dataView: DataView): string {
-    let value = '';
-    for (let i = 0; i < dataView.byteLength; i++) {
-      value += String.fromCharCode(dataView.getUint8(i));
-    }
-    return value;
-  }
-
-  private normalizeReadNameValue(value: string): string {
-    const stringValue = value || '';
-    const nullIndex = stringValue.indexOf('\0');
-    const withoutPadding = nullIndex > -1
-      ? stringValue.substring(0, nullIndex)
-      : stringValue.replace(/\0/g, '');
-
-    return withoutPadding.trim();
-  }
-
-  private logNameCharacteristicProperties(deviceId: string): Promise<any> {
-    return BleClient.getServices(deviceId).then((services: any[]) => {
-      let properties: any = null;
-
-      for (let i = 0; i < services.length; i++) {
-        const service = services[i];
-        const serviceUuid = service && service.uuid ? String(service.uuid).toLowerCase() : '';
-
-        if (serviceUuid !== SHDO_SERVICE.toLowerCase()) {
-          continue;
-        }
-
-        const characteristics = service.characteristics || [];
-        for (let j = 0; j < characteristics.length; j++) {
-          const characteristic = characteristics[j];
-          const characteristicUuid = characteristic && characteristic.uuid ? String(characteristic.uuid).toLowerCase() : '';
-
-          if (characteristicUuid === SHDO_NAME_CHARACTERISTIC.toLowerCase()) {
-            properties = characteristic.properties || null;
-            break;
-          }
-        }
-      }
-
-      this.logger.info(this.TAG, 'Proprietes caracteristique nom Widoor', {
-        deviceId: deviceId,
-        service: SHDO_SERVICE,
-        characteristic: SHDO_NAME_CHARACTERISTIC,
-        properties: properties
-      });
-
-      return properties;
-    }).catch((error) => {
-      this.logger.warn(this.TAG, 'Lecture proprietes caracteristique nom Widoor impossible', {
-        deviceId: deviceId,
-        error: error
-      });
-      return null;
-    });
-  }
-
-  private readNameAfterWrite(deviceId: string, expectedName: string): Promise<any> {
-    this.logger.info(this.TAG, 'Relecture nom Widoor apres ecriture demandee', {
-      deviceId: deviceId,
-      expectedName: expectedName
-    });
-
-    return BleClient.read(
-      deviceId,
-      SHDO_SERVICE,
-      SHDO_NAME_CHARACTERISTIC,
-      { timeout: NAME_READ_TIMEOUT_MS }
-    ).then((dataView: DataView) => {
-      const rawName = this.dataViewToString(dataView);
-      const readName = this.normalizeReadNameValue(rawName);
-      const expected = this.normalizeReadNameValue(expectedName);
-      const confirmed = readName === expected;
-
-      this.logger.info(this.TAG, confirmed ? 'Relecture nom Widoor confirmee' : 'Relecture nom Widoor non conforme', {
-        deviceId: deviceId,
-        expectedName: expected,
-        readName: readName,
-        rawLength: dataView.byteLength
-      });
-
-      return {
-        confirmed: confirmed,
-        value: readName,
-        rawValue: rawName
-      };
-    }).catch((error) => {
-      this.logger.warn(this.TAG, 'Relecture nom Widoor impossible apres ecriture', {
-        deviceId: deviceId,
-        error: error
-      });
-
-      return {
-        confirmed: null,
-        value: '',
-        rawValue: '',
-        error: error
-      };
-    });
   }
 
   private writeNameWithResponse(deviceId: string, bytes: Uint8Array, encodedString: string, valueToWrite: string): Promise<any> {
@@ -1821,10 +1833,110 @@ export class WidoorPage implements OnInit {
     });
   }
 
+  private isBleActionBlocked(action: string): boolean {
+    if (this.isBleBusy) {
+      this.logger.warn(this.TAG, 'Action BLE Widoor bloquee: operation en cours', { action: action });
+      this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.BLE_BUSY');
+      return true;
+    }
+
+    if (this.isBleConnectionUnstable) {
+      this.logger.warn(this.TAG, 'Action BLE Widoor bloquee: connexion instable', { action: action });
+      this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.RECONNECT_REQUIRED');
+      return true;
+    }
+
+    return false;
+  }
+
+  private async handleNameWriteConnectionUnstable(deviceId: string, error: any): Promise<void> {
+    this.isBleConnectionUnstable = true;
+
+    if (this.peripheral) {
+      this.peripheral.status = 'disconnected';
+      this.peripheral.isConnected = false;
+    }
+    if (this.device) {
+      this.device.status = 'disconnected';
+      this.device.isConnected = false;
+    }
+    if (this.bleConnectService) {
+      this.bleConnectService.setConnectionStatus('disconnected');
+      this.bleConnectService.setNeedConnect(false);
+    }
+
+    this.logger.warn(this.TAG, 'Connexion BLE Widoor declaree instable apres ecriture nom/piece', {
+      deviceId: deviceId,
+      error: error
+    });
+
+    if (deviceId) {
+      this.logger.warn(this.TAG, 'Deconnexion propre Widoor demandee apres timeout/erreur ecriture nom/piece', {
+        deviceId: deviceId
+      });
+
+      try {
+        await BleClient.disconnect(deviceId);
+        this.logger.info(this.TAG, 'Deconnexion propre Widoor effectuee apres ecriture nom/piece instable', {
+          deviceId: deviceId
+        });
+      } catch (disconnectError) {
+        this.logger.warn(this.TAG, 'Deconnexion propre Widoor impossible apres ecriture nom/piece instable', {
+          deviceId: deviceId,
+          error: disconnectError
+        });
+      }
+    }
+
+    this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.RECONNECT_REQUIRED');
+
+    try {
+      this.logger.warn(this.TAG, 'Retour page scan Widoor apres connexion instable nom/piece');
+      await this.navCtrl.push('ScanPage');
+    } catch (navigationError) {
+      this.logger.warn(this.TAG, 'Retour page scan Widoor impossible apres connexion instable nom/piece', navigationError);
+    }
+  }
+
 
   SetName(nameToWrite?: string, deviceIdToUse?: string): Promise<any> {
-    const valueToWrite = typeof nameToWrite === 'string' ? nameToWrite : this.userConfig.mlpcName.concat(this.stringLoc);
-    this.logger.info(this.TAG, 'Ecriture nom/piece Widoor demandee', { value: valueToWrite });
+    const valueToWrite = (typeof nameToWrite === 'string' ? nameToWrite : this.userConfig.mlpcName.concat(this.stringLoc)).trim();
+    const deviceId = deviceIdToUse || this.resolveNameWriteDeviceId();
+
+    this.logger.info(this.TAG, 'Debut ecriture nom/piece Widoor', {
+      deviceId: deviceId,
+      value: valueToWrite,
+      length: valueToWrite.length
+    });
+
+    if (!valueToWrite) {
+      return Promise.reject(this.createNameWriteError(
+        'Valeur vide pour ecriture nom/piece Widoor',
+        'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.NAME_REQUIRED'
+      ));
+    }
+
+    if (valueToWrite.length > NAME_WRITE_MAX_LENGTH) {
+      return Promise.reject(this.createNameWriteError(
+        'Valeur trop longue pour ecriture nom/piece Widoor',
+        'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.NAME_TOO_LONG'
+      ));
+    }
+
+    const baseNameToWrite = this.stripLocationSuffix(valueToWrite).trim();
+    if (!baseNameToWrite) {
+      return Promise.reject(this.createNameWriteError(
+        'Nom absent pour ecriture nom/piece Widoor',
+        'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.NAME_REQUIRED'
+      ));
+    }
+
+    if (!this.isNameBaseValid(baseNameToWrite)) {
+      return Promise.reject(this.createNameWriteError(
+        'Caracteres interdits pour ecriture nom/piece Widoor',
+        'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_INVALID_CHARACTERS'
+      ));
+    }
 
     let bytes = this.randble.stringToBytes(valueToWrite);
     let encodedString = this.randble.bytesToEncodedString(bytes); //convertion bytes -> base64 string
@@ -1834,63 +1946,44 @@ export class WidoorPage implements OnInit {
       return Promise.resolve({ value: encodedString });
     }
 
-    const deviceId = deviceIdToUse || this.resolveNameWriteDeviceId();
-
     return this.ensureNameWriteConnection(deviceId).then(() => {
-      return this.logNameCharacteristicProperties(deviceId);
-    }).then(() => {
       return this.writeNameWithResponse(deviceId, bytes, encodedString, valueToWrite).then((returnObj) => {
         return {
-          returnObj: returnObj,
-          timeoutError: null
+          returnObj: returnObj
         };
       }).catch((error) => {
-        if (!this.isNameWriteTimeoutError(error)) {
-          throw error;
+        if (this.isNameWriteTimeoutError(error)) {
+          this.logger.warn(this.TAG, 'Timeout ecriture nom Widoor detecte: connexion declaree instable, aucune relecture', {
+            deviceId: deviceId,
+            value: valueToWrite,
+            error: error
+          });
+
+          throw this.createNameWriteUnstableError(
+            'Timeout ecriture nom/piece Widoor',
+            'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.RECONNECT_REQUIRED',
+            error
+          );
         }
 
-        this.logger.warn(this.TAG, 'Timeout ecriture nom Widoor: verification par relecture', {
+        this.logger.error(this.TAG, 'Erreur ecriture nom Widoor: connexion declaree instable', {
           deviceId: deviceId,
           value: valueToWrite,
           error: error
         });
 
-        return {
-          returnObj: null,
-          timeoutError: error
-        };
+        throw this.createNameWriteUnstableError(
+          'Erreur ecriture nom/piece Widoor',
+          'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.RECONNECT_REQUIRED',
+          error
+        );
       });
     }).then((writeResult) => {
-      return this.waitForNameReadback().then(() => {
-        return this.readNameAfterWrite(deviceId, valueToWrite);
-      }).then((readResult) => {
-        if (readResult.confirmed === true) {
-          return writeResult.returnObj || {
-            status: 'writtenConfirmedAfterTimeout',
-            value: encodedString,
-            mode: 'writeWithResponseTimeoutVerified'
-          };
-        }
-
-        if (readResult.confirmed === false) {
-          throw this.createNameWriteToastError(
-            'Nom Widoor non sauvegarde apres relecture',
-            "Le nom n'a pas été confirmé par la motorisation. Veuillez réessayer en restant connecté."
-          );
-        }
-
-        if (writeResult.timeoutError) {
-          throw writeResult.timeoutError;
-        }
-
-        this.logger.warn(this.TAG, 'Ecriture nom Widoor reussie mais relecture non disponible', {
-          deviceId: deviceId,
-          value: valueToWrite,
-          readError: readResult.error
-        });
-
-        return writeResult.returnObj;
-      });
+      return writeResult.returnObj || {
+        status: 'written',
+        value: encodedString,
+        mode: 'writeWithResponse'
+      };
     }).then(
       (returnObj) => {
         this.logger.info(this.TAG, 'Succes ecriture nom/piece Widoor', {
@@ -1898,6 +1991,7 @@ export class WidoorPage implements OnInit {
           value: valueToWrite,
           mode: returnObj && returnObj.mode ? returnObj.mode : 'writeWithResponse'
         });
+        this.logger.info(this.TAG, 'Fin ecriture nom/piece Widoor');
         return returnObj;
       },
     ).catch((error) => {
@@ -1906,6 +2000,7 @@ export class WidoorPage implements OnInit {
         deviceId: deviceId,
         error: normalizedError
       });
+      this.logger.info(this.TAG, 'Fin ecriture nom/piece Widoor en erreur');
       throw normalizedError;
     });
 
@@ -2283,7 +2378,7 @@ export class WidoorPage implements OnInit {
 
 
     this.formName = this.formBuilder.group({
-      'mlpcName': ['', [Validators.minLength(5), Validators.maxLength(15), Validators.pattern('[a-zA-Z0-9,.;:_-]*')]]
+      'mlpcName': ['', [Validators.minLength(5), Validators.maxLength(15), Validators.pattern(NAME_ALLOWED_PATTERN)]]
     });
     this.formPassword = this.formBuilder.group({
       'mlpcPassword': ['', [Validators.required, Validators.maxLength(20)]]
@@ -2306,7 +2401,10 @@ export class WidoorPage implements OnInit {
   private stripLocationSuffix(name: string): string {
     let value = name || '';
     for (let i = 0; i < this.locationSuffixes.length; i++) {
-      value = value.replace(this.locationSuffixes[i], '');
+      const suffix = this.locationSuffixes[i];
+      if (value.lastIndexOf(suffix) === value.length - suffix.length) {
+        value = value.substring(0, value.length - suffix.length);
+      }
     }
     return value;
   }
@@ -2314,8 +2412,9 @@ export class WidoorPage implements OnInit {
   private extractLocationSuffix(name: string): string {
     const value = name || '';
     for (let i = 0; i < this.locationSuffixes.length; i++) {
-      if (value.indexOf(this.locationSuffixes[i]) > -1) {
-        return this.locationSuffixes[i];
+      const suffix = this.locationSuffixes[i];
+      if (value.lastIndexOf(suffix) === value.length - suffix.length) {
+        return suffix;
       }
     }
     return '';
@@ -2323,6 +2422,10 @@ export class WidoorPage implements OnInit {
 
   private getCurrentBaseName(): string {
     return this.stripLocationSuffix(this.getCurrentDisplayName()).trim();
+  }
+
+  private isNameBaseValid(name: string): boolean {
+    return NAME_ALLOWED_PATTERN.test(name || '');
   }
 
   private syncNameInputFromDisplayName(): void {
@@ -2369,27 +2472,42 @@ export class WidoorPage implements OnInit {
   }
 
   canSubmitNameAssociation(): boolean {
-    if (this.isNameWriteInProgress) {
+    if (this.isBleBusy || this.isNameWriteInProgress || this.isBleConnectionUnstable) {
       return false;
     }
 
     const control = this.formName ? this.formName.get('mlpcName') : null;
     const typedName = (this.userConfig.mlpcName || '').trim();
+    const currentBaseName = this.getCurrentBaseName();
 
     if (typedName && control && !control.valid) {
       return false;
     }
 
-    return !!typedName || !!this.stringLoc || !!this.getCurrentBaseName();
+    if ((typedName || currentBaseName) && !this.isNameBaseValid(typedName || currentBaseName)) {
+      return false;
+    }
+
+    return !!typedName || !!this.stringLoc || !!currentBaseName;
   }
 
   async onSubmitformName() {
     if (this.isNameWriteInProgress) {
       this.logger.warn(this.TAG, 'Validation nom/piece Widoor ignoree: ecriture deja en cours');
+      this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.WRITE_IN_PROGRESS');
+      return;
+    }
+
+    if (this.isBleBusy) {
+      this.logger.warn(this.TAG, 'Validation nom/piece Widoor ignoree: operation BLE en cours');
+      this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.BLE_BUSY');
       return;
     }
 
     this.isNameWriteInProgress = true;
+    this.isBleBusy = true;
+    let writeSucceeded = false;
+    let deviceId = '';
     this.logger.info(this.TAG, 'Debut validation nom/piece Widoor');
 
     try {
@@ -2399,13 +2517,39 @@ export class WidoorPage implements OnInit {
       const currentBaseName = this.stripLocationSuffix(currentDisplayName).trim();
       const baseName = typedName || currentBaseName;
       const locationSuffix = this.stringLoc || this.currentLocationSuffix || this.extractLocationSuffix(currentDisplayName);
+      const valueToWrite = (baseName + locationSuffix).trim();
       const nameChanged = !!typedName && typedName !== currentBaseName;
       const roomChanged = !!this.stringLoc;
-      const deviceId = this.resolveNameWriteDeviceId();
+      deviceId = this.resolveNameWriteDeviceId();
 
       this.logger.info(this.TAG, 'DeviceId utilise validation nom/piece Widoor', { deviceId: deviceId });
       this.logger.info(this.TAG, nameChanged ? 'Nom Widoor a ecrire' : 'Nom Widoor ignore car inchange', { name: baseName });
       this.logger.info(this.TAG, roomChanged ? 'Piece Widoor a ecrire' : 'Piece Widoor ignoree car inchangee', { room: locationSuffix });
+      this.logger.info(this.TAG, 'Valeur nom/piece Widoor preparee', {
+        deviceId: deviceId,
+        value: valueToWrite,
+        length: valueToWrite.length
+      });
+
+      if (typedName && control && control.hasError('pattern')) {
+        control.markAsTouched();
+        this.logger.warn(this.TAG, 'Validation nom/piece Widoor bloquee: caracteres interdits', {
+          name: typedName
+        });
+        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_INVALID_CHARACTERS');
+        return;
+      }
+
+      if (baseName && !this.isNameBaseValid(baseName)) {
+        if (control) {
+          control.markAsTouched();
+        }
+        this.logger.warn(this.TAG, 'Validation nom/piece Widoor bloquee: nom courant contient des caracteres interdits', {
+          name: baseName
+        });
+        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_INVALID_CHARACTERS');
+        return;
+      }
 
       if (typedName && control && !control.valid) {
         control.markAsTouched();
@@ -2422,11 +2566,29 @@ export class WidoorPage implements OnInit {
 
       if (!nameChanged && !roomChanged) {
         this.logger.info(this.TAG, 'Validation nom/piece Widoor terminee sans ecriture: aucune modification');
-        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME');
+        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.NO_CHANGE');
         return;
       }
 
-      await this.SetName(baseName + locationSuffix, deviceId);
+      if (!valueToWrite) {
+        this.logger.warn(this.TAG, 'Validation nom/piece Widoor bloquee: valeur vide');
+        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.NAME_REQUIRED');
+        return;
+      }
+
+      if (valueToWrite.length > NAME_WRITE_MAX_LENGTH) {
+        this.logger.warn(this.TAG, 'Validation nom/piece Widoor bloquee: valeur trop longue', {
+          value: valueToWrite,
+          length: valueToWrite.length,
+          maxLength: NAME_WRITE_MAX_LENGTH
+        });
+        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.NAME_TOO_LONG');
+        return;
+      }
+
+      await this.delay(NAME_WRITE_PRE_DELAY_MS);
+      await this.SetName(valueToWrite, deviceId);
+      writeSucceeded = true;
 
       this.updateLocalNameDisplay(baseName, locationSuffix);
       this.logger.info(this.TAG, nameChanged ? 'Succes ecriture nom Widoor' : 'Ecriture nom Widoor non necessaire');
@@ -2441,14 +2603,20 @@ export class WidoorPage implements OnInit {
         this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME');
       }
     } catch (error) {
-      this.logger.error(this.TAG, 'Validation nom/piece Widoor en erreur sans deconnexion', error);
-      if (error && error.toastMessage) {
+      this.logger.error(this.TAG, 'Validation nom/piece Widoor en erreur', error);
+      if (error && error.unstableConnection) {
+        await this.handleNameWriteConnectionUnstable(deviceId, error);
+      } else if (error && error.toastMessage) {
         this.showWidoorNameToastMessage(error.toastMessage);
       } else {
         this.showWidoorNameToast(error && error.translationKey ? error.translationKey : 'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_ERROR');
       }
     } finally {
+      if (writeSucceeded) {
+        await this.delay(NAME_WRITE_COOLDOWN_MS);
+      }
       this.isNameWriteInProgress = false;
+      this.isBleBusy = false;
       this.logger.info(this.TAG, 'Fin validation nom/piece Widoor');
     }
   }
@@ -2500,7 +2668,7 @@ export class WidoorPage implements OnInit {
 
 
   nameValidator(control: FormControl): { [s: string]: boolean } | null {
-    if (!control.value.match('[a-zA-Z0-9,.;:_-]*')) {
+    if (control.value && !NAME_ALLOWED_PATTERN.test(control.value)) {
       return { invalidName: true };
     }
     return null;
