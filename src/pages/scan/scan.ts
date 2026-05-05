@@ -133,9 +133,13 @@ export class ScanPage {
 
     if (this.bleConnectService.getConnectionStatus()=="connecting")
     {
-    this.devices = [];  // clear list
+    this.clearDetectedDevices('connection_status_connecting');
     this.bleConnectService.setConnectionStatus("unknown");
   }
+
+    if (this.navParams.get('clearDevices')) {
+      this.clearDetectedDevices('nav_param_clearDevices');
+    }
 
     this.logger.debug(this.TAG, 'ionViewWillEnter');
 
@@ -173,6 +177,7 @@ export class ScanPage {
       () => {
         this.logger.info(this.TAG, 'Peripheral connection closed', { address: address });
         this.bleConnectService.setWasConnected(false);
+        this.clearDetectedDevices('disconnect_success');
         this.showDeconnectedToast();
       },
       (error) => {
@@ -189,6 +194,35 @@ export class ScanPage {
       this.disconnectSpecific(String(address));
     } else {
       this.logger.warn(this.TAG, 'Disconnect ignored: no connected peripheral address');
+    }
+  }
+
+  clearDetectedDevices(reason: string = 'disconnect_success'): void {
+    if (this.isScanning) {
+      this.logger.warn(this.TAG, 'Detected device list clear skipped: scan active', { reason: reason });
+      return;
+    }
+
+    const previousDevices = this.devices || [];
+    const previousSelectedDevice = this.device || {};
+
+    this.ngZone.run(() => {
+      this.devices = [];
+      this.device = {};
+      this.detectedDeviceIds = {};
+    });
+
+    const logDetails = {
+      reason: reason,
+      previousCount: previousDevices.length,
+      previousSelectedId: previousSelectedDevice.id || previousSelectedDevice.address || '',
+      previousSelectedName: previousSelectedDevice.name || ''
+    };
+
+    if (reason === 'disconnect_success' || reason === 'nav_param_clearDevices') {
+      this.logger.info(this.TAG, 'Liste des produits détectés vidée après déconnexion', logDetails);
+    } else {
+      this.logger.info(this.TAG, 'Detected device list cleared', logDetails);
     }
   }
 

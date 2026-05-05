@@ -2817,13 +2817,14 @@ export class MoventivPage implements OnInit {
         this.showMoventivNameToast('MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME');
       }
     } catch (error) {
+      const nameError: any = error;
       this.logger.error(this.TAG, 'Validation nom/piece Moventiv en erreur', error);
-      if (error && error.unstableConnection) {
+      if (error && nameError.unstableConnection) {
         await this.handleNameWriteConnectionUnstable(deviceId, error);
-      } else if (error && error.toastMessage) {
-        this.showMoventivNameToastMessage(error.toastMessage);
+      } else if (error && nameError.toastMessage) {
+        this.showMoventivNameToastMessage(nameError.toastMessage);
       } else {
-        this.showMoventivNameToast(error && error.translationKey ? error.translationKey : 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_ERROR');
+        this.showMoventivNameToast(error && nameError.translationKey ? nameError.translationKey : 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_ERROR');
       }
     } finally {
       if (writeSucceeded) {

@@ -399,7 +399,7 @@
           </ion-item>
           <ion-item no-lines>
             <div col text-center>
-              <button ion-button style="height:60px;" (click)="resetAlert()" color="danger">
+              <button ion-button style="height:60px;" (click)="resetAlert()" color="danger" [disabled]="isResetInProgress || isBleBusy">
                 <div class="swap" text-wrap>
                   {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.EXTRA_COMMANDS.RESET_BUTTON" | translate }}</div>
               </button>

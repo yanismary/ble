@@ -128,6 +128,7 @@ const MLPC_VERIFPARAM_CHARACTERISTIC = 'cc942243-7656-441f-880c-4617eeb8bacc';
 const NAME_WRITE_TIMEOUT_MS = 15000;
 const NAME_WRITE_PRE_DELAY_MS = 200;
 const NAME_WRITE_COOLDOWN_MS = 1800;
+const RESET_WRITE_DELAY_MS = 250;
 const NAME_WRITE_MAX_LENGTH = 15;
 const NAME_ALLOWED_PATTERN = /^[A-Za-z0-9 -]*$/;
 
@@ -283,6 +284,7 @@ export class WidoorPage implements OnInit {
   peripheralNameAff!: any;
   isNameWriteInProgress: boolean = false;
   isBleBusy: boolean = false;
+  isResetInProgress: boolean = false;
   isBleConnectionUnstable: boolean = false;
   retry: boolean = false;
   retryConnection: number = 6;
@@ -956,34 +958,80 @@ export class WidoorPage implements OnInit {
     );
   }
 
-  setShutterResetParam() {
+  async setShutterResetParam(): Promise<void> {
+    if (this.isResetInProgress) {
+      this.logger.warn(this.TAG, 'Reset paramètres ignoré: reset déjà en cours');
+      return;
+    }
     if (this.isBleActionBlocked('setShutterResetParam')) {
       return;
     }
-    this.logger.debug(this.TAG, 'SetDoorResetParam');
+    this.logger.info(this.TAG, 'Reset confirmé');
+    this.logger.info(this.TAG, 'Application des paramètres par défaut');
     this.vibrate();
-    if ((this.device.isDemo) == "true") return;
+    if (this.isDemoDevice()) {
+      this.logger.info(this.TAG, 'Reset ignoré: mode démo');
+      return;
+    }
 
+    const address = this.resolveResetDeviceId();
 
-    let commandData = new Uint8Array(2);
-    commandData[0] = 0x00;
-    commandData[1] = 0x01;
+    if (!address) {
+      this.logger.error(this.TAG, 'Erreur reset: périphérique introuvable', { peripheral: this.peripheral });
+      this.showWidoorNameToastMessage('La réinitialisation des paramètres a échoué.');
+      return;
+    }
 
-    let encodedString = this.randble.bytesToEncodedString(commandData);
+    let resetLoading: any = null;
+    let resetSucceeded = false;
+    this.isResetInProgress = true;
+    this.isBleBusy = true;
 
+    try {
+      resetLoading = this.loadingCtrl.create({
+        content: 'Réinitialisation en cours...'
+      });
+      await resetLoading.present();
 
-    this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_COMMAND_CHARACTERISTIC, value: encodedString }).then(
-      (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-        this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorResetParam ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
-        if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
-          this.logger.debug(this.TAG, 'BLE transmission OK');
-          this.presentReset();
-          this.readAll();
+      const connectionStatus = this.bleConnectService ? this.bleConnectService.getConnectionStatus() : 'unknown';
+      const isConnected = await this.isDeviceConnected(address);
+      this.logger.info(this.TAG, 'Etat connexion avant reset', {
+        address: address,
+        connectionStatus: connectionStatus,
+        isConnected: isConnected
+      });
+
+      if (!isConnected) {
+        throw new Error('Motorisation non connectée avant reset paramètres');
+      }
+
+      await this.applyResetDefaultParameters(address);
+      resetSucceeded = true;
+      this.logger.info(this.TAG, 'Succès reset paramètres', {
+        address: address,
+        productConfirmation: false,
+        defaultsApplied: true
+      });
+      this.showWidoorNameToastMessage('Les paramètres ont été réinitialisés.');
+    } catch (error) {
+      this.logger.error(this.TAG, 'Erreur reset paramètres', error);
+      this.showWidoorNameToastMessage('La réinitialisation a échoué. Veuillez réessayer.');
+    } finally {
+      if (resetLoading) {
+        try {
+          await resetLoading.dismiss();
+        } catch (dismissError) {
+          this.logger.warn(this.TAG, 'Fermeture loader reset impossible', dismissError);
         }
-      },
-    );
+      }
+      this.isBleBusy = false;
+      this.isResetInProgress = false;
+      this.logger.info(this.TAG, 'Sortie reset paramètres');
+    }
+
+    if (resetSucceeded) {
+      this.readAll();
+    }
   }
 
 
@@ -1656,6 +1704,133 @@ export class WidoorPage implements OnInit {
     return device;
   }
 
+  private resolveResetDeviceId(): string {
+    const connectedPeripheral = this.bleConnectService ? this.bleConnectService.getConnectedPeripheral() : null;
+    const navDevice = this.navParams.get('device') || this.navParams.get('peripheral');
+    const candidates = [
+      { source: 'this.peripheral', device: this.peripheral },
+      { source: 'this.device', device: this.device },
+      { source: 'navParams.device', device: navDevice },
+      { source: 'bleConnectService.connectedPeripheral', device: connectedPeripheral }
+    ];
+
+    for (let i = 0; i < candidates.length; i++) {
+      const deviceId = this.getDeviceIdFromDevice(candidates[i].device);
+
+      if (deviceId) {
+        this.logger.info(this.TAG, 'DeviceId reset retenu', {
+          deviceId: deviceId,
+          source: candidates[i].source
+        });
+        return deviceId;
+      }
+    }
+
+    this.logger.error(this.TAG, 'DeviceId reset absent', {
+      peripheral: this.peripheral,
+      device: this.device,
+      connectedPeripheral: connectedPeripheral
+    });
+    return '';
+  }
+
+  private applyResetDefaultLocalValues(): void {
+    this.rval_mlpc_userParam_speedOpenTune = 50;
+    this.rval_mlpc_userParam_speedCloseTune = 50;
+    this.rval_mlpc_userParam_openTimeShort = 3;
+    this.rval_mlpc_proParam_breakForceAtOpen = 5;
+    this.rval_mlpc_proParam_nearOpenSpeed = 80;
+    this.rval_mlpc_proParam_nearCloseSpeed = 70;
+    this.rval_mlpc_proParam_periphs1_butOrRadar1 = false;
+    this.rval_mlpc_proParam_periphs1_butOrRadar2 = false;
+    this.rval_mlpc_proParam_periphs1_lock = false;
+
+    this.logger.info(this.TAG, 'Variables locales reset mises à jour', {
+      speedOpenTune: this.rval_mlpc_userParam_speedOpenTune,
+      speedCloseTune: this.rval_mlpc_userParam_speedCloseTune,
+      openTimeShort: this.rval_mlpc_userParam_openTimeShort,
+      breakForceAtOpen: this.rval_mlpc_proParam_breakForceAtOpen,
+      nearOpenSpeed: this.rval_mlpc_proParam_nearOpenSpeed,
+      nearCloseSpeed: this.rval_mlpc_proParam_nearCloseSpeed,
+      input1Button: !this.rval_mlpc_proParam_periphs1_butOrRadar1,
+      input2Button: !this.rval_mlpc_proParam_periphs1_butOrRadar2,
+      lockDisabled: !this.rval_mlpc_proParam_periphs1_lock
+    });
+  }
+
+  private async applyResetDefaultParameters(deviceId: string): Promise<void> {
+    const writes: Array<{ label: string; service: string; characteristic: string; bytes: number[] }> = [
+      { label: 'vitesse ouverture', service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, bytes: [0x01, 50] },
+      { label: 'vitesse fermeture', service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, bytes: [0x02, 50] },
+      { label: 'temporisation fermeture courte', service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, bytes: [0x03, 3] },
+      { label: 'force freinage ouverture', service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, bytes: [0x01, 5] },
+      { label: 'vitesse fin ouverture', service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, bytes: [0x02, 80] },
+      { label: 'vitesse fin fermeture', service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, bytes: [0x03, 70] },
+      { label: 'entrée 1 bouton', service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, bytes: [10, 7, 0x02] },
+      { label: 'entrée 2 bouton', service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, bytes: [10, 6, 0x02] },
+      { label: 'verrou désactivé', service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, bytes: [10, 5, 0x02] }
+    ];
+
+    this.applyResetDefaultLocalValues();
+    this.logger.info(this.TAG, 'Début écritures reset paramètres', {
+      deviceId: deviceId,
+      count: writes.length
+    });
+
+    for (let i = 0; i < writes.length; i++) {
+      await this.writeResetDefaultStep(deviceId, writes[i]);
+
+      if (i < writes.length - 1) {
+        await this.waitResetWriteDelay();
+      }
+    }
+
+    this.logger.info(this.TAG, 'Fin écritures reset paramètres');
+  }
+
+  private async writeResetDefaultStep(deviceId: string, writeStep: { label: string; service: string; characteristic: string; bytes: number[] }): Promise<void> {
+    const commandData = new Uint8Array(writeStep.bytes);
+    const encodedString = this.randble.bytesToEncodedString(commandData);
+
+    this.logger.info(this.TAG, 'Méthode BLE reset appelée', {
+      label: writeStep.label,
+      method: 'RandBLE.write',
+      address: deviceId,
+      service: writeStep.service,
+      characteristic: writeStep.characteristic,
+      bytes: Array.prototype.slice.call(commandData),
+      value: encodedString
+    });
+
+    try {
+      const returnObj = await this.randble.write({
+        address: deviceId,
+        service: writeStep.service,
+        characteristic: writeStep.characteristic,
+        value: encodedString
+      });
+
+      this.logger.info(this.TAG, 'Succès écriture BLE reset', {
+        label: writeStep.label,
+        status: returnObj ? returnObj.status : null,
+        value: returnObj ? returnObj.value : null
+      });
+    } catch (error) {
+      this.logger.error(this.TAG, 'Erreur écriture BLE reset', {
+        label: writeStep.label,
+        service: writeStep.service,
+        characteristic: writeStep.characteristic,
+        bytes: Array.prototype.slice.call(commandData),
+        error: error
+      });
+      throw error;
+    }
+  }
+
+  private waitResetWriteDelay(): Promise<void> {
+    return new Promise<void>((resolve) => setTimeout(() => resolve(), RESET_WRITE_DELAY_MS));
+  }
+
   private resolveNameWriteDeviceId(): string {
     const connectedPeripheral = this.bleConnectService ? this.bleConnectService.getConnectedPeripheral() : null;
     const navDevice = this.navParams.get('device') || this.navParams.get('peripheral');
@@ -1836,7 +2011,9 @@ export class WidoorPage implements OnInit {
   private isBleActionBlocked(action: string): boolean {
     if (this.isBleBusy) {
       this.logger.warn(this.TAG, 'Action BLE Widoor bloquee: operation en cours', { action: action });
-      this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.BLE_BUSY');
+      if (!this.isResetInProgress) {
+        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.BLE_BUSY');
+      }
       return true;
     }
 
@@ -2603,13 +2780,14 @@ export class WidoorPage implements OnInit {
         this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME');
       }
     } catch (error) {
+      const nameError: any = error;
       this.logger.error(this.TAG, 'Validation nom/piece Widoor en erreur', error);
-      if (error && error.unstableConnection) {
+      if (error && nameError.unstableConnection) {
         await this.handleNameWriteConnectionUnstable(deviceId, error);
-      } else if (error && error.toastMessage) {
-        this.showWidoorNameToastMessage(error.toastMessage);
+      } else if (error && nameError.toastMessage) {
+        this.showWidoorNameToastMessage(nameError.toastMessage);
       } else {
-        this.showWidoorNameToast(error && error.translationKey ? error.translationKey : 'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_ERROR');
+        this.showWidoorNameToast(error && nameError.translationKey ? nameError.translationKey : 'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_ERROR');
       }
     } finally {
       if (writeSucceeded) {
@@ -2830,10 +3008,9 @@ export class WidoorPage implements OnInit {
 
         });
 
+        this.presentResetLoading.present();
+        this.logger.debug(this.TAG, 'this.loadingReset.present() : connection');
       });
-
-    this.presentResetLoading.present();
-    this.logger.debug(this.TAG, 'this.loadingReset.present() : connection');
   }
 
   advancedAlert() {
@@ -2865,6 +3042,12 @@ export class WidoorPage implements OnInit {
   }
 
   resetAlert() {
+    this.logger.info(this.TAG, 'Bouton reset paramètres cliqué', {
+      productPage: 'Widoor',
+      requiresPasswordInCurrentUi: false,
+      passwordValid: this.passwordValid,
+      paramSubmenuType: this.paramSubmenuType
+    });
     this.translate.get(['WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.RESETALERT.TITLE', 'WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.RESETALERT.SUBTITLE', 'WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.RESETALERT.BUTTONS.NO.TEXT', 'WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.RESETALERT.BUTTONS.NO.ROLE', 'WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.RESETALERT.BUTTONS.YES']).subscribe(
       res => {
         let alert = this.alertCtrl.create({
@@ -2875,7 +3058,7 @@ export class WidoorPage implements OnInit {
               text: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.RESETALERT.BUTTONS.NO.TEXT"],
               role: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.RESETALERT.BUTTONS.NO.ROLE"],
               handler: () => {
-                this.logger.debug(this.TAG, 'clicked Cancel');
+                this.logger.debug(this.TAG, 'Reset paramètres annulé');
 
 
               }
@@ -2883,13 +3066,18 @@ export class WidoorPage implements OnInit {
             {
               text: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.RESETALERT.BUTTONS.YES"],
               handler: () => {
+                this.logger.info(this.TAG, 'Confirmation utilisateur reset');
                 this.setShutterResetParam();
 
               }
             }
           ],
         });
-        alert.present();
+        alert.present().then(() => {
+          this.logger.info(this.TAG, 'Confirmation reset ouverte');
+        }).catch((error) => {
+          this.logger.error(this.TAG, 'Erreur ouverture confirmation reset', error);
+        });
       });
   }
 
@@ -2919,5 +3107,3 @@ export class WidoorPage implements OnInit {
 
 
 }
-
-
