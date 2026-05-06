@@ -2846,6 +2846,15 @@ export class MoventivPage implements OnInit {
 
   }
 
+  private showIncorrectPasswordToast(): void {
+    let toast = this.toastCtrl.create({
+      message: 'Mot de passe incorrect',
+      duration: 2000,
+      position: 'bottom'
+    });
+    toast.present();
+  }
+
   
   onSubmitformPasswordBCrypt() {
     this.logger.debug(this.TAG, 'submitting form password');
@@ -2863,6 +2872,7 @@ export class MoventivPage implements OnInit {
           } else {
             // passwords do not match
             this.logger.debug(this.TAG, 'Password BCrypt');
+            this.showIncorrectPasswordToast();
           }
         });
   }
@@ -2877,6 +2887,7 @@ export class MoventivPage implements OnInit {
     else {
       this.passwordValid = false;
       this.logger.debug(this.TAG, 'Password nok');
+      this.showIncorrectPasswordToast();
     }
   }
 
