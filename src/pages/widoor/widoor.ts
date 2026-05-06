@@ -4,7 +4,7 @@ import { RandBLE } from '../../providers/randble/randble';
 import { LoadingController } from 'ionic-angular';
 import { Haptics } from '@capacitor/haptics';
 import { Storage } from '@ionic/storage';
-import { FormGroup, FormBuilder, FormControl, Validators, ValidatorFn, AbstractControl } from "@angular/forms"
+import { FormGroup, FormBuilder, FormControl, Validators } from "@angular/forms"
 import { PopoverController } from 'ionic-angular';
 import { TranslateService } from '@ngx-translate/core';
 import { Platform } from 'ionic-angular';
@@ -477,7 +477,9 @@ export class WidoorPage implements OnInit {
         this.retryConnection--;
         this.logger.debug(this.TAG, 'Reconnection try remaining:', this.retryConnection);
 
-        this.randble.stopScan().catch(() => {})
+        this.randble.stopScan().catch((error) => {
+          this.logger.warn(this.TAG, 'Arret scan ignore avant reconnexion Widoor', error);
+        })
           .then(() => this.randble.close({ address: device.address }))
           .then(() => new Promise(r => setTimeout(r, 500))) 
           .then(() => {
@@ -492,10 +494,15 @@ export class WidoorPage implements OnInit {
                 setTimeout(() => this.bleConnect(), 1500);
               }
             );
+          })
+          .catch((error) => {
+            this.logger.warn(this.TAG, '[BLE] Reconnexion Widoor impossible', error);
+            setTimeout(() => this.bleConnect(), 1500);
           });
       } else {
-        this.loading.dismiss().catch(() => {});
-        this.navCtrl.push('ScanPage');
+        this.dismissLoading('bleConnect retry exhausted').then(() => {
+          this.goToScanPage('bleConnect retry exhausted');
+        });
       }
     } else {
       this.addDemoValues();
@@ -554,14 +561,40 @@ export class WidoorPage implements OnInit {
     this.logger.debug(this.TAG, '[STEP 3] Starting Data Sync');
     this.readAll();
     
-    if (this.loading) {
-      this.loading.dismiss().catch(() => {});
-    }
+    this.dismissLoading('onDiscovered');
   }
 
   handleConnectionError() {
-    if (this.loading) this.loading.dismiss().catch(() => {});
-    this.randble.close({ address: this.peripheral.address }).catch(() => {});
+    const address = this.peripheral ? this.peripheral.address : '';
+    this.dismissLoading('handleConnectionError');
+    this.closePeripheralConnection(address, 'handleConnectionError');
+  }
+
+  private dismissLoading(context: string): Promise<any> {
+    if (!this.loading || typeof this.loading.dismiss !== 'function') {
+      return Promise.resolve();
+    }
+
+    return this.loading.dismiss().catch((error: any) => {
+      this.logger.warn(this.TAG, 'Fermeture du loader impossible', { context: context, error: error });
+    });
+  }
+
+  private goToScanPage(context: string): Promise<any> {
+    return this.navCtrl.push('ScanPage').catch((error: any) => {
+      this.logger.warn(this.TAG, 'Navigation vers ScanPage impossible', { context: context, error: error });
+    });
+  }
+
+  private closePeripheralConnection(address: string, context: string): Promise<any> {
+    if (!address) {
+      this.logger.warn(this.TAG, 'Fermeture BLE ignoree: adresse absente', { context: context });
+      return Promise.resolve();
+    }
+
+    return this.randble.close({ address: address }).catch((error: any) => {
+      this.logger.warn(this.TAG, 'Fermeture BLE impossible', { context: context, error: error });
+    });
   }
 
 
@@ -796,7 +829,12 @@ export class WidoorPage implements OnInit {
 
         }
       },
-      () => (this.loading.dismiss(), this.navCtrl.push('ScanPage'), this.logger.debug(this.TAG, 'dismiss debug1'))
+      (error) => {
+        this.logger.warn(this.TAG, 'Subscription etat moteur interrompue', error);
+        this.dismissLoading('subscribeMotorState').then(() => {
+          this.goToScanPage('subscribeMotorState');
+        });
+      }
     );
 
 
@@ -818,7 +856,12 @@ export class WidoorPage implements OnInit {
           });
         }
       },
-      () => (this.loading.dismiss(), this.navCtrl.push('ScanPage'), { animate: false }, this.logger.debug(this.TAG, 'dismiss debug2'))
+      (error) => {
+        this.logger.warn(this.TAG, 'Subscription verification parametres interrompue', error);
+        this.dismissLoading('subscribeVerifParam').then(() => {
+          this.goToScanPage('subscribeVerifParam');
+        });
+      }
     );
   }
 
@@ -2668,6 +2711,18 @@ export class WidoorPage implements OnInit {
     return !!typedName || !!this.stringLoc || !!currentBaseName;
   }
 
+  private getNameSaveSuccessTranslationKey(nameChanged: boolean, roomChanged: boolean): string {
+    if (nameChanged && roomChanged) {
+      return 'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME_ROOM';
+    }
+
+    if (roomChanged) {
+      return 'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_ROOM';
+    }
+
+    return 'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME';
+  }
+
   async onSubmitformName() {
     if (this.isNameWriteInProgress) {
       this.logger.warn(this.TAG, 'Validation nom/piece Widoor ignoree: ecriture deja en cours');
@@ -2772,13 +2827,7 @@ export class WidoorPage implements OnInit {
       this.logger.info(this.TAG, roomChanged ? 'Succes ecriture piece Widoor' : 'Ecriture piece Widoor non necessaire');
       this.logger.info(this.TAG, 'Validation nom/piece Widoor reussie');
 
-      if (nameChanged && roomChanged) {
-        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME_ROOM');
-      } else if (roomChanged) {
-        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_ROOM');
-      } else {
-        this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_SUCCESS_NAME');
-      }
+      this.showWidoorNameToast(this.getNameSaveSuccessTranslationKey(nameChanged, roomChanged));
     } catch (error) {
       const nameError: any = error;
       this.logger.error(this.TAG, 'Validation nom/piece Widoor en erreur', error);
@@ -2832,8 +2881,7 @@ export class WidoorPage implements OnInit {
   }
 
   private isPasswordValid(field: string) {
-    let formField = this.formPassword.get(field);
-    this.logger.debug(this.TAG, 'formField');
+    this.logger.debug(this.TAG, 'isPasswordValid', { field: field });
     return true
 
   }

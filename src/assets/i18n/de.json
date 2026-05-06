@@ -144,6 +144,7 @@
 			},
 			"FORMBUTTON_VALIDATE": "BESTÄTIGEN",
 			"BASIC": {
+				"TITLE": "Grundeinstellungen",
 				"SAVE_SUCCESS_NAME": "Name erfolgreich gespeichert. Möglicherweise müssen Sie eine neue Suche starten, um den neuen Namen zu sehen.",
 				"SAVE_SUCCESS_ROOM": "Raum erfolgreich gespeichert.",
 				"SAVE_SUCCESS_NAME_ROOM": "Konfiguration erfolgreich gespeichert. Möglicherweise müssen Sie eine neue Suche starten, um den neuen Namen zu sehen.",
@@ -157,6 +158,9 @@
 				"WRITE_IN_PROGRESS": "Schreibvorgang läuft bereits.",
 				"BLE_BUSY": "Vorgang läuft, bitte warten.",
 				"RECONNECT_REQUIRED": "Die Änderung konnte nicht gespeichert werden. Bitte verbinden Sie sich erneut mit der Motorisierung."
+			},
+			"ADVANCED": {
+				"TITLE": "Fortgeschrittene Einstellungen"
 			}
 		},
 		"INFORMATIONS_TAB": {

@@ -144,6 +144,7 @@
 			},
 			"FORMBUTTON_VALIDATE": "VALIDATE",
 			"BASIC": {
+				"TITLE": "Basic",
 				"SAVE_SUCCESS_NAME": "Name saved successfully. You may need to run a new search to see the new name.",
 				"SAVE_SUCCESS_ROOM": "Room saved successfully.",
 				"SAVE_SUCCESS_NAME_ROOM": "Configuration saved successfully. You may need to run a new search to see the new name.",
@@ -157,6 +158,9 @@
 				"WRITE_IN_PROGRESS": "Write already in progress.",
 				"BLE_BUSY": "Operation in progress, please wait.",
 				"RECONNECT_REQUIRED": "The change could not be saved. Please reconnect to the motor."
+			},
+			"ADVANCED": {
+				"TITLE": "Advanced"
 			}
 		},
 		"INFORMATIONS_TAB": {

@@ -146,6 +146,7 @@
 			},
 			"FORMBUTTON_VALIDATE": "VALIDER",
 			"BASIC": {
+				"TITLE": "Basiques",
 				"SAVE_SUCCESS_NAME": "Nom enregistré avec succès. Il peut être nécessaire de relancer une recherche pour voir le nouveau nom.",
 				"SAVE_SUCCESS_ROOM": "Pièce enregistrée avec succès.",
 				"SAVE_SUCCESS_NAME_ROOM": "Configuration enregistrée avec succès. Il peut être nécessaire de relancer une recherche pour voir le nouveau nom.",
@@ -159,6 +160,9 @@
 				"WRITE_IN_PROGRESS": "Écriture déjà en cours.",
 				"BLE_BUSY": "Opération en cours, veuillez patienter.",
 				"RECONNECT_REQUIRED": "La modification n'a pas pu être enregistrée. Veuillez vous reconnecter à la motorisation."
+			},
+			"ADVANCED": {
+				"TITLE": "Avancés"
 			}
 		},
 		"INFORMATIONS_TAB": {

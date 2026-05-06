@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { LoggerService } from '../logger/logger.service';
 
 /*
   Generated class for the BleconnectserviceProvider provider.
@@ -9,13 +10,14 @@ import { Injectable } from '@angular/core';
 */
 @Injectable()
 export class BleconnectserviceProvider {
+  private readonly TAG = 'BleconnectserviceProvider';
   wasConnected: boolean = false;
   needConnect: boolean = false; 
   connectionStatus:string = "unknown";
   connectedPeripheral: any = {};
 
-  constructor(public http: HttpClient) {
-    console.log('Hello BleconnectserviceProvider Provider');
+  constructor(public http: HttpClient, private logger: LoggerService) {
+    this.logger.debug(this.TAG, 'Provider initialise');
     this.wasConnected = false;
   }
 
@@ -26,7 +28,7 @@ export class BleconnectserviceProvider {
 
   setWasConnected(value: boolean) {
     this.wasConnected = value;
-    console.log('setWasConnected' + value);
+    this.logger.debug(this.TAG, 'setWasConnected', { value: value });
   }
 
   getConnectedPeripheral() {

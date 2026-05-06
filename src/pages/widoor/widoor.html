@@ -22,7 +22,7 @@
     </ion-segment>
     <ion-item no-lines text-wrap>
       <b text-wrap>{{ "MOVENTIV_PAGE.CONTROLLED_DOOR" | translate }}</b>
-      {{peripheralNameAff || "MOVENTIV_PAGE.CONTROLLED_DOOR_NOCONNECTEDDOOR" | translate }}
+      {{peripheralNameAff || ("MOVENTIV_PAGE.CONTROLLED_DOOR_NOCONNECTEDDOOR" | translate) }}
     </ion-item>
     &nbsp;
     <div [ngSwitch]="menuType">
