@@ -290,7 +290,7 @@ export class WidoorPage implements OnInit {
   retryConnection: number = 6;
   menuType!: string;
   paramSubmenuType!: string;
-  openedPrecisionSliderKey: string = null;
+  openedPrecisionSliderKey: string | null = null;
 
 
   dispOptionalCom_MO!: boolean;
