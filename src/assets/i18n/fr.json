@@ -111,8 +111,8 @@
 		},
 		"ADJUSTMENTS_TAB": {
 			"INCDECBUTTON": {
-				"INC": "Incr",
-				"DEC": "Decr"
+				"INC": "Incrémenter",
+				"DEC": "Décrémenter"
 			},
 			"ADJUSTMENTS_TAB_TITLE": "Réglages",
 			"COMTOOGLE_DYNLEDLIGHTBAND": "Eclairage lors de l'ouverture",

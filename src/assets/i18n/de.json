@@ -109,8 +109,8 @@
 		},
 		"ADJUSTMENTS_TAB": {
 			"INCDECBUTTON": {
-				"INC": "Incr",
-				"DEC": "Decr"
+				"INC": "Erhöhen",
+				"DEC": "Verringern"
 			},
 			"ADJUSTMENTS_TAB_TITLE": "Einstellungen",
 			"COMTOOGLE_DYNLEDLIGHTBAND": "LED Leuchte während des Öffnens",

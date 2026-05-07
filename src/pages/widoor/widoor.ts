@@ -290,6 +290,7 @@ export class WidoorPage implements OnInit {
   retryConnection: number = 6;
   menuType!: string;
   paramSubmenuType!: string;
+  openedPrecisionSliderKey: string = null;
 
 
   dispOptionalCom_MO!: boolean;
@@ -358,6 +359,26 @@ export class WidoorPage implements OnInit {
       this.dispOptionalCom_LC = true;
     if (dispOptionalCom.indexOf('dispOptionalCom_LLB'))
       this.dispOptionalCom_LLB = true;
+  }
+
+  toggleSliderPrecision(key: string, event?: Event): void {
+    if (event && event.stopPropagation) {
+      event.stopPropagation();
+    }
+
+    if (!key) {
+      return;
+    }
+
+    if (this.openedPrecisionSliderKey === key) {
+      this.openedPrecisionSliderKey = null;
+    } else {
+      this.openedPrecisionSliderKey = key;
+    }
+  }
+
+  isSliderPrecisionOpen(key: string): boolean {
+    return this.openedPrecisionSliderKey === key;
   }
 
   //********************************************************lifeCycle*****************************************************************************/
