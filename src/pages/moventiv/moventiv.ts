@@ -620,14 +620,16 @@ export class MoventivPage implements OnInit {
       return Promise.resolve();
     }
 
-    return this.loading.dismiss().catch((error: any) => {
-      this.logger.warn(this.TAG, 'Fermeture du loader impossible', { context: context, error: error });
+    return this.loading.dismiss().catch((error) => {
+      const typedError: any = error;
+      this.logger.warn(this.TAG, 'Fermeture du loader impossible', { context: context, error: typedError });
     });
   }
 
   private goToScanPage(context: string): Promise<any> {
-    return this.navCtrl.push('ScanPage').catch((error: any) => {
-      this.logger.warn(this.TAG, 'Navigation vers ScanPage impossible', { context: context, error: error });
+    return this.navCtrl.push('ScanPage').catch((error) => {
+      const typedError: any = error;
+      this.logger.warn(this.TAG, 'Navigation vers ScanPage impossible', { context: context, error: typedError });
     });
   }
 

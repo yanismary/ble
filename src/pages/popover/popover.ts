@@ -1,16 +1,8 @@
 import { Component } from '@angular/core';
-import { NavController, NavParams, App } from 'ionic-angular';
+import { App } from 'ionic-angular';
 import { IonicPage, ViewController } from 'ionic-angular';
 import { LoggerService } from '../../providers/logger/logger.service';
 
-
-
-/**
- * Generated class for the PopoverComponent component.
- *
- * See https://angular.io/docs/ts/latest/api/core/index/ComponentMetadata-class.html
- * for more info on Angular Components.
- */
 @IonicPage()
 @Component({
   selector: 'popover',
@@ -19,21 +11,15 @@ import { LoggerService } from '../../providers/logger/logger.service';
 export class PopoverPage {
   private TAG = 'PopoverPage';
   private logger: LoggerService = new LoggerService();
-  fromConnected :boolean;
-
 
   constructor(
-    public navCtrl: NavController,
-    public navParams: NavParams,
     public viewCtrl: ViewController,
     public app: App,
     
   ) {
-    this.fromConnected = this.navParams.get('fromConnected');
     this.logger.debug(this.TAG, 'Hello PopoverComponent Component');
 
   }
-  //@ViewChild(Navbar) navBar: Navbar;
 
   private openPage(page: string): void {
     this.logger.info(this.TAG, 'Clic menu', { page: page });
@@ -44,23 +30,10 @@ export class PopoverPage {
     this.viewCtrl.dismiss().then(() => {
       return nav.push(page);
     }).catch(error => {
-      this.logger.error(this.TAG, 'Erreur navigation menu', error);
+      const typedError: any = error;
+      this.logger.error(this.TAG, 'Erreur navigation menu', typedError);
     });
   }
-
-/*
-  onViewDidLoad() {
-    this.navBar.backButtonClick = () => {
-      // you can set a full custom history here if you want 
-        let pages = [
-	      {
-			page: 'ScanPage'
-		  }
-	    ];
-	    this.navCtrl.setPages(pages);
-	}
-}
-*/
 
   pushParamsPage(){
     this.logger.info(this.TAG, 'Clic pushParamsPage');

@@ -16,10 +16,10 @@
       <ion-segment-button (click)="readAll()" color="light" value="com">
         {{ "MOVENTIV_PAGE.COMMANDS_TAB.COMMANDS_TAB_TITLE" | translate }}
       </ion-segment-button>
-      <ion-segment-button (click)="readAll()" [hidden]=!isVisibleTabSet color="light" value="param">
+      <ion-segment-button (click)="readAll()" [hidden]="!isVisibleTabSet" color="light" value="param">
         {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ADJUSTMENTS_TAB_TITLE" | translate }}
       </ion-segment-button>
-      <ion-segment-button (click)="readAll()" [hidden]=!isVisibleTabInfo color="light" value="info">
+      <ion-segment-button (click)="readAll()" [hidden]="!isVisibleTabInfo" color="light" value="info">
         {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.INFORMATIONS_TAB_TITLE" | translate }}
       </ion-segment-button>
     </ion-segment>
@@ -852,10 +852,10 @@
             text-wrap>30-40 kg</ion-note>
           <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 40)&&(rval_mlpc_proParam_weightRangeUp == 50)" item-end
             text-wrap>40-50 kg</ion-note>
-          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 50)&&(rval_mlpc_proParam_weightRangeUp == 60)"item-end 
+          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 50)&&(rval_mlpc_proParam_weightRangeUp == 60)" item-end
             text-wrap>50-60 kg</ion-note>
           <!-- JDU MLPC 80kg : Ajout d'info pour la plage 60-80kg -->
-          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 60)&&(rval_mlpc_proParam_weightRangeUp == 80)"item-end 
+          <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 60)&&(rval_mlpc_proParam_weightRangeUp == 80)" item-end
             text-wrap>60-80 kg</ion-note>
           <!-- JDU GARLINE : Ajout d'info pour les plages 80-140kg -->
           <ion-note *ngIf="(rval_mlpc_proParam_weightRangeBot == 80)&&(rval_mlpc_proParam_weightRangeUp == 100)"
@@ -878,7 +878,7 @@
           <!--  JDU GARLINE : Modif de la version pour GARLINE -->
           <!-- Test sur MOTOR_ID et non sur MOTOR_ID_SPE  -->
           <ion-note
-            *ngIf="(rval_shDo_version[12] == 02) && (rval_shDo_version[13] == 00) "item-end text-wrap>140 kg
+            *ngIf="(rval_shDo_version[12] == 02) && (rval_shDo_version[13] == 00) " item-end text-wrap>140 kg
           </ion-note>
         </ion-item>
 

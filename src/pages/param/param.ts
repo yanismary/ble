@@ -1,4 +1,4 @@
-import { Component, NgZone, ViewChild } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { App, Config, Platform, NavController, NavParams, Navbar } from 'ionic-angular';
 import { Storage } from '@ionic/storage';
 import { TranslateService } from '@ngx-translate/core';
@@ -6,9 +6,7 @@ import { Device } from '@capacitor/device';
 import { Haptics } from '@capacitor/haptics';
 
 import { LoadingController } from 'ionic-angular';
-import { Observable } from 'rxjs/Observable';
-import { FormGroup, FormBuilder, FormControl, Validators, ValidatorFn, AbstractControl } from "@angular/forms"
-import 'rxjs/add/operator/toPromise';
+import { FormGroup, FormBuilder, Validators } from "@angular/forms"
 
 import { IonicPage } from 'ionic-angular';
 import { LoggerService } from '../../providers/logger/logger.service';
@@ -33,7 +31,6 @@ export class ParamPage {
   //var declaration
   toggleLanguageAuto: any;
   selectNgModLang: string = '';
-  toogleMac: any;
   toggleDispTabInformations: any;
   toggleDispTabSettings: any;
   dispOptionalCom: any;
@@ -57,48 +54,66 @@ export class ParamPage {
     private storage: Storage,
     private translate: TranslateService,
     private config: Config,
-    private ngZone: NgZone,
     public platform: Platform,
     public formBuilder: FormBuilder
   ) {
 
 
     //language
-    this.storage.get('StoredIsLanguageAuto').then((val) => {
-      this.toggleLanguageAuto = JSON.parse(val);
+    this.loadStoredJson('StoredIsLanguageAuto', (value) => {
+      this.toggleLanguageAuto = value;
     });
-    this.storage.get('appLanguage').then((val) => {
-      this.selectNgModLang = JSON.parse(val);
+    this.loadStoredJson('appLanguage', (value) => {
+      this.selectNgModLang = value;
     });
     //display tabs
-    this.storage.get('StoredIsVisibleTabInfo').then((val) => {
-      this.toggleDispTabInformations = JSON.parse(val);
+    this.loadStoredJson('StoredIsVisibleTabInfo', (value) => {
+      this.toggleDispTabInformations = value;
     });
-    this.storage.get('StoredIsVisibleTabSettings').then((val) => {
-      this.toggleDispTabSettings = JSON.parse(val);
+    this.loadStoredJson('StoredIsVisibleTabSettings', (value) => {
+      this.toggleDispTabSettings = value;
     });
     //display optionnal commands
-    this.storage.get('StoredOptComs').then((val) => {
-      this.dispOptionalCom = JSON.parse(val);
+    this.loadStoredJson('StoredOptComs', (value) => {
+      this.dispOptionalCom = value;
     });
 
     // display mac address in scan page
-    this.storage.get('StoredIsVisibleMAC').then((val) => {
-      this.toggleMac = JSON.parse(val);
+    this.loadStoredJson('StoredIsVisibleMAC', (value) => {
+      this.toggleMac = value;
     });
     // toggle vibrations
-    this.storage.get('StoredIsActiveVibrate').then((val) => {
-      this.toggleVibrate = JSON.parse(val);
+    this.loadStoredJson('StoredIsActiveVibrate', (value) => {
+      this.toggleVibrate = value;
     });
     //toogle auto BLE
-    this.storage.get('StoredIsAutoBluetooth').then((val) => {
-      this.toggleBluetooth = JSON.parse(val);
+    this.loadStoredJson('StoredIsAutoBluetooth', (value) => {
+      this.toggleBluetooth = value;
     });
+  }
+
+  private loadStoredJson(key: string, onValue: (value: any) => void) {
+    this.storage.get(key).then((value) => {
+      onValue(JSON.parse(value));
+    }).catch((error) => {
+      this.logPromiseError('Failed to read ' + key, error);
+    });
+  }
+
+  private saveStoredJson(key: string, value: any) {
+    this.storage.set(key, JSON.stringify(value)).catch((error) => {
+      this.logPromiseError('Failed to save ' + key, error);
+    });
+  }
+
+  private logPromiseError(message: string, error: any) {
+    const typedError: any = error;
+    this.logger.error(this.TAG, message, typedError);
   }
 
   //Toggles Functions
   async toggleFctLanguageAuto() {
-    this.storage.set('StoredIsLanguageAuto', JSON.stringify(this.toggleLanguageAuto));
+    this.saveStoredJson('StoredIsLanguageAuto', this.toggleLanguageAuto);
     if (this.toggleLanguageAuto) {
 
       this.selectNgModLang = 'manualLang_NONE';
@@ -132,14 +147,15 @@ export class ParamPage {
             // Let android keep using only arrow
             this.config.set('ios', 'backButtonText', res);
           });
-        } catch(e) { 
-          this.logger.debug(this.TAG, String(e));
+        } catch(error) {
+          const typedError: any = error;
+          this.logger.warn(this.TAG, 'Failed to update automatic language', typedError);
         }
       }
     }
 
   ngModLangChange() {
-    this.storage.set('appLanguage', JSON.stringify(this.selectNgModLang));
+    this.saveStoredJson('appLanguage', this.selectNgModLang);
     if (this.selectNgModLang === 'manualLang_FR') {
       this.translate.use('fr');
       localStorage.setItem("lang", "fr");
@@ -181,30 +197,32 @@ export class ParamPage {
 
   optComChange() {
     this.logger.debug(this.TAG, 'optionaloptions', this.dispOptionalCom)
-    this.storage.set('StoredOptComs', JSON.stringify(this.dispOptionalCom));
+    this.saveStoredJson('StoredOptComs', this.dispOptionalCom);
   }
 
   toggleFctDispTabSet() {
-    this.storage.set('StoredIsVisibleTabSettings', JSON.stringify(this.toggleDispTabSettings));
+    this.saveStoredJson('StoredIsVisibleTabSettings', this.toggleDispTabSettings);
   }
 
   toggleFctDispTabInfo() {
-    this.storage.set('StoredIsVisibleTabInfo', JSON.stringify(this.toggleDispTabInformations));
+    this.saveStoredJson('StoredIsVisibleTabInfo', this.toggleDispTabInformations);
   }
 
   toggleFctMac() {
-    this.storage.set('StoredIsVisibleMAC', JSON.stringify(this.toggleMac));
+    this.saveStoredJson('StoredIsVisibleMAC', this.toggleMac);
   }
 
   toggleFctVibrate() {
-    this.storage.set('StoredIsActiveVibrate', JSON.stringify(this.toggleVibrate));
+    this.saveStoredJson('StoredIsActiveVibrate', this.toggleVibrate);
     if (this.toggleVibrate) {
-        Haptics.vibrate();
+        Haptics.vibrate().catch((error) => {
+          this.logPromiseError('Failed to trigger vibration', error);
+        });
     }
   }
 
   toggleFctBluetooth() {
-    this.storage.set('StoredIsAutoBluetooth', JSON.stringify(this.toggleBluetooth));
+    this.saveStoredJson('StoredIsAutoBluetooth', this.toggleBluetooth);
   }
 
   presentLoadingText() {
@@ -217,7 +235,9 @@ export class ParamPage {
       duration: 1000
     });
 
-    loading.present();
+    loading.present().catch((error) => {
+      this.logPromiseError('Failed to present reboot loading', error);
+    });
   }
 
   onSubmitformPassword() {
@@ -233,25 +253,22 @@ export class ParamPage {
     }
   }
 
-  private isPasswordValid(field: string) {
-    let formField = this.formPassword.get(field);
-    this.logger.debug(this.TAG, 'formField');
-    return true
-
-  }
-
   //Method to override the default back button action
   private setBackButtonActionSW() {
     this.navBar.backButtonClick = () => {
       //Write here wherever you wanna do
       this.logger.debug(this.TAG, 'backButtonFunc()');
-      this.navCtrl.pop();
+      this.navCtrl.pop().catch((error) => {
+        this.logPromiseError('Failed to navigate back from navbar', error);
+      });
     }
   }
 
   private setBackButtonActionHW() {
 
-    this.navCtrl.pop();
+    this.navCtrl.pop().catch((error) => {
+      this.logPromiseError('Failed to navigate back from hardware button', error);
+    });
 
   }
 

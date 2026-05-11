@@ -1,6 +1,5 @@
 import { Component, ViewChild } from '@angular/core';
 import { IonicPage, NavController, NavParams,  Navbar, Platform} from 'ionic-angular';
-import { TranslateService } from '@ngx-translate/core';
 import { LoggerService } from '../../providers/logger/logger.service';
 
 
@@ -24,7 +23,6 @@ export class GcuPage {
   constructor(
     public navCtrl: NavController,
     public navParams: NavParams,
-    private translate: TranslateService,
     public platform: Platform,
     private logger: LoggerService,
     ) {
