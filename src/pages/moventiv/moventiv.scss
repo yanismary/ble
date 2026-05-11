@@ -184,6 +184,11 @@ page-moventiv {
       padding-top: 12px;
     }
 
+    ion-content.outer-content.has-expanded-param-header .scroll-content {
+      // Ionic 3 does not always recompute the content offset after the param sub-tabs increase the header height.
+      padding-top: 80px;
+    }
+
     ion-segment.command-main-segment,
     ion-segment.command-sub-segment {
       display: flex;
