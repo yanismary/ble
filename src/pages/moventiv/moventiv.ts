@@ -296,7 +296,7 @@ export class MoventivPage implements OnInit {
   retryConnection: number = 6;
   menuType!: string;
   paramSubmenuType!: string;
-  openedPrecisionSliderKey: string = null;
+  openedPrecisionSliderKey: string | null = null;
 
 
   dispOptionalCom_MO!: boolean;
@@ -620,7 +620,7 @@ export class MoventivPage implements OnInit {
       return Promise.resolve();
     }
 
-    return this.loading.dismiss().catch((error) => {
+    return this.loading.dismiss().catch((error: any) => {
       const typedError: any = error;
       this.logger.warn(this.TAG, 'Fermeture du loader impossible', { context: context, error: typedError });
     });
