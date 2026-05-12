@@ -20,7 +20,7 @@
 
   <ion-list>  
       <ion-list-header>  
-            {{ "CONTACT_PAGE.CONTACT_2.ADDRESS.NAME" | translate }}<img src="./assets/img/logo_wimove.png" align="right" width="40px" height="40px"/>
+            <span class="contact-company-name">{{ "CONTACT_PAGE.CONTACT_2.ADDRESS.NAME" | translate }}</span><img src="./assets/img/logo_wimove.png" align="right" width="40px" height="40px"/>
       </ion-list-header> 
 
       <ion-item>
@@ -36,7 +36,7 @@
 
     <ion-item >
         <ion-icon  name="locate" item-start color="wimGreyColor"></ion-icon>
-        <p>{{"CONTACT_PAGE.CONTACT_2.ADDRESS.NAME" | translate }}</p>
+        <p class="contact-company-name">{{"CONTACT_PAGE.CONTACT_2.ADDRESS.NAME" | translate }}</p>
         <p>{{"CONTACT_PAGE.CONTACT_2.ADDRESS.STATE" | translate }}</p>
         <p>{{"CONTACT_PAGE.CONTACT_2.ADDRESS.STREET" | translate }}</p>
         <p>{{"CONTACT_PAGE.CONTACT_2.ADDRESS.CITY" | translate }}</p>
