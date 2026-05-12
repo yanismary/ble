@@ -35,19 +35,23 @@
           <button ion-button color="primary"  (click)="pushScan()">{{"INFOSLIDE.SKIP"| translate }}</button>
         </ion-buttons>
       </ion-toolbar>
-      <img *ngIf="slide.image" [src]="slide.image" class="slide-image"/>
-      <h2 class="slide-title" [innerHTML]="slide.title"></h2>
-      <p [innerHTML]="slide.description"></p>
+      <div class="tutorial-slide-content">
+        <img *ngIf="slide.image" [src]="slide.image" class="slide-image"/>
+        <h2 class="slide-title" [innerHTML]="slide.title"></h2>
+        <p [innerHTML]="slide.description"></p>
+      </div>
     </ion-slide>
     <ion-slide>
       <ion-toolbar>
       </ion-toolbar>
       <!--<img src="assets/img/ica-slidebox-img-4.png" class="slide-image"/>-->
-      <h2 class="slide-title">{{ selectedReadyTitle }}</h2>
-      <button ion-button large clear icon-end (click)="pushScan()" color="primary">
-        {{"INFOSLIDE.END.CONTINUE"| translate }}
-        <ion-icon name="arrow-forward"></ion-icon>
-      </button>
+      <div class="tutorial-slide-content">
+        <h2 class="slide-title">{{ selectedReadyTitle }}</h2>
+        <button ion-button large clear icon-end (click)="pushScan()" color="primary">
+          {{"INFOSLIDE.END.CONTINUE"| translate }}
+          <ion-icon name="arrow-forward"></ion-icon>
+        </button>
+      </div>
     </ion-slide>
   </ion-slides>
 </ion-content>
