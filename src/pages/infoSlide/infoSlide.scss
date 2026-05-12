@@ -50,8 +50,26 @@ page-infoSlide {
         display: block;
         visibility: visible;
         opacity: 1;
+        min-height: 0;
+        min-width: 0;
+        height: auto;
+        padding: 0;
+        margin: 0;
+        border: none !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #488aff !important;
         font-size: 18px;
+        font-weight: 400;
+        line-height: 1.2;
+        text-transform: none;
         pointer-events: auto;
+      }
+
+      .tutorial-skip-button .button-inner {
+        padding: 0;
+        background: transparent !important;
       }
 
       .slide-zoom {
