@@ -32,7 +32,7 @@
     <ion-slide *ngFor="let slide of slides" style="height:100%">
       <ion-toolbar>
         <ion-buttons end>
-          <button ion-button color="primary"  (click)="pushScan()">{{"INFOSLIDE.SKIP"| translate }}</button>
+          <button ion-button class="tutorial-skip-button" color="primary"  (click)="pushScan()">{{"INFOSLIDE.SKIP"| translate }}</button>
         </ion-buttons>
       </ion-toolbar>
       <div class="tutorial-slide-content">

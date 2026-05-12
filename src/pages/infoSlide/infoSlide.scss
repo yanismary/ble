@@ -42,6 +42,24 @@ page-infoSlide {
         width: 100%;
       }
 
+      .tutorial-skip-button {
+        position: relative;
+        z-index: 2;
+        transform: translateY(18px);
+      }
+
+      @supports (top: constant(safe-area-inset-top)) {
+        .tutorial-skip-button {
+          transform: translateY(calc(18px + constant(safe-area-inset-top)));
+        }
+      }
+
+      @supports (top: env(safe-area-inset-top)) {
+        .tutorial-skip-button {
+          transform: translateY(calc(18px + env(safe-area-inset-top)));
+        }
+      }
+
       .slide-zoom {
         display: flex;
         flex-direction: column;
