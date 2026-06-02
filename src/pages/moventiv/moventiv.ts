@@ -133,7 +133,8 @@ const NAME_WRITE_MAX_LENGTH = 15;
 const NAME_ALLOWED_PATTERN = /^[A-Za-z0-9 -]*$/;
 const MOVENTIV_MAINTENANCE_PASSWORD = 'MovMaint';
 const GARLINE_MAINTENANCE_PASSWORD = 'GarMaint';
-const EXPERT_PASSWORD = 'GarExpert';
+const MOVENTIV_EXPERT_PASSWORD = 'MovExpert';
+const GARLINE_EXPERT_PASSWORD = 'GarExpert';
 
 
 @IonicPage({
@@ -2392,12 +2393,20 @@ export class MoventivPage implements OnInit {
     return (this.currentProductType || '').toLowerCase() === 'garline';
   }
 
-  private getMaintenancePassword(): string {
+  private getExpectedMaintenancePassword(): string {
     return this.isGarlineProduct() ? GARLINE_MAINTENANCE_PASSWORD : MOVENTIV_MAINTENANCE_PASSWORD;
   }
 
+  private getExpectedExpertPassword(): string {
+    return this.isGarlineProduct() ? GARLINE_EXPERT_PASSWORD : MOVENTIV_EXPERT_PASSWORD;
+  }
+
   private isMaintenancePasswordValid(password: string): boolean {
-    return password === this.getMaintenancePassword();
+    return password === this.getExpectedMaintenancePassword();
+  }
+
+  private isExpertPasswordValid(password: string): boolean {
+    return password === this.getExpectedExpertPassword();
   }
 
   maintenancePrompt() {
@@ -2886,7 +2895,7 @@ export class MoventivPage implements OnInit {
 
   onSubmitformPassword() {
     this.logger.debug(this.TAG, 'submitting form password');
-    if (this.userPassword == EXPERT_PASSWORD) {
+    if (this.isExpertPasswordValid(this.userPassword)) {
       this.passwordValid = true;
       this.logger.debug(this.TAG, 'Password ok');
     }
