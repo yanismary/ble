@@ -301,12 +301,6 @@ export class WidoorPage implements OnInit {
   todayDate!: string;
   todayDateUint8Array!: Uint8Array;
 
-  //test a effacer 
-  ackData_SHDO_usercom!: Uint8Array;
-  test_val_sub!: Uint8Array;
-  ackData_SHDO_usercom_val!: string;
-
-
   constructor(
     public navCtrl: NavController,
     public loadingCtrl: LoadingController,
@@ -510,7 +504,7 @@ export class WidoorPage implements OnInit {
                   this.onConnected(peripheral);
                 }
               },
-              (err) => {
+              (_err) => {
                 this.logger.debug(this.TAG, '[BLE] Connection error, retrying in 1.5s...');
                 setTimeout(() => this.bleConnect(), 1500);
               }
@@ -578,7 +572,7 @@ export class WidoorPage implements OnInit {
     }, 500);
   }
 
-  onDiscovered(peripheral: any) {
+  onDiscovered(_peripheral: any) {
     this.logger.debug(this.TAG, '[STEP 3] Starting Data Sync');
     this.readAll();
     
@@ -891,7 +885,7 @@ export class WidoorPage implements OnInit {
 
 
 
-  onStateChange(buffer: ArrayBuffer) {
+  onStateChange(_buffer: ArrayBuffer) {
   }
 
 
@@ -929,7 +923,6 @@ export class WidoorPage implements OnInit {
       }).then(        
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
-          //let returnString = this.randble.bytesToString(bytes); //DEBUG
           this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
           if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
             this.logger.debug(this.TAG, 'BLE transmission OK')
@@ -958,7 +951,6 @@ export class WidoorPage implements OnInit {
       this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_COMMAND_CHARACTERISTIC, value: encodedString }).then(
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
-          //let returnString = this.randble.bytesToString(bytes); //DEBUG
           this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
           if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
             this.logger.debug(this.TAG, 'BLE transmission OK')
@@ -987,7 +979,6 @@ export class WidoorPage implements OnInit {
       this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_COMMAND_CHARACTERISTIC, value: encodedString }).then(
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
-          //let returnString = this.randble.bytesToString(bytes); //DEBUG
           this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
           if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
             this.logger.debug(this.TAG, 'BLE transmission OK')
@@ -1016,7 +1007,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_COMMAND_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorLearning: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
         if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
           this.logger.debug(this.TAG, 'BLE transmission OK')
@@ -1121,7 +1111,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_USERDATESCYCLES_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'pageSel: ' + bytes[0] + 'setLastMaintDate YY: ' + bytes[1] + 'MM: ' + bytes[2] + 'DD: ' + bytes[3] + 'hh: ' + bytes[4]);
       },
     );
@@ -1151,7 +1140,6 @@ export class WidoorPage implements OnInit {
       this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_USERDATESCYCLES_CHARACTERISTIC, value: encodedString }).then(
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
-          let returnString = this.randble.bytesToString(bytes);
           this.logger.debug(this.TAG, 'pageSel: ' + bytes[0] + 'setFirstUseDate YY: ' + bytes[1] + 'MM: ' + bytes[2] + 'DD: ' + bytes[3] + 'hh: ' + bytes[4]);
         },
       );
@@ -1177,7 +1165,6 @@ export class WidoorPage implements OnInit {
       this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_COMMAND_CHARACTERISTIC, value: encodedString }).then(
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
-          let returnString = this.randble.bytesToString(bytes);
           this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'setDoorClose b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
         },
       );
@@ -1216,7 +1203,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'setLockClose b0: ' + bytes[1]);
       },
     );
@@ -1251,7 +1237,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'setLockClose b0: ' + bytes[1]);
       },
     );
@@ -1277,7 +1262,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetSpeedOpenTune b0: ' + bytes[1]);
       },
     );
@@ -1304,7 +1288,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetSpeedCloseTune b0: ' + bytes[1]);
       },
     );
@@ -1327,13 +1310,7 @@ export class WidoorPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
-      (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-
-      },
-    );
+    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
   setNearCloseSpeed() {
@@ -1351,13 +1328,7 @@ export class WidoorPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
-      (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-
-      },
-    );
+    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
   setNearOpenTorque() {
@@ -1375,13 +1346,7 @@ export class WidoorPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
-      (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-
-      },
-    );
+    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
   setNearCloseTorque() {
@@ -1398,13 +1363,7 @@ export class WidoorPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
-      (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-
-      },
-    );
+    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
 
@@ -1428,7 +1387,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
       },
     );
@@ -1452,7 +1410,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
       },
     );
@@ -1486,7 +1443,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph MSB set ' + bytes[1]);
       },
     );
@@ -1519,7 +1475,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph set ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
@@ -1552,7 +1507,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
@@ -1585,7 +1539,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
@@ -1618,7 +1571,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
@@ -1651,7 +1603,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
@@ -1684,7 +1635,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
@@ -1717,7 +1667,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph MSB set ' + bytes[1]);
       },
     );
@@ -1742,7 +1691,6 @@ export class WidoorPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'open break force range' + bytes[1]);
       },
     );
@@ -1971,12 +1919,6 @@ export class WidoorPage implements OnInit {
   private createNameWriteError(message: string, translationKey: string): any {
     const error: any = new Error(message);
     error.translationKey = translationKey;
-    return error;
-  }
-
-  private createNameWriteToastError(message: string, toastMessage: string): any {
-    const error: any = new Error(message);
-    error.toastMessage = toastMessage;
     return error;
   }
 
@@ -2252,7 +2194,7 @@ export class WidoorPage implements OnInit {
   }
 
   //dec and inc buttons fct
-  private closeSpeedTuneInc() {
+  closeSpeedTuneInc() {
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
     if (this.rval_mlpc_userParam_speedCloseTune < 100)
@@ -2261,7 +2203,7 @@ export class WidoorPage implements OnInit {
     this.setCloseSpeedTune();
   }
 
-  private closeSpeedTuneDec() {
+  closeSpeedTuneDec() {
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
     if (this.rval_mlpc_userParam_speedCloseTune > 50)
@@ -2270,7 +2212,7 @@ export class WidoorPage implements OnInit {
     this.setCloseSpeedTune();
   }
 
-  private openSpeedTuneInc() {
+  openSpeedTuneInc() {
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
     if (this.rval_mlpc_userParam_speedOpenTune < 100)
@@ -2279,7 +2221,7 @@ export class WidoorPage implements OnInit {
     this.setOpenSpeedTune();
   }
 
-  private openSpeedTuneDec() {
+  openSpeedTuneDec() {
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
     if (this.rval_mlpc_userParam_speedOpenTune > 50)
@@ -2288,7 +2230,7 @@ export class WidoorPage implements OnInit {
     this.setOpenSpeedTune();
   }
 
-  private shortTimingInc() {
+  shortTimingInc() {
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
     if (this.rval_mlpc_userParam_openTimeShort < 60)
@@ -2297,7 +2239,7 @@ export class WidoorPage implements OnInit {
     this.setShortTiming();
   }
 
-  private shortTimingDec() {
+  shortTimingDec() {
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
     if (this.rval_mlpc_userParam_openTimeShort > 0)
@@ -2306,7 +2248,7 @@ export class WidoorPage implements OnInit {
     this.setShortTiming();
   }
 
-  private longTimingInc() {
+  longTimingInc() {
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
     if (this.rval_mlpc_userParam_openTimeLong < 60)
@@ -2315,7 +2257,7 @@ export class WidoorPage implements OnInit {
     this.setLongTiming();
   }
 
-  private longTimingDec() {
+  longTimingDec() {
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
     if (this.rval_mlpc_userParam_openTimeLong > 0)
@@ -2475,8 +2417,6 @@ export class WidoorPage implements OnInit {
   }
 
   maintenancePrompt() {
-    let trans: any = {};
-
     if (this.rval_shDo_userDatesCycles[5] != 255) {
       this.translate.get(['MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.MESSAGE_MAINTENANCE.MESSAGE', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.MESSAGE_MAINTENANCE.MESSAGE2', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.TEXT', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.ROLE', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES']).subscribe(
         res => {
@@ -2874,7 +2814,6 @@ export class WidoorPage implements OnInit {
 
   onSubmitformPassword() {
     this.logger.debug(this.TAG, 'submitting form password');
-    this.logger.debug(this.TAG, this.userPassword);
     if (this.userPassword == 'password') {
       this.passwordValid = true;
       this.logger.debug(this.TAG, 'Password ok');
@@ -2887,10 +2826,9 @@ export class WidoorPage implements OnInit {
 
   onSubmitformPasswordBCrypt() {
     this.logger.debug(this.TAG, 'submitting form password');
-    this.logger.debug(this.TAG, this.userPassword);
 
 
-    bcrypt.compare("wisavdoor", "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (err: Error | null, match: boolean) => {
+    bcrypt.compare("wisavdoor", "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (_err: Error | null, match: boolean) => {
       this.logger.debug(this.TAG, 'BCryptCompare');
       this.logger.debug(this.TAG, 'Match result: ' + match);
       if (match == true) {
@@ -2903,13 +2841,6 @@ export class WidoorPage implements OnInit {
       }
     });
   }
-
-  private isPasswordValid(field: string) {
-    this.logger.debug(this.TAG, 'isPasswordValid', { field: field });
-    return true
-
-  }
-
 
   isValid(field: string) {
     const formField = this.formName.get(field);
@@ -2928,7 +2859,7 @@ export class WidoorPage implements OnInit {
 
 
 
-  onLocChange(event: any) {
+  onLocChange() {
     this.logger.debug(this.TAG, "Selected localisation");
 
     switch (this.localisation) {

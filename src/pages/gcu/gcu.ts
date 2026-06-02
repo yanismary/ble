@@ -2,14 +2,6 @@ import { Component, ViewChild } from '@angular/core';
 import { IonicPage, NavController, NavParams,  Navbar, Platform} from 'ionic-angular';
 import { LoggerService } from '../../providers/logger/logger.service';
 
-
-/**
- * Generated class for the GcuPage page.
- *
- * See https://ionicframework.com/docs/components/#navigation for more info on
- * Ionic pages and navigation.
- */
-
 @IonicPage()
 @Component({
   selector: 'page-gcu',

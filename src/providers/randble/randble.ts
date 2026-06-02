@@ -5,16 +5,9 @@ const BleClient = require('@capacitor-community/bluetooth-le').BleClient;
 import { Device } from '@capacitor/device';
 import { Observable } from 'rxjs/Observable'
 import { Platform } from 'ionic-angular'
-import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import { LoggerService } from '../logger/logger.service';
 import 'rxjs/add/observable/fromPromise';
 import 'rxjs/add/observable/of';
-
-interface ICharacteristicPath {
-  address: string,
-  service: string,
-  characteristic: string
-}
 
 type PreScanReason = 'READY' | 'BLE_DISABLED' | 'LOCATION_DISABLED' | 'PERMISSION_DENIED' | 'PRECHECK_FAILED';
 
@@ -41,7 +34,6 @@ export class RandBLE {
   CALLBACK_TYPE_FIRST_MATCH = 2;
   CALLBACK_TYPE_MATCH_LOST = 4;
 
-  private isRequestingEnable = false;
   private isEnablingBt = false;
   private TAG = 'RandBLE';
 
@@ -62,7 +54,7 @@ export class RandBLE {
 
   // --- INITIALISATION ---
 
-  initialize(params?: any): Promise<any> {
+  initialize(_params?: any): Promise<any> {
     return this.initializeBleClient('initialize').then(() => {
       return BleClient.isEnabled().then(enabled => {
         return { 

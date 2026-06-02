@@ -2,12 +2,6 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { LoggerService } from '../logger/logger.service';
 
-/*
-  Generated class for the BleconnectserviceProvider provider.
-
-  See https://angular.io/guide/dependency-injection for more info on providers
-  and Angular DI.
-*/
 @Injectable()
 export class BleconnectserviceProvider {
   private readonly TAG = 'BleconnectserviceProvider';

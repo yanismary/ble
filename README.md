@@ -1,26 +1,30 @@
-This is a starter template for [Ionic](http://ionicframework.com/docs/) projects.
+# MANTION SMT
 
-## How to use this template
+Application mobile BLE regroupant Widoor, Moventiv et Garline.
 
-*This template does not work on its own*. The shared files for each starter are found in the [ionic2-app-base repo](https://github.com/ionic-team/ionic2-app-base).
+## Prerequis
 
-To use this template, either create a new ionic project using the ionic node.js utility, or copy the files from this repository into the [Starter App Base](https://github.com/ionic-team/ionic2-app-base).
+- Node.js et npm compatibles avec Ionic 3 / Angular 5.
+- Dependances installees avec `npm install`.
+- Capacitor CLI disponible via `npx cap`.
 
-### With the Ionic CLI:
-
-Take the name after `ionic2-starter-`, and that is the name of the template to be used when using the `ionic start` command below:
-
-```bash
-$ sudo npm install -g ionic cordova
-$ ionic start myTabs tabs
-```
-
-Then, to run it, cd into `myTabs` and run:
+## Commandes utiles
 
 ```bash
-$ ionic cordova platform add ios
-$ ionic cordova run ios
+npm run build
+npm run lint
+npx tsc -p tsconfig.json --noEmit --noUnusedLocals --noUnusedParameters
+npm run cap:sync
 ```
 
-Substitute ios for android if not on a Mac.
+## Plateformes
 
+- Android est synchronise via Capacitor dans `android/`.
+- iOS est synchronise via Capacitor dans `ios/`(disponible uniquement sur MAC)
+
+
+## Notes de maintenance
+
+- Conserver les controles de permissions Bluetooth/localisation avant scan.
+- Conserver les protections sur les identifiants BLE manquants.
+- Garline utilise la page Moventiv avec son type produit dedie.

@@ -3,14 +3,6 @@ import { IonicPage, NavController, NavParams, Platform } from 'ionic-angular';
 import { TranslateService } from '@ngx-translate/core';
 import { LoggerService } from '../../providers/logger/logger.service';
 
-
-/**
- * Generated class for the InfoSlidePage page.
- *
- * See https://ionicframework.com/docs/components/#navigation for more info on
- * Ionic pages and navigation.
- */
-
 type TutorialProduct = 'widoor' | 'moventiv';
 
 interface TutorialSlide {

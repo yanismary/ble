@@ -2,14 +2,6 @@ import { Component, ViewChild } from '@angular/core';
 import { IonicPage, NavController, NavParams, Platform, Navbar } from 'ionic-angular';
 import { LoggerService } from '../../providers/logger/logger.service';
 
-
-/**
- * Generated class for the WhoPage page.
- *
- * See http://ionicframework.com/docs/components/#navigation for more info
- * on Ionic pages and navigation.
- */
-
 @IonicPage()
 @Component({
   selector: 'page-who',

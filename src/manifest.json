@@ -1,12 +1,12 @@
 {
-  "name": "Ionic",
-  "short_name": "Ionic",
+  "name": "MANTION SMT",
+  "short_name": "MANTION SMT",
   "start_url": "index.html",
   "display": "standalone",
   "icons": [{
-    "src": "assets/imgs/logo.png",
-    "sizes": "512x512",
-    "type": "image/png"
+    "src": "assets/icon/favicon.ico",
+    "sizes": "any",
+    "type": "image/x-icon"
   }],
   "background_color": "#4e8ef7",
   "theme_color": "#4e8ef7"

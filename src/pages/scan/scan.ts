@@ -52,13 +52,14 @@ export const PRODUCTS_CONFIG: ProductConfig[] = [
     serviceUUID: '978AE765-664C-45D8-9157-3B9031E6478E', // même que Moventiv
     page: 'MoventivPage',
     demoName: 'GarlineExemple'
-  },
+  }
   /*{
     id: 'nouveau_produit',
     name: 'Nouveau Produit',
     serviceUUID: '00000000-0000-0000-0000-000000000000',
     page: 'NouveauProduitPage'
   }*/
+
 ];
 
 @IonicPage({

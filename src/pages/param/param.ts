@@ -6,17 +6,9 @@ import { Device } from '@capacitor/device';
 import { Haptics } from '@capacitor/haptics';
 
 import { LoadingController } from 'ionic-angular';
-import { FormGroup, FormBuilder, Validators } from "@angular/forms"
 
 import { IonicPage } from 'ionic-angular';
 import { LoggerService } from '../../providers/logger/logger.service';
-
-/**
- * Generated class for the ParamPage page.
- *
- * See http://ionicframework.com/docs/components/#navigation for more info
- * on Ionic pages and navigation.
- */
 
 @IonicPage()
 @Component({
@@ -28,7 +20,6 @@ export class ParamPage {
   private logger: LoggerService = new LoggerService();
 
   @ViewChild(Navbar) navBar!: Navbar;
-  //var declaration
   toggleLanguageAuto: any;
   selectNgModLang: string = '';
   toggleDispTabInformations: any;
@@ -40,11 +31,6 @@ export class ParamPage {
   contentReboot: string = '';
   view_isIos: boolean = false;
   view_isAndroid: boolean = false;
-  userPassword: string = '';
-  passwordValid: boolean = false;
-  formPassword!: FormGroup;
-  validation_messages: any;
-  formName!: FormGroup;
 
   constructor(
     public navCtrl: NavController,
@@ -54,8 +40,7 @@ export class ParamPage {
     private storage: Storage,
     private translate: TranslateService,
     private config: Config,
-    public platform: Platform,
-    public formBuilder: FormBuilder
+    public platform: Platform
   ) {
 
 
@@ -240,19 +225,6 @@ export class ParamPage {
     });
   }
 
-  onSubmitformPassword() {
-    this.logger.debug(this.TAG, 'submitting form password');
-    this.logger.debug(this.TAG, this.userPassword);
-    if (this.userPassword == 'wisavdoor') {
-      this.passwordValid = true;
-      this.logger.debug(this.TAG, 'Password ok');
-    }
-    else {
-      this.passwordValid = false;
-      this.logger.debug(this.TAG, 'Password nok');
-    }
-  }
-
   //Method to override the default back button action
   private setBackButtonActionSW() {
     this.navBar.backButtonClick = () => {
@@ -271,40 +243,6 @@ export class ParamPage {
     });
 
   }
-
-  /*********************************************************************************************************************************************************************/
-  ngOnInit(): any {
-    this.translate.get(['MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.REQUIRED', 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.MINLENGHT', 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.MAXLENGHT', 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.PATTERN', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.SUPERADVANCEDTUNING.PASSWORD.VALMESSAGE.NAME', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.SUPERADVANCEDTUNING.PASSWORD.VALMESSAGE.MAXLENGHT']).subscribe(
-      res => {
-
-        this.validation_messages = {
-
-          'mlpcName': [
-            { type: 'required', message: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.REQUIRED"] },
-            { type: 'minlength', message: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.MINLENGHT"] },
-            { type: 'maxlength', message: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.MAXLENGHT"] },
-            { type: 'pattern', message: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.PATTERN"] },
-          ],
-
-          'mlpcPassword': [
-            { type: 'required', message: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.SUPERADVANCEDTUNING.PASSWORD.VALMESSAGE.NAME"] },
-            { type: 'maxlength', message: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.SUPERADVANCEDTUNING.PASSWORD.VALMESSAGE.MAXLENGHT"] },
-          ]
-        }
-
-      });
-
-
-    this.formName = this.formBuilder.group({
-      'mlpcName': ['wtf', [Validators.required, Validators.minLength(5), Validators.maxLength(15), Validators.pattern('[a-zA-Z0-9,.;:_-]*')]]
-    });
-
-    
-    this.formPassword = this.formBuilder.group({
-      'mlpcPassword': ['', [Validators.required, Validators.maxLength(20)]]
-    });
-  }
-
 
   ionViewWillEnter() {
     this.platform.registerBackButtonAction(() => this.setBackButtonActionHW());

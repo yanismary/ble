@@ -10,9 +10,6 @@
      
   <ion-toolbar color="navBarColor" no-border-top class="scrollable-segments command-header-segments">
     <ion-segment class="command-main-segment" color="light" [(ngModel)]="menuType" textwrap>
-      <!-- <ion-segment-button (click)="readAll()" color="light" value="pro" textwrap>
-        {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.TAB_TITLE" | translate }}
-      </ion-segment-button> -->
       <ion-segment-button (click)="readAll()" color="light" value="com">
         {{ "MOVENTIV_PAGE.COMMANDS_TAB.COMMANDS_TAB_TITLE" | translate }}
       </ion-segment-button>
@@ -116,15 +113,6 @@
 
     <ion-item-group *ngSwitchCase="'com'">
       <ion-list lines="none">
-        <!-- Commande - Maintien ouverture -->
-        <!-- <ion-item>
-          <ion-icon [name]="lockOpen ? 'moventiv-lock_off' : 'moventiv-lock_on'" item-start color="wimGreyColor">
-          </ion-icon>
-          <ion-label text-wrap>{{ "MOVENTIV_PAGE.COMMANDS_TAB.COMTOOGLE_MAINTAINOPEN" | translate }}</ion-label>
-          <ion-toggle [disabled]="lockClose" [(ngModel)]="lockOpen" (ionChange)="setLockOpen($event)"
-            color="mantionSmtgreen"></ion-toggle>
-        </ion-item> -->
-
         <!-- Commande - Maintien fermeture -->
         <ion-item>
           <ion-icon [name]="lockClose ? 'moventiv-lock_off' : 'moventiv-lock_on'" item-start color="wimGreyColor">
@@ -276,35 +264,6 @@
           <!--END- Réglage - tempo courte -->
 
           <!-- Réglage - Tempo longue -->
-          <!-- <ion-list-header text-wrap>
-              {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.AUTOCLOSING_TIMEDELAYLONG_LABEL" | translate }}
-              <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_userParam_openTimeLong}} m</ion-badge>
-            </ion-list-header>
-            <ion-item>
-              <ion-icon name="moventiv-delay" item-start color="wimGreyColor"></ion-icon>
-              <ion-range min="0" max="60" debounce="300" [(ngModel)]="rval_mlpc_userParam_openTimeLong"
-                (ionChange)="setLongTiming($event)" color="mantionSmtblue">
-              </ion-range>
-              <button ion-button clear item-end type="button" class="slider-options-toggle"
-                (click)="toggleSliderPrecision('longTiming', $event)">
-                <ion-icon [name]="isSliderPrecisionOpen('longTiming') ? 'arrow-dropright' : 'arrow-dropleft'"
-                  color="wimGreyColor"></ion-icon>
-              </button>
-            </ion-item>
-            <ion-row *ngIf="isSliderPrecisionOpen('longTiming')" class="slider-precision-actions">
-              <ion-col col-6>
-                <button ion-button block color="mantionSmtgreen" type="button" (click)="longTimingInc()">
-                  <ion-icon name="add"></ion-icon>
-                  {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
-                </button>
-              </ion-col>
-              <ion-col col-6>
-                <button ion-button block color="mantionSmtRed" type="button" (click)="longTimingDec()">
-                  <ion-icon name="remove"></ion-icon>
-                  {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
-                </button>
-              </ion-col>
-            </ion-row>-->
           <!--END- Réglage - Tempo longue -->
 
           <!-- Réglage - Nom et localisation -->
@@ -553,7 +512,6 @@
             {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.SUPERADVANCEDTUNING.TITLE" | translate }}
           </ion-list-header>
 
-          <!-- <form [formGroup]="formPassword" (ngSubmit)="onSubmitformPasswordBCrypt()">  -->
           <form [formGroup]="formPassword" (ngSubmit)="onSubmitformPassword()"> 
 
             <ion-item no-lines>
@@ -732,30 +690,6 @@
           </ion-item>
           <!--END- REGALGE/ADV - Sensibilité de la detection d'obstacle  -->
 
-          <!-- Réglage PID a ENLEVER-->
-          <!-- <ion-item *ngIf="passwordValid">
-            <ion-label>PID CLOSE P</ion-label>
-            <ion-input type="number" [(ngModel)]="rval_mlpc_proParam_nearOpenProportionnal"
-              name="rval_mlpc_proParam_nearOpenProportionnal"></ion-input>
-          </ion-item>
-
-          <ion-item *ngIf="passwordValid">
-            <ion-label>PID OPEN P</ion-label>
-            <ion-input type="number" [(ngModel)]="rval_mlpc_proParam_nearCloseProportionnal"
-              name="rval_mlpc_proParam_nearCloseProportionnal"></ion-input>
-          </ion-item>
-
-          <ion-item *ngIf="passwordValid">
-            <ion-label>PID CLOSE I</ion-label>
-            <ion-input type="number" [(ngModel)]="rval_mlpc_proParam_nearOpenIntegral"
-              name="rval_mlpc_proParam_nearOpenIntegral"></ion-input>
-          </ion-item>
-
-          <ion-item *ngIf="passwordValid">
-            <ion-label>PID OPEN I</ion-label>
-            <ion-input type="number" [(ngModel)]="rval_mlpc_proParam_nearCloseIntegral"
-              name="rval_mlpc_proParam_nearCloseIntegral"></ion-input>
-          </ion-item> -->
           <!-- END- Reglage par MDP -->
 
 
@@ -1027,30 +961,6 @@
           </ion-note>
         </ion-item>
         
-        <!-- <ion-item>
-          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.WSO" | translate }}</ion-label>
-          <ion-note item-end text-wrap>
-            {{rval_shDo_proMaintenance_NbWrongStopOpen| number : '2.0-0'}}
-          </ion-note>
-        </ion-item>
-        <ion-item>
-          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.WSC" | translate }}</ion-label>
-          <ion-note item-end text-wrap>
-            {{rval_shDo_proMaintenance_NbWrongStopClose | number : '2.0-0'}}
-          </ion-note>
-        </ion-item> -->
-        <!-- <ion-item>
-          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.EC" | translate }}</ion-label>
-          <ion-note item-end text-wrap>
-            {{rval_shDo_proMaintenance_NbErrorEncoder | number : '2.0-0'}}
-          </ion-note>
-        </ion-item>
-        <ion-item>
-          <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SUPINFO.EM" | translate }}</ion-label>
-          <ion-note item-end text-wrap>
-            {{rval_shDo_proMaintenance_NbErrorMotor | number : '2.0-0'}}
-          </ion-note>
-        </ion-item> -->
       </ion-list>
     </div>
 

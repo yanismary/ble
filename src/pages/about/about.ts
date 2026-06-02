@@ -4,13 +4,6 @@ import { App } from '@capacitor/app';
 
 import { LoggerService } from '../../providers/logger/logger.service';
 
-/**
- * Generated class for the AboutPage page.
- *
- * See http://ionicframework.com/docs/components/#navigation for more info
- * on Ionic pages and navigation.
- */
-
 @IonicPage()
 @Component({
   selector: 'page-about',

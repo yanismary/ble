@@ -307,12 +307,6 @@ export class MoventivPage implements OnInit {
   todayDate!: string;
   todayDateUint8Array!: Uint8Array;
 
-  //test a effacer 
-  ackData_SHDO_usercom!: Uint8Array;
-  test_val_sub!: Uint8Array;
-  ackData_SHDO_usercom_val!: string;
-
-
   constructor(public navCtrl: NavController,
     public loadingCtrl: LoadingController,
     public navParams: NavParams,
@@ -538,7 +532,7 @@ export class MoventivPage implements OnInit {
                   this.onConnected(peripheral);
                 }
               },
-              (err) => {
+              (_err) => {
                 this.logger.debug(this.TAG, '[BLE] Connection error, retrying in 1.5s...');
                 setTimeout(() => this.bleConnect(), 1500);
               }
@@ -602,7 +596,7 @@ export class MoventivPage implements OnInit {
     }, 500);
   }
 
-  onDiscovered(peripheral: any) {
+  onDiscovered(_peripheral: any) {
     this.logger.debug(this.TAG, '[STEP 3] Starting Data Sync');
     this.readAll();
     
@@ -976,7 +970,7 @@ export class MoventivPage implements OnInit {
 
 
 
-  onStateChange(buffer: ArrayBuffer) {
+  onStateChange(_buffer: ArrayBuffer) {
   }
 
 
@@ -990,7 +984,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({address: this.peripheral.address, service: MLPC_SERVICE , characteristic:TIMING_CHARACTERISTIC, value:encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'returned timing value: ' + bytes[0]);
       }, 
     );
@@ -1020,7 +1013,6 @@ export class MoventivPage implements OnInit {
                           }).then(
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
-          //let returnString = this.randble.bytesToString(bytes); //DEBUG
           this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
           if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
             this.logger.debug(this.TAG, 'BLE transmission OK')
@@ -1049,7 +1041,6 @@ export class MoventivPage implements OnInit {
       this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_COMMAND_CHARACTERISTIC, value: encodedString }).then(
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
-          //let returnString = this.randble.bytesToString(bytes); //DEBUG
           this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
           if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
             this.logger.debug(this.TAG, 'BLE transmission OK')
@@ -1077,7 +1068,6 @@ export class MoventivPage implements OnInit {
       this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_COMMAND_CHARACTERISTIC, value: encodedString }).then(
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
-          //let returnString = this.randble.bytesToString(bytes); //DEBUG
           this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorOpenStime b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
           if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
             this.logger.debug(this.TAG, 'BLE transmission OK')
@@ -1104,7 +1094,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_COMMAND_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page : ' + bytes[0] + 'setDoorLearning: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
         if ((bytes[0] == commandData[0]) && (bytes[1] == commandData[1]) && (bytes[2] == commandData[2])) {
           this.logger.debug(this.TAG, 'BLE transmission OK')
@@ -1130,7 +1119,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_USERDATESCYCLES_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'pageSel: ' + bytes[0] + 'setLastMaintDate YY: ' + bytes[1] + 'MM: ' + bytes[2] + 'DD: ' + bytes[3] + 'hh: ' + bytes[4]);
       },
     );
@@ -1155,7 +1143,6 @@ export class MoventivPage implements OnInit {
       this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_USERDATESCYCLES_CHARACTERISTIC, value: encodedString }).then(
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
-          let returnString = this.randble.bytesToString(bytes);
           this.logger.debug(this.TAG, 'pageSel: ' + bytes[0] + 'setFirstUseDate YY: ' + bytes[1] + 'MM: ' + bytes[2] + 'DD: ' + bytes[3] + 'hh: ' + bytes[4]);
         },
       );
@@ -1179,7 +1166,6 @@ export class MoventivPage implements OnInit {
       this.randble.write({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_COMMAND_CHARACTERISTIC, value: encodedString }).then(
         (returnObj) => {
           let bytes = this.randble.encodedStringToBytes(returnObj.value);
-          let returnString = this.randble.bytesToString(bytes);
           this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'setDoorClose b0: ' + bytes[1] + 'b1: ' + bytes[2] + 'b2: ' + bytes[3]);
         },
       );
@@ -1220,7 +1206,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'setLockClose b0: ' + bytes[1]);
       },
     );
@@ -1266,7 +1251,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'setLockClose b0: ' + bytes[1]);
       },
     );
@@ -1290,7 +1274,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetSpeedOpenTune b0: ' + bytes[1]);
       },
     );
@@ -1315,7 +1298,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetSpeedCloseTune b0: ' + bytes[1]);
       },
     );
@@ -1335,13 +1317,7 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
-      (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-
-      },
-    );
+    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
   setNearCloseSpeed() {
@@ -1357,12 +1333,7 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
-      (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-      },
-    );
+    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
   setNearOpenTorque() {
@@ -1378,13 +1349,7 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
-      (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-
-      },
-    );
+    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
   setBrakingOpenPower() {
@@ -1400,13 +1365,7 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
-      (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-
-      },
-    );
+    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
   setObstacleSensibility(){
@@ -1422,13 +1381,7 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
-      (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-
-      },
-    );
+    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
   setNearCloseTorque() {
@@ -1444,13 +1397,7 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
-      (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
-
-      },
-    );
+    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
 
@@ -1472,7 +1419,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
       },
     );
@@ -1494,7 +1440,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
       },
     );
@@ -1525,7 +1470,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph MSB set ' + bytes[1]);
       },
     );
@@ -1555,7 +1499,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph set ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
@@ -1585,7 +1528,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
@@ -1615,7 +1557,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
       },
     );
@@ -1646,7 +1587,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph MSB set ' + bytes[1]);
       },
     );
@@ -1755,7 +1695,6 @@ export class MoventivPage implements OnInit {
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        let returnString = this.randble.bytesToString(bytes);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'weight range bot' + bytes[1] + 'weight range top' + bytes[2]);
       },
     );
@@ -1918,12 +1857,6 @@ export class MoventivPage implements OnInit {
   private createNameWriteError(message: string, translationKey: string): any {
     const error: any = new Error(message);
     error.translationKey = translationKey;
-    return error;
-  }
-
-  private createNameWriteToastError(message: string, toastMessage: string): any {
-    const error: any = new Error(message);
-    error.toastMessage = toastMessage;
     return error;
   }
 
@@ -2194,104 +2127,104 @@ export class MoventivPage implements OnInit {
   }
 
   //dec and inc buttons fct
-  private closeSpeedTuneInc() {
+  closeSpeedTuneInc() {
     if (this.rval_mlpc_userParam_speedCloseTune < 100)
       this.rval_mlpc_userParam_speedCloseTune++;
   }
 
-  private closeSpeedTuneDec() {
+  closeSpeedTuneDec() {
     if (this.rval_mlpc_userParam_speedCloseTune > 50)
       this.rval_mlpc_userParam_speedCloseTune--;
   }
 
-  private openSpeedTuneInc() {
+  openSpeedTuneInc() {
     if (this.rval_mlpc_userParam_speedOpenTune < 100)
       this.rval_mlpc_userParam_speedOpenTune++;
   }
 
-  private openSpeedTuneDec() {
+  openSpeedTuneDec() {
     if (this.rval_mlpc_userParam_speedOpenTune > 50)
       this.rval_mlpc_userParam_speedOpenTune--;
   }
 
-  private shortTimingInc() {
+  shortTimingInc() {
     if (this.rval_mlpc_userParam_openTimeShort < 60)
       this.rval_mlpc_userParam_openTimeShort++;
   }
 
-  private shortTimingDec() {
+  shortTimingDec() {
     if (this.rval_mlpc_userParam_openTimeShort > 0)
       this.rval_mlpc_userParam_openTimeShort--;
   }
 
-  private longTimingInc() {
+  longTimingInc() {
     if (this.rval_mlpc_userParam_openTimeLong < 60)
       this.rval_mlpc_userParam_openTimeLong++;
   }
 
-  private longTimingDec() {
+  longTimingDec() {
     if (this.rval_mlpc_userParam_openTimeLong > 0)
       this.rval_mlpc_userParam_openTimeLong--;
   }
 
  
   //JDU : ajout bouton d'inc/dec sur vitesse fin ouverture/fermeture
-  private NearOpenSpeedInc(){
+  NearOpenSpeedInc(){
     if (this.rval_mlpc_proParam_nearOpenSpeed < 200)
       this.rval_mlpc_proParam_nearOpenSpeed++;
     }
 
-  private NearOpenSpeedDec(){
+  NearOpenSpeedDec(){
     if (this.rval_mlpc_proParam_nearOpenSpeed > 0)
       this.rval_mlpc_proParam_nearOpenSpeed--;
   }
 
-  private NearCloseSpeedInc(){
+  NearCloseSpeedInc(){
     if (this.rval_mlpc_proParam_nearCloseSpeed < 200)
       this.rval_mlpc_proParam_nearCloseSpeed++;
     }
 
-  private NearCloseSpeedDec(){
+  NearCloseSpeedDec(){
     if (this.rval_mlpc_proParam_nearCloseSpeed > 0)
       this.rval_mlpc_proParam_nearCloseSpeed--;
   }
 
-  private NearCloseTorqueInc(){
+  NearCloseTorqueInc(){
     if (this.rval_mlpc_proParam_nearCloseTorque < 200)
     this.rval_mlpc_proParam_nearCloseTorque++;
   }
 
-  private NearCloseTorqueDec(){
+  NearCloseTorqueDec(){
     if (this.rval_mlpc_proParam_nearCloseTorque > 0)
     this.rval_mlpc_proParam_nearCloseTorque--;
   }
 
-  private NearOpenTorqueInc(){
+  NearOpenTorqueInc(){
     if (this.rval_mlpc_proParam_nearOpenTorque < 200)
     this.rval_mlpc_proParam_nearOpenTorque++;
   }
 
-  private NearOpenTorqueDec(){
+  NearOpenTorqueDec(){
     if (this.rval_mlpc_proParam_nearOpenTorque > 0)
     this.rval_mlpc_proParam_nearOpenTorque--;
   }
 
-  private BrakingPowerInc(){
+  BrakingPowerInc(){
     if (this.rval_mlpc_proParam_brakingOpenPower < 200)
     this.rval_mlpc_proParam_brakingOpenPower++;
   }
 
-  private BrakingPowerDec(){
+  BrakingPowerDec(){
     if (this.rval_mlpc_proParam_brakingOpenPower > 0)
     this.rval_mlpc_proParam_brakingOpenPower--;
   }
 
-  private ObstacleSensiInc(){
+  ObstacleSensiInc(){
     if (this.rval_mlpc_proParam_obstacleSensibility < 200)
     this.rval_mlpc_proParam_obstacleSensibility++;
   }
 
-  private ObstacleSensiDec(){
+  ObstacleSensiDec(){
     if (this.rval_mlpc_proParam_obstacleSensibility > 0)
     this.rval_mlpc_proParam_obstacleSensibility--;
   }
@@ -2453,9 +2386,6 @@ export class MoventivPage implements OnInit {
   }
 
   maintenancePrompt() {
-    let trans: any = {};
-
-
     if (this.rval_shDo_userDatesCycles[5] != 255) {
       this.translate.get(['MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.MESSAGE_MAINTENANCE.MESSAGE', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.MESSAGE_MAINTENANCE.MESSAGE2', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.TEXT', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.ROLE', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES','MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.PASSWORD','MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.WRONG_PASSWORD']).subscribe(
         res => {
@@ -2481,7 +2411,6 @@ export class MoventivPage implements OnInit {
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES"],
                 handler: data => {
-                  this.logger.debug(this.TAG, data.MaintenancePassword)
                   if (data.MaintenancePassword == 'MovMaint'){
                     //faire nécessaire maintenance 
                     this.logger.debug(this.TAG, 'clicked go maintenance done')
@@ -2531,7 +2460,6 @@ export class MoventivPage implements OnInit {
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES"],
                 handler: data => {
-                  this.logger.debug(this.TAG, data.MaintenancePassword)
                   if (data.MaintenancePassword == 'MovMaint'){
                     //faire nécessaire maintenance 
                     this.logger.debug(this.TAG, 'clicked go setup done')
@@ -2911,12 +2839,6 @@ export class MoventivPage implements OnInit {
 
 
 
-  private isPasswordValid(field: string) {
-    this.logger.debug(this.TAG, 'isPasswordValid', { field: field });
-    return true
-
-  }
-
   private showIncorrectPasswordToast(): void {
     let toast = this.toastCtrl.create({
       message: 'Mot de passe incorrect',
@@ -2929,10 +2851,9 @@ export class MoventivPage implements OnInit {
   
   onSubmitformPasswordBCrypt() {
     this.logger.debug(this.TAG, 'submitting form password');
-    this.logger.debug(this.TAG, this.userPassword);
 
 
-    bcrypt.compare("wisavdoor", "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (err: Error | null, match: boolean) => {
+    bcrypt.compare("wisavdoor", "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (_err: Error | null, match: boolean) => {
           this.logger.debug(this.TAG, 'BCryptCompare');
           this.logger.debug(this.TAG, 'Match result: ' + match);
           
@@ -2950,7 +2871,6 @@ export class MoventivPage implements OnInit {
 
   onSubmitformPassword() {
     this.logger.debug(this.TAG, 'submitting form password');
-    this.logger.debug(this.TAG, this.userPassword);
     if (this.userPassword == 'WidoorSAV') {
       this.passwordValid = true;
       this.logger.debug(this.TAG, 'Password ok');
@@ -2980,7 +2900,7 @@ export class MoventivPage implements OnInit {
 
 
 
-  onLocChange(event: any) {
+  onLocChange() {
     this.logger.debug(this.TAG, "Selected localisation");
 
     switch (this.localisation) {
@@ -3086,7 +3006,6 @@ export class MoventivPage implements OnInit {
       res => {
         let TranslatePrompt = res;
 
-        //JDU : test check param poids
         this.readProParam();
 
         this.checkingWeightLoading = this.loadingCtrl.create({
@@ -3104,8 +3023,6 @@ export class MoventivPage implements OnInit {
 
 
     if (confirm) {
-      let trans: any = {};
-
       this.translate.get(['MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.WEIGHTCHECK.OK.TITLE', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.WEIGHTCHECK.OK.MESSAGE', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.WEIGHTCHECK.BUTTON.OK']).subscribe(
         res => {
           let alert = this.alertCtrl.create({
@@ -3126,8 +3043,6 @@ export class MoventivPage implements OnInit {
         });
     }
     else {
-      let trans: any = {};
-
       this.translate.get(['MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.WEIGHTCHECK.ERROR.TITLE', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.WEIGHTCHECK.ERROR.MESSAGE', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.WEIGHTCHECK.BUTTON.OK']).subscribe(
         res => {
           let alert = this.alertCtrl.create({
