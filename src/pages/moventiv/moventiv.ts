@@ -131,6 +131,9 @@ const NAME_WRITE_PRE_DELAY_MS = 200;
 const NAME_WRITE_COOLDOWN_MS = 1800;
 const NAME_WRITE_MAX_LENGTH = 15;
 const NAME_ALLOWED_PATTERN = /^[A-Za-z0-9 -]*$/;
+const MOVENTIV_MAINTENANCE_PASSWORD = 'MovMaint';
+const GARLINE_MAINTENANCE_PASSWORD = 'GarMaint';
+const EXPERT_PASSWORD = 'GarExpert';
 
 
 @IonicPage({
@@ -2385,6 +2388,18 @@ export class MoventivPage implements OnInit {
     });
   }
 
+  private isGarlineProduct(): boolean {
+    return (this.currentProductType || '').toLowerCase() === 'garline';
+  }
+
+  private getMaintenancePassword(): string {
+    return this.isGarlineProduct() ? GARLINE_MAINTENANCE_PASSWORD : MOVENTIV_MAINTENANCE_PASSWORD;
+  }
+
+  private isMaintenancePasswordValid(password: string): boolean {
+    return password === this.getMaintenancePassword();
+  }
+
   maintenancePrompt() {
     if (this.rval_shDo_userDatesCycles[5] != 255) {
       this.translate.get(['MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.MESSAGE_MAINTENANCE.MESSAGE', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.MESSAGE_MAINTENANCE.MESSAGE2', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.TEXT', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.ROLE', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES','MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.PASSWORD','MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.WRONG_PASSWORD']).subscribe(
@@ -2411,7 +2426,7 @@ export class MoventivPage implements OnInit {
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES"],
                 handler: data => {
-                  if (data.MaintenancePassword == 'MovMaint'){
+                  if (this.isMaintenancePasswordValid(data.MaintenancePassword)) {
                     //faire nécessaire maintenance 
                     this.logger.debug(this.TAG, 'clicked go maintenance done')
                     this.setShdoMaintenanceDate();
@@ -2460,7 +2475,7 @@ export class MoventivPage implements OnInit {
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES"],
                 handler: data => {
-                  if (data.MaintenancePassword == 'MovMaint'){
+                  if (this.isMaintenancePasswordValid(data.MaintenancePassword)) {
                     //faire nécessaire maintenance 
                     this.logger.debug(this.TAG, 'clicked go setup done')
                     this.setShdoMaintenanceDate();
@@ -2871,7 +2886,7 @@ export class MoventivPage implements OnInit {
 
   onSubmitformPassword() {
     this.logger.debug(this.TAG, 'submitting form password');
-    if (this.userPassword == 'WidoorSAV') {
+    if (this.userPassword == EXPERT_PASSWORD) {
       this.passwordValid = true;
       this.logger.debug(this.TAG, 'Password ok');
     }
