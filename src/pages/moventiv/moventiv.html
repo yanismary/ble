@@ -168,46 +168,15 @@
             </ion-toggle>
           </ion-item>
 
-          <!-- Réglage - Vitesse de fermeture  -->
-          <ion-list-header text-wrap>
-            {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.CLOSE_SPEED_LABEL" | translate }}
-            <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_userParam_speedCloseTune}} %</ion-badge>
-          </ion-list-header>
-
-          <ion-item>
-            <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
-            <ion-range min='50' max="100" debounce="300" (ionChange)="setCloseSpeedTune($event)"
-              [(ngModel)]="rval_mlpc_userParam_speedCloseTune" color="mantionSmtblue"> </ion-range>
-            <button ion-button clear item-end type="button" class="slider-options-toggle"
-              (click)="toggleSliderPrecision('closeSpeed', $event)">
-              <ion-icon [name]="isSliderPrecisionOpen('closeSpeed') ? 'arrow-dropright' : 'arrow-dropleft'"
-                color="wimGreyColor"></ion-icon>
-            </button>
-          </ion-item>
-          <ion-row *ngIf="isSliderPrecisionOpen('closeSpeed')" class="slider-precision-actions">
-            <ion-col col-6>
-              <button ion-button block color="mantionSmtgreen" type="button" (click)="closeSpeedTuneInc()">
-                <ion-icon name="add"></ion-icon>
-                {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
-              </button>
-            </ion-col>
-            <ion-col col-6>
-              <button ion-button block color="mantionSmtRed" type="button" (click)="closeSpeedTuneDec()">
-                <ion-icon name="remove"></ion-icon>
-                {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
-              </button>
-            </ion-col>
-          </ion-row>
-          <!--END- Réglage - Vitesse de fermeture  -->
-
-          <!-- Réglage - Vitese d'ouverture -->
+          <!-- Réglage - Vitesse d'ouverture -->
           <ion-list-header text-wrap>
             {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.OPEN_SPEED_LABEL" | translate }}
             <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_userParam_speedOpenTune}} % </ion-badge>
           </ion-list-header>
+
           <ion-item>
             <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
-            <ion-range min="50" max="100" debounce="300" (ionChange)="setOpenSpeedTune($event)"
+            <ion-range [min]="currentProductType == 'garline' ? 0 : 50" max="100" debounce="300" (ionChange)="setOpenSpeedTune($event)"
               [(ngModel)]="rval_mlpc_userParam_speedOpenTune" color="mantionSmtblue"></ion-range>
             <button ion-button clear item-end type="button" class="slider-options-toggle"
               (click)="toggleSliderPrecision('openSpeed', $event)">
@@ -229,7 +198,38 @@
               </button>
             </ion-col>
           </ion-row>
-          <!--END- Réglage - Vitese d'ouverture -->
+          <!--END- Réglage - Vitesse d'ouverture -->
+
+          <!-- Réglage - Vitesse de fermeture -->
+          <ion-list-header text-wrap>
+            {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.CLOSE_SPEED_LABEL" | translate }}
+            <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_userParam_speedCloseTune}} %</ion-badge>
+          </ion-list-header>
+          <ion-item>
+            <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
+            <ion-range [min]="currentProductType == 'garline' ? 0 : 50" max="100" debounce="300" (ionChange)="setCloseSpeedTune($event)"
+              [(ngModel)]="rval_mlpc_userParam_speedCloseTune" color="mantionSmtblue"> </ion-range>
+            <button ion-button clear item-end type="button" class="slider-options-toggle"
+              (click)="toggleSliderPrecision('closeSpeed', $event)">
+              <ion-icon [name]="isSliderPrecisionOpen('closeSpeed') ? 'arrow-dropright' : 'arrow-dropleft'"
+                color="wimGreyColor"></ion-icon>
+            </button>
+          </ion-item>
+          <ion-row *ngIf="isSliderPrecisionOpen('closeSpeed')" class="slider-precision-actions">
+            <ion-col col-6>
+              <button ion-button block color="mantionSmtgreen" type="button" (click)="closeSpeedTuneInc()">
+                <ion-icon name="add"></ion-icon>
+                {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
+              </button>
+            </ion-col>
+            <ion-col col-6>
+              <button ion-button block color="mantionSmtRed" type="button" (click)="closeSpeedTuneDec()">
+                <ion-icon name="remove"></ion-icon>
+                {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
+              </button>
+            </ion-col>
+          </ion-row>
+          <!--END- Réglage - Vitesse de fermeture -->
 
           <!-- Réglage - tempo courte -->
           <ion-list-header text-wrap>
@@ -365,11 +365,11 @@
           <!--END- REGLAGE/ADV - Plage de poids -->
           
           <!-- REGLAGE/ADV - Bouton/radar -->
-          <ion-list-header>
+          <ion-list-header *ngIf="currentProductType != 'garline'">
             {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.HEADER" | translate }}
           </ion-list-header>
 
-          <ion-item>
+          <ion-item *ngIf="currentProductType != 'garline'">
             <ion-badge *ngIf="(rval_mlpc_proParam_periphs1_butOrRadar1 )" item-end
               [color]="rval_mlpc_proParam_periphs1_butOrRadar1  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
               {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.RADAR" | translate }}</ion-badge>
@@ -389,7 +389,7 @@
 
           </ion-item>
 
-          <ion-item no-lines>
+          <ion-item *ngIf="currentProductType != 'garline'" no-lines>
             <ion-badge *ngIf="(rval_mlpc_proParam_periphs1_butOrRadar2 )" item-end
               [color]="rval_mlpc_proParam_periphs1_butOrRadar2  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
               {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.RADAR" | translate }}</ion-badge>
@@ -448,7 +448,7 @@
               
               <ion-item>
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
-                <ion-range min='1' max="100" debounce="300" (ionChange)="setNearOpenSpeed($event)"
+                <ion-range [min]="currentProductType == 'garline' ? 0 : 1" max="100" debounce="300" (ionChange)="setNearOpenSpeed($event)"
                   [(ngModel)]="rval_mlpc_proParam_nearOpenSpeed" color="mantionSmtblue"> </ion-range>
                 <button ion-button clear item-end type="button" class="slider-options-toggle"
                   (click)="toggleSliderPrecision('nearOpenSpeed', $event)">
@@ -480,7 +480,7 @@
 
               <ion-item>
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
-                <ion-range min='1' max="100" debounce="300" (ionChange)="setNearCloseSpeed($event)"
+                <ion-range [min]="currentProductType == 'garline' ? 0 : 1" max="100" debounce="300" (ionChange)="setNearCloseSpeed($event)"
                   [(ngModel)]="rval_mlpc_proParam_nearCloseSpeed" color="mantionSmtblue"> </ion-range>
                 <button ion-button clear item-end type="button" class="slider-options-toggle"
                   (click)="toggleSliderPrecision('nearCloseSpeed', $event)">

@@ -2131,13 +2131,17 @@ export class MoventivPage implements OnInit {
   }
 
   //dec and inc buttons fct
+  private getSpeedTuneMin(): number {
+    return this.currentProductType == 'garline' ? 0 : 50;
+  }
+
   closeSpeedTuneInc() {
     if (this.rval_mlpc_userParam_speedCloseTune < 100)
       this.rval_mlpc_userParam_speedCloseTune++;
   }
 
   closeSpeedTuneDec() {
-    if (this.rval_mlpc_userParam_speedCloseTune > 50)
+    if (this.rval_mlpc_userParam_speedCloseTune > this.getSpeedTuneMin())
       this.rval_mlpc_userParam_speedCloseTune--;
   }
 
@@ -2147,8 +2151,12 @@ export class MoventivPage implements OnInit {
   }
 
   openSpeedTuneDec() {
-    if (this.rval_mlpc_userParam_speedOpenTune > 50)
+    if (this.rval_mlpc_userParam_speedOpenTune > this.getSpeedTuneMin())
       this.rval_mlpc_userParam_speedOpenTune--;
+  }
+
+  private getNearSpeedTuneMax(): number {
+    return this.currentProductType == 'garline' ? 100 : 200;
   }
 
   shortTimingInc() {
@@ -2174,9 +2182,9 @@ export class MoventivPage implements OnInit {
  
   //JDU : ajout bouton d'inc/dec sur vitesse fin ouverture/fermeture
   NearOpenSpeedInc(){
-    if (this.rval_mlpc_proParam_nearOpenSpeed < 200)
+    if (this.rval_mlpc_proParam_nearOpenSpeed < this.getNearSpeedTuneMax())
       this.rval_mlpc_proParam_nearOpenSpeed++;
-    }
+  }
 
   NearOpenSpeedDec(){
     if (this.rval_mlpc_proParam_nearOpenSpeed > 0)
@@ -2184,9 +2192,9 @@ export class MoventivPage implements OnInit {
   }
 
   NearCloseSpeedInc(){
-    if (this.rval_mlpc_proParam_nearCloseSpeed < 200)
+    if (this.rval_mlpc_proParam_nearCloseSpeed < this.getNearSpeedTuneMax())
       this.rval_mlpc_proParam_nearCloseSpeed++;
-    }
+  }
 
   NearCloseSpeedDec(){
     if (this.rval_mlpc_proParam_nearCloseSpeed > 0)
