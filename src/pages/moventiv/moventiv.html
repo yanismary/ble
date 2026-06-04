@@ -264,6 +264,35 @@
           <!--END- Réglage - tempo courte -->
 
           <!-- Réglage - Tempo longue -->
+          <ion-list-header text-wrap>
+            {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.AUTOCLOSING_TIMEDELAYLONG_LABEL" | translate }}
+            <ion-badge item-end color="mantionSmtgreen">{{rval_mlpc_userParam_openTimeLong}} min</ion-badge>
+          </ion-list-header>
+          <ion-item>
+            <ion-icon name="moventiv-delay" item-start color="wimGreyColor"></ion-icon>
+            <ion-range min="1" max="60" debounce="300" [(ngModel)]="rval_mlpc_userParam_openTimeLong"
+              (ionChange)="setLongTiming($event)" color="mantionSmtblue">
+            </ion-range>
+            <button ion-button clear item-end type="button" class="slider-options-toggle"
+              (click)="toggleSliderPrecision('longTiming', $event)">
+              <ion-icon [name]="isSliderPrecisionOpen('longTiming') ? 'arrow-dropright' : 'arrow-dropleft'"
+                color="wimGreyColor"></ion-icon>
+            </button>
+          </ion-item>
+          <ion-row *ngIf="isSliderPrecisionOpen('longTiming')" class="slider-precision-actions">
+            <ion-col col-6>
+              <button ion-button block color="mantionSmtgreen" type="button" (click)="longTimingInc()">
+                <ion-icon name="add"></ion-icon>
+                {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
+              </button>
+            </ion-col>
+            <ion-col col-6>
+              <button ion-button block color="mantionSmtRed" type="button" (click)="longTimingDec()">
+                <ion-icon name="remove"></ion-icon>
+                {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
+              </button>
+            </ion-col>
+          </ion-row>
           <!--END- Réglage - Tempo longue -->
 
           <!-- Réglage - Nom et localisation -->

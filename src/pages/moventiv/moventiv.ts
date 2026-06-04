@@ -92,6 +92,8 @@ const D_MLPC_USERPARAM_SOT_HOF = 1;
 const D_MLPC_USERPARAM_SCT_HOF = 2;
 const D_MLPC_USERPARAM_OTS_HOF = 3;
 const D_MLPC_USERPARAM_OTL_HOF = 4;
+const MLPC_USERPARAM_OPEN_TIME_LONG_MIN = 1;
+const MLPC_USERPARAM_OPEN_TIME_LONG_MAX = 60;
 const D_MLPC_USERPARAM_PC1_HOF = 5;
 const D_MLPC_USERPARAM_PC2_HOF = 6;
 
@@ -814,7 +816,7 @@ export class MoventivPage implements OnInit {
           this.rval_mlpc_userParam_speedOpenTune = dataBytes[D_MLPC_USERPARAM_SOT_HOF];
           this.rval_mlpc_userParam_speedCloseTune = dataBytes[D_MLPC_USERPARAM_SCT_HOF];
           this.rval_mlpc_userParam_openTimeShort = dataBytes[D_MLPC_USERPARAM_OTS_HOF];
-          this.rval_mlpc_userParam_openTimeLong = dataBytes[D_MLPC_USERPARAM_OTL_HOF];
+          this.rval_mlpc_userParam_openTimeLong = this.clampLongTiming(dataBytes[D_MLPC_USERPARAM_OTL_HOF]);
           this.rval_mlpc_userParam_periphs1 = dataBytes[D_MLPC_USERPARAM_PC1_HOF];
           this.rval_mlpc_userParam_periphs2 = dataBytes[D_MLPC_USERPARAM_PC2_HOF];
 
@@ -1437,6 +1439,7 @@ export class MoventivPage implements OnInit {
     this.vibrate();
     let commandData = new Uint8Array(2);
     commandData[0] = 0x04;
+    this.rval_mlpc_userParam_openTimeLong = this.clampLongTiming(this.rval_mlpc_userParam_openTimeLong);
     commandData[1] = this.rval_mlpc_userParam_openTimeLong;
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
@@ -2159,6 +2162,16 @@ export class MoventivPage implements OnInit {
     return this.currentProductType == 'garline' ? 100 : 200;
   }
 
+  private clampLongTiming(value: number): number {
+    if (isNaN(value) || value < MLPC_USERPARAM_OPEN_TIME_LONG_MIN) {
+      return MLPC_USERPARAM_OPEN_TIME_LONG_MIN;
+    }
+    if (value > MLPC_USERPARAM_OPEN_TIME_LONG_MAX) {
+      return MLPC_USERPARAM_OPEN_TIME_LONG_MAX;
+    }
+    return value;
+  }
+
   shortTimingInc() {
     if (this.rval_mlpc_userParam_openTimeShort < 60)
       this.rval_mlpc_userParam_openTimeShort++;
@@ -2170,12 +2183,12 @@ export class MoventivPage implements OnInit {
   }
 
   longTimingInc() {
-    if (this.rval_mlpc_userParam_openTimeLong < 60)
+    if (this.rval_mlpc_userParam_openTimeLong < MLPC_USERPARAM_OPEN_TIME_LONG_MAX)
       this.rval_mlpc_userParam_openTimeLong++;
   }
 
   longTimingDec() {
-    if (this.rval_mlpc_userParam_openTimeLong > 0)
+    if (this.rval_mlpc_userParam_openTimeLong > MLPC_USERPARAM_OPEN_TIME_LONG_MIN)
       this.rval_mlpc_userParam_openTimeLong--;
   }
 
