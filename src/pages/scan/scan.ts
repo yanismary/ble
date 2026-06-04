@@ -8,6 +8,15 @@ import { IonicPage } from 'ionic-angular';
 import { RandBLE } from '../../providers/randble/randble';
 import { BleconnectserviceProvider } from '../../providers/bleconnectservice/bleconnectservice';
 import { LoggerService } from '../../providers/logger/logger.service';
+import {
+  DetectedProductType,
+  ProductDetectionResult,
+  detectProductType,
+  getProductConfigId,
+  isWidoorBluetoothName,
+  productTypeLabel,
+  versionWordBytesToHex
+} from '../../app/product-detection';
 
 
 // --- CONFIGURATION DES PRODUITS ---
@@ -31,6 +40,10 @@ interface ScanDevice {
   advertisement?: any;
   [key: string]: any;
 }
+
+const SHDO_SERVICE = 'dc06d52e-6ee8-471e-a5fd-0f40674a061d';
+const SHDO_VERSION_CHARACTERISTIC = '175d6bc8-5840-4037-95da-a778395a036c';
+
 export const PRODUCTS_CONFIG: ProductConfig[] = [
   {
     id: 'widoor',
@@ -771,40 +784,33 @@ export class ScanPage {
       await new Promise(r => setTimeout(r, 400)); // evite erreur gatt 133
 
       let detectedConfig: ProductConfig | undefined;
+      let detectedProductType: DetectedProductType = 'unknown';
+      let detectedProductLabel = 'Produit inconnu';
       let name = (device.name || "").toUpperCase();
 
       if (device.isDemo === true || device.isDemo === "true") {
         let demoProductId = device.demoProductId || device.productType;
         detectedConfig = demoProductId ? PRODUCTS_CONFIG.find(p => p.id === demoProductId) : undefined;
 
-        if (!detectedConfig && name.indexOf("GAR") > -1) {
-          detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'garline');
-        }
-        else if (!detectedConfig && name.indexOf("MOV") > -1) {
-          detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'moventiv');
-        }
-        else if (!detectedConfig && name.indexOf("WID") > -1) {
+        if (!detectedConfig) {
           detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'widoor');
         }
-        else if (!detectedConfig) {
-          detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'widoor');
-        }
+        detectedProductType = detectedConfig && detectedConfig.id === 'widoor'
+          ? 'widoor'
+          : (detectedConfig && detectedConfig.id === 'garline' ? 'garline' : 'moventiv60');
+        detectedProductLabel = productTypeLabel(detectedProductType);
       }
-      else if (name.indexOf("GAR") > -1) {
-        detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'garline');
-      }
-      else if (name.indexOf("MOV") > -1) {
-        detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'moventiv');
-      }
-      else if (name.indexOf("WID") > -1) {
+      else if (isWidoorBluetoothName(name)) {
+        detectedProductType = 'widoor';
+        detectedProductLabel = productTypeLabel(detectedProductType);
         detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'widoor');
       }
-      /*nouveau produit
-      else if (name.indexOf("NOUVEAU") > -1) {
-        detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'nouveau_produit');
-      }*/
       else {
-        this.logger.warn(this.TAG, 'Unknown product selected from scan', { name: name, device: device });
+        detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'moventiv');
+        this.logger.info(this.TAG, 'Non-Widoor product selected, waiting for version word detection', {
+          bluetoothName: name,
+          preliminaryPage: detectedConfig ? detectedConfig.page : null
+        });
       }
 
       if (!detectedConfig) {
@@ -817,7 +823,9 @@ export class ScanPage {
       }
 
       this.logger.info(this.TAG, 'Product page resolved for selected device', {
-        productType: detectedConfig.id,
+        productType: detectedProductType,
+        productLabel: detectedProductLabel,
+        productConfigId: detectedConfig.id,
         productName: detectedConfig.name
       });
 
@@ -826,8 +834,8 @@ export class ScanPage {
         phase = 'navigating';
         this.navCtrl.push(detectedConfig.page, {
           device: device,
-          productType: detectedConfig.id,
-          productName: detectedConfig.name
+          productType: detectedProductType,
+          productName: detectedProductLabel
         }).then(async () => {
           this.logger.info(this.TAG, 'Demo navigation success');
           await cleanupConnectionFlow('demo_navigation_success', false);
@@ -849,7 +857,8 @@ export class ScanPage {
       let targetAddress = (device && (device.address || device.id)) ? String(device.address || device.id).trim() : '';
       this.logger.info(this.TAG, 'Selected device identifier', {
         targetAddress: targetAddress,
-        productType: detectedConfig.id
+        productType: detectedProductType,
+        productConfigId: detectedConfig.id
       });
 
       if (!targetAddress) {
@@ -902,7 +911,7 @@ export class ScanPage {
               }
 
               this.randble.discover({ address: targetAddress })
-                .then((discoverRes) => {
+                .then(async (discoverRes) => {
                   if (!flowActive) {
                     this.logger.warn(this.TAG, 'Discovery success ignored: flow inactive', { address: targetAddress });
                     return;
@@ -917,6 +926,14 @@ export class ScanPage {
                     device.address = device.id;
                   }
 
+                  if (detectedProductType !== 'widoor') {
+                    const versionDetection = await this.detectConnectedProduct(device, targetAddress);
+                    detectedProductType = versionDetection.productType;
+                    detectedProductLabel = productTypeLabel(detectedProductType);
+                    const configFromVersion = this.getProductConfigForDetectedType(detectedProductType);
+                    detectedConfig = configFromVersion || detectedConfig;
+                  }
+
                   this.bleConnectService.setWasConnected(true);
                   this.bleConnectService.setConnectedPeripheral(device);
                   this.bleConnectService.setConnectionStatus('connected');
@@ -924,24 +941,29 @@ export class ScanPage {
                   phase = 'navigating';
                   this.logger.info(this.TAG, 'Connection context updated, navigating to product page', {
                     address: targetAddress,
-                    productType: detectedConfig.id
+                    productType: detectedProductType,
+                    productLabel: detectedProductLabel,
+                    productConfigId: detectedConfig.id
                   });
 
                   this.navCtrl.push(detectedConfig.page, {
                     device: device,
-                    productType: detectedConfig.id,
-                    productName: detectedConfig.name
+                    productType: detectedProductType,
+                    productName: detectedProductLabel
                   }).then(async () => {
                     this.logger.info(this.TAG, 'Navigation success after BLE connection', {
                       address: targetAddress,
-                      productType: detectedConfig.id
+                      productType: detectedProductType,
+                      productLabel: detectedProductLabel,
+                      productConfigId: detectedConfig.id
                     });
                     phase = 'completed';
                     await cleanupConnectionFlow('navigation_success', false);
                   }).catch(async (navErr) => {
                     this.logger.error(this.TAG, 'Navigation failed after BLE connection', {
                       address: targetAddress,
-                      productType: detectedConfig.id,
+                      productType: detectedProductType,
+                      productConfigId: detectedConfig.id,
                       error: navErr
                     });
                     this.toastCtrl.create({
@@ -1028,6 +1050,80 @@ export class ScanPage {
       }).present();
       await cleanupConnectionFlow('unexpected_error', true);
     }
+  }
+
+
+  private async detectConnectedProduct(device: ScanDevice, targetAddress: string): Promise<ProductDetectionResult> {
+    const bluetoothName = this.getBluetoothNameForDetection(device);
+
+    if (isWidoorBluetoothName(bluetoothName)) {
+      const widoorDetection = detectProductType(bluetoothName, null);
+      this.logger.info(this.TAG, 'Product detection from Bluetooth name', {
+        bluetoothName: bluetoothName,
+        productType: widoorDetection.productType,
+        productLabel: productTypeLabel(widoorDetection.productType),
+        reason: widoorDetection.reason
+      });
+      return widoorDetection;
+    }
+
+    this.logger.info(this.TAG, 'Reading version word for product detection', {
+      bluetoothName: bluetoothName,
+      address: targetAddress,
+      service: SHDO_SERVICE,
+      characteristic: SHDO_VERSION_CHARACTERISTIC
+    });
+
+    try {
+      const buffer = await this.randble.read({
+        address: targetAddress,
+        service: SHDO_SERVICE,
+        characteristic: SHDO_VERSION_CHARACTERISTIC
+      });
+      const versionWordBytes = this.randble.encodedStringToBytes(buffer.value);
+      const detection = detectProductType(bluetoothName, versionWordBytes);
+
+      if (detection.productType === 'unknown') {
+        this.logger.warn(this.TAG, 'Product detection from version word is unknown', {
+          bluetoothName: bluetoothName,
+          versionWordLength: versionWordBytes ? versionWordBytes.length : 0,
+          versionWordHex: versionWordBytesToHex(versionWordBytes),
+          productTypeByte: detection.productTypeByte,
+          reason: detection.reason
+        });
+      } else {
+        this.logger.info(this.TAG, 'Product detection from version word succeeded', {
+          bluetoothName: bluetoothName,
+          versionWordLength: versionWordBytes.length,
+          versionWordHex: versionWordBytesToHex(versionWordBytes),
+          productTypeByte: detection.productTypeByte,
+          productType: detection.productType,
+          productLabel: productTypeLabel(detection.productType),
+          reason: detection.reason
+        });
+      }
+
+      return detection;
+    } catch (error) {
+      this.logger.error(this.TAG, 'Version word read failed during product detection', {
+        bluetoothName: bluetoothName,
+        address: targetAddress,
+        error: error
+      });
+      return detectProductType(bluetoothName, null);
+    }
+  }
+
+  private getProductConfigForDetectedType(productType: DetectedProductType): ProductConfig | undefined {
+    const configId = getProductConfigId(productType) || 'moventiv';
+    return PRODUCTS_CONFIG.find(p => p.id === configId);
+  }
+
+  private getBluetoothNameForDetection(device: ScanDevice): string {
+    return String(
+      (device && (device.name || device.localName || device.displayName)) ||
+      ''
+    );
   }
 
 

@@ -176,7 +176,7 @@
 
           <ion-item>
             <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
-            <ion-range [min]="currentProductType == 'garline' ? 0 : 50" max="100" debounce="300" (ionChange)="setOpenSpeedTune($event)"
+            <ion-range [min]="isGarline ? 0 : 50" max="100" debounce="300" (ionChange)="setOpenSpeedTune($event)"
               [(ngModel)]="rval_mlpc_userParam_speedOpenTune" color="mantionSmtblue"></ion-range>
             <button ion-button clear item-end type="button" class="slider-options-toggle"
               (click)="toggleSliderPrecision('openSpeed', $event)">
@@ -207,7 +207,7 @@
           </ion-list-header>
           <ion-item>
             <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
-            <ion-range [min]="currentProductType == 'garline' ? 0 : 50" max="100" debounce="300" (ionChange)="setCloseSpeedTune($event)"
+            <ion-range [min]="isGarline ? 0 : 50" max="100" debounce="300" (ionChange)="setCloseSpeedTune($event)"
               [(ngModel)]="rval_mlpc_userParam_speedCloseTune" color="mantionSmtblue"> </ion-range>
             <button ion-button clear item-end type="button" class="slider-options-toggle"
               (click)="toggleSliderPrecision('closeSpeed', $event)">
@@ -301,7 +301,7 @@
           </ion-list-header>
           <form [formGroup]="formName" (ngSubmit)="onSubmitformName()">
             <ion-item>
-              <ion-label text-wrap floating>{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.MODIFY_NAME_FORMLABEL" | translate }}
+              <ion-label text-wrap floating>{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.MODIFY_NAME_FORMLABEL" | translate:{productName: displayProductName} }}
               </ion-label>
               <ion-input [(ngModel)]="userConfig.mlpcName" formControlName="mlpcName" type="string" id="mlpcName">
               </ion-input>
@@ -315,7 +315,7 @@
             </div>
 
             <ion-item>
-              <ion-label floating>{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATE_FORMLABEL" | translate }}</ion-label>
+              <ion-label floating>{{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATE_FORMLABEL" | translate:{productName: displayProductName} }}</ion-label>
               <ion-select cancelText="{{ 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.CANCELTEXT' | translate }}"
                 okText="{{ 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.OKTEXT' | translate }}" [(ngModel)]="localisation"
                 [ngModelOptions]="{standalone: true}" (ionChange)="onLocChange($event)">
@@ -356,11 +356,11 @@
           </ion-list-header>
 
           <!-- REGLAGE/ADV - Plage de poids -->
-          <ion-list-header *ngIf="currentProductType != 'garline'" color='danger' ion-text color='white'>
+          <ion-list-header *ngIf="!isGarline" color='danger' ion-text color='white'>
             {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.TITLE" | translate }}
           </ion-list-header>
 
-          <ion-list *ngIf="currentProductType != 'garline'" no-lines>
+          <ion-list *ngIf="!isGarline" no-lines>
             <ion-item>
               <ion-label text-wrap>{{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.SELECTION_PAGE" | translate }}
               </ion-label>
@@ -371,14 +371,14 @@
                 okText='{{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.BUTTONS.OK" | translate }}'
                 cancelText='{{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.BUTTONS.CANCEL" | translate }}'>
 
-                <div *ngIf="currentProductType == 'garline'">
+                <div *ngIf="isGarline">
                   <ion-option value="6">60-80 Kg</ion-option>
                   <ion-option value="7">80-100 Kg</ion-option>
                   <ion-option value="8">100-120 Kg</ion-option>
                   <ion-option value="9">120-140 Kg</ion-option>
               </div>
 
-              <div *ngIf="currentProductType == 'moventiv'">
+              <div *ngIf="isMoventiv">
                   <ion-option value="1">&lt; 20Kg</ion-option>
                   <ion-option value="2">20-30Kg</ion-option>
                   <ion-option value="3">30-40Kg</ion-option>
@@ -394,11 +394,11 @@
           <!--END- REGLAGE/ADV - Plage de poids -->
           
           <!-- REGLAGE/ADV - Bouton/radar -->
-          <ion-list-header *ngIf="currentProductType != 'garline'">
+          <ion-list-header *ngIf="!isGarline">
             {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.HEADER" | translate }}
           </ion-list-header>
 
-          <ion-item *ngIf="currentProductType != 'garline'">
+          <ion-item *ngIf="!isGarline">
             <ion-badge *ngIf="(rval_mlpc_proParam_periphs1_butOrRadar1 )" item-end
               [color]="rval_mlpc_proParam_periphs1_butOrRadar1  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
               {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.RADAR" | translate }}</ion-badge>
@@ -418,7 +418,7 @@
 
           </ion-item>
 
-          <ion-item *ngIf="currentProductType != 'garline'" no-lines>
+          <ion-item *ngIf="!isGarline" no-lines>
             <ion-badge *ngIf="(rval_mlpc_proParam_periphs1_butOrRadar2 )" item-end
               [color]="rval_mlpc_proParam_periphs1_butOrRadar2  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
               {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.RADAR" | translate }}</ion-badge>
@@ -477,7 +477,7 @@
               
               <ion-item>
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
-                <ion-range [min]="currentProductType == 'garline' ? 0 : 1" max="100" debounce="300" (ionChange)="setNearOpenSpeed($event)"
+                <ion-range [min]="isGarline ? 0 : 1" max="100" debounce="300" (ionChange)="setNearOpenSpeed($event)"
                   [(ngModel)]="rval_mlpc_proParam_nearOpenSpeed" color="mantionSmtblue"> </ion-range>
                 <button ion-button clear item-end type="button" class="slider-options-toggle"
                   (click)="toggleSliderPrecision('nearOpenSpeed', $event)">
@@ -509,7 +509,7 @@
 
               <ion-item>
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
-                <ion-range [min]="currentProductType == 'garline' ? 0 : 1" max="100" debounce="300" (ionChange)="setNearCloseSpeed($event)"
+                <ion-range [min]="isGarline ? 0 : 1" max="100" debounce="300" (ionChange)="setNearCloseSpeed($event)"
                   [(ngModel)]="rval_mlpc_proParam_nearCloseSpeed" color="mantionSmtblue"> </ion-range>
                 <button ion-button clear item-end type="button" class="slider-options-toggle"
                   (click)="toggleSliderPrecision('nearCloseSpeed', $event)">
@@ -568,7 +568,7 @@
 
           <!-- Reglages experts caches par MDP -->
           <!-- REGALGE/ADV - Couple fin fermeture -->
-          <ion-item *ngIf="passwordValid && currentProductType != 'garline'">
+          <ion-item *ngIf="passwordValid && !isGarline">
             <ion-list no-lines>
               <ion-list-header text-wrap>
                 {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.ADVANCEDTUNING.TORQUENEARCLOSE" | translate }}
@@ -607,7 +607,7 @@
           <!--END- REGALGE/ADV - Couple fin fermeture -->
 
           <!-- REGALGE/ADV - Couple fin ouverture -->
-          <ion-item *ngIf="passwordValid && currentProductType != 'garline'">
+          <ion-item *ngIf="passwordValid && !isGarline">
             <ion-list no-lines>
               <ion-list-header text-wrap>
                 {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.ADVANCEDTUNING.TORQUENEAROPEN" | translate }}
@@ -644,7 +644,7 @@
           <!--END- REGALGE/ADV - Couple fin ouverture -->
 
           <!-- REGALGE/ADV - freinage en ouverture -->
-          <ion-item *ngIf="passwordValid && currentProductType != 'garline'">
+          <ion-item *ngIf="passwordValid && !isGarline">
             <ion-list no-lines>
 
               <ion-list-header text-wrap>
@@ -834,16 +834,7 @@
         <ion-item>
           <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.GENERAL_INFORMATIONS.MAX_WEIGHT" | translate }}
           </ion-label>
-          <ion-note *ngIf="(rval_shDo_version[12] == 00) && (rval_shDo_version[13] == 00)" item-end text-wrap>60 kg
-          </ion-note>
-          <!--  JDU MLPC 80kg -->
-          <ion-note *ngIf="(rval_shDo_version[12] == 01) && (rval_shDo_version[13] == 00)" item-end text-wrap>80 kg
-          </ion-note>
-          <!--  JDU GARLINE : Modif de la version pour GARLINE -->
-          <!-- Test sur MOTOR_ID et non sur MOTOR_ID_SPE  -->
-          <ion-note
-            *ngIf="(rval_shDo_version[12] == 02) && (rval_shDo_version[13] == 00) " item-end text-wrap>140 kg
-          </ion-note>
+          <ion-note item-end text-wrap>{{ maxWeightLabel }}</ion-note>
         </ion-item>
 
         <!-- Date de la 1ere mise en service -->

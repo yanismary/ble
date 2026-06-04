@@ -12,6 +12,16 @@ import { Buffer } from 'buffer';
 import { IonicPage } from 'ionic-angular';
 import { BleconnectserviceProvider } from '../../providers/bleconnectservice/bleconnectservice';
 import { LoggerService } from '../../providers/logger/logger.service';
+import {
+  DetectedProductType,
+  detectProductType,
+  getProductDisplayName,
+  isGarlineProductType,
+  isMoventivProductType,
+  normalizeProductType,
+  productTypeLabel,
+  versionWordBytesToHex
+} from '../../app/product-detection';
 //import { bcrypt } from '../../../node_modules';
 import * as bcrypt from 'bcryptjs';
 import moment from 'moment';
@@ -166,7 +176,7 @@ export class MoventivPage implements OnInit {
   periphCommandDynAff!: number;
   shutterPosition!: number;
   shutterPositionAff!: number;
-  currentProductType: string = ''; // Ajout pour différencier Garline/Moventiv
+  currentProductType: DetectedProductType = 'unknown'; // Différenciation Widoor/Moventiv/Garline centralisée
 
   userRangeWeight!: number;
   userRangeWeightBot!: number;
@@ -340,7 +350,8 @@ export class MoventivPage implements OnInit {
     //cosmetic : loader
     //this.presentLoadingDefault();
     this.menuType = 'com';
-    this.currentProductType = this.navParams.get('productType');
+    const productTypeFromNavigation = normalizeProductType(this.navParams.get('productType'));
+    this.currentProductType = productTypeFromNavigation === 'unknown' ? 'moventiv60' : productTypeFromNavigation;
     this.logger.debug(this.TAG, 'Produit détecté : ' + this.currentProductType);
     this.paramSubmenuType = 'basic';
     //connection  
@@ -365,6 +376,69 @@ export class MoventivPage implements OnInit {
       this.dispOptionalCom_LC = true;
     if (dispOptionalCom.indexOf('dispOptionalCom_LLB'))
       this.dispOptionalCom_LLB = true;
+  }
+
+
+  get displayProductName(): string {
+    return getProductDisplayName(this.currentProductType);
+  }
+
+  get isGarline(): boolean {
+    return isGarlineProductType(this.currentProductType);
+  }
+
+  get isMoventiv(): boolean {
+    return isMoventivProductType(this.currentProductType);
+  }
+
+  get maxWeightLabel(): string {
+    if (this.currentProductType === 'moventiv60') {
+      return '60 kg';
+    }
+    if (this.currentProductType === 'moventiv80') {
+      return '80 kg';
+    }
+    if (this.currentProductType === 'garline') {
+      return '140 kg';
+    }
+    return 'inconnu kg';
+  }
+
+  private updateDetectedProductTypeFromVersion(versionWordBytes: Uint8Array): void {
+    const bluetoothName = this.getBluetoothNameForDetection();
+    const detection = detectProductType(bluetoothName, versionWordBytes);
+
+    const logDetails = {
+      bluetoothName: bluetoothName,
+      versionWordLength: versionWordBytes ? versionWordBytes.length : 0,
+      versionWordHex: versionWordBytesToHex(versionWordBytes),
+      productTypeByte: detection.productTypeByte,
+      detectedProductType: detection.productType,
+      detectedProductLabel: productTypeLabel(detection.productType),
+      currentProductType: this.currentProductType,
+      reason: detection.reason
+    };
+
+    if (detection.productType === 'widoor') {
+      this.logger.warn(this.TAG, 'Widoor detected while on MoventivPage', logDetails);
+      return;
+    }
+
+    if (detection.productType === 'unknown') {
+      this.logger.warn(this.TAG, 'Product type detection from version word is unknown', logDetails);
+      return;
+    }
+
+    this.currentProductType = detection.productType;
+    this.logger.info(this.TAG, 'Product type updated from version word', logDetails);
+  }
+
+  private getBluetoothNameForDetection(): string {
+    return String(
+      this.navParams.get('displayName') ||
+      (this.peripheral ? (this.peripheral.customName || this.peripheral.name || this.peripheral.localName) : '') ||
+      ''
+    );
   }
 
 
@@ -718,22 +792,44 @@ export class MoventivPage implements OnInit {
           let data_shDo_version = this.randble.encodedStringToBytes(buffer.value)
           this.ngZone.run(() => {
             this.rval_shDo_version = data_shDo_version;
-            var buf = Buffer.from([data_shDo_version[D_SHDO_VERSION_STACK_MAJORMSB_HOF], data_shDo_version[D_SHDO_VERSION_STACK_MAJORLSB_HOF]]);
-            this.rval_shDo_version_bleStack_major = buf.readUIntBE(0, 2);
-            var buf = Buffer.from([data_shDo_version[D_SHDO_VERSION_STACK_MINORMSB_HOF], data_shDo_version[D_SHDO_VERSION_STACK_MINORLSB_HOF]]);
-            this.rval_shDo_version_bleStack_minor = buf.readUIntBE(0, 2);
-            var buf = Buffer.from([data_shDo_version[D_SHDO_VERSION_STACK_PATCHMSB_HOF], data_shDo_version[D_SHDO_VERSION_STACK_PATCHLSB_HOF]]);
-            this.rval_shDo_version_bleStack_patch = buf.readUIntBE(0, 2);
-            var buf = Buffer.from([data_shDo_version[D_SHDO_VERSION_STACK_BUILDMSB_HOF], data_shDo_version[D_SHDO_VERSION_STACK_BUILDLSB_HOF]]);
-            this.rval_shDo_version_bleStack_build = buf.readUIntBE(0, 2);
+            this.updateDetectedProductTypeFromVersion(data_shDo_version);
+
+            if (data_shDo_version.length > D_SHDO_VERSION_STACK_BUILDLSB_HOF) {
+              var buf = Buffer.from([data_shDo_version[D_SHDO_VERSION_STACK_MAJORMSB_HOF], data_shDo_version[D_SHDO_VERSION_STACK_MAJORLSB_HOF]]);
+              this.rval_shDo_version_bleStack_major = buf.readUIntBE(0, 2);
+              var buf = Buffer.from([data_shDo_version[D_SHDO_VERSION_STACK_MINORMSB_HOF], data_shDo_version[D_SHDO_VERSION_STACK_MINORLSB_HOF]]);
+              this.rval_shDo_version_bleStack_minor = buf.readUIntBE(0, 2);
+              var buf = Buffer.from([data_shDo_version[D_SHDO_VERSION_STACK_PATCHMSB_HOF], data_shDo_version[D_SHDO_VERSION_STACK_PATCHLSB_HOF]]);
+              this.rval_shDo_version_bleStack_patch = buf.readUIntBE(0, 2);
+              var buf = Buffer.from([data_shDo_version[D_SHDO_VERSION_STACK_BUILDMSB_HOF], data_shDo_version[D_SHDO_VERSION_STACK_BUILDLSB_HOF]]);
+              this.rval_shDo_version_bleStack_build = buf.readUIntBE(0, 2);
+            } else {
+              this.logger.warn(this.TAG, 'Version word too short for BLE stack version display', {
+                versionWordLength: data_shDo_version.length,
+                versionWordHex: versionWordBytesToHex(data_shDo_version)
+              });
+            }
 
             //JDU V1.2.0 : conversion dec->Hex pour affichage
-            this.rval_shDo_version_motAddress_0 = this.rval_shDo_version[20].toString(16);
-            this.rval_shDo_version_motAddress_1 = this.rval_shDo_version[21].toString(16);
-            this.rval_shDo_version_motAddress_2 = this.rval_shDo_version[22].toString(16);
-            this.rval_shDo_version_motAddress_3 = this.rval_shDo_version[23].toString(16);
-            this.rval_shDo_version_motAddress_4 = this.rval_shDo_version[24].toString(16);
-            this.rval_shDo_version_motAddress_5 = this.rval_shDo_version[25].toString(16);
+            if (this.rval_shDo_version.length >= 26) {
+              this.rval_shDo_version_motAddress_0 = this.rval_shDo_version[20].toString(16);
+              this.rval_shDo_version_motAddress_1 = this.rval_shDo_version[21].toString(16);
+              this.rval_shDo_version_motAddress_2 = this.rval_shDo_version[22].toString(16);
+              this.rval_shDo_version_motAddress_3 = this.rval_shDo_version[23].toString(16);
+              this.rval_shDo_version_motAddress_4 = this.rval_shDo_version[24].toString(16);
+              this.rval_shDo_version_motAddress_5 = this.rval_shDo_version[25].toString(16);
+            } else {
+              this.rval_shDo_version_motAddress_0 = '';
+              this.rval_shDo_version_motAddress_1 = '';
+              this.rval_shDo_version_motAddress_2 = '';
+              this.rval_shDo_version_motAddress_3 = '';
+              this.rval_shDo_version_motAddress_4 = '';
+              this.rval_shDo_version_motAddress_5 = '';
+              this.logger.warn(this.TAG, 'Version word too short for motor address display', {
+                versionWordLength: this.rval_shDo_version.length,
+                versionWordHex: versionWordBytesToHex(this.rval_shDo_version)
+              });
+            }
             
 
           });
@@ -1611,7 +1707,7 @@ export class MoventivPage implements OnInit {
     this.vibrate();
     let commandData = new Uint8Array(3);
 
-    if (this.userRangeWeight == 1 && this.currentProductType !='GARLINE') {
+    if (this.userRangeWeight == 1 && this.isMoventiv) {
       this.userRangeWeightBot = 10;
       this.userRangeWeightUp = 20;
       this.rval_mlpc_userParam_speedOpenTune = 100;
@@ -1619,7 +1715,7 @@ export class MoventivPage implements OnInit {
       this.rval_mlpc_userParam_speedCloseTune = 70;
       this.setCloseSpeedTune();
     }
-    else if (this.userRangeWeight == 2 && this.currentProductType !='GARLINE') {
+    else if (this.userRangeWeight == 2 && this.isMoventiv) {
       this.userRangeWeightBot = 20;
       this.userRangeWeightUp = 30;
       this.rval_mlpc_userParam_speedOpenTune = 100;
@@ -1627,7 +1723,7 @@ export class MoventivPage implements OnInit {
       this.rval_mlpc_userParam_speedCloseTune = 70;
       this.setCloseSpeedTune();
     }
-    else if (this.userRangeWeight == 3 && this.currentProductType !='GARLINE') {
+    else if (this.userRangeWeight == 3 && this.isMoventiv) {
       this.userRangeWeightBot = 30;
       this.userRangeWeightUp = 40;
       this.rval_mlpc_userParam_speedOpenTune = 80;
@@ -1635,7 +1731,7 @@ export class MoventivPage implements OnInit {
       this.rval_mlpc_userParam_speedCloseTune = 70;
       this.setCloseSpeedTune();
     }
-    else if (this.userRangeWeight == 4 && this.currentProductType !='GARLINE') {
+    else if (this.userRangeWeight == 4 && this.isMoventiv) {
       this.userRangeWeightBot = 40;
       this.userRangeWeightUp = 50;
       this.rval_mlpc_userParam_speedOpenTune = 80;
@@ -1643,7 +1739,7 @@ export class MoventivPage implements OnInit {
       this.rval_mlpc_userParam_speedCloseTune = 70;
       this.setCloseSpeedTune();
     }
-    else if (this.userRangeWeight == 5 && this.currentProductType !='GARLINE') {
+    else if (this.userRangeWeight == 5 && this.isMoventiv) {
       this.userRangeWeightBot = 50;
       this.userRangeWeightUp = 60;
       this.rval_mlpc_userParam_speedOpenTune = 75;
@@ -2135,7 +2231,7 @@ export class MoventivPage implements OnInit {
 
   //dec and inc buttons fct
   private getSpeedTuneMin(): number {
-    return this.currentProductType == 'garline' ? 0 : 50;
+    return this.isGarline ? 0 : 50;
   }
 
   closeSpeedTuneInc() {
@@ -2159,7 +2255,7 @@ export class MoventivPage implements OnInit {
   }
 
   private getNearSpeedTuneMax(): number {
-    return this.currentProductType == 'garline' ? 100 : 200;
+    return this.isGarline ? 100 : 200;
   }
 
   private clampLongTiming(value: number): number {

@@ -120,8 +120,8 @@
 			"AUTOCLOSING_TIMEDELAYSHORT_LABEL": "Short delay before closing",
 			"AUTOCLOSING_TIMEDELAYLONG_LABEL": "Long delay before closing",
 			"NAME_AND_LOCALIZATION_LABEL": "Name and location",
-			"MODIFY_NAME_FORMLABEL": "Change the name of your MOVENTIV",
-			"ASSOCIATE_FORMLABEL": "Associate your MOVENTIV to a room",
+			"MODIFY_NAME_FORMLABEL": "Change the name of your {{productName}}",
+			"ASSOCIATE_FORMLABEL": "Associate your {{productName}} to a room",
 			"ASSOCIATEFORM": {
 				"CANCELTEXT": "Cancel",
 				"OKTEXT": "Confirm",

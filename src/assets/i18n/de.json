@@ -120,8 +120,8 @@
 			"AUTOCLOSING_TIMEDELAYSHORT_LABEL": "Schließverzögerung",
 			"AUTOCLOSING_TIMEDELAYLONG_LABEL": "Lange Schließverzögerung",
 			"NAME_AND_LOCALIZATION_LABEL": "Name und Ort",
-			"MODIFY_NAME_FORMLABEL": "Ändern Sie den Namen Ihres MOVENTIV",
-			"ASSOCIATE_FORMLABEL": "Ihren MOVENTIV mit einem Raum verknüpfen",
+			"MODIFY_NAME_FORMLABEL": "Ändern Sie den Namen Ihres {{productName}}",
+			"ASSOCIATE_FORMLABEL": "Ihren {{productName}} mit einem Raum verknüpfen",
 			"ASSOCIATEFORM": {
 				"CANCELTEXT": "Abbrechen",
 				"OKTEXT": "Bestätigen",

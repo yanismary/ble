@@ -122,8 +122,8 @@
 			"AUTOCLOSING_TIMEDELAYSHORT_LABEL": "Temporisation courte à la fermeture",
 			"AUTOCLOSING_TIMEDELAYLONG_LABEL": "Temporisation longue à la fermeture",
 			"NAME_AND_LOCALIZATION_LABEL": "Nom et localisation",
-			"MODIFY_NAME_FORMLABEL": "Modifier le nom de votre MOVENTIV",
-			"ASSOCIATE_FORMLABEL": "Associer votre MOVENTIV à une pièce",
+			"MODIFY_NAME_FORMLABEL": "Modifier le nom de votre {{productName}}",
+			"ASSOCIATE_FORMLABEL": "Associer votre {{productName}} à une pièce",
 			"ASSOCIATEFORM": {
 				"CANCELTEXT": "Annuler",
 				"OKTEXT": "Valider",
