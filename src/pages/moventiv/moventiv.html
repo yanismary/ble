@@ -327,11 +327,11 @@
           </ion-list-header>
 
           <!-- REGLAGE/ADV - Plage de poids -->
-          <ion-list-header color='danger' ion-text color='white'>
+          <ion-list-header *ngIf="currentProductType != 'garline'" color='danger' ion-text color='white'>
             {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.TITLE" | translate }}
           </ion-list-header>
 
-          <ion-list no-lines>
+          <ion-list *ngIf="currentProductType != 'garline'" no-lines>
             <ion-item>
               <ion-label text-wrap>{{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.SELECTION_PAGE" | translate }}
               </ion-label>
@@ -539,7 +539,7 @@
 
           <!-- Reglages experts caches par MDP -->
           <!-- REGALGE/ADV - Couple fin fermeture -->
-          <ion-item *ngIf="passwordValid">
+          <ion-item *ngIf="passwordValid && currentProductType != 'garline'">
             <ion-list no-lines>
               <ion-list-header text-wrap>
                 {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.ADVANCEDTUNING.TORQUENEARCLOSE" | translate }}
@@ -578,7 +578,7 @@
           <!--END- REGALGE/ADV - Couple fin fermeture -->
 
           <!-- REGALGE/ADV - Couple fin ouverture -->
-          <ion-item *ngIf="passwordValid">
+          <ion-item *ngIf="passwordValid && currentProductType != 'garline'">
             <ion-list no-lines>
               <ion-list-header text-wrap>
                 {{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.ADVANCEDTUNING.TORQUENEAROPEN" | translate }}
@@ -615,7 +615,7 @@
           <!--END- REGALGE/ADV - Couple fin ouverture -->
 
           <!-- REGALGE/ADV - freinage en ouverture -->
-          <ion-item *ngIf="passwordValid">
+          <ion-item *ngIf="passwordValid && currentProductType != 'garline'">
             <ion-list no-lines>
 
               <ion-list-header text-wrap>

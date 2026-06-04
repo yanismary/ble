@@ -131,10 +131,10 @@ const NAME_WRITE_PRE_DELAY_MS = 200;
 const NAME_WRITE_COOLDOWN_MS = 1800;
 const NAME_WRITE_MAX_LENGTH = 15;
 const NAME_ALLOWED_PATTERN = /^[A-Za-z0-9 -]*$/;
-const MOVENTIV_MAINTENANCE_PASSWORD = 'MovMaint';
-const GARLINE_MAINTENANCE_PASSWORD = 'GarMaint';
-const MOVENTIV_EXPERT_PASSWORD = 'MovExpert';
-const GARLINE_EXPERT_PASSWORD = 'GarExpert';
+const MAINTENANCE_PASSWORD_OLD = 'MovMaint';
+const MAINTENANCE_PASSWORD_ALT = 'service';
+const EXPERT_PASSWORD_ALT      = 'expert';
+const EXPERT_PASSWORD_OLD      = 'WidoorSAV';
 
 
 @IonicPage({
@@ -2389,24 +2389,12 @@ export class MoventivPage implements OnInit {
     });
   }
 
-  private isGarlineProduct(): boolean {
-    return (this.currentProductType || '').toLowerCase() === 'garline';
-  }
-
-  private getExpectedMaintenancePassword(): string {
-    return this.isGarlineProduct() ? GARLINE_MAINTENANCE_PASSWORD : MOVENTIV_MAINTENANCE_PASSWORD;
-  }
-
-  private getExpectedExpertPassword(): string {
-    return this.isGarlineProduct() ? GARLINE_EXPERT_PASSWORD : MOVENTIV_EXPERT_PASSWORD;
-  }
-
   private isMaintenancePasswordValid(password: string): boolean {
-    return password === this.getExpectedMaintenancePassword();
+    return password === MAINTENANCE_PASSWORD_OLD || password === MAINTENANCE_PASSWORD_ALT;
   }
 
   private isExpertPasswordValid(password: string): boolean {
-    return password === this.getExpectedExpertPassword();
+    return password === EXPERT_PASSWORD_ALT || password === EXPERT_PASSWORD_OLD;
   }
 
   maintenancePrompt() {

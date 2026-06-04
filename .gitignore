@@ -58,3 +58,7 @@ Thumbs.db
 .vscode/
 .idea/
 
+
+.gradle-home/
+.gradle/
+android/.gradle/
