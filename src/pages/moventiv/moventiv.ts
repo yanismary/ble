@@ -312,6 +312,7 @@ export class MoventivPage implements OnInit {
   retryConnection: number = 6;
   menuType!: string;
   paramSubmenuType!: string;
+  activeSliderKey: string | null = null;
   openedPrecisionSliderKey: string | null = null;
 
 
@@ -447,7 +448,7 @@ export class MoventivPage implements OnInit {
       event.stopPropagation();
     }
 
-    if (!key) {
+    if (!key || !this.isSliderUnlocked(key)) {
       return;
     }
 
@@ -460,6 +461,38 @@ export class MoventivPage implements OnInit {
 
   isSliderPrecisionOpen(key: string): boolean {
     return this.openedPrecisionSliderKey === key;
+  }
+
+  isSliderUnlocked(key: string): boolean {
+    return this.activeSliderKey === key;
+  }
+
+  toggleSliderLock(key: string, event?: Event): void {
+    if (event && event.stopPropagation) {
+      event.stopPropagation();
+    }
+
+    if (!key) {
+      return;
+    }
+
+    if (this.activeSliderKey === key) {
+      this.lockSlider(key);
+      return;
+    }
+
+    this.activeSliderKey = key;
+    this.openedPrecisionSliderKey = null;
+  }
+
+  lockSlider(key?: string): void {
+    if (!key || this.activeSliderKey === key) {
+      this.activeSliderKey = null;
+    }
+
+    if (!key || this.openedPrecisionSliderKey === key) {
+      this.openedPrecisionSliderKey = null;
+    }
   }
 
 

@@ -77,6 +77,24 @@ page-moventiv {
         padding: 8px;
       }
 
+      .slider-lock-header {
+        cursor: pointer;
+      }
+
+      .slider-lock-header.slider-unlocked {
+        border-left: 4px solid #32db64;
+      }
+
+      .slider-lock-toggle {
+        cursor: pointer;
+        margin-left: 4px;
+        padding: 4px 8px;
+      }
+
+      .slider-lock-toggle ion-icon {
+        font-size: 2.2rem;
+      }
+
       .my-item {
         
             display: flex;
