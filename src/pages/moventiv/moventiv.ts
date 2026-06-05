@@ -314,6 +314,8 @@ export class MoventivPage implements OnInit {
   paramSubmenuType!: string;
   activeSliderKey: string | null = null;
   openedPrecisionSliderKey: string | null = null;
+  private readonly SLIDER_AUTO_LOCK_DELAY_MS = 3000;
+  private sliderAutoLockTimeout: any = null;
 
 
   dispOptionalCom_MO!: boolean;
@@ -481,6 +483,7 @@ export class MoventivPage implements OnInit {
       return;
     }
 
+    this.clearSliderAutoLockTimer();
     this.activeSliderKey = key;
     this.openedPrecisionSliderKey = null;
   }
@@ -488,10 +491,33 @@ export class MoventivPage implements OnInit {
   lockSlider(key?: string): void {
     if (!key || this.activeSliderKey === key) {
       this.activeSliderKey = null;
+      this.clearSliderAutoLockTimer();
     }
 
     if (!key || this.openedPrecisionSliderKey === key) {
       this.openedPrecisionSliderKey = null;
+    }
+  }
+
+  resetSliderAutoLockTimer(key: string): void {
+    if (!key || this.activeSliderKey !== key) {
+      return;
+    }
+
+    this.clearSliderAutoLockTimer();
+    this.sliderAutoLockTimeout = setTimeout(() => {
+      this.ngZone.run(() => {
+        if (this.activeSliderKey === key) {
+          this.lockSlider(key);
+        }
+      });
+    }, this.SLIDER_AUTO_LOCK_DELAY_MS);
+  }
+
+  private clearSliderAutoLockTimer(): void {
+    if (this.sliderAutoLockTimeout) {
+      clearTimeout(this.sliderAutoLockTimeout);
+      this.sliderAutoLockTimeout = null;
     }
   }
 
