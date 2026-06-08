@@ -319,6 +319,7 @@ export class MoventivPage implements OnInit {
   private readonly SLIDER_BUTTON_WRITE_DELAY_MS = 400;
   private sliderWriteTimeouts: { [key: string]: any } = {};
   private sliderCommittedValues: { [key: string]: number } = {};
+  private sliderInteractionVersions: { [key: string]: number } = {};
 
 
   dispOptionalCom_MO!: boolean;
@@ -493,6 +494,7 @@ export class MoventivPage implements OnInit {
     this.clearSliderAutoLockTimer();
     this.activeSliderKey = key;
     this.openedPrecisionSliderKey = null;
+    this.bumpSliderInteractionVersion(key);
     this.markSliderCommittedValue(key);
   }
 
@@ -538,8 +540,9 @@ export class MoventivPage implements OnInit {
       return;
     }
 
+    const interactionVersion = this.bumpSliderInteractionVersion(sliderKey);
     this.clearSliderButtonWriteTimer(sliderKey);
-    this.writeSliderValue(sliderKey);
+    this.writeSliderValue(sliderKey, interactionVersion);
   }
 
   onSliderInteractionStarted(sliderKey: string): void {
@@ -547,6 +550,7 @@ export class MoventivPage implements OnInit {
       return;
     }
 
+    this.bumpSliderInteractionVersion(sliderKey);
     this.clearSliderAutoLockTimer();
     this.clearSliderButtonWriteTimer(sliderKey);
   }
@@ -556,15 +560,53 @@ export class MoventivPage implements OnInit {
       return;
     }
 
+    const interactionVersion = this.bumpSliderInteractionVersion(sliderKey);
     this.clearSliderAutoLockTimer();
     this.clearSliderButtonWriteTimer(sliderKey);
     this.sliderWriteTimeouts[sliderKey] = setTimeout(() => {
       this.sliderWriteTimeouts[sliderKey] = null;
-      this.writeSliderValue(sliderKey);
+      this.writeSliderValue(sliderKey, interactionVersion);
     }, this.SLIDER_BUTTON_WRITE_DELAY_MS);
   }
 
-  private writeSliderValue(sliderKey: string): Promise<any> {
+  stopSliderButtonPointerEvent(event?: Event): void {
+    if (event && event.stopPropagation) {
+      event.stopPropagation();
+    }
+  }
+
+  onSliderIncrementClick(event: Event, sliderKey: string): void {
+    this.handleSliderButtonClick(event, sliderKey, true);
+  }
+
+  onSliderDecrementClick(event: Event, sliderKey: string): void {
+    this.handleSliderButtonClick(event, sliderKey, false);
+  }
+
+  private handleSliderButtonClick(event: Event, sliderKey: string, increment: boolean): void {
+    if (event) {
+      if (event.preventDefault) {
+        event.preventDefault();
+      }
+      if (event.stopPropagation) {
+        event.stopPropagation();
+      }
+    }
+
+    if (!this.isSliderUnlocked(sliderKey)) {
+      return;
+    }
+
+    const stepAction = this.getSliderStepAction(sliderKey, increment);
+    if (!stepAction) {
+      return;
+    }
+
+    stepAction();
+    this.scheduleSliderButtonWrite(sliderKey);
+  }
+
+  private writeSliderValue(sliderKey: string, interactionVersion?: number): Promise<any> {
     if (!this.isSliderUnlocked(sliderKey)) {
       return Promise.resolve(null);
     }
@@ -576,9 +618,10 @@ export class MoventivPage implements OnInit {
 
     this.clearSliderAutoLockTimer();
 
-    const currentValue = this.getSliderCurrentValue(sliderKey);
-    if (this.sliderCommittedValues[sliderKey] === currentValue) {
-      this.resetSliderAutoLockTimer(sliderKey);
+    const valueToWrite = this.getSliderCurrentValue(sliderKey);
+    const writeInteractionVersion = interactionVersion || this.getSliderInteractionVersion(sliderKey);
+    if (this.sliderCommittedValues[sliderKey] === valueToWrite) {
+      this.resetSliderAutoLockTimerIfCurrent(sliderKey, writeInteractionVersion);
       return Promise.resolve(null);
     }
 
@@ -586,7 +629,7 @@ export class MoventivPage implements OnInit {
       return Promise.resolve(writeAction())
         .then((returnObj) => {
           if (returnObj) {
-            this.markSliderCommittedValue(sliderKey);
+            this.sliderCommittedValues[sliderKey] = valueToWrite;
           }
           return returnObj;
         })
@@ -595,12 +638,12 @@ export class MoventivPage implements OnInit {
           return null;
         })
         .then((returnObj) => {
-          this.resetSliderAutoLockTimer(sliderKey);
+          this.resetSliderAutoLockTimerIfCurrent(sliderKey, writeInteractionVersion);
           return returnObj;
         });
     } catch (error) {
       this.logger.error(this.TAG, 'Erreur ecriture slider', { sliderKey: sliderKey, error: error });
-      this.resetSliderAutoLockTimer(sliderKey);
+      this.resetSliderAutoLockTimerIfCurrent(sliderKey, writeInteractionVersion);
       return Promise.resolve(null);
     }
   }
@@ -627,6 +670,33 @@ export class MoventivPage implements OnInit {
         return () => this.setBrakingOpenPower();
       case 'obstacleSensibility':
         return () => this.setObstacleSensibility();
+      default:
+        return null;
+    }
+  }
+
+  private getSliderStepAction(sliderKey: string, increment: boolean): (() => void) | null {
+    switch (sliderKey) {
+      case 'openSpeed':
+        return increment ? () => this.openSpeedTuneInc() : () => this.openSpeedTuneDec();
+      case 'closeSpeed':
+        return increment ? () => this.closeSpeedTuneInc() : () => this.closeSpeedTuneDec();
+      case 'shortTiming':
+        return increment ? () => this.shortTimingInc() : () => this.shortTimingDec();
+      case 'longTiming':
+        return increment ? () => this.longTimingInc() : () => this.longTimingDec();
+      case 'nearOpenSpeed':
+        return increment ? () => this.NearOpenSpeedInc() : () => this.NearOpenSpeedDec();
+      case 'nearCloseSpeed':
+        return increment ? () => this.NearCloseSpeedInc() : () => this.NearCloseSpeedDec();
+      case 'nearCloseTorque':
+        return increment ? () => this.NearCloseTorqueInc() : () => this.NearCloseTorqueDec();
+      case 'nearOpenTorque':
+        return increment ? () => this.NearOpenTorqueInc() : () => this.NearOpenTorqueDec();
+      case 'brakingOpenPower':
+        return increment ? () => this.BrakingPowerInc() : () => this.BrakingPowerDec();
+      case 'obstacleSensibility':
+        return increment ? () => this.ObstacleSensiInc() : () => this.ObstacleSensiDec();
       default:
         return null;
     }
@@ -666,6 +736,22 @@ export class MoventivPage implements OnInit {
     }
   }
 
+  private bumpSliderInteractionVersion(sliderKey: string): number {
+    const nextVersion = this.getSliderInteractionVersion(sliderKey) + 1;
+    this.sliderInteractionVersions[sliderKey] = nextVersion;
+    return nextVersion;
+  }
+
+  private getSliderInteractionVersion(sliderKey: string): number {
+    return this.sliderInteractionVersions[sliderKey] || 0;
+  }
+
+  private resetSliderAutoLockTimerIfCurrent(sliderKey: string, interactionVersion: number): void {
+    if (this.getSliderInteractionVersion(sliderKey) === interactionVersion) {
+      this.resetSliderAutoLockTimer(sliderKey);
+    }
+  }
+
   private clearSliderButtonWriteTimer(sliderKey: string): void {
     if (this.sliderWriteTimeouts[sliderKey]) {
       clearTimeout(this.sliderWriteTimeouts[sliderKey]);
@@ -685,7 +771,8 @@ export class MoventivPage implements OnInit {
     }
 
     this.clearSliderButtonWriteTimer(sliderKey);
-    this.writeSliderValue(sliderKey);
+    const interactionVersion = this.bumpSliderInteractionVersion(sliderKey);
+    this.writeSliderValue(sliderKey, interactionVersion);
   }
 
   private flushAllPendingSliderWrites(): void {
