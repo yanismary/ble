@@ -316,6 +316,9 @@ export class MoventivPage implements OnInit {
   openedPrecisionSliderKey: string | null = null;
   private readonly SLIDER_AUTO_LOCK_DELAY_MS = 3000;
   private sliderAutoLockTimeout: any = null;
+  private readonly SLIDER_BUTTON_WRITE_DELAY_MS = 400;
+  private sliderWriteTimeouts: { [key: string]: any } = {};
+  private sliderCommittedValues: { [key: string]: number } = {};
 
 
   dispOptionalCom_MO!: boolean;
@@ -483,12 +486,21 @@ export class MoventivPage implements OnInit {
       return;
     }
 
+    if (this.activeSliderKey) {
+      this.flushPendingSliderWrite(this.activeSliderKey);
+    }
+
     this.clearSliderAutoLockTimer();
     this.activeSliderKey = key;
     this.openedPrecisionSliderKey = null;
+    this.markSliderCommittedValue(key);
   }
 
   lockSlider(key?: string): void {
+    if (!key || this.activeSliderKey === key) {
+      this.flushPendingSliderWrite(key || this.activeSliderKey || '');
+    }
+
     if (!key || this.activeSliderKey === key) {
       this.activeSliderKey = null;
       this.clearSliderAutoLockTimer();
@@ -519,6 +531,167 @@ export class MoventivPage implements OnInit {
       clearTimeout(this.sliderAutoLockTimeout);
       this.sliderAutoLockTimeout = null;
     }
+  }
+
+  onSliderReleased(sliderKey: string): void {
+    if (!this.isSliderUnlocked(sliderKey)) {
+      return;
+    }
+
+    this.clearSliderButtonWriteTimer(sliderKey);
+    this.writeSliderValue(sliderKey);
+  }
+
+  onSliderInteractionStarted(sliderKey: string): void {
+    if (!this.isSliderUnlocked(sliderKey)) {
+      return;
+    }
+
+    this.clearSliderAutoLockTimer();
+    this.clearSliderButtonWriteTimer(sliderKey);
+  }
+
+  scheduleSliderButtonWrite(sliderKey: string): void {
+    if (!this.isSliderUnlocked(sliderKey)) {
+      return;
+    }
+
+    this.clearSliderAutoLockTimer();
+    this.clearSliderButtonWriteTimer(sliderKey);
+    this.sliderWriteTimeouts[sliderKey] = setTimeout(() => {
+      this.sliderWriteTimeouts[sliderKey] = null;
+      this.writeSliderValue(sliderKey);
+    }, this.SLIDER_BUTTON_WRITE_DELAY_MS);
+  }
+
+  private writeSliderValue(sliderKey: string): Promise<any> {
+    if (!this.isSliderUnlocked(sliderKey)) {
+      return Promise.resolve(null);
+    }
+
+    const writeAction = this.getSliderWriteAction(sliderKey);
+    if (!writeAction) {
+      return Promise.resolve(null);
+    }
+
+    this.clearSliderAutoLockTimer();
+
+    const currentValue = this.getSliderCurrentValue(sliderKey);
+    if (this.sliderCommittedValues[sliderKey] === currentValue) {
+      this.resetSliderAutoLockTimer(sliderKey);
+      return Promise.resolve(null);
+    }
+
+    try {
+      return Promise.resolve(writeAction())
+        .then((returnObj) => {
+          if (returnObj) {
+            this.markSliderCommittedValue(sliderKey);
+          }
+          return returnObj;
+        })
+        .catch((error) => {
+          this.logger.error(this.TAG, 'Erreur ecriture slider', { sliderKey: sliderKey, error: error });
+          return null;
+        })
+        .then((returnObj) => {
+          this.resetSliderAutoLockTimer(sliderKey);
+          return returnObj;
+        });
+    } catch (error) {
+      this.logger.error(this.TAG, 'Erreur ecriture slider', { sliderKey: sliderKey, error: error });
+      this.resetSliderAutoLockTimer(sliderKey);
+      return Promise.resolve(null);
+    }
+  }
+
+  private getSliderWriteAction(sliderKey: string): (() => Promise<any>) | null {
+    switch (sliderKey) {
+      case 'openSpeed':
+        return () => this.setOpenSpeedTune();
+      case 'closeSpeed':
+        return () => this.setCloseSpeedTune();
+      case 'shortTiming':
+        return () => this.setShortTiming();
+      case 'longTiming':
+        return () => this.setLongTiming();
+      case 'nearOpenSpeed':
+        return () => this.setNearOpenSpeed();
+      case 'nearCloseSpeed':
+        return () => this.setNearCloseSpeed();
+      case 'nearCloseTorque':
+        return () => this.setNearCloseTorque();
+      case 'nearOpenTorque':
+        return () => this.setNearOpenTorque();
+      case 'brakingOpenPower':
+        return () => this.setBrakingOpenPower();
+      case 'obstacleSensibility':
+        return () => this.setObstacleSensibility();
+      default:
+        return null;
+    }
+  }
+
+  private getSliderCurrentValue(sliderKey: string): number {
+    switch (sliderKey) {
+      case 'openSpeed':
+        return Number(this.rval_mlpc_userParam_speedOpenTune);
+      case 'closeSpeed':
+        return Number(this.rval_mlpc_userParam_speedCloseTune);
+      case 'shortTiming':
+        return Number(this.rval_mlpc_userParam_openTimeShort);
+      case 'longTiming':
+        return Number(this.rval_mlpc_userParam_openTimeLong);
+      case 'nearOpenSpeed':
+        return Number(this.rval_mlpc_proParam_nearOpenSpeed);
+      case 'nearCloseSpeed':
+        return Number(this.rval_mlpc_proParam_nearCloseSpeed);
+      case 'nearCloseTorque':
+        return Number(this.rval_mlpc_proParam_nearCloseTorque);
+      case 'nearOpenTorque':
+        return Number(this.rval_mlpc_proParam_nearOpenTorque);
+      case 'brakingOpenPower':
+        return Number(this.rval_mlpc_proParam_brakingOpenPower);
+      case 'obstacleSensibility':
+        return Number(this.rval_mlpc_proParam_obstacleSensibility);
+      default:
+        return NaN;
+    }
+  }
+
+  private markSliderCommittedValue(sliderKey: string): void {
+    const currentValue = this.getSliderCurrentValue(sliderKey);
+    if (!isNaN(currentValue)) {
+      this.sliderCommittedValues[sliderKey] = currentValue;
+    }
+  }
+
+  private clearSliderButtonWriteTimer(sliderKey: string): void {
+    if (this.sliderWriteTimeouts[sliderKey]) {
+      clearTimeout(this.sliderWriteTimeouts[sliderKey]);
+      this.sliderWriteTimeouts[sliderKey] = null;
+    }
+  }
+
+  private clearAllSliderButtonWriteTimers(): void {
+    Object.keys(this.sliderWriteTimeouts).forEach((sliderKey) => {
+      this.clearSliderButtonWriteTimer(sliderKey);
+    });
+  }
+
+  private flushPendingSliderWrite(sliderKey: string): void {
+    if (!sliderKey || !this.sliderWriteTimeouts[sliderKey]) {
+      return;
+    }
+
+    this.clearSliderButtonWriteTimer(sliderKey);
+    this.writeSliderValue(sliderKey);
+  }
+
+  private flushAllPendingSliderWrites(): void {
+    Object.keys(this.sliderWriteTimeouts).forEach((sliderKey) => {
+      this.flushPendingSliderWrite(sliderKey);
+    });
   }
 
 
@@ -615,6 +788,8 @@ export class MoventivPage implements OnInit {
 
 
   ngOnDestroy() {
+    this.clearAllSliderButtonWriteTimers();
+    this.clearSliderAutoLockTimer();
     // always unsubscribe your subscriptions to prevent leaks
     // this.platform.pause.subscribe().unsubscribe();
     //this.platform.resume.subscribe().unsubscribe();
@@ -622,6 +797,9 @@ export class MoventivPage implements OnInit {
 
   // Disconnect peripheral when leaving the page
   ionViewWillLeave() {
+    this.flushAllPendingSliderWrites();
+    this.clearAllSliderButtonWriteTimers();
+    this.clearSliderAutoLockTimer();
     this.bleConnectService.setNeedConnect(false);
     this.navCtrl.swipeBackEnabled = true;
 
@@ -1419,9 +1597,9 @@ export class MoventivPage implements OnInit {
 
 
 
-  setOpenSpeedTune() {
+  setOpenSpeedTune(): Promise<any> {
     if (this.isBleActionBlocked('setOpenSpeedTune')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'SetSpeedOpenTune');
 
@@ -1432,10 +1610,11 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
+    return this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetSpeedOpenTune b0: ' + bytes[1]);
+        return returnObj;
       },
     );
   }
@@ -1443,9 +1622,9 @@ export class MoventivPage implements OnInit {
 
 
 
-  setCloseSpeedTune() {
+  setCloseSpeedTune(): Promise<any> {
     if (this.isBleActionBlocked('setCloseSpeedTune')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'SetSpeedCloseTune');
 
@@ -1456,18 +1635,19 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
+    return this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetSpeedCloseTune b0: ' + bytes[1]);
+        return returnObj;
       },
     );
   }
 
 
-  setNearOpenSpeed() {
+  setNearOpenSpeed(): Promise<any> {
     if (this.isBleActionBlocked('setNearOpenSpeed')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'setNearOpenSpeed');
 
@@ -1478,12 +1658,12 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
+    return this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
-  setNearCloseSpeed() {
+  setNearCloseSpeed(): Promise<any> {
     if (this.isBleActionBlocked('setNearCloseSpeed')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'setNearCloseSpeed');
 
@@ -1494,12 +1674,12 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
+    return this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
-  setNearOpenTorque() {
+  setNearOpenTorque(): Promise<any> {
     if (this.isBleActionBlocked('setNearOpenTorque')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'setNearOpenTorque');
 
@@ -1510,12 +1690,12 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
+    return this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
-  setBrakingOpenPower() {
+  setBrakingOpenPower(): Promise<any> {
     if (this.isBleActionBlocked('setBrakingOpenPower')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'setBrakingOpenPowe');
 
@@ -1526,12 +1706,12 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
+    return this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
-  setObstacleSensibility(){
+  setObstacleSensibility(): Promise<any> {
     if (this.isBleActionBlocked('setObstacleSensibility')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'setBrakingOpenPowe');
 
@@ -1542,12 +1722,12 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
+    return this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
-  setNearCloseTorque() {
+  setNearCloseTorque(): Promise<any> {
     if (this.isBleActionBlocked('setNearCloseTorque')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'setNearCloseTorque');
 
@@ -1558,15 +1738,15 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
+    return this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
 
 
 
-  setShortTiming() {
+  setShortTiming(): Promise<any> {
     if (this.isBleActionBlocked('setShortTiming')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'SetShortTiming');
 
@@ -1577,17 +1757,18 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
+    return this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
+        return returnObj;
       },
     );
   }
 
-  setLongTiming() {
+  setLongTiming(): Promise<any> {
     if (this.isBleActionBlocked('setLongTiming')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'SetShortTiming');
 
@@ -1599,10 +1780,11 @@ export class MoventivPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
+    return this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
+        return returnObj;
       },
     );
   }

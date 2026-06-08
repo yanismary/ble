@@ -183,7 +183,8 @@
             <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
             <ion-range [min]="isGarline ? 0 : 50" max="100" debounce="300"
               [disabled]="!isSliderUnlocked('openSpeed')"
-              (ionChange)="setOpenSpeedTune($event); resetSliderAutoLockTimer('openSpeed')"
+              (ionFocus)="onSliderInteractionStarted('openSpeed')"
+              (ionBlur)="onSliderReleased('openSpeed')"
               [(ngModel)]="rval_mlpc_userParam_speedOpenTune" color="mantionSmtblue"></ion-range>
             <button ion-button clear item-end type="button" class="slider-options-toggle"
               [disabled]="!isSliderUnlocked('openSpeed')"
@@ -195,14 +196,14 @@
           <ion-row *ngIf="isSliderUnlocked('openSpeed') && isSliderPrecisionOpen('openSpeed')" class="slider-precision-actions">
             <ion-col col-6>
               <button ion-button block color="mantionSmtgreen" type="button"
-                (click)="$event.stopPropagation(); openSpeedTuneInc(); setOpenSpeedTune(); resetSliderAutoLockTimer('openSpeed')">
+                (click)="$event.stopPropagation(); openSpeedTuneInc(); scheduleSliderButtonWrite('openSpeed')">
                 <ion-icon name="add"></ion-icon>
                 {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
               </button>
             </ion-col>
             <ion-col col-6>
               <button ion-button block color="mantionSmtRed" type="button"
-                (click)="$event.stopPropagation(); openSpeedTuneDec(); setOpenSpeedTune(); resetSliderAutoLockTimer('openSpeed')">
+                (click)="$event.stopPropagation(); openSpeedTuneDec(); scheduleSliderButtonWrite('openSpeed')">
                 <ion-icon name="remove"></ion-icon>
                 {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
               </button>
@@ -224,7 +225,8 @@
             <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
             <ion-range [min]="isGarline ? 0 : 50" max="100" debounce="300"
               [disabled]="!isSliderUnlocked('closeSpeed')"
-              (ionChange)="setCloseSpeedTune($event); resetSliderAutoLockTimer('closeSpeed')"
+              (ionFocus)="onSliderInteractionStarted('closeSpeed')"
+              (ionBlur)="onSliderReleased('closeSpeed')"
               [(ngModel)]="rval_mlpc_userParam_speedCloseTune" color="mantionSmtblue"> </ion-range>
             <button ion-button clear item-end type="button" class="slider-options-toggle"
               [disabled]="!isSliderUnlocked('closeSpeed')"
@@ -236,14 +238,14 @@
           <ion-row *ngIf="isSliderUnlocked('closeSpeed') && isSliderPrecisionOpen('closeSpeed')" class="slider-precision-actions">
             <ion-col col-6>
               <button ion-button block color="mantionSmtgreen" type="button"
-                (click)="$event.stopPropagation(); closeSpeedTuneInc(); setCloseSpeedTune(); resetSliderAutoLockTimer('closeSpeed')">
+                (click)="$event.stopPropagation(); closeSpeedTuneInc(); scheduleSliderButtonWrite('closeSpeed')">
                 <ion-icon name="add"></ion-icon>
                 {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
               </button>
             </ion-col>
             <ion-col col-6>
               <button ion-button block color="mantionSmtRed" type="button"
-                (click)="$event.stopPropagation(); closeSpeedTuneDec(); setCloseSpeedTune(); resetSliderAutoLockTimer('closeSpeed')">
+                (click)="$event.stopPropagation(); closeSpeedTuneDec(); scheduleSliderButtonWrite('closeSpeed')">
                 <ion-icon name="remove"></ion-icon>
                 {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
               </button>
@@ -265,7 +267,8 @@
             <ion-icon name="moventiv-delay" item-start color="wimGreyColor"></ion-icon>
             <ion-range min="0" max="60" debounce="300" [(ngModel)]="rval_mlpc_userParam_openTimeShort"
               [disabled]="!isSliderUnlocked('shortTiming')"
-              (ionChange)="setShortTiming($event); resetSliderAutoLockTimer('shortTiming')" color="mantionSmtblue">
+              (ionFocus)="onSliderInteractionStarted('shortTiming')"
+              (ionBlur)="onSliderReleased('shortTiming')" color="mantionSmtblue">
             </ion-range>
             <button ion-button clear item-end type="button" class="slider-options-toggle"
               [disabled]="!isSliderUnlocked('shortTiming')"
@@ -277,14 +280,14 @@
           <ion-row *ngIf="isSliderUnlocked('shortTiming') && isSliderPrecisionOpen('shortTiming')" class="slider-precision-actions">
             <ion-col col-6>
               <button ion-button block color="mantionSmtgreen" type="button"
-                (click)="$event.stopPropagation(); shortTimingInc(); setShortTiming(); resetSliderAutoLockTimer('shortTiming')">
+                (click)="$event.stopPropagation(); shortTimingInc(); scheduleSliderButtonWrite('shortTiming')">
                 <ion-icon name="add"></ion-icon>
                 {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
               </button>
             </ion-col>
             <ion-col col-6>
               <button ion-button block color="mantionSmtRed" type="button"
-                (click)="$event.stopPropagation(); shortTimingDec(); setShortTiming(); resetSliderAutoLockTimer('shortTiming')">
+                (click)="$event.stopPropagation(); shortTimingDec(); scheduleSliderButtonWrite('shortTiming')">
                 <ion-icon name="remove"></ion-icon>
                 {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
               </button>
@@ -306,7 +309,8 @@
             <ion-icon name="moventiv-delay" item-start color="wimGreyColor"></ion-icon>
             <ion-range min="1" max="60" debounce="300" [(ngModel)]="rval_mlpc_userParam_openTimeLong"
               [disabled]="!isSliderUnlocked('longTiming')"
-              (ionChange)="setLongTiming($event); resetSliderAutoLockTimer('longTiming')" color="mantionSmtblue">
+              (ionFocus)="onSliderInteractionStarted('longTiming')"
+              (ionBlur)="onSliderReleased('longTiming')" color="mantionSmtblue">
             </ion-range>
             <button ion-button clear item-end type="button" class="slider-options-toggle"
               [disabled]="!isSliderUnlocked('longTiming')"
@@ -318,14 +322,14 @@
           <ion-row *ngIf="isSliderUnlocked('longTiming') && isSliderPrecisionOpen('longTiming')" class="slider-precision-actions">
             <ion-col col-6>
               <button ion-button block color="mantionSmtgreen" type="button"
-                (click)="$event.stopPropagation(); longTimingInc(); setLongTiming(); resetSliderAutoLockTimer('longTiming')">
+                (click)="$event.stopPropagation(); longTimingInc(); scheduleSliderButtonWrite('longTiming')">
                 <ion-icon name="add"></ion-icon>
                 {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
               </button>
             </ion-col>
             <ion-col col-6>
               <button ion-button block color="mantionSmtRed" type="button"
-                (click)="$event.stopPropagation(); longTimingDec(); setLongTiming(); resetSliderAutoLockTimer('longTiming')">
+                (click)="$event.stopPropagation(); longTimingDec(); scheduleSliderButtonWrite('longTiming')">
                 <ion-icon name="remove"></ion-icon>
                 {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
               </button>
@@ -522,7 +526,8 @@
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
                 <ion-range [min]="isGarline ? 0 : 1" max="100" debounce="300"
                   [disabled]="!isSliderUnlocked('nearOpenSpeed')"
-                  (ionChange)="setNearOpenSpeed($event); resetSliderAutoLockTimer('nearOpenSpeed')"
+                  (ionFocus)="onSliderInteractionStarted('nearOpenSpeed')"
+                  (ionBlur)="onSliderReleased('nearOpenSpeed')"
                   [(ngModel)]="rval_mlpc_proParam_nearOpenSpeed" color="mantionSmtblue"> </ion-range>
                 <button ion-button clear item-end type="button" class="slider-options-toggle"
                   [disabled]="!isSliderUnlocked('nearOpenSpeed')"
@@ -534,14 +539,14 @@
               <ion-row *ngIf="isSliderUnlocked('nearOpenSpeed') && isSliderPrecisionOpen('nearOpenSpeed')" class="slider-precision-actions">
                 <ion-col col-6>
                   <button ion-button block color="mantionSmtgreen" type="button"
-                    (click)="$event.stopPropagation(); NearOpenSpeedInc(); setNearOpenSpeed(); resetSliderAutoLockTimer('nearOpenSpeed')">
+                    (click)="$event.stopPropagation(); NearOpenSpeedInc(); scheduleSliderButtonWrite('nearOpenSpeed')">
                     <ion-icon name="add"></ion-icon>
                     {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
                   </button>
                 </ion-col>
                 <ion-col col-6>
                   <button ion-button block color="mantionSmtRed" type="button"
-                    (click)="$event.stopPropagation(); NearOpenSpeedDec(); setNearOpenSpeed(); resetSliderAutoLockTimer('nearOpenSpeed')">
+                    (click)="$event.stopPropagation(); NearOpenSpeedDec(); scheduleSliderButtonWrite('nearOpenSpeed')">
                     <ion-icon name="remove"></ion-icon>
                     {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
                   </button>
@@ -564,7 +569,8 @@
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
                 <ion-range [min]="isGarline ? 0 : 1" max="100" debounce="300"
                   [disabled]="!isSliderUnlocked('nearCloseSpeed')"
-                  (ionChange)="setNearCloseSpeed($event); resetSliderAutoLockTimer('nearCloseSpeed')"
+                  (ionFocus)="onSliderInteractionStarted('nearCloseSpeed')"
+                  (ionBlur)="onSliderReleased('nearCloseSpeed')"
                   [(ngModel)]="rval_mlpc_proParam_nearCloseSpeed" color="mantionSmtblue"> </ion-range>
                 <button ion-button clear item-end type="button" class="slider-options-toggle"
                   [disabled]="!isSliderUnlocked('nearCloseSpeed')"
@@ -576,14 +582,14 @@
               <ion-row *ngIf="isSliderUnlocked('nearCloseSpeed') && isSliderPrecisionOpen('nearCloseSpeed')" class="slider-precision-actions">
                 <ion-col col-6>
                   <button ion-button block color="mantionSmtgreen" type="button"
-                    (click)="$event.stopPropagation(); NearCloseSpeedInc(); setNearCloseSpeed(); resetSliderAutoLockTimer('nearCloseSpeed')">
+                    (click)="$event.stopPropagation(); NearCloseSpeedInc(); scheduleSliderButtonWrite('nearCloseSpeed')">
                     <ion-icon name="add"></ion-icon>
                     {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
                   </button>
                 </ion-col>
                 <ion-col col-6>
                   <button ion-button block color="mantionSmtRed" type="button"
-                    (click)="$event.stopPropagation(); NearCloseSpeedDec(); setNearCloseSpeed(); resetSliderAutoLockTimer('nearCloseSpeed')">
+                    (click)="$event.stopPropagation(); NearCloseSpeedDec(); scheduleSliderButtonWrite('nearCloseSpeed')">
                     <ion-icon name="remove"></ion-icon>
                     {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
                   </button>
@@ -642,7 +648,8 @@
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
                 <ion-range min='1' max="200" debounce="300"
                   [disabled]="!isSliderUnlocked('nearCloseTorque')"
-                  (ionChange)="setNearCloseTorque($event); resetSliderAutoLockTimer('nearCloseTorque')"
+                  (ionFocus)="onSliderInteractionStarted('nearCloseTorque')"
+                  (ionBlur)="onSliderReleased('nearCloseTorque')"
                   [(ngModel)]="rval_mlpc_proParam_nearCloseTorque" color="mantionSmtblue"> </ion-range>
                 <button ion-button clear item-end type="button" class="slider-options-toggle"
                   [disabled]="!isSliderUnlocked('nearCloseTorque')"
@@ -654,14 +661,14 @@
               <ion-row *ngIf="isSliderUnlocked('nearCloseTorque') && isSliderPrecisionOpen('nearCloseTorque')" class="slider-precision-actions">
                 <ion-col col-6>
                   <button ion-button block color="mantionSmtgreen" type="button"
-                    (click)="$event.stopPropagation(); NearCloseTorqueInc(); setNearCloseTorque(); resetSliderAutoLockTimer('nearCloseTorque')">
+                    (click)="$event.stopPropagation(); NearCloseTorqueInc(); scheduleSliderButtonWrite('nearCloseTorque')">
                     <ion-icon name="add"></ion-icon>
                     {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
                   </button>
                 </ion-col>
                 <ion-col col-6>
                   <button ion-button block color="mantionSmtRed" type="button"
-                    (click)="$event.stopPropagation(); NearCloseTorqueDec(); setNearCloseTorque(); resetSliderAutoLockTimer('nearCloseTorque')">
+                    (click)="$event.stopPropagation(); NearCloseTorqueDec(); scheduleSliderButtonWrite('nearCloseTorque')">
                     <ion-icon name="remove"></ion-icon>
                     {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
                   </button>
@@ -691,7 +698,8 @@
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
                 <ion-range min='1' max="200" debounce="300"
                   [disabled]="!isSliderUnlocked('nearOpenTorque')"
-                  (ionChange)="setNearOpenTorque($event); resetSliderAutoLockTimer('nearOpenTorque')"
+                  (ionFocus)="onSliderInteractionStarted('nearOpenTorque')"
+                  (ionBlur)="onSliderReleased('nearOpenTorque')"
                   [(ngModel)]="rval_mlpc_proParam_nearOpenTorque" color="mantionSmtblue"> </ion-range>
                 <button ion-button clear item-end type="button" class="slider-options-toggle"
                   [disabled]="!isSliderUnlocked('nearOpenTorque')"
@@ -703,14 +711,14 @@
               <ion-row *ngIf="isSliderUnlocked('nearOpenTorque') && isSliderPrecisionOpen('nearOpenTorque')" class="slider-precision-actions">
                 <ion-col col-6>
                   <button ion-button block color="mantionSmtgreen" type="button"
-                    (click)="$event.stopPropagation(); NearOpenTorqueInc(); setNearOpenTorque(); resetSliderAutoLockTimer('nearOpenTorque')">
+                    (click)="$event.stopPropagation(); NearOpenTorqueInc(); scheduleSliderButtonWrite('nearOpenTorque')">
                     <ion-icon name="add"></ion-icon>
                     {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
                   </button>
                 </ion-col>
                 <ion-col col-6>
                   <button ion-button block color="mantionSmtRed" type="button"
-                    (click)="$event.stopPropagation(); NearOpenTorqueDec(); setNearOpenTorque(); resetSliderAutoLockTimer('nearOpenTorque')">
+                    (click)="$event.stopPropagation(); NearOpenTorqueDec(); scheduleSliderButtonWrite('nearOpenTorque')">
                     <ion-icon name="remove"></ion-icon>
                     {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
                   </button>
@@ -739,7 +747,8 @@
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
                 <ion-range min='1' max="100" debounce="300"
                   [disabled]="!isSliderUnlocked('brakingOpenPower')"
-                  (ionChange)="setBrakingOpenPower($event); resetSliderAutoLockTimer('brakingOpenPower')"
+                  (ionFocus)="onSliderInteractionStarted('brakingOpenPower')"
+                  (ionBlur)="onSliderReleased('brakingOpenPower')"
                   [(ngModel)]="rval_mlpc_proParam_brakingOpenPower" color="mantionSmtblue"> </ion-range>
                 <button ion-button clear item-end type="button" class="slider-options-toggle"
                   [disabled]="!isSliderUnlocked('brakingOpenPower')"
@@ -751,14 +760,14 @@
               <ion-row *ngIf="isSliderUnlocked('brakingOpenPower') && isSliderPrecisionOpen('brakingOpenPower')" class="slider-precision-actions">
                 <ion-col col-6>
                   <button ion-button block color="mantionSmtgreen" type="button"
-                    (click)="$event.stopPropagation(); BrakingPowerInc(); setBrakingOpenPower(); resetSliderAutoLockTimer('brakingOpenPower')">
+                    (click)="$event.stopPropagation(); BrakingPowerInc(); scheduleSliderButtonWrite('brakingOpenPower')">
                     <ion-icon name="add"></ion-icon>
                     {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
                   </button>
                 </ion-col>
                 <ion-col col-6>
                   <button ion-button block color="mantionSmtRed" type="button"
-                    (click)="$event.stopPropagation(); BrakingPowerDec(); setBrakingOpenPower(); resetSliderAutoLockTimer('brakingOpenPower')">
+                    (click)="$event.stopPropagation(); BrakingPowerDec(); scheduleSliderButtonWrite('brakingOpenPower')">
                     <ion-icon name="remove"></ion-icon>
                     {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
                   </button>
@@ -787,7 +796,8 @@
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
                 <ion-range min='1' max="5" debounce="300"
                   [disabled]="!isSliderUnlocked('obstacleSensibility')"
-                  (ionChange)="setObstacleSensibility($event); resetSliderAutoLockTimer('obstacleSensibility')"
+                  (ionFocus)="onSliderInteractionStarted('obstacleSensibility')"
+                  (ionBlur)="onSliderReleased('obstacleSensibility')"
                   [(ngModel)]="rval_mlpc_proParam_obstacleSensibility" color="mantionSmtblue"> </ion-range>
                 <button ion-button clear item-end type="button" class="slider-options-toggle"
                   [disabled]="!isSliderUnlocked('obstacleSensibility')"
@@ -799,14 +809,14 @@
               <ion-row *ngIf="isSliderUnlocked('obstacleSensibility') && isSliderPrecisionOpen('obstacleSensibility')" class="slider-precision-actions">
                 <ion-col col-6>
                   <button ion-button block color="mantionSmtgreen" type="button"
-                    (click)="$event.stopPropagation(); ObstacleSensiInc(); setObstacleSensibility(); resetSliderAutoLockTimer('obstacleSensibility')">
+                    (click)="$event.stopPropagation(); ObstacleSensiInc(); scheduleSliderButtonWrite('obstacleSensibility')">
                     <ion-icon name="add"></ion-icon>
                     {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.INC" | translate }}
                   </button>
                 </ion-col>
                 <ion-col col-6>
                   <button ion-button block color="mantionSmtRed" type="button"
-                    (click)="$event.stopPropagation(); ObstacleSensiDec(); setObstacleSensibility(); resetSliderAutoLockTimer('obstacleSensibility')">
+                    (click)="$event.stopPropagation(); ObstacleSensiDec(); scheduleSliderButtonWrite('obstacleSensibility')">
                     <ion-icon name="remove"></ion-icon>
                     {{ "MOVENTIV_PAGE.ADJUSTMENTS_TAB.INCDECBUTTON.DEC" | translate }}
                   </button>
