@@ -11,9 +11,11 @@ import { LoggerService } from '../../providers/logger/logger.service';
 import {
   DetectedProductType,
   ProductDetectionResult,
+  VERSION_WORD_PRODUCT_TYPE_INDEX,
   detectProductType,
   getDemoProductTypeFromConfigId,
   getProductConfigId,
+  isGarlineProductType,
   isWidoorBluetoothName,
   productTypeLabel,
   versionWordBytesToHex
@@ -1088,6 +1090,21 @@ export class ScanPage {
       });
       const versionWordBytes = this.randble.encodedStringToBytes(buffer.value);
       const detection = detectProductType(bluetoothName, versionWordBytes);
+      const productTypeByte = versionWordBytes && versionWordBytes.length > VERSION_WORD_PRODUCT_TYPE_INDEX
+        ? versionWordBytes[VERSION_WORD_PRODUCT_TYPE_INDEX]
+        : undefined;
+
+      this.logger.debug(this.TAG, '[ProductDetection] Version word diagnostics before navigation', {
+        bluetoothName: bluetoothName,
+        versionWordLength: versionWordBytes ? versionWordBytes.length : 0,
+        versionWordHex: versionWordBytesToHex(versionWordBytes),
+        productTypeByte: productTypeByte,
+        productTypeByteType: typeof productTypeByte,
+        detectedProductType: detection.productType,
+        detectedProductLabel: productTypeLabel(detection.productType),
+        detectedIsGarline: isGarlineProductType(detection.productType),
+        reason: detection.reason
+      });
 
       if (detection.productType === 'unknown') {
         this.logger.warn(this.TAG, 'Product detection from version word is unknown', {

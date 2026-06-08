@@ -361,6 +361,7 @@ export class MoventivPage implements OnInit {
     this.menuType = 'com';
     this.currentProductType = this.resolveInitialProductType();
     this.logger.debug(this.TAG, 'Produit détecté : ' + this.currentProductType);
+    this.logProductDisplayState('constructor');
     this.paramSubmenuType = 'basic';
     //connection  
     
@@ -421,6 +422,24 @@ export class MoventivPage implements OnInit {
     return !!(device && (device.isDemo === true || device.isDemo === "true"));
   }
 
+  private logProductDisplayState(context: string): void {
+    const productTypeByte = this.rval_shDo_version && this.rval_shDo_version.length > D_SHDO_VERSION_MOTID_HOF
+      ? this.rval_shDo_version[D_SHDO_VERSION_MOTID_HOF]
+      : undefined;
+
+    this.logger.debug(this.TAG, '[ProductDetection] Moventiv display state', {
+      context: context,
+      bluetoothName: this.getBluetoothNameForDetection(),
+      currentProductType: this.currentProductType,
+      isGarline: this.isGarline,
+      isMoventiv: this.isMoventiv,
+      versionWordLength: this.rval_shDo_version ? this.rval_shDo_version.length : 0,
+      versionWordHex: versionWordBytesToHex(this.rval_shDo_version),
+      productTypeByte: productTypeByte,
+      productTypeByteType: typeof productTypeByte
+    });
+  }
+
   get displayProductName(): string {
     return getProductDisplayName(this.currentProductType);
   }
@@ -449,17 +468,26 @@ export class MoventivPage implements OnInit {
   private updateDetectedProductTypeFromVersion(versionWordBytes: Uint8Array): void {
     const bluetoothName = this.getBluetoothNameForDetection();
     const detection = detectProductType(bluetoothName, versionWordBytes);
+    const productTypeByte = versionWordBytes && versionWordBytes.length > D_SHDO_VERSION_MOTID_HOF
+      ? versionWordBytes[D_SHDO_VERSION_MOTID_HOF]
+      : undefined;
 
     const logDetails = {
       bluetoothName: bluetoothName,
       versionWordLength: versionWordBytes ? versionWordBytes.length : 0,
       versionWordHex: versionWordBytesToHex(versionWordBytes),
-      productTypeByte: detection.productTypeByte,
+      productTypeByte: productTypeByte,
+      productTypeByteType: typeof productTypeByte,
+      normalizedProductTypeByte: detection.productTypeByte,
       detectedProductType: detection.productType,
       detectedProductLabel: productTypeLabel(detection.productType),
       currentProductType: this.currentProductType,
+      currentIsGarline: this.isGarline,
+      detectedIsGarline: isGarlineProductType(detection.productType),
       reason: detection.reason
     };
+
+    this.logger.debug(this.TAG, '[ProductDetection] Version word diagnostics on MoventivPage', logDetails);
 
     if (detection.productType === 'widoor') {
       this.logger.warn(this.TAG, 'Widoor detected while on MoventivPage', logDetails);
@@ -473,6 +501,7 @@ export class MoventivPage implements OnInit {
 
     this.currentProductType = detection.productType;
     this.logger.info(this.TAG, 'Product type updated from version word', logDetails);
+    this.logProductDisplayState('afterVersionWordDetection');
   }
 
   private getBluetoothNameForDetection(): string {
@@ -853,6 +882,8 @@ export class MoventivPage implements OnInit {
     } else {
       this.logger.error(this.TAG, '[Moventiv] Aucun device trouvé dans navParams/service');
     }
+
+    this.logProductDisplayState('ionViewDidEnter');
 
     if (this.bleConnectService.getNeedConnect()) {
       this.presentLoadingDefault();

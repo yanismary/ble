@@ -578,7 +578,8 @@ export class RandBLE {
 
     return BleClient.read(deviceId, params.service, params.characteristic)
       .then((dataView: DataView) => {
-        const base64 = this.ab2str(dataView.buffer as any);
+        this.logVersionWordDataViewDiagnostics(params, dataView);
+        const base64 = this.dataViewToEncodedString(dataView);
         return { value: base64, status: 'read', name: '', service: params.service, characteristic: params.characteristic };
       });
   }
@@ -612,7 +613,7 @@ export class RandBLE {
         params.service,
         params.characteristic,
         (value: DataView) => {
-          const base64 = this.ab2str(value.buffer as any);
+          const base64 = this.dataViewToEncodedString(value);
           observer.next({ status: 'subscribedResult', value: base64 });
         }
       ).catch(err => observer.error(err));
@@ -651,9 +652,13 @@ export class RandBLE {
 
   // --- UTILITAIRES DE CONVERSION ---
 
-  private ab2str(buffer: ArrayBuffer): string {
+  private dataViewToEncodedString(dataView: DataView): string {
+    const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
+    return this.uint8ArrayToEncodedString(bytes);
+  }
+
+  private uint8ArrayToEncodedString(bytes: Uint8Array): string {
     let binary = '';
-    const bytes = new Uint8Array(buffer);
     const len = bytes.byteLength;
     for (let i = 0; i < len; i++) {
       binary += String.fromCharCode(bytes[i]);
@@ -672,7 +677,36 @@ export class RandBLE {
   }
 
   bytesToEncodedString(bytes: Uint8Array): string {
-    return this.ab2str(bytes.buffer as any);
+    return this.uint8ArrayToEncodedString(bytes);
+  }
+
+  private logVersionWordDataViewDiagnostics(params: { service: string, characteristic: string }, dataView: DataView): void {
+    if (!params || String(params.characteristic || '').toLowerCase() !== '175d6bc8-5840-4037-95da-a778395a036c') {
+      return;
+    }
+
+    const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
+    const productTypeByte = bytes.length > 12 ? bytes[12] : undefined;
+
+    this.logger.debug(this.TAG, '[ProductDetection] BLE DataView read diagnostics', {
+      service: params.service,
+      characteristic: params.characteristic,
+      dataViewByteOffset: dataView.byteOffset,
+      dataViewByteLength: dataView.byteLength,
+      bufferByteLength: dataView.buffer ? dataView.buffer.byteLength : 0,
+      bytesHex: this.bytesToHex(bytes),
+      productTypeByte: productTypeByte,
+      productTypeByteType: typeof productTypeByte
+    });
+  }
+
+  private bytesToHex(bytes: Uint8Array): string {
+    const hexParts: string[] = [];
+    for (let i = 0; i < bytes.length; i++) {
+      const value = Number(bytes[i]) & 0xFF;
+      hexParts.push(('0' + value.toString(16)).slice(-2).toUpperCase());
+    }
+    return hexParts.join(' ');
   }
 
   encodedStringToBytes(encoded: string): Uint8Array {
