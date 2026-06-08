@@ -12,6 +12,7 @@ import {
   DetectedProductType,
   ProductDetectionResult,
   detectProductType,
+  getDemoProductTypeFromConfigId,
   getProductConfigId,
   isWidoorBluetoothName,
   productTypeLabel,
@@ -789,15 +790,20 @@ export class ScanPage {
       let name = (device.name || "").toUpperCase();
 
       if (device.isDemo === true || device.isDemo === "true") {
-        let demoProductId = device.demoProductId || device.productType;
+        let demoProductId = device.demoProductId || device.productConfigId || device.productType;
+        let demoProductType = getDemoProductTypeFromConfigId(demoProductId);
         detectedConfig = demoProductId ? PRODUCTS_CONFIG.find(p => p.id === demoProductId) : undefined;
+
+        if (!detectedConfig && demoProductType !== 'unknown') {
+          detectedConfig = this.getProductConfigForDetectedType(demoProductType);
+        }
 
         if (!detectedConfig) {
           detectedConfig = PRODUCTS_CONFIG.find(p => p.id === 'widoor');
         }
-        detectedProductType = detectedConfig && detectedConfig.id === 'widoor'
-          ? 'widoor'
-          : (detectedConfig && detectedConfig.id === 'garline' ? 'garline' : 'moventiv60');
+        detectedProductType = demoProductType !== 'unknown'
+          ? demoProductType
+          : getDemoProductTypeFromConfigId(detectedConfig ? detectedConfig.id : null);
         detectedProductLabel = productTypeLabel(detectedProductType);
       }
       else if (isWidoorBluetoothName(name)) {
@@ -1210,10 +1216,11 @@ export class ScanPage {
       return;
     }
 
-    let demoDevice = this.createDemoDevice(productConfig);
+    const demoProductType = getDemoProductTypeFromConfigId(productConfig.id);
+    let demoDevice = this.createDemoDevice(productConfig, demoProductType);
 
     this.logger.info(this.TAG, 'Opening demo product page', {
-      productType: productConfig.id,
+      productType: demoProductType,
       productName: productConfig.name,
       demoName: demoDevice.name
     });
@@ -1221,8 +1228,9 @@ export class ScanPage {
     this.ngZone.run(() => {
       this.navCtrl.push(productConfig.page, {
         device: demoDevice,
-        productType: productConfig.id,
-        productName: productConfig.name,
+        productType: demoProductType,
+        productName: productTypeLabel(demoProductType),
+        demoProductId: productConfig.id,
         displayName: demoDevice.name
       }).catch((navErr) => {
         this.logger.error(this.TAG, 'Demo navigation failed', navErr);
@@ -1235,7 +1243,7 @@ export class ScanPage {
     });
   }
 
-  private createDemoDevice(productConfig: any) {
+  private createDemoDevice(productConfig: any, demoProductType: DetectedProductType) {
     return {
       rssi: -45,
       name: productConfig.demoName,
@@ -1250,7 +1258,8 @@ export class ScanPage {
       },
       isDemo: "true",
       demoProductId: productConfig.id,
-      productType: productConfig.id
+      demoProductType: demoProductType,
+      productType: demoProductType
     };
   }
 

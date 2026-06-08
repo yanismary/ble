@@ -15,10 +15,12 @@ import { LoggerService } from '../../providers/logger/logger.service';
 import {
   DetectedProductType,
   detectProductType,
+  getDemoProductTypeFromConfigId,
   getProductDisplayName,
   isGarlineProductType,
   isMoventivProductType,
   normalizeProductType,
+  productTypeToVersionWordProductByte,
   productTypeLabel,
   versionWordBytesToHex
 } from '../../app/product-detection';
@@ -357,8 +359,7 @@ export class MoventivPage implements OnInit {
     //cosmetic : loader
     //this.presentLoadingDefault();
     this.menuType = 'com';
-    const productTypeFromNavigation = normalizeProductType(this.navParams.get('productType'));
-    this.currentProductType = productTypeFromNavigation === 'unknown' ? 'moventiv60' : productTypeFromNavigation;
+    this.currentProductType = this.resolveInitialProductType();
     this.logger.debug(this.TAG, 'Produit détecté : ' + this.currentProductType);
     this.paramSubmenuType = 'basic';
     //connection  
@@ -385,6 +386,40 @@ export class MoventivPage implements OnInit {
       this.dispOptionalCom_LLB = true;
   }
 
+
+  private resolveInitialProductType(): DetectedProductType {
+    const navDevice = this.navParams.get('device') || this.navParams.get('peripheral');
+    const navDemoProductId = this.navParams.get('demoProductId');
+
+    if (this.isDemoCandidate(navDevice) || navDemoProductId) {
+      const demoProductType = getDemoProductTypeFromConfigId(
+        navDemoProductId ||
+        (navDevice && (navDevice.demoProductId || navDevice.productConfigId || navDevice.demoProductType || navDevice.productType))
+      );
+
+      if (demoProductType !== 'unknown') {
+        return demoProductType;
+      }
+    }
+
+    const productTypeFromNavigation = normalizeProductType(this.navParams.get('productType'));
+    if (productTypeFromNavigation !== 'unknown') {
+      return productTypeFromNavigation;
+    }
+
+    const productTypeFromDevice = normalizeProductType(
+      navDevice && (navDevice.detectedProductType || navDevice.demoProductType || navDevice.productType)
+    );
+    if (productTypeFromDevice !== 'unknown') {
+      return productTypeFromDevice;
+    }
+
+    return 'moventiv60';
+  }
+
+  private isDemoCandidate(device: any): boolean {
+    return !!(device && (device.isDemo === true || device.isDemo === "true"));
+  }
 
   get displayProductName(): string {
     return getProductDisplayName(this.currentProductType);
@@ -2691,7 +2726,17 @@ export class MoventivPage implements OnInit {
     //this.rval_shDo_userDatesCycles[4] = this.todayDateUint8Array[1];
     //this.rval_shDo_userDatesCycles[3] = this.todayDateUint8Array[2];
 
-    this.peripheralNameAff = "MoventivEx";
+    this.peripheralNameAff =
+      this.navParams.get('displayName') ||
+      (this.device ? (this.device.customName || this.device.name) : '') ||
+      (this.isGarline ? "GarlineEx" : "MoventivEx");
+    this.syncNameInputFromDisplayName();
+
+    this.rval_shDo_version = new Uint8Array(26);
+    const demoProductByte = productTypeToVersionWordProductByte(this.currentProductType);
+    if (demoProductByte !== null) {
+      this.rval_shDo_version[D_SHDO_VERSION_MOTID_HOF] = demoProductByte;
+    }
 
     this.rval_shDo_version_bleStack_major = 1;
     this.rval_shDo_version_bleStack_minor = 2;
@@ -2721,6 +2766,7 @@ export class MoventivPage implements OnInit {
     this.rval_mlpc_userParam_speedOpenTune = 90;
     this.rval_mlpc_userParam_speedCloseTune = 95;
     this.rval_mlpc_userParam_openTimeShort = 4;
+    this.rval_mlpc_userParam_openTimeLong = 10;
 
     //rval_mlpc_userParam_periphs1: number;
     //rval_mlpc_userParam_periphs2: number;

@@ -89,6 +89,23 @@ export function normalizeProductType(productType: string | undefined | null): De
   return 'unknown';
 }
 
+export function getDemoProductTypeFromConfigId(productConfigId: string | undefined | null): DetectedProductType {
+  return normalizeProductType(productConfigId);
+}
+
+export function productTypeToVersionWordProductByte(productType: string | undefined | null): number | null {
+  switch (normalizeProductType(productType)) {
+    case 'moventiv60':
+      return 0;
+    case 'moventiv80':
+      return 1;
+    case 'garline':
+      return 2;
+    default:
+      return null;
+  }
+}
+
 export function isGarlineProductType(productType: string | undefined | null): boolean {
   return normalizeProductType(productType) === 'garline';
 }
