@@ -131,6 +131,11 @@ const NAME_WRITE_COOLDOWN_MS = 1800;
 const RESET_WRITE_DELAY_MS = 250;
 const NAME_WRITE_MAX_LENGTH = 15;
 const NAME_ALLOWED_PATTERN = /^[A-Za-z0-9 -]*$/;
+const WIDOOR_OPEN_SPEED_MIN = 25;
+const WIDOOR_CLOSE_SPEED_MIN = 35;
+const WIDOOR_SPEED_MAX = 100;
+const WIDOOR_SHORT_TIMING_MIN = 0;
+const WIDOOR_SHORT_TIMING_MAX = 60;
 
 
 @IonicPage({
@@ -143,6 +148,11 @@ const NAME_ALLOWED_PATTERN = /^[A-Za-z0-9 -]*$/;
 export class WidoorPage implements OnInit {
   private TAG = 'WidoorPage';
   private logger: LoggerService = new LoggerService();
+  WIDOOR_OPEN_SPEED_MIN: number = WIDOOR_OPEN_SPEED_MIN;
+  WIDOOR_CLOSE_SPEED_MIN: number = WIDOOR_CLOSE_SPEED_MIN;
+  WIDOOR_SPEED_MAX: number = WIDOOR_SPEED_MAX;
+  WIDOOR_SHORT_TIMING_MIN: number = WIDOOR_SHORT_TIMING_MIN;
+  WIDOOR_SHORT_TIMING_MAX: number = WIDOOR_SHORT_TIMING_MAX;
 
   @ViewChild(Content) content!: Content;
   formName!: FormGroup;
@@ -290,7 +300,14 @@ export class WidoorPage implements OnInit {
   retryConnection: number = 6;
   menuType!: string;
   paramSubmenuType!: string;
+  activeSliderKey: string | null = null;
   openedPrecisionSliderKey: string | null = null;
+  private readonly SLIDER_AUTO_LOCK_DELAY_MS = 3000;
+  private sliderAutoLockTimeout: any = null;
+  private readonly SLIDER_BUTTON_WRITE_DELAY_MS = 400;
+  private sliderWriteTimeouts: { [key: string]: any } = {};
+  private sliderCommittedValues: { [key: string]: number } = {};
+  private sliderInteractionVersions: { [key: string]: number } = {};
 
 
   dispOptionalCom_MO!: boolean;
@@ -360,7 +377,7 @@ export class WidoorPage implements OnInit {
       event.stopPropagation();
     }
 
-    if (!key) {
+    if (!key || !this.isSliderUnlocked(key)) {
       return;
     }
 
@@ -373,6 +390,288 @@ export class WidoorPage implements OnInit {
 
   isSliderPrecisionOpen(key: string): boolean {
     return this.openedPrecisionSliderKey === key;
+  }
+
+  isSliderUnlocked(key: string): boolean {
+    return this.activeSliderKey === key;
+  }
+
+  toggleSliderLock(key: string, event?: Event): void {
+    if (event && event.stopPropagation) {
+      event.stopPropagation();
+    }
+
+    if (!key) {
+      return;
+    }
+
+    if (this.activeSliderKey === key) {
+      this.lockSlider(key);
+      return;
+    }
+
+    if (this.activeSliderKey) {
+      this.flushPendingSliderWrite(this.activeSliderKey);
+    }
+
+    this.clearSliderAutoLockTimer();
+    this.activeSliderKey = key;
+    this.openedPrecisionSliderKey = null;
+    this.bumpSliderInteractionVersion(key);
+    this.markSliderCommittedValue(key);
+  }
+
+  lockSlider(key?: string): void {
+    if (!key || this.activeSliderKey === key) {
+      this.flushPendingSliderWrite(key || this.activeSliderKey || '');
+    }
+
+    if (!key || this.activeSliderKey === key) {
+      this.activeSliderKey = null;
+      this.clearSliderAutoLockTimer();
+    }
+
+    if (!key || this.openedPrecisionSliderKey === key) {
+      this.openedPrecisionSliderKey = null;
+    }
+  }
+
+  resetSliderAutoLockTimer(key: string): void {
+    if (!key || this.activeSliderKey !== key) {
+      return;
+    }
+
+    this.clearSliderAutoLockTimer();
+    this.sliderAutoLockTimeout = setTimeout(() => {
+      this.ngZone.run(() => {
+        if (this.activeSliderKey === key) {
+          this.lockSlider(key);
+        }
+      });
+    }, this.SLIDER_AUTO_LOCK_DELAY_MS);
+  }
+
+  private clearSliderAutoLockTimer(): void {
+    if (this.sliderAutoLockTimeout) {
+      clearTimeout(this.sliderAutoLockTimeout);
+      this.sliderAutoLockTimeout = null;
+    }
+  }
+
+  onSliderReleased(sliderKey: string): void {
+    if (!this.isSliderUnlocked(sliderKey)) {
+      return;
+    }
+
+    const interactionVersion = this.bumpSliderInteractionVersion(sliderKey);
+    this.clearSliderButtonWriteTimer(sliderKey);
+    this.writeSliderValue(sliderKey, interactionVersion);
+  }
+
+  onSliderInteractionStarted(sliderKey: string): void {
+    if (!this.isSliderUnlocked(sliderKey)) {
+      return;
+    }
+
+    this.bumpSliderInteractionVersion(sliderKey);
+    this.clearSliderAutoLockTimer();
+    this.clearSliderButtonWriteTimer(sliderKey);
+  }
+
+  scheduleSliderButtonWrite(sliderKey: string): void {
+    if (!this.isSliderUnlocked(sliderKey)) {
+      return;
+    }
+
+    const interactionVersion = this.bumpSliderInteractionVersion(sliderKey);
+    this.clearSliderAutoLockTimer();
+    this.clearSliderButtonWriteTimer(sliderKey);
+    this.sliderWriteTimeouts[sliderKey] = setTimeout(() => {
+      this.sliderWriteTimeouts[sliderKey] = null;
+      this.writeSliderValue(sliderKey, interactionVersion);
+    }, this.SLIDER_BUTTON_WRITE_DELAY_MS);
+  }
+
+  stopSliderButtonPointerEvent(event?: Event): void {
+    if (event && event.stopPropagation) {
+      event.stopPropagation();
+    }
+  }
+
+  onSliderIncrementClick(event: Event, sliderKey: string): void {
+    this.handleSliderButtonClick(event, sliderKey, true);
+  }
+
+  onSliderDecrementClick(event: Event, sliderKey: string): void {
+    this.handleSliderButtonClick(event, sliderKey, false);
+  }
+
+  private handleSliderButtonClick(event: Event, sliderKey: string, increment: boolean): void {
+    if (event) {
+      if (event.preventDefault) {
+        event.preventDefault();
+      }
+      if (event.stopPropagation) {
+        event.stopPropagation();
+      }
+    }
+
+    if (!this.isSliderUnlocked(sliderKey)) {
+      return;
+    }
+
+    const stepAction = this.getSliderStepAction(sliderKey, increment);
+    if (!stepAction) {
+      return;
+    }
+
+    stepAction();
+    this.scheduleSliderButtonWrite(sliderKey);
+  }
+
+  private writeSliderValue(sliderKey: string, interactionVersion?: number): Promise<any> {
+    if (!this.isSliderUnlocked(sliderKey)) {
+      return Promise.resolve(null);
+    }
+
+    const writeAction = this.getSliderWriteAction(sliderKey);
+    if (!writeAction) {
+      return Promise.resolve(null);
+    }
+
+    this.clearSliderAutoLockTimer();
+
+    const valueToWrite = this.getSliderCurrentValue(sliderKey);
+    const writeInteractionVersion = interactionVersion || this.getSliderInteractionVersion(sliderKey);
+    if (this.sliderCommittedValues[sliderKey] === valueToWrite) {
+      this.resetSliderAutoLockTimerIfCurrent(sliderKey, writeInteractionVersion);
+      return Promise.resolve(null);
+    }
+
+    try {
+      return Promise.resolve(writeAction())
+        .then((returnObj) => {
+          if (returnObj) {
+            this.sliderCommittedValues[sliderKey] = valueToWrite;
+          }
+          return returnObj;
+        })
+        .catch((error) => {
+          this.logger.error(this.TAG, 'Erreur ecriture slider Widoor', { sliderKey: sliderKey, error: error });
+          return null;
+        })
+        .then((returnObj) => {
+          this.resetSliderAutoLockTimerIfCurrent(sliderKey, writeInteractionVersion);
+          return returnObj;
+        });
+    } catch (error) {
+      this.logger.error(this.TAG, 'Erreur ecriture slider Widoor', { sliderKey: sliderKey, error: error });
+      this.resetSliderAutoLockTimerIfCurrent(sliderKey, writeInteractionVersion);
+      return Promise.resolve(null);
+    }
+  }
+
+  private getSliderWriteAction(sliderKey: string): (() => Promise<any>) | null {
+    switch (sliderKey) {
+      case 'openSpeed':
+        return () => this.setOpenSpeedTune();
+      case 'closeSpeed':
+        return () => this.setCloseSpeedTune();
+      case 'shortTiming':
+        return () => this.setShortTiming();
+      case 'breakForceAtOpen':
+        return () => this.setBreakForceAtOpen();
+      case 'nearOpenSpeed':
+        return () => this.setNearOpenSpeed();
+      case 'nearCloseSpeed':
+        return () => this.setNearCloseSpeed();
+      default:
+        return null;
+    }
+  }
+
+  private getSliderStepAction(sliderKey: string, increment: boolean): (() => void) | null {
+    switch (sliderKey) {
+      case 'openSpeed':
+        return increment ? () => this.openSpeedTuneInc() : () => this.openSpeedTuneDec();
+      case 'closeSpeed':
+        return increment ? () => this.closeSpeedTuneInc() : () => this.closeSpeedTuneDec();
+      case 'shortTiming':
+        return increment ? () => this.shortTimingInc() : () => this.shortTimingDec();
+      default:
+        return null;
+    }
+  }
+
+  private getSliderCurrentValue(sliderKey: string): number {
+    switch (sliderKey) {
+      case 'openSpeed':
+        return Number(this.rval_mlpc_userParam_speedOpenTune);
+      case 'closeSpeed':
+        return Number(this.rval_mlpc_userParam_speedCloseTune);
+      case 'shortTiming':
+        return Number(this.rval_mlpc_userParam_openTimeShort);
+      case 'breakForceAtOpen':
+        return Number(this.rval_mlpc_proParam_breakForceAtOpen);
+      case 'nearOpenSpeed':
+        return Number(this.rval_mlpc_proParam_nearOpenSpeed);
+      case 'nearCloseSpeed':
+        return Number(this.rval_mlpc_proParam_nearCloseSpeed);
+      default:
+        return NaN;
+    }
+  }
+
+  private markSliderCommittedValue(sliderKey: string): void {
+    const currentValue = this.getSliderCurrentValue(sliderKey);
+    if (!isNaN(currentValue)) {
+      this.sliderCommittedValues[sliderKey] = currentValue;
+    }
+  }
+
+  private bumpSliderInteractionVersion(sliderKey: string): number {
+    const nextVersion = this.getSliderInteractionVersion(sliderKey) + 1;
+    this.sliderInteractionVersions[sliderKey] = nextVersion;
+    return nextVersion;
+  }
+
+  private getSliderInteractionVersion(sliderKey: string): number {
+    return this.sliderInteractionVersions[sliderKey] || 0;
+  }
+
+  private resetSliderAutoLockTimerIfCurrent(sliderKey: string, interactionVersion: number): void {
+    if (this.getSliderInteractionVersion(sliderKey) === interactionVersion) {
+      this.resetSliderAutoLockTimer(sliderKey);
+    }
+  }
+
+  private clearSliderButtonWriteTimer(sliderKey: string): void {
+    if (this.sliderWriteTimeouts[sliderKey]) {
+      clearTimeout(this.sliderWriteTimeouts[sliderKey]);
+      this.sliderWriteTimeouts[sliderKey] = null;
+    }
+  }
+
+  private clearAllSliderButtonWriteTimers(): void {
+    Object.keys(this.sliderWriteTimeouts).forEach((sliderKey) => {
+      this.clearSliderButtonWriteTimer(sliderKey);
+    });
+  }
+
+  private flushPendingSliderWrite(sliderKey: string): void {
+    if (!sliderKey || !this.sliderWriteTimeouts[sliderKey]) {
+      return;
+    }
+
+    this.clearSliderButtonWriteTimer(sliderKey);
+    const interactionVersion = this.bumpSliderInteractionVersion(sliderKey);
+    this.writeSliderValue(sliderKey, interactionVersion);
+  }
+
+  private flushAllPendingSliderWrites(): void {
+    Object.keys(this.sliderWriteTimeouts).forEach((sliderKey) => {
+      this.flushPendingSliderWrite(sliderKey);
+    });
   }
 
   //********************************************************lifeCycle*****************************************************************************/
@@ -405,6 +704,10 @@ export class WidoorPage implements OnInit {
       
       this.peripheralNameAff = this.navParams.get('displayName') || (this.peripheral ? (this.peripheral.customName || this.peripheral.name) : '') ||'';
       this.syncNameInputFromDisplayName();
+
+      if (this.isDemoDevice()) {
+        this.addDemoValues();
+      }
 
       if (this.bleConnectService && (this.bleConnectService as any).setNeedConnect) {
         (this.bleConnectService as any).setNeedConnect(false);
@@ -449,6 +752,8 @@ export class WidoorPage implements OnInit {
 
 
   ngOnDestroy() {
+    this.clearAllSliderButtonWriteTimers();
+    this.clearSliderAutoLockTimer();
     // always unsubscribe your subscriptions to prevent leaks
     // this.platform.pause.subscribe().unsubscribe();
     //this.platform.resume.subscribe().unsubscribe();
@@ -456,6 +761,9 @@ export class WidoorPage implements OnInit {
 
   // Disconnect peripheral when leaving the page
   ionViewWillLeave() {
+    this.flushAllPendingSliderWrites();
+    this.clearAllSliderButtonWriteTimers();
+    this.clearSliderAutoLockTimer();
     this.bleConnectService.setNeedConnect(false);
     this.navCtrl.swipeBackEnabled = true;
 
@@ -485,7 +793,7 @@ export class WidoorPage implements OnInit {
       return;
     }
 
-    if (device.isDemo !== "true") {
+    if (!this.isDemoDevice()) {
       this.bleConnectService.setConnectionStatus("connecting");
 
       if (this.retryConnection > 0) {
@@ -619,11 +927,11 @@ export class WidoorPage implements OnInit {
   readAll() {
     this.resizeContent();
 
+    if (this.isDemoDevice()) return;
+
     if (this.isBleActionBlocked('readAll')) {
       return;
     }
-
-    if ((this.device.isDemo) == "true") return;
 
     this.readMotorState();
     this.readVersion();
@@ -1244,25 +1552,28 @@ export class WidoorPage implements OnInit {
 
 
 
-  setOpenSpeedTune() {
+  setOpenSpeedTune(): Promise<any> {
     if (this.isBleActionBlocked('setOpenSpeedTune')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'SetSpeedOpenTune');
 
-    if ((this.device.isDemo) == "true") return;
-
     this.vibrate();
+    if ((this.device.isDemo) == "true") {
+      return Promise.resolve({ status: 'demo' });
+    }
+
     let commandData = new Uint8Array(2);
     commandData[0] = 0x01;
     commandData[1] = this.rval_mlpc_userParam_speedOpenTune;
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
+    return this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetSpeedOpenTune b0: ' + bytes[1]);
+        return returnObj;
       },
     );
   }
@@ -1270,13 +1581,15 @@ export class WidoorPage implements OnInit {
 
 
 
-  setCloseSpeedTune() {
+  setCloseSpeedTune(): Promise<any> {
     if (this.isBleActionBlocked('setCloseSpeedTune')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'SetSpeedCloseTune');
     this.vibrate();
-    if ((this.device.isDemo) == "true") return;
+    if ((this.device.isDemo) == "true") {
+      return Promise.resolve({ status: 'demo' });
+    }
 
 
     let commandData = new Uint8Array(2);
@@ -1285,23 +1598,26 @@ export class WidoorPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
+    return this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetSpeedCloseTune b0: ' + bytes[1]);
+        return returnObj;
       },
     );
   }
 
 
-  setNearOpenSpeed() {
+  setNearOpenSpeed(): Promise<any> {
     if (this.isBleActionBlocked('setNearOpenSpeed')) {
-      return;
+      return Promise.resolve(null);
     }
 
     this.logger.debug(this.TAG, 'setNearOpenSpeed');
     this.vibrate();
-    if ((this.device.isDemo) == "true") return;
+    if ((this.device.isDemo) == "true") {
+      return Promise.resolve({ status: 'demo' });
+    }
 
 
     let commandData = new Uint8Array(2);
@@ -1310,16 +1626,18 @@ export class WidoorPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
+    return this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
-  setNearCloseSpeed() {
+  setNearCloseSpeed(): Promise<any> {
     if (this.isBleActionBlocked('setNearCloseSpeed')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'setNearCloseSpeed');
     this.vibrate();
-    if ((this.device.isDemo) == "true") return;
+    if ((this.device.isDemo) == "true") {
+      return Promise.resolve({ status: 'demo' });
+    }
 
 
     let commandData = new Uint8Array(2);
@@ -1328,7 +1646,7 @@ export class WidoorPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
+    return this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString });
   }
 
   setNearOpenTorque() {
@@ -1369,14 +1687,16 @@ export class WidoorPage implements OnInit {
 
 
 
-  setShortTiming() {
+  setShortTiming(): Promise<any> {
     if (this.isBleActionBlocked('setShortTiming')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'SetShortTiming');
     this.vibrate();
 
-    if ((this.device.isDemo) == "true") return;
+    if ((this.device.isDemo) == "true") {
+      return Promise.resolve({ status: 'demo' });
+    }
 
     let commandData = new Uint8Array(2);
     commandData[0] = 0x03;
@@ -1384,10 +1704,11 @@ export class WidoorPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
+    return this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_USERPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'SetShortTiming b0: ' + bytes[1] + 'SetShortTiming b1: ' + bytes[2]);
+        return returnObj;
       },
     );
   }
@@ -1545,14 +1866,16 @@ export class WidoorPage implements OnInit {
   }
 
   setUserLock() {
+    if (this.isDemoDevice()) {
+      this.logger.debug(this.TAG, 'setUserLocker demo');
+      return;
+    }
+
     if (this.isBleActionBlocked('setUserLock')) {
       return;
     }
     this.logger.debug(this.TAG, 'setUserLocker');
     this.vibrate();
-
-    if ((this.device.isDemo) == "true") return;
-
 
     let commandData = new Uint8Array(3);
     if (!this.rval_mlpc_proParam_periphs1_lock) {
@@ -1672,14 +1995,16 @@ export class WidoorPage implements OnInit {
     );
   }
 
-  setBreakForceAtOpen() {
+  setBreakForceAtOpen(): Promise<any> {
     if (this.isBleActionBlocked('setBreakForceAtOpen')) {
-      return;
+      return Promise.resolve(null);
     }
     this.logger.debug(this.TAG, 'setBreakForceAtOpen');
     this.vibrate();
 
-    if ((this.device.isDemo) == "true") return;
+    if ((this.device.isDemo) == "true") {
+      return Promise.resolve({ status: 'demo' });
+    }
 
 
     let commandData = new Uint8Array(2);
@@ -1688,10 +2013,11 @@ export class WidoorPage implements OnInit {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
-    this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
+    return this.randble.write({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'open break force range' + bytes[1]);
+        return returnObj;
       },
     );
 
@@ -2195,57 +2521,65 @@ export class WidoorPage implements OnInit {
 
   //dec and inc buttons fct
   closeSpeedTuneInc() {
-    this.vibrate();
-    if ((this.device.isDemo) == "true") return;
-    if (this.rval_mlpc_userParam_speedCloseTune < 100)
-      this.rval_mlpc_userParam_speedCloseTune++;
-
-    this.setCloseSpeedTune();
+    this.rval_mlpc_userParam_speedCloseTune = this.incrementSliderNumber(
+      this.rval_mlpc_userParam_speedCloseTune,
+      WIDOOR_SPEED_MAX
+    );
   }
 
   closeSpeedTuneDec() {
-    this.vibrate();
-    if ((this.device.isDemo) == "true") return;
-    if (this.rval_mlpc_userParam_speedCloseTune > 50)
-      this.rval_mlpc_userParam_speedCloseTune--;
-
-    this.setCloseSpeedTune();
+    this.rval_mlpc_userParam_speedCloseTune = this.decrementSliderNumber(
+      this.rval_mlpc_userParam_speedCloseTune,
+      WIDOOR_CLOSE_SPEED_MIN
+    );
   }
 
   openSpeedTuneInc() {
-    this.vibrate();
-    if ((this.device.isDemo) == "true") return;
-    if (this.rval_mlpc_userParam_speedOpenTune < 100)
-      this.rval_mlpc_userParam_speedOpenTune++;
-
-    this.setOpenSpeedTune();
+    this.rval_mlpc_userParam_speedOpenTune = this.incrementSliderNumber(
+      this.rval_mlpc_userParam_speedOpenTune,
+      WIDOOR_SPEED_MAX
+    );
   }
 
   openSpeedTuneDec() {
-    this.vibrate();
-    if ((this.device.isDemo) == "true") return;
-    if (this.rval_mlpc_userParam_speedOpenTune > 50)
-      this.rval_mlpc_userParam_speedOpenTune--;
-
-    this.setOpenSpeedTune();
+    this.rval_mlpc_userParam_speedOpenTune = this.decrementSliderNumber(
+      this.rval_mlpc_userParam_speedOpenTune,
+      WIDOOR_OPEN_SPEED_MIN
+    );
   }
 
   shortTimingInc() {
-    this.vibrate();
-    if ((this.device.isDemo) == "true") return;
-    if (this.rval_mlpc_userParam_openTimeShort < 60)
-      this.rval_mlpc_userParam_openTimeShort++;
-
-    this.setShortTiming();
+    this.rval_mlpc_userParam_openTimeShort = this.incrementSliderNumber(
+      this.rval_mlpc_userParam_openTimeShort,
+      WIDOOR_SHORT_TIMING_MAX
+    );
   }
 
   shortTimingDec() {
-    this.vibrate();
-    if ((this.device.isDemo) == "true") return;
-    if (this.rval_mlpc_userParam_openTimeShort > 0)
-      this.rval_mlpc_userParam_openTimeShort--;
+    this.rval_mlpc_userParam_openTimeShort = this.decrementSliderNumber(
+      this.rval_mlpc_userParam_openTimeShort,
+      WIDOOR_SHORT_TIMING_MIN
+    );
+  }
 
-    this.setShortTiming();
+  private incrementSliderNumber(value: any, max: number): number {
+    const numericValue = Number(value);
+
+    if (isNaN(numericValue)) {
+      return max;
+    }
+
+    return Math.min(max, numericValue + 1);
+  }
+
+  private decrementSliderNumber(value: any, min: number): number {
+    const numericValue = Number(value);
+
+    if (isNaN(numericValue)) {
+      return min;
+    }
+
+    return Math.max(min, numericValue - 1);
   }
 
   longTimingInc() {
@@ -2319,7 +2653,7 @@ export class WidoorPage implements OnInit {
     this.rval_mlpc_proParam_periphs1_butOrRadar2 = true;
     this.rval_mlpc_proParam_periphs1_radarTest1 = false;
     this.rval_mlpc_proParam_periphs1_radarTest2 = false;
-    //rval_mlpc_proParam_periphs1_lock: boolean;
+    this.rval_mlpc_proParam_periphs1_lock = false;
 
 
     this.rval_mlpc_periphCommandRGBIndic = true;

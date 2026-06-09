@@ -399,8 +399,8 @@
 				},
 				"LOCK": {
 					"TITLE": "Configuration des sorties",
-					"STATE_ENABLED": "Activée",
-					"STATE_DISABLED": "Désactivée",
+					"STATE_ENABLED": "Activé",
+					"STATE_DISABLED": "Désactivé",
 					"NAME": "Verrou"
 				},
 				"RADAR_TEST": {

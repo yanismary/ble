@@ -876,7 +876,7 @@
         </ion-list-header>
 
         <!-- Etats des switchs -->
-        <ion-item>
+        <ion-item *ngIf="!isGarline">
           <ion-badge *ngIf="(rval_shdo_motorState_switch_PushAGo)" item-end
             [color]="rval_shdo_motorState_switch_PushAGo ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
             {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.PUSHAGO.STATE.ON" | translate }}
@@ -898,7 +898,7 @@
           <ion-label text-wrap>{{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.BLE.LABEL" | translate }}</ion-label>
         </ion-item>
 
-        <ion-item>
+        <ion-item *ngIf="!isGarline">
           <ion-badge *ngIf="(rval_shdo_motorState_switch_autoManu)" item-end
             [color]="rval_shdo_motorState_switch_direction ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
             {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.CLOSEMODE.STATE.MANUAL"| translate }}
@@ -910,7 +910,7 @@
           </ion-label>
         </ion-item>
 
-        <ion-item>
+        <ion-item *ngIf="!isGarline">
           <ion-badge *ngIf="(rval_shdo_motorState_switch_direction)" item-end
             [color]="rval_shdo_motorState_switch_direction ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
             {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.SWITCHSTATES.OPENDIRECTION.STATE.RIGHT"| translate }}
