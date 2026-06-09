@@ -1,4 +1,5 @@
-import { OnInit, Component, NgZone, ViewChild } from '@angular/core';
+import { OnInit, Component, NgZone, ViewChild, OnDestroy } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { NavController, NavParams, AlertController, ToastController, Content } from 'ionic-angular';
 import { RandBLE } from '../../providers/randble/randble';
 import { LoadingController } from 'ionic-angular';
@@ -145,7 +146,7 @@ const WIDOOR_SHORT_TIMING_MAX = 60;
   selector: 'page-widoor',
   templateUrl: 'widoor.html'
 })
-export class WidoorPage implements OnInit {
+export class WidoorPage implements OnInit, OnDestroy {
   private TAG = 'WidoorPage';
   private logger: LoggerService = new LoggerService();
   WIDOOR_OPEN_SPEED_MIN: number = WIDOOR_OPEN_SPEED_MIN;
@@ -308,6 +309,10 @@ export class WidoorPage implements OnInit {
   private sliderWriteTimeouts: { [key: string]: any } = {};
   private sliderCommittedValues: { [key: string]: number } = {};
   private sliderInteractionVersions: { [key: string]: number } = {};
+  private pauseSubscription: Subscription | null = null;
+  private resumeSubscription: Subscription | null = null;
+  private motorStateSubscription: Subscription | null = null;
+  private verifParamSubscription: Subscription | null = null;
 
 
   dispOptionalCom_MO!: boolean;
@@ -336,11 +341,11 @@ export class WidoorPage implements OnInit {
   ) {
 
     this.platform.ready().then(() => {
-      this.platform.pause.subscribe(() => {
+      this.pauseSubscription = this.platform.pause.subscribe(() => {
         this.logger.debug(this.TAG, '****UserdashboardPage PAUSED****');
         //this.disconnectBeforeSleep();
       });
-      this.platform.resume.subscribe(() => {
+      this.resumeSubscription = this.platform.resume.subscribe(() => {
         this.logger.debug(this.TAG, '****UserdashboardPage RESUMED****');
       });
     });
@@ -709,14 +714,12 @@ export class WidoorPage implements OnInit {
         this.addDemoValues();
       }
 
-      if (this.bleConnectService && (this.bleConnectService as any).setNeedConnect) {
-        (this.bleConnectService as any).setNeedConnect(false);
-      }
     } else {
       this.logger.error(this.TAG, '[Widoor] Aucun device trouvé dans navParams / service');
     }
 
     if (this.bleConnectService.getNeedConnect()) {
+      this.bleConnectService.setNeedConnect(false);
       this.presentLoadingDefault();
       this.bleConnect();
     }
@@ -754,9 +757,10 @@ export class WidoorPage implements OnInit {
   ngOnDestroy() {
     this.clearAllSliderButtonWriteTimers();
     this.clearSliderAutoLockTimer();
-    // always unsubscribe your subscriptions to prevent leaks
-    // this.platform.pause.subscribe().unsubscribe();
-    //this.platform.resume.subscribe().unsubscribe();
+    this.pauseSubscription?.unsubscribe();
+    this.resumeSubscription?.unsubscribe();
+    this.motorStateSubscription?.unsubscribe();
+    this.verifParamSubscription?.unsubscribe();
   }
 
   // Disconnect peripheral when leaving the page
@@ -772,8 +776,10 @@ export class WidoorPage implements OnInit {
   }
 
   ionViewWillUnload() {
-    this.platform.pause.subscribe().unsubscribe();
-    this.platform.resume.subscribe().unsubscribe();
+    this.pauseSubscription?.unsubscribe();
+    this.resumeSubscription?.unsubscribe();
+    this.motorStateSubscription?.unsubscribe();
+    this.verifParamSubscription?.unsubscribe();
   }
   //***********************************************************************************************************************************************/
 
@@ -813,14 +819,18 @@ export class WidoorPage implements OnInit {
                 }
               },
               (_err) => {
-                this.logger.debug(this.TAG, '[BLE] Connection error, retrying in 1.5s...');
-                setTimeout(() => this.bleConnect(), 1500);
+                const attempt = 6 - this.retryConnection;
+                const delay = Math.min(500 * Math.pow(2, attempt), 16000);
+                this.logger.debug(this.TAG, `[BLE] Connection error, retrying in ${delay}ms (attempt ${attempt})`);
+                setTimeout(() => this.bleConnect(), delay);
               }
             );
           })
           .catch((error) => {
-            this.logger.warn(this.TAG, '[BLE] Reconnexion Widoor impossible', error);
-            setTimeout(() => this.bleConnect(), 1500);
+            const attempt = 6 - this.retryConnection;
+            const delay = Math.min(500 * Math.pow(2, attempt), 16000);
+            this.logger.warn(this.TAG, `[BLE] Reconnexion Widoor impossible, retry in ${delay}ms`, error);
+            setTimeout(() => this.bleConnect(), delay);
           });
       } else {
         this.dismissLoading('bleConnect retry exhausted').then(() => {
@@ -955,7 +965,7 @@ export class WidoorPage implements OnInit {
           this.rval_shdo_motorState_pos = buf.readUIntBE(0, 2);
           var buf = Buffer.from([dataStringBytes[D_SHDO_MOTORSTATE_MPOSMSB_HOF], dataStringBytes[D_SHDO_MOTORSTATE_MPOSLSB_HOF]]);
           this.rval_shdo_motorState_mpos = buf.readUIntBE(0, 2);
-          this.rval_shdo_motorState_rpos = (this.rval_shdo_motorState_pos / this.rval_shdo_motorState_pos) * 100;
+          this.rval_shdo_motorState_rpos = this.rval_shdo_motorState_mpos > 0 ? (this.rval_shdo_motorState_pos / this.rval_shdo_motorState_mpos) * 100 : 0;
           this.rval_shdo_motorState_error = dataStringBytes[D_SHDO_MOTORSTATE_ERROR_HOF];
           this.rval_shdo_motorState_switchs = dataStringBytes[D_SHDO_MOTORSTATE_SWITCH_HOF];
           this.rval_shdo_motorState_switch_7 = Boolean((1 << 7) & this.rval_shdo_motorState_switchs);
@@ -968,7 +978,7 @@ export class WidoorPage implements OnInit {
           this.rval_shdo_motorState_switch_pairing = Boolean((1 << 0) & this.rval_shdo_motorState_switchs);
         });
       }
-    )
+    ).catch(err => { this.logger.warn(this.TAG, 'readMotorState failed', err); });
   }
 
 
@@ -997,7 +1007,7 @@ export class WidoorPage implements OnInit {
 
           });
         }
-      )
+      ).catch(err => { this.logger.warn(this.TAG, 'readVersion failed', err); })
   }
 
   readProMaintenance() {
@@ -1023,7 +1033,7 @@ export class WidoorPage implements OnInit {
 
           });
         }
-      )
+      ).catch(err => { this.logger.warn(this.TAG, 'readProMaintenance failed', err); });
   }
 
   readUserDatesCycles() {
@@ -1043,7 +1053,7 @@ export class WidoorPage implements OnInit {
           this.setShdoFirstDate();
         });
       }
-    )
+    ).catch(err => { this.logger.warn(this.TAG, 'readUserDatesCycles failed', err); });
   }
 
   readUserParam() {
@@ -1086,7 +1096,7 @@ export class WidoorPage implements OnInit {
 
         });
       }
-    )
+    ).catch(err => { this.logger.warn(this.TAG, 'readUserParam failed', err); });
   }
 
   readProParam() {
@@ -1123,12 +1133,13 @@ export class WidoorPage implements OnInit {
 
           });
         }
-      )
+      ).catch(err => { this.logger.warn(this.TAG, 'readProParam failed', err); });
   }
 
   subscribeMotorState() {
     if ((this.device.isDemo) == "true") return;
-    this.randble.subscribe({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_MOTORSTATE_CHARACTERISTIC }).subscribe(
+    this.motorStateSubscription?.unsubscribe();
+    this.motorStateSubscription = this.randble.subscribe({ address: this.peripheral.address, service: SHDO_SERVICE, characteristic: SHDO_MOTORSTATE_CHARACTERISTIC }).subscribe(
       parameter => {
         let value = parameter.value;
         this.logger.debug(this.TAG, 'Subscribed SHDO_MOTORSTATE_CHARACTERISTIC')
@@ -1140,7 +1151,7 @@ export class WidoorPage implements OnInit {
             this.rval_shdo_motorState_pos = buf.readUIntBE(0, 2);
             var buf = Buffer.from([dataStringBytes[D_SHDO_MOTORSTATE_MPOSMSB_HOF], dataStringBytes[D_SHDO_MOTORSTATE_MPOSLSB_HOF]]);
             this.rval_shdo_motorState_mpos = buf.readUIntBE(0, 2);
-            this.rval_shdo_motorState_rpos = (this.rval_shdo_motorState_pos / this.rval_shdo_motorState_pos) * 100;
+            this.rval_shdo_motorState_rpos = this.rval_shdo_motorState_mpos > 0 ? (this.rval_shdo_motorState_pos / this.rval_shdo_motorState_mpos) * 100 : 0;
             this.rval_shdo_motorState_error = dataStringBytes[D_SHDO_MOTORSTATE_ERROR_HOF];
             this.rval_shdo_motorState_switchs = dataStringBytes[D_SHDO_MOTORSTATE_SWITCH_HOF];
             this.rval_shdo_motorState_switch_7 = Boolean((1 << 7) & this.rval_shdo_motorState_switchs);
@@ -1168,7 +1179,8 @@ export class WidoorPage implements OnInit {
 
   subscribeVerifParam() {
     if ((this.device.isDemo) == "true") return;
-    this.randble.subscribe({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_VERIFPARAM_CHARACTERISTIC }).subscribe(
+    this.verifParamSubscription?.unsubscribe();
+    this.verifParamSubscription = this.randble.subscribe({ address: this.peripheral.address, service: WIDOOR_SERVICE, characteristic: MLPC_VERIFPARAM_CHARACTERISTIC }).subscribe(
       parameter => {
         let value = parameter.value;
         this.logger.debug(this.TAG, 'Subscribed MLPC_VERIFPARAM_CHARACTERISTIC')
@@ -2609,7 +2621,7 @@ export class WidoorPage implements OnInit {
     //this.rval_shDo_userDatesCycles[4] = this.todayDateUint8Array[1];
     //this.rval_shDo_userDatesCycles[3] = this.todayDateUint8Array[2];
 
-    this.peripheralNameAff = "WidoorEx";
+    this.peripheralNameAff = "WidoorExemple";
 
     this.rval_shDo_version_bleStack_major = 1;
     this.rval_shDo_version_bleStack_minor = 2;

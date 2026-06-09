@@ -1,4 +1,5 @@
-import { OnInit, Component, NgZone, ViewChild  } from '@angular/core';
+import { OnInit, Component, NgZone, ViewChild, OnDestroy } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { NavController, NavParams, AlertController, ToastController,  Content} from 'ionic-angular';
 import { RandBLE } from '../../providers/randble/randble';
 import { LoadingController } from 'ionic-angular';
@@ -160,7 +161,7 @@ const EXPERT_PASSWORD_OLD      = 'WidoorSAV';
   templateUrl: 'moventiv.html'
 })
 
-export class MoventivPage implements OnInit {
+export class MoventivPage implements OnInit, OnDestroy {
   private TAG = 'MoventivPage';
   private logger: LoggerService = new LoggerService();
   @ViewChild(Content) content!: Content;
@@ -322,6 +323,10 @@ export class MoventivPage implements OnInit {
   private sliderWriteTimeouts: { [key: string]: any } = {};
   private sliderCommittedValues: { [key: string]: number } = {};
   private sliderInteractionVersions: { [key: string]: number } = {};
+  private pauseSubscription: Subscription | null = null;
+  private resumeSubscription: Subscription | null = null;
+  private motorStateSubscription: Subscription | null = null;
+  private verifParamSubscription: Subscription | null = null;
 
 
   dispOptionalCom_MO!: boolean;
@@ -349,10 +354,10 @@ export class MoventivPage implements OnInit {
   ) {
 
     this.platform.ready().then(() => {
-      this.platform.pause.subscribe(() => {
+      this.pauseSubscription = this.platform.pause.subscribe(() => {
         this.logger.debug(this.TAG, '****UserdashboardPage PAUSED****');
       });
-      this.platform.resume.subscribe(() => {
+      this.resumeSubscription = this.platform.resume.subscribe(() => {
         this.logger.debug(this.TAG, '****UserdashboardPage RESUMED****');
       });
     });
@@ -873,12 +878,6 @@ export class MoventivPage implements OnInit {
       this.peripheral = navDevice; 
       this.logger.debug(this.TAG, '[Moventiv] Peripheral set:', this.peripheral.address);
 
-      // Si on arrive depuis ScanPage déjà connecté,
-      // on ne doit pas relancer une connexion
-      if (this.bleConnectService && this.bleConnectService.setNeedConnect) {
-        this.bleConnectService.setNeedConnect(false);
-      }
-
     } else {
       this.logger.error(this.TAG, '[Moventiv] Aucun device trouvé dans navParams/service');
     }
@@ -886,6 +885,7 @@ export class MoventivPage implements OnInit {
     this.logProductDisplayState('ionViewDidEnter');
 
     if (this.bleConnectService.getNeedConnect()) {
+      this.bleConnectService.setNeedConnect(false);
       this.presentLoadingDefault();
       this.bleConnect();
     }
@@ -943,9 +943,10 @@ export class MoventivPage implements OnInit {
   ngOnDestroy() {
     this.clearAllSliderButtonWriteTimers();
     this.clearSliderAutoLockTimer();
-    // always unsubscribe your subscriptions to prevent leaks
-    // this.platform.pause.subscribe().unsubscribe();
-    //this.platform.resume.subscribe().unsubscribe();
+    this.pauseSubscription?.unsubscribe();
+    this.resumeSubscription?.unsubscribe();
+    this.motorStateSubscription?.unsubscribe();
+    this.verifParamSubscription?.unsubscribe();
   }
 
   // Disconnect peripheral when leaving the page
@@ -960,8 +961,10 @@ export class MoventivPage implements OnInit {
   }
 
   ionViewWillUnload() {
-    this.platform.pause.subscribe().unsubscribe();
-    this.platform.resume.subscribe().unsubscribe();
+    this.pauseSubscription?.unsubscribe();
+    this.resumeSubscription?.unsubscribe();
+    this.motorStateSubscription?.unsubscribe();
+    this.verifParamSubscription?.unsubscribe();
   }
 
   //***********************************************************************************************************************************************/
@@ -1003,14 +1006,18 @@ export class MoventivPage implements OnInit {
                 }
               },
               (_err) => {
-                this.logger.debug(this.TAG, '[BLE] Connection error, retrying in 1.5s...');
-                setTimeout(() => this.bleConnect(), 1500);
+                const attempt = 6 - this.retryConnection;
+                const delay = Math.min(500 * Math.pow(2, attempt), 16000);
+                this.logger.debug(this.TAG, `[BLE] Connection error, retrying in ${delay}ms (attempt ${attempt})`);
+                setTimeout(() => this.bleConnect(), delay);
               }
             );
           })
           .catch((error) => {
-            this.logger.warn(this.TAG, '[BLE] Reconnexion Moventiv impossible', error);
-            setTimeout(() => this.bleConnect(), 1500);
+            const attempt = 6 - this.retryConnection;
+            const delay = Math.min(500 * Math.pow(2, attempt), 16000);
+            this.logger.warn(this.TAG, `[BLE] Reconnexion Moventiv impossible, retry in ${delay}ms`, error);
+            setTimeout(() => this.bleConnect(), delay);
           });
       } else {
         this.dismissLoading('bleConnect retry exhausted').then(() => {
@@ -1155,7 +1162,7 @@ export class MoventivPage implements OnInit {
           this.rval_shdo_motorState_pos = buf.readUIntBE(0, 2);
           var buf = Buffer.from([dataStringBytes[D_SHDO_MOTORSTATE_MPOSMSB_HOF], dataStringBytes[D_SHDO_MOTORSTATE_MPOSLSB_HOF]]);
           this.rval_shdo_motorState_mpos = buf.readUIntBE(0, 2);
-          this.rval_shdo_motorState_rpos = (this.rval_shdo_motorState_pos / this.rval_shdo_motorState_pos) * 100;
+          this.rval_shdo_motorState_rpos = this.rval_shdo_motorState_mpos > 0 ? (this.rval_shdo_motorState_pos / this.rval_shdo_motorState_mpos) * 100 : 0;
           this.rval_shdo_motorState_error = dataStringBytes[D_SHDO_MOTORSTATE_ERROR_HOF];
           this.rval_shdo_motorState_switchs = dataStringBytes[D_SHDO_MOTORSTATE_SWITCH_HOF];
           this.rval_shdo_motorState_switch_7 = Boolean((1 << 7) & this.rval_shdo_motorState_switchs);
@@ -1168,7 +1175,7 @@ export class MoventivPage implements OnInit {
           this.rval_shdo_motorState_switch_pairing = Boolean((1 << 0) & this.rval_shdo_motorState_switchs);
         });
       }
-    )
+    ).catch(err => { this.logger.warn(this.TAG, 'readMotorState failed', err); });
   }
 
 
@@ -1220,11 +1227,11 @@ export class MoventivPage implements OnInit {
                 versionWordHex: versionWordBytesToHex(this.rval_shDo_version)
               });
             }
-            
+
 
           });
         }
-      )
+      ).catch(err => { this.logger.warn(this.TAG, 'readVersion failed', err); });
   }
 
   readProMaintenance() {
@@ -1255,7 +1262,7 @@ export class MoventivPage implements OnInit {
             this.rval_shDo_proMaintenance_NbErrorMotor = buf.readUIntBE(0, 1);
           });
         }
-      )
+      ).catch(err => { this.logger.warn(this.TAG, 'readProMaintenance failed', err); });
   }
 
   readUserDatesCycles() {
@@ -1273,7 +1280,7 @@ export class MoventivPage implements OnInit {
           this.rval_shDo_userDatesCycles_maintCyc = buf.readUIntBE(0, 3);
         });
       }
-    )
+    ).catch(err => { this.logger.warn(this.TAG, 'readUserDatesCycles failed', err); });
   }
 
   readUserParam() {
@@ -1315,7 +1322,7 @@ export class MoventivPage implements OnInit {
 
         });
       }
-    )
+    ).catch(err => { this.logger.warn(this.TAG, 'readUserParam failed', err); });
   }
 
   readProParam() {
@@ -1391,13 +1398,14 @@ export class MoventivPage implements OnInit {
             this.rval_mlpc_proParam_periphs1_forceLock = Boolean((1 << 3) & this.rval_mlpc_proParam_periphs1);
           });
         }
-      )
+      ).catch(err => { this.logger.warn(this.TAG, 'readProParam failed', err); });
   }
 
   subscribeMotorState() {
-    this.randble.subscribe({ address: this.peripheral.address, 
-                             service: SHDO_SERVICE, 
-                             characteristic: SHDO_MOTORSTATE_CHARACTERISTIC 
+    this.motorStateSubscription?.unsubscribe();
+    this.motorStateSubscription = this.randble.subscribe({ address: this.peripheral.address,
+                             service: SHDO_SERVICE,
+                             characteristic: SHDO_MOTORSTATE_CHARACTERISTIC
                             }).subscribe(
       parameter => {
         let value = parameter.value;
@@ -1410,7 +1418,7 @@ export class MoventivPage implements OnInit {
             this.rval_shdo_motorState_pos = buf.readUIntBE(0, 2);
             var buf = Buffer.from([dataStringBytes[D_SHDO_MOTORSTATE_MPOSMSB_HOF], dataStringBytes[D_SHDO_MOTORSTATE_MPOSLSB_HOF]]);
             this.rval_shdo_motorState_mpos = buf.readUIntBE(0, 2);
-            this.rval_shdo_motorState_rpos = (this.rval_shdo_motorState_pos / this.rval_shdo_motorState_pos) * 100;
+            this.rval_shdo_motorState_rpos = this.rval_shdo_motorState_mpos > 0 ? (this.rval_shdo_motorState_pos / this.rval_shdo_motorState_mpos) * 100 : 0;
             this.rval_shdo_motorState_error = dataStringBytes[D_SHDO_MOTORSTATE_ERROR_HOF];
             this.rval_shdo_motorState_switchs = dataStringBytes[D_SHDO_MOTORSTATE_SWITCH_HOF];
             this.rval_shdo_motorState_switch_7 = Boolean((1 << 7) & this.rval_shdo_motorState_switchs);
@@ -1436,8 +1444,9 @@ export class MoventivPage implements OnInit {
   }
 
   subscribeVerifParam() {
+    this.verifParamSubscription?.unsubscribe();
     // this.randble.subscribe({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAMALL_CHARACTERISTIC }).subscribe(
-    this.randble.subscribe({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC }).subscribe(
+    this.verifParamSubscription = this.randble.subscribe({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC }).subscribe(
       parameter => {
         let value = parameter.value;
         this.logger.debug(this.TAG, 'Subscribed MLPC_PROPARAM_CHARACTERISTIC')

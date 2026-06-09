@@ -459,17 +459,26 @@ export class RandBLE {
 
       this.logger.info(this.TAG, 'Connection attempt', { address: address });
 
+      const CONNECT_TIMEOUT_MS = 15000;
+      const timeoutHandle = setTimeout(() => {
+        if (!active) return;
+        this.logger.error(this.TAG, 'Connection timeout', { address: address, timeoutMs: CONNECT_TIMEOUT_MS });
+        emitError(new Error('BLE connect timeout after ' + CONNECT_TIMEOUT_MS + 'ms'), 'connect_timeout');
+      }, CONNECT_TIMEOUT_MS);
+
       BleClient.connect(address, (deviceId) => {
         this.logger.warn(this.TAG, 'Runtime disconnection', { address: deviceId });
         emitNext({ status: 'disconnected', address: deviceId }, 'runtime_disconnection');
       })
       .then(async () => {
-        await new Promise(r => setTimeout(r, 600)); 
-        
+        clearTimeout(timeoutHandle);
+        await new Promise(r => setTimeout(r, 600));
+
         this.logger.info(this.TAG, 'Connection established', { address: address });
         emitNext({ status: 'connected', address: address }, 'connected');
       })
       .catch(err => {
+        clearTimeout(timeoutHandle);
         this.logger.error(this.TAG, 'Connection failed', { address: address, error: err });
         emitError(err, 'connect_failure');
       });
@@ -477,6 +486,7 @@ export class RandBLE {
       return () => {
         if (!active) return;
         active = false;
+        clearTimeout(timeoutHandle);
         this.logger.debug(this.TAG, 'Connect observable unsubscribed', { address: address });
       };
     });

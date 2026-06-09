@@ -1017,6 +1017,14 @@ export class ScanPage {
               event: res
             });
 
+            if (phase === 'navigating' || phase === 'completed') {
+              // Déconnexion survenue pendant/après la navigation (typique du bond Android).
+              // La page produit va gérer la reconnexion via needConnect=true.
+              this.bleConnectService.setNeedConnect(true);
+              cleanupConnectionFlow('runtime_disconnected_during_nav', false);
+              return;
+            }
+
             this.toastCtrl.create({
               message: 'Connexion Bluetooth interrompue. Veuillez réessayer.',
               duration: 3000,
