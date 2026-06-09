@@ -2624,13 +2624,13 @@ export class WidoorPage implements OnInit {
     this.rval_shdo_motorState_switch_pairing = false;
 
 
-    this.rval_shDo_userDatesCycles_totCyc = 55989;
+    this.rval_shDo_userDatesCycles_totCyc = 0;
 
 
 
-    this.rval_shDo_proMaintenance_NbInit = 10;
-    this.rval_shDo_proMaintenance_NbCyclesSinceInit = 200;
-    this.rval_shDo_proMaintenance_NbObsDetect = 2;
+    this.rval_shDo_proMaintenance_NbInit = 0;
+    this.rval_shDo_proMaintenance_NbCyclesSinceInit = 0;
+    this.rval_shDo_proMaintenance_NbObsDetect = 0;
 
     this.rval_shDo_proMaintenance_NbOverHeatingMotor = 0;
     this.rval_shDo_proMaintenance_NbErrorEncoder = 0;
