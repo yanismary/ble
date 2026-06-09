@@ -599,7 +599,8 @@
 		"CHOICE": {
 			"TITLE": "Choisissez un tutoriel",
 			"WIDOOR": "Tuto Widoor",
-			"MOVENTIV": "Tuto Moventiv"
+			"MOVENTIV": "Tuto Moventiv",
+			"GARLINE": "Tuto Garline"
 		},
 		"END": {
 			"READY": "Prêt à utiliser votre Widoor ?",

@@ -45,6 +45,8 @@ page-infoSlide {
       .tutorial-skip-button {
         position: fixed;
         top: 45px;
+        top: calc(35px + constant(safe-area-inset-top));
+        top: calc(35px + env(safe-area-inset-top));
         right: 20px;
         z-index: 9999;
         display: block;
@@ -96,10 +98,30 @@ page-infoSlide {
       }
 
       .slide-image {
-        max-height: 50% !important;
-        max-width: 60% !important;
+        width: 82%;
+        max-width: 420px;
+        max-height: 56% !important;
+        height: auto;
+        object-fit: contain;
         margin: 18px 0;
         margin-top: 2px !important;
+      }
+
+      @media (max-height: 620px) {
+        .tutorial-slide-content {
+          padding: 18px 18px 72px;
+          transform: translateY(18px);
+        }
+
+        .slide-title {
+          margin-top: 1.6rem;
+        }
+
+        .slide-image {
+          width: 78%;
+          max-height: 48% !important;
+          margin: 10px 0;
+        }
       }
 
       b {

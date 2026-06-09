@@ -594,7 +594,8 @@
 			"CHOICE": {
 				"TITLE": "Tutorial auswahlen",
 				"WIDOOR": "Widoor Tutorial",
-				"MOVENTIV": "Moventiv Tutorial"
+				"MOVENTIV": "Moventiv Tutorial",
+				"GARLINE": "Garline Tutorial"
 			},
 			"END": {
 				"READY": "Sind Sie bereit Ihren WIDOOR zu benutzen?",

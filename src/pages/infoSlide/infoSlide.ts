@@ -2,8 +2,9 @@ import { OnInit, Component } from '@angular/core';
 import { IonicPage, NavController, NavParams, Platform } from 'ionic-angular';
 import { TranslateService } from '@ngx-translate/core';
 import { LoggerService } from '../../providers/logger/logger.service';
+import { getProductConfigId, normalizeProductType } from '../../app/product-detection';
 
-type TutorialProduct = 'widoor' | 'moventiv';
+type TutorialProduct = 'widoor' | 'moventiv' | 'garline';
 
 interface TutorialSlide {
   title: string;
@@ -20,10 +21,12 @@ export class InfoSlidePage implements OnInit {
   slides: TutorialSlide[] = [];
   slidesWidoor: TutorialSlide[] = [];
   slidesMoventiv: TutorialSlide[] = [];
+  slidesGarline: TutorialSlide[] = [];
   selectedTutorial: TutorialProduct | null = null;
   selectedReadyTitle: string = '';
   readyWidoor: string = '';
   readyMoventiv: string = '';
+  readyGarline: string = '';
   private TAG = 'InfoSlidePage';
 
   constructor(
@@ -39,6 +42,7 @@ export class InfoSlidePage implements OnInit {
     this.logger.debug(this.TAG, 'ngOnInit started');
 
     const platformKey = this.platform.is('ios') ? 'IOS' : 'ANDROID';
+    this.selectedTutorial = this.resolveInitialTutorial();
 
     this.translate.get([
         'INFOSLIDE.SLIDE1.TITLE', 'INFOSLIDE.SLIDE1.DESC', 
@@ -56,8 +60,10 @@ export class InfoSlidePage implements OnInit {
         this.logger.info(this.TAG, 'Slides loaded');
         this.readyWidoor = this.productText(res["INFOSLIDE.END.READY"], 'widoor');
         this.readyMoventiv = this.productText(res["INFOSLIDE.END.READY"], 'moventiv');
+        this.readyGarline = this.productText(res["INFOSLIDE.END.READY"], 'garline');
         this.slidesWidoor = this.buildSlides(res, platformKey, 'widoor');
         this.slidesMoventiv = this.buildSlides(res, platformKey, 'moventiv');
+        this.slidesGarline = this.buildSlides(res, platformKey, 'garline');
         this.applySelectedTutorial();
       });
 
@@ -80,8 +86,20 @@ export class InfoSlidePage implements OnInit {
       return;
     }
 
-    this.slides = this.selectedTutorial === 'widoor' ? this.slidesWidoor : this.slidesMoventiv;
-    this.selectedReadyTitle = this.selectedTutorial === 'widoor' ? this.readyWidoor : this.readyMoventiv;
+    if (this.selectedTutorial === 'widoor') {
+      this.slides = this.slidesWidoor;
+      this.selectedReadyTitle = this.readyWidoor;
+      return;
+    }
+
+    if (this.selectedTutorial === 'garline') {
+      this.slides = this.slidesGarline;
+      this.selectedReadyTitle = this.readyGarline;
+      return;
+    }
+
+    this.slides = this.slidesMoventiv;
+    this.selectedReadyTitle = this.readyMoventiv;
   }
 
   private buildSlides(res: any, platformKey: string, product: TutorialProduct): TutorialSlide[] {
@@ -144,11 +162,15 @@ export class InfoSlidePage implements OnInit {
       };
     }
 
+    const androidSlide4 = product === 'widoor' && lang === 'fr'
+      ? basePath + 'slide4_anroid_fr_widoor.jpg'
+      : basePath + 'slide4_android_' + lang + '_' + product + '.jpg';
+
     return {
       slide1: basePath + 'slide1_' + product + '.png',
       slide2: basePath + 'slide2_android_' + lang + '_' + product + '.jpg',
       slide3: basePath + 'slide3_android_' + lang + '_' + product + '.jpg',
-      slide4: basePath + 'slide4_android_' + lang + '_' + product + '.jpg',
+      slide4: androidSlide4,
       slide5: basePath + 'slide5_android_' + lang + '_' + product + '.jpg',
       slide6: basePath + 'slide6_android_' + lang + '_' + product + '.jpg'
     };
@@ -157,6 +179,17 @@ export class InfoSlidePage implements OnInit {
   private productText(value: string, product: TutorialProduct): string {
     if (!value) {
       return value;
+    }
+
+    if (product === 'garline') {
+      return value
+        .replace(/MOVENTIV/g, 'GARLINE')
+        .replace(/WIDOOR/g, 'GARLINE')
+        .replace(/WIDOR/g, 'GARLINE')
+        .replace(/Moventiv/g, 'GARLINE')
+        .replace(/Widoor/g, 'GARLINE')
+        .replace(/widoor/g, 'garline')
+        .replace(/moventiv/g, 'garline');
     }
 
     if (product === 'widoor') {
@@ -171,6 +204,55 @@ export class InfoSlidePage implements OnInit {
       .replace(/WIDOR/g, 'MOVENTIV')
       .replace(/Widoor/g, 'Moventiv')
       .replace(/widoor/g, 'moventiv');
+  }
+
+  private resolveInitialTutorial(): TutorialProduct | null {
+    const explicitTutorial = this.normalizeTutorialProduct(
+      this.navParams.get('tutorialProduct')
+      || this.navParams.get('tutorial')
+      || this.navParams.get('productConfigId')
+      || this.navParams.get('demoProductId')
+    );
+    if (explicitTutorial) {
+      return explicitTutorial;
+    }
+
+    const productType = normalizeProductType(
+      this.navParams.get('productType')
+      || this.navParams.get('demoProductType')
+    );
+    const productTutorial = this.normalizeTutorialProduct(getProductConfigId(productType));
+    if (productTutorial) {
+      return productTutorial;
+    }
+
+    const device = this.navParams.get('device') || {};
+    const deviceTutorial = this.normalizeTutorialProduct(
+      device.demoProductId
+      || device.productConfigId
+      || device.demoProductType
+      || device.productType
+    );
+    if (deviceTutorial) {
+      return deviceTutorial;
+    }
+
+    const deviceProductType = normalizeProductType(device.detectedProductType || device.productType || device.demoProductType);
+    return this.normalizeTutorialProduct(getProductConfigId(deviceProductType));
+  }
+
+  private normalizeTutorialProduct(value: string | null | undefined): TutorialProduct | null {
+    const normalizedValue = String(value || '').toLowerCase();
+    if (normalizedValue === 'widoor') {
+      return 'widoor';
+    }
+    if (normalizedValue === 'garline') {
+      return 'garline';
+    }
+    if (normalizedValue === 'moventiv' || normalizedValue === 'moventiv60' || normalizedValue === 'moventiv80') {
+      return 'moventiv';
+    }
+    return null;
   }
 
   ionViewDidEnter() {
