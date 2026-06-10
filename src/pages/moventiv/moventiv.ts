@@ -1049,11 +1049,16 @@ export class MoventivPage implements OnInit, OnDestroy {
     this.logger.debug(this.TAG, '[STEP 1] Connected to hardware');
     this.isBleConnectionUnstable = false;
     this.isBleBusy = false;
-    this.peripheral = peripheral;
+    this.peripheral = this.normalizeBleDevice(Object.assign(this.peripheral || {}, peripheral || {}));
+    this.device = this.normalizeBleDevice(Object.assign(this.device || {}, this.peripheral || {}));
+    this.bleConnectService.setConnectedPeripheral(this.peripheral);
+    this.bleConnectService.setConnectionStatus('connected');
 
-    this.peripheralNameAff =
-    this.navParams.get('displayName') || peripheral.customName || peripheral.name || '';
-    this.syncNameInputFromDisplayName();
+    const incomingName = this.navParams.get('displayName') || peripheral.customName || peripheral.name;
+    if (incomingName) {
+      this.peripheralNameAff = incomingName;
+      this.syncNameInputFromDisplayName();
+    }
 
     setTimeout(() => {
       this.randble.discover({ address: peripheral.address })
