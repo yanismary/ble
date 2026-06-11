@@ -45,7 +45,6 @@ documentation/
 coverage/
 
 # Capacitor platforms (générées)
-android/
 ios/
 
 # Cordova (si présent)
