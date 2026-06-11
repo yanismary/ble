@@ -1,8 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.mantion.app',
-  appName: 'MANTION_SMT',
+  appId: 'com.mantion.doorcontrol',
+  appName: 'MANTION Door Control',
   webDir: 'www',
   server: {
     androidScheme: 'https'

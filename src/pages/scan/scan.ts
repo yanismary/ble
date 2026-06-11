@@ -830,17 +830,19 @@ export class ScanPage {
         return;
       }
 
+      let resolvedConfig: ProductConfig = detectedConfig;
+
       this.logger.info(this.TAG, 'Product page resolved for selected device', {
         productType: detectedProductType,
         productLabel: detectedProductLabel,
-        productConfigId: detectedConfig.id,
-        productName: detectedConfig.name
+        productConfigId: resolvedConfig.id,
+        productName: resolvedConfig.name
       });
 
       // Si c'est un appareil de demo, on ouvre directement la page sans connecter
       if (device.isDemo === true || device.isDemo === "true") {
         phase = 'navigating';
-        this.navCtrl.push(detectedConfig.page, {
+        this.navCtrl.push(resolvedConfig.page, {
           device: device,
           productType: detectedProductType,
           productName: detectedProductLabel
@@ -866,7 +868,7 @@ export class ScanPage {
       this.logger.info(this.TAG, 'Selected device identifier', {
         targetAddress: targetAddress,
         productType: detectedProductType,
-        productConfigId: detectedConfig.id
+        productConfigId: resolvedConfig.id
       });
 
       if (!targetAddress) {
@@ -939,7 +941,7 @@ export class ScanPage {
                     detectedProductType = versionDetection.productType;
                     detectedProductLabel = productTypeLabel(detectedProductType);
                     const configFromVersion = this.getProductConfigForDetectedType(detectedProductType);
-                    detectedConfig = configFromVersion || detectedConfig;
+                    resolvedConfig = configFromVersion || resolvedConfig;
                   }
 
                   this.bleConnectService.setWasConnected(true);
@@ -951,10 +953,10 @@ export class ScanPage {
                     address: targetAddress,
                     productType: detectedProductType,
                     productLabel: detectedProductLabel,
-                    productConfigId: detectedConfig.id
+                    productConfigId: resolvedConfig.id
                   });
 
-                  this.navCtrl.push(detectedConfig.page, {
+                  this.navCtrl.push(resolvedConfig.page, {
                     device: device,
                     productType: detectedProductType,
                     productName: detectedProductLabel
@@ -963,7 +965,7 @@ export class ScanPage {
                       address: targetAddress,
                       productType: detectedProductType,
                       productLabel: detectedProductLabel,
-                      productConfigId: detectedConfig.id
+                      productConfigId: resolvedConfig.id
                     });
                     phase = 'completed';
                     await cleanupConnectionFlow('navigation_success', false);
@@ -971,7 +973,7 @@ export class ScanPage {
                     this.logger.error(this.TAG, 'Navigation failed after BLE connection', {
                       address: targetAddress,
                       productType: detectedProductType,
-                      productConfigId: detectedConfig.id,
+                      productConfigId: resolvedConfig.id,
                       error: navErr
                     });
                     this.toastCtrl.create({

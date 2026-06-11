@@ -1,5 +1,5 @@
 {
-  "name": "mantion_smt",
+  "name": "MANTION Door Control",
   "integrations": {
     "capacitor": {}
   },
