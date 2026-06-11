@@ -12,12 +12,6 @@
 		"NAME": "Nom : ",
 		"MAC_ADDRESS": "MAC:",
 		"UUID_ADDRESS": "UUID:",
-    "PAIRED": "Appairé :",
-		"PAIRED_NA": "Appairé : ",
-		"PAIRED_YN": {
-			"NO": "non",
-			"YES": "oui"
-		},
 		"SIGNAL_QUALITY": "Qualité du signal : ",
 		"SIGNAL_QUALITY_VERYBAD": "Très mauvais",
 		"SIGNAL_QUALITY_BAD": "Mauvais",
@@ -59,6 +53,12 @@
 		},
 		"CIRCLEBUTTONS": {
 			"EXAMPLE": "Exemple"
+		},
+		"DEMO_SELECTOR": {
+			"CANCEL": "Annuler",
+			"MOVENTIV_EXAMPLE": "MOVENTIV exemple",
+			"GARLINE_EXAMPLE": "GARLINE exemple",
+			"WIDOOR_EXAMPLE": "WIDOOR exemple"
 		}
 	},
 	"POPOVER": {
@@ -433,7 +433,7 @@
 		"PRODUCT_CHOICE": {
 			"TITLE": "Quel produit souhaitez-vous appairer ?",
 			"WIDOOR": "WIDOOR",
-			"MOVENTIV": "MOVENTIV"
+			"MOVENTIV": "MOVENTIV/GARLINE"
 		},
 		"PAIRING": {
 			"TITLE": "Appairage",
@@ -456,10 +456,10 @@
 	},
 	"ABOUT_PAGE": {
 		"NAVBAR_TITLE": "A propos",
-		"CONTENT_TITLE": "MOVENTIV",
+		"CONTENT_TITLE": "MANTION Door Control",
 		"VERSION": "Version :",
 		"LAST_MODIFICATION": "Dernières modifications : ",
-		"PARAGRAPHE1": "La liste de sélection de poids affiche maintenant la dernière sélection faite",
+		"PARAGRAPHE1": "Nouvelle application regroupant les anciennes applications MANTION. Les fonctionnalités principales restent identiques, avec une meilleure stabilité et une interface utilisateur améliorée.",
 		"PARAGRAPHE2": "Ajout d'un avertissement lors du changement de poids",
 		"PARAGRAPHE2_LIST": {
 			"ITEM1": "",

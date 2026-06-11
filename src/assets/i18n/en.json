@@ -12,12 +12,6 @@
 		"NAME": "Name : ",
 		"MAC_ADDRESS": "MAC:",
 		"UUID_ADDRESS": "UUID:",
-		"PAIRED": "Paired : ",
-        "PAIRED_NA": "Paired : ",
-		"PAIRED_YN": {
-			"NO": "No",
-			"YES": "Yes"
-		},
 		"SIGNAL_QUALITY": "Signal quality : ",
 		"SIGNAL_QUALITY_VERYBAD": "Very bad",
 		"SIGNAL_QUALITY_BAD": "Bad",
@@ -59,6 +53,12 @@
 		},
 		"CIRCLEBUTTONS": {
 			"EXAMPLE": "Example"
+		},
+		"DEMO_SELECTOR": {
+			"CANCEL": "Cancel",
+			"MOVENTIV_EXAMPLE": "MOVENTIV example",
+			"GARLINE_EXAMPLE": "GARLINE example",
+			"WIDOOR_EXAMPLE": "WIDOOR example"
 		}
 	},
 	"POPOVER": {
@@ -428,7 +428,7 @@
 		"PRODUCT_CHOICE": {
 			"TITLE": "Which product do you want to pair?",
 			"WIDOOR": "WIDOOR",
-			"MOVENTIV": "MOVENTIV"
+			"MOVENTIV": "MOVENTIV/GARLINE"
 		},
 		"PAIRING": {
 			"TITLE": "Pairing",
@@ -451,10 +451,10 @@
 	},
 		"ABOUT_PAGE": {
 			"NAVBAR_TITLE": "About",
-			"CONTENT_TITLE": "MOVENTIV",
+			"CONTENT_TITLE": "MANTION Door Control",
 			"VERSION": "Version :",
 			"LAST_MODIFICATION": "Last modifications : ",
-			"PARAGRAPHE1": "The weight selection list now displays the last selection made",
+			"PARAGRAPHE1": "New application bringing together the previous MANTION apps. The main features remain the same, with improved stability and an improved user interface.",
 			"PARAGRAPHE2": "Addition of a warning when changing weight",
 			"PARAGRAPHE2_LIST": {
 				"ITEM1": "",

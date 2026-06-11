@@ -41,15 +41,6 @@
         <h2 text-wrap>
           <b>{{ "SCAN_PAGE.NAME" | translate }}</b> {{device?.name?.replace('#CHA','').replace('#CUI','').replace('#SDB','').replace('#ENT','').replace('#SAL','').replace('#WCS','').replace('#SDJ','').replace('#SLL','').replace('#GAR','').replace('#SAM','')
             || 'Unnamed' }}</h2>
-        <div *ngIf="isVisiblePaired" [ngSwitch]="device.isBonded">
-          <p *ngSwitchCase="true">{{ "SCAN_PAGE.PAIRED" | translate }}
-            <span ion-text color="secondary">{{"SCAN_PAGE.PAIRED_YN.YES" | translate }}</span>
-          </p>
-          <p *ngSwitchCase="false">{{ "SCAN_PAGE.PAIRED" | translate }}
-            <span ion-text color="danger">{{"SCAN_PAGE.PAIRED_YN.NO" | translate }}</span>
-          </p>
-          <p *ngSwitchDefault>{{ "SCAN_PAGE.PAIRED_NA" | translate }}</p>
-        </div>
 
         <p text-wrap *ngIf="(isVisibleMac) && (!viewisIos)">
           {{ "SCAN_PAGE.MAC_ADDRESS" | translate }}

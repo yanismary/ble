@@ -92,7 +92,6 @@ export class ScanPage {
   viewisIos: boolean = false;
   statusMessage: string = '';
   isVisibleMac: any;
-  isVisiblePaired: any;
   isScanning: boolean = false;
   isPushOnce: boolean = false;
   private isConnectionFlowInProgress: boolean = false;
@@ -163,13 +162,6 @@ export class ScanPage {
     this.storage.get('StoredIsVisibleMAC').then((val) => {
       this.isVisibleMac = JSON.parse(val);
     });
-
-    if (this.platform.is('android')) {
-      this.isVisiblePaired = true;
-    }
-    else { 
-      this.isVisiblePaired = false; 
-    }
 
     if (this.platform.is('ios')) {
       this.viewisIos = true;
@@ -1198,36 +1190,66 @@ export class ScanPage {
   launchDemoMode() {
     this.logger.info(this.TAG, 'Demo mode selection requested');
 
+    const demoProducts = [
+      {
+        id: 'moventiv',
+        title: this.getTranslatedText('SCAN_PAGE.DEMO_SELECTOR.MOVENTIV_EXAMPLE', 'MOVENTIV exemple')
+      },
+      {
+        id: 'garline',
+        title: this.getTranslatedText('SCAN_PAGE.DEMO_SELECTOR.GARLINE_EXAMPLE', 'GARLINE exemple')
+      },
+      {
+        id: 'widoor',
+        title: this.getTranslatedText('SCAN_PAGE.DEMO_SELECTOR.WIDOOR_EXAMPLE', 'WIDOOR exemple')
+      }
+    ];
+    const cancelText = this.getTranslatedText('SCAN_PAGE.DEMO_SELECTOR.CANCEL', 'Annuler');
+
     let alert = this.alertCtrl.create({
-      title: 'Exemple',
-      message: 'Choisissez un produit',
+      title: this.getTranslatedText('SCAN_PAGE.CIRCLEBUTTONS.EXAMPLE', 'Exemple'),
+      cssClass: 'demo-product-alert',
       buttons: [
         {
-          text: 'Widoor',
+          text: demoProducts[0].title,
+          cssClass: 'demo-product-button demo-product-button-moventiv',
           handler: () => {
-            this.openDemoProduct('widoor');
+            this.openDemoProduct(demoProducts[0].id);
           }
         },
         {
-          text: 'Moventiv',
+          text: demoProducts[1].title,
+          cssClass: 'demo-product-button demo-product-button-garline',
           handler: () => {
-            this.openDemoProduct('moventiv');
+            this.openDemoProduct(demoProducts[1].id);
           }
         },
         {
-          text: 'Garline',
+          text: demoProducts[2].title,
+          cssClass: 'demo-product-button demo-product-button-widoor',
           handler: () => {
-            this.openDemoProduct('garline');
+            this.openDemoProduct(demoProducts[2].id);
           }
         },
         {
-          text: 'Annuler',
-          role: 'cancel'
+          text: cancelText,
+          role: 'cancel',
+          cssClass: 'demo-product-cancel-button'
         }
       ]
     });
 
     alert.present();
+  }
+
+  private getTranslatedText(key: string, fallback: string): string {
+    const translatedText = this.translate.instant(key);
+
+    if (!translatedText || translatedText === key) {
+      return fallback;
+    }
+
+    return translatedText;
   }
 
   private openDemoProduct(productId: string) {
