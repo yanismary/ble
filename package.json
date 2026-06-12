@@ -52,6 +52,7 @@
   },
   "devDependencies": {
     "@angular/tsc-wrapped": "^4.4.6",
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^3.9.0",
     "@ionic/app-scripts": "^3.2.4",
     "@types/node": "12.20.55",
