@@ -105,6 +105,9 @@ const D_MLPC_USERPARAM_SOT_HOF = 1;
 const D_MLPC_USERPARAM_SCT_HOF = 2;
 const D_MLPC_USERPARAM_OTS_HOF = 3;
 const D_MLPC_USERPARAM_OTL_HOF = 4;
+const MLPC_USERPARAM_OPEN_TIME_SHORT_DEFAULT = 1;
+const MLPC_USERPARAM_OPEN_TIME_SHORT_MIN = 0;
+const MLPC_USERPARAM_OPEN_TIME_SHORT_MAX = 60;
 const MLPC_USERPARAM_OPEN_TIME_LONG_MIN = 1;
 const MLPC_USERPARAM_OPEN_TIME_LONG_MAX = 60;
 const D_MLPC_USERPARAM_PC1_HOF = 5;
@@ -250,7 +253,7 @@ export class MoventivPage implements OnInit, OnDestroy {
 
   rval_mlpc_userParam_speedOpenTune!: number;
   rval_mlpc_userParam_speedCloseTune!: number;
-  rval_mlpc_userParam_openTimeShort!: number;
+  rval_mlpc_userParam_openTimeShort: number = MLPC_USERPARAM_OPEN_TIME_SHORT_DEFAULT;
   rval_mlpc_userParam_openTimeLong!: number;
   rval_mlpc_userParam_periphs1!: number;
   rval_mlpc_userParam_periphs2!: number;
@@ -517,6 +520,42 @@ export class MoventivPage implements OnInit, OnDestroy {
     );
   }
 
+
+  private readCommandUserParamOnPageEntry(): void {
+    if (this.isDemoDevice()) {
+      return;
+    }
+
+    if (!this.peripheral || !this.peripheral.address) {
+      this.logger.warn(this.TAG, '[Moventiv] Lecture parametres commande ignoree: peripheral absent');
+      return;
+    }
+
+    this.readUserParam();
+  }
+
+  private normalizeOpenTimeShort(value: any): number {
+    if (this.isValidOpenTimeShort(value)) {
+      return Number(value);
+    }
+
+    if (this.isValidOpenTimeShort(this.rval_mlpc_userParam_openTimeShort)) {
+      return this.rval_mlpc_userParam_openTimeShort;
+    }
+
+    return MLPC_USERPARAM_OPEN_TIME_SHORT_DEFAULT;
+  }
+
+  private isValidOpenTimeShort(value: any): boolean {
+    if (value === null || typeof value === 'undefined' || value === '') {
+      return false;
+    }
+
+    const numericValue = Number(value);
+    return !isNaN(numericValue)
+      && numericValue >= MLPC_USERPARAM_OPEN_TIME_SHORT_MIN
+      && numericValue <= MLPC_USERPARAM_OPEN_TIME_SHORT_MAX;
+  }
 
   toggleSliderPrecision(key: string, event?: Event): void {
     if (event && event.stopPropagation) {
@@ -888,6 +927,8 @@ export class MoventivPage implements OnInit, OnDestroy {
       this.bleConnectService.setNeedConnect(false);
       this.presentLoadingDefault();
       this.bleConnect();
+    } else {
+      this.readCommandUserParamOnPageEntry();
     }
   }
 
@@ -1313,7 +1354,7 @@ export class MoventivPage implements OnInit, OnDestroy {
 
           this.rval_mlpc_userParam_speedOpenTune = dataBytes[D_MLPC_USERPARAM_SOT_HOF];
           this.rval_mlpc_userParam_speedCloseTune = dataBytes[D_MLPC_USERPARAM_SCT_HOF];
-          this.rval_mlpc_userParam_openTimeShort = dataBytes[D_MLPC_USERPARAM_OTS_HOF];
+          this.rval_mlpc_userParam_openTimeShort = this.normalizeOpenTimeShort(dataBytes[D_MLPC_USERPARAM_OTS_HOF]);
           this.rval_mlpc_userParam_openTimeLong = this.clampLongTiming(dataBytes[D_MLPC_USERPARAM_OTL_HOF]);
           this.rval_mlpc_userParam_periphs1 = dataBytes[D_MLPC_USERPARAM_PC1_HOF];
           this.rval_mlpc_userParam_periphs2 = dataBytes[D_MLPC_USERPARAM_PC2_HOF];
@@ -1327,7 +1368,14 @@ export class MoventivPage implements OnInit, OnDestroy {
 
         });
       }
-    ).catch(err => { this.logger.warn(this.TAG, 'readUserParam failed', err); });
+    ).catch(err => {
+      this.logger.warn(this.TAG, 'readUserParam failed', err);
+      if (!this.isValidOpenTimeShort(this.rval_mlpc_userParam_openTimeShort)) {
+        this.ngZone.run(() => {
+          this.rval_mlpc_userParam_openTimeShort = MLPC_USERPARAM_OPEN_TIME_SHORT_DEFAULT;
+        });
+      }
+    });
   }
 
   readProParam() {

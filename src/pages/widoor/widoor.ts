@@ -135,6 +135,7 @@ const NAME_ALLOWED_PATTERN = /^[A-Za-z0-9 -]*$/;
 const WIDOOR_OPEN_SPEED_MIN = 25;
 const WIDOOR_CLOSE_SPEED_MIN = 35;
 const WIDOOR_SPEED_MAX = 100;
+const WIDOOR_SHORT_TIMING_DEFAULT = 1;
 const WIDOOR_SHORT_TIMING_MIN = 0;
 const WIDOOR_SHORT_TIMING_MAX = 60;
 
@@ -236,7 +237,7 @@ export class WidoorPage implements OnInit, OnDestroy {
 
   rval_mlpc_userParam_speedOpenTune!: number;
   rval_mlpc_userParam_speedCloseTune!: number;
-  rval_mlpc_userParam_openTimeShort!: number;
+  rval_mlpc_userParam_openTimeShort: number = WIDOOR_SHORT_TIMING_DEFAULT;
   rval_mlpc_userParam_openTimeLong!: number;
   rval_mlpc_userParam_periphs1!: number;
   rval_mlpc_userParam_periphs2!: number;
@@ -375,6 +376,42 @@ export class WidoorPage implements OnInit, OnDestroy {
       this.dispOptionalCom_LC = true;
     if (dispOptionalCom.indexOf('dispOptionalCom_LLB'))
       this.dispOptionalCom_LLB = true;
+  }
+
+  private readCommandUserParamOnPageEntry(): void {
+    if (this.isDemoDevice()) {
+      return;
+    }
+
+    if (!this.peripheral || !this.peripheral.address) {
+      this.logger.warn(this.TAG, '[Widoor] Lecture parametres commande ignoree: peripheral absent');
+      return;
+    }
+
+    this.readUserParam();
+  }
+
+  private normalizeOpenTimeShort(value: any): number {
+    if (this.isValidOpenTimeShort(value)) {
+      return Number(value);
+    }
+
+    if (this.isValidOpenTimeShort(this.rval_mlpc_userParam_openTimeShort)) {
+      return this.rval_mlpc_userParam_openTimeShort;
+    }
+
+    return WIDOOR_SHORT_TIMING_DEFAULT;
+  }
+
+  private isValidOpenTimeShort(value: any): boolean {
+    if (value === null || typeof value === 'undefined' || value === '') {
+      return false;
+    }
+
+    const numericValue = Number(value);
+    return !isNaN(numericValue)
+      && numericValue >= WIDOOR_SHORT_TIMING_MIN
+      && numericValue <= WIDOOR_SHORT_TIMING_MAX;
   }
 
   toggleSliderPrecision(key: string, event?: Event): void {
@@ -722,6 +759,8 @@ export class WidoorPage implements OnInit, OnDestroy {
       this.bleConnectService.setNeedConnect(false);
       this.presentLoadingDefault();
       this.bleConnect();
+    } else {
+      this.readCommandUserParamOnPageEntry();
     }
   }
 
@@ -1082,7 +1121,7 @@ export class WidoorPage implements OnInit, OnDestroy {
 
           this.rval_mlpc_userParam_speedOpenTune = dataBytes[D_MLPC_USERPARAM_SOT_HOF];
           this.rval_mlpc_userParam_speedCloseTune = dataBytes[D_MLPC_USERPARAM_SCT_HOF];
-          this.rval_mlpc_userParam_openTimeShort = dataBytes[D_MLPC_USERPARAM_OTS_HOF];
+          this.rval_mlpc_userParam_openTimeShort = this.normalizeOpenTimeShort(dataBytes[D_MLPC_USERPARAM_OTS_HOF]);
           this.rval_mlpc_userParam_openTimeLong = dataBytes[D_MLPC_USERPARAM_OTL_HOF];
           this.rval_mlpc_userParam_periphs1 = dataBytes[D_MLPC_USERPARAM_PC1_HOF];
           this.rval_mlpc_userParam_periphs2 = dataBytes[D_MLPC_USERPARAM_PC2_HOF];
@@ -1096,7 +1135,14 @@ export class WidoorPage implements OnInit, OnDestroy {
 
         });
       }
-    ).catch(err => { this.logger.warn(this.TAG, 'readUserParam failed', err); });
+    ).catch(err => {
+      this.logger.warn(this.TAG, 'readUserParam failed', err);
+      if (!this.isValidOpenTimeShort(this.rval_mlpc_userParam_openTimeShort)) {
+        this.ngZone.run(() => {
+          this.rval_mlpc_userParam_openTimeShort = WIDOOR_SHORT_TIMING_DEFAULT;
+        });
+      }
+    });
   }
 
   readProParam() {
