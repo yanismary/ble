@@ -554,7 +554,8 @@
 		"LANGUAGE": {
 			"DE": "Deutsch",
 			"ENG": "English",
-			"FR": "Français"
+			"FR": "Français",
+			"PL": "Polski"
 		},
 		"OTHER_OPTION": {
 			"HEADER": "Option",

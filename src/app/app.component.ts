@@ -23,6 +23,7 @@ export class MyApp {
   isLanguageAuto: any;
   selectNgModLang: string;
   private TAG = 'AppComponent';
+  private supportedLanguageCodes: string[] = ['fr', 'en', 'de', 'pl'];
 
   constructor(
     public platform: Platform,
@@ -71,52 +72,12 @@ export class MyApp {
               }
 
               this.logger.info(this.TAG, 'Device language detected', ln);
-              if (ln.substring(0, 2) === 'fr') { //we select the first part of the BCP-47 id tag : sp ISO 639-1 alpha-2 (language tag)                 
-                translate.use('fr');
-                localStorage.setItem("lang", "fr");
-              }
-              else if (ln.substring(0, 2) === "en") {
-                translate.use('en');
-                localStorage.setItem("lang", "en");
-              }
-              else if (ln.substring(0, 2) === "de") {
-                translate.use('de');
-                localStorage.setItem("lang", "en");
-              }
-              else {
-                // translate.setDefaultLang('en');//def language is english
-                translate.use('en');
-                localStorage.setItem("lang", "2");
-              }
-              //back arrow translation on ios
-              this.translate.get('GENERIC.BACK').subscribe(
-                (res: string) => {
-                  // Let android keep using only arrow
-                  this.config.set('ios', 'backButtonText', res);
-                });
+              this.applyLanguage(ln);
             }
             else {
               this.storage.get('appLanguage').then((val) => {
                 this.selectNgModLang = JSON.parse(val);
-                if (this.selectNgModLang === 'manualLang_FR') {
-                  translate.use('fr');
-                  localStorage.setItem("lang", "fr");
-                }
-                else if (this.selectNgModLang === "manualLang_EN") {
-                  translate.use('en');
-                  localStorage.setItem("lang", "en");
-                }
-                else if (this.selectNgModLang === "manualLang_DE") {
-                  translate.use('de');
-                  localStorage.use("lang", "en");
-                }
-                else {
-                  translate.setDefaultLang('en');//def language is english
-                  translate.use('en');
-                  localStorage.setItem("lang", "2");
-                }
-
-
+                this.applyLanguage(this.getManualLanguageCode(this.selectNgModLang));
               }).catch((error) => {
                 this.logPromiseError('Failed to read appLanguage', error);
               });
@@ -141,28 +102,7 @@ export class MyApp {
           }
 
           this.logger.info(this.TAG, 'Detected device language', ln);
-          if (ln.substring(0, 2) === 'fr') { //we select the first part of the BCP-47 id tag : sp ISO 639-1 alpha-2 (language tag)
-            translate.use('fr');
-            localStorage.setItem("lang", "fr");                
-          }
-          else if (ln.substring(0, 2) === "en") {
-            translate.use('en');
-            localStorage.setItem("lang", "en");
-          }
-          else if (ln.substring(0, 2) === "de") {
-            translate.use('de');
-            localStorage.setItem("lang", "de");
-          }
-          else {
-            translate.use('en');
-            localStorage.setItem("lang", "en");
-          }
-          //back arrow translation on ios
-          this.translate.get('GENERIC.BACK').subscribe(
-            (res: string) => {
-              // Let android keep using only arrow
-              this.config.set('ios', 'backButtonText', res);
-            });
+          this.applyLanguage(ln);
             this.setStoredJson('StoredIsLanguageAuto', true);
             this.setStoredJson('appLanguage', true);
             this.setStoredJson('StoredIsVisibleTabSettings', true);
@@ -210,6 +150,41 @@ export class MyApp {
     this.storage.set(key, JSON.stringify(value)).catch((error) => {
       this.logPromiseError('Failed to save ' + key, error);
     });
+  }
+
+  private resolveSupportedLanguage(languageCode: any): string {
+    const shortCode = String(languageCode || '').substring(0, 2).toLowerCase();
+    return this.supportedLanguageCodes.indexOf(shortCode) > -1 ? shortCode : 'en';
+  }
+
+  private getManualLanguageCode(manualLanguage: any): string {
+    switch (manualLanguage) {
+      case 'manualLang_FR':
+        return 'fr';
+      case 'manualLang_EN':
+        return 'en';
+      case 'manualLang_DE':
+        return 'de';
+      case 'manualLang_PL':
+        return 'pl';
+      default:
+        return 'en';
+    }
+  }
+
+  private applyLanguage(languageCode: any) {
+    const lang = this.resolveSupportedLanguage(languageCode);
+    this.translate.use(lang);
+    localStorage.setItem("lang", lang);
+    this.updateBackButtonText();
+  }
+
+  private updateBackButtonText() {
+    this.translate.get('GENERIC.BACK').subscribe(
+      (res: string) => {
+        // Let android keep using only arrow
+        this.config.set('ios', 'backButtonText', res);
+      });
   }
 
   private logPromiseError(message: string, error: any) {
