@@ -476,6 +476,12 @@ export class ScanPage {
       const deviceKey = this.getDeviceKey(device);
       const nameInfo = this.resolveScanDeviceName(device);
 
+      const normalizedRssi = this.resolveDeviceRssi(device);
+      if (normalizedRssi !== undefined) {
+        device.rssi = normalizedRssi;
+      }
+      this.logScanSignalQuality(nameInfo.name || device.name, normalizedRssi);
+
       let existingDevice = this.devices.find((d: ScanDevice) => 
         (d.id && device.id && d.id === device.id) || 
         (d.address && device.address && d.address === device.address)
@@ -509,8 +515,8 @@ export class ScanPage {
           existingDevice.address = device.address;
           wasUpdated = true;
         }
-        if (device.rssi !== undefined) {
-          existingDevice.rssi = device.rssi;
+        if (normalizedRssi !== undefined) {
+          existingDevice.rssi = normalizedRssi;
           wasUpdated = true;
         }
         if (device.advertising) {
@@ -589,33 +595,6 @@ export class ScanPage {
           });
       }
   }
-  /*
-  onDeviceDiscovered(device) {
-    this.ngZone.run(() => {
-
-      let existingDevice = this.devices.find(d => 
-        (d.id && device.id && d.id === device.id) || 
-        (d.address && device.address && d.address === device.address)
-      );
-
-      if (existingDevice) {
-        if (device.rssi) {
-          existingDevice.rssi = device.rssi;
-        }
-        
-        if (device.advertising) existingDevice.advertising = device.advertising;
-        if (device.advertisement) existingDevice.advertisement = device.advertisement;
-
-      } else {
-          if (device.isBonded === undefined) {
-            device.isBonded = false; 
-          }
-
-        this.devices.push(device);
-      }
-    });
-  }*/
-
   // If location permission is denied, you'll end up here
   scanError(error: any): void {
     this.logger.error(this.TAG, 'scanError callback invoked', error);
@@ -632,8 +611,40 @@ export class ScanPage {
 
 
   getSignalQualityIcon(rssi: any): string {
+    const signalQuality = this.getDisplayedSignalQuality(rssi);
+    return 'assets/img/img_ble_strenght_' + signalQuality + '_4.svg';
+  }
+
+  private getDisplayedSignalQuality(rssi: any): number {
     const signalQuality = getBleSignalQualityFromRssi(rssi);
-    return signalQuality >= 0 ? 'assets/img/img_ble_strenght_' + signalQuality + '_4.svg' : '';
+    return signalQuality >= 0 ? signalQuality : 0;
+  }
+
+  private resolveDeviceRssi(device: any): any {
+    if (!device) {
+      return undefined;
+    }
+    if (device.rssi !== undefined && device.rssi !== null) {
+      return device.rssi;
+    }
+    if (device.advertising && device.advertising.rssi !== undefined && device.advertising.rssi !== null) {
+      return device.advertising.rssi;
+    }
+    if (device.advertisement && device.advertisement.rssi !== undefined && device.advertisement.rssi !== null) {
+      return device.advertisement.rssi;
+    }
+    if (device.peripheral && device.peripheral.rssi !== undefined && device.peripheral.rssi !== null) {
+      return device.peripheral.rssi;
+    }
+
+    return device.rssi !== undefined ? device.rssi : undefined;
+  }
+
+  private logScanSignalQuality(deviceName: any, rssi: any): void {
+    const signalQuality = getBleSignalQualityFromRssi(rssi);
+    const rssiLabel = rssi === undefined || rssi === null ? 'unknown' : rssi;
+    const qualityLabel = signalQuality >= 0 ? signalQuality : 'unknown';
+    this.logger.info(this.TAG, 'RSSI ' + (deviceName || 'Unknown') + ' = ' + rssiLabel + ' -> quality ' + qualityLabel);
   }
 
   unbondOrBond(device: ScanDevice): void {
