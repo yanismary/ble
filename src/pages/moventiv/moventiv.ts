@@ -25,6 +25,7 @@ import {
   productTypeLabel,
   versionWordBytesToHex
 } from '../../app/product-detection';
+import { formatBleDate as formatBleDateValue, formatHexByte } from '../../app/ble-format';
 //import { bcrypt } from '../../../node_modules';
 import * as bcrypt from 'bcryptjs';
 import moment from 'moment';
@@ -1255,12 +1256,12 @@ export class MoventivPage implements OnInit, OnDestroy {
 
             //JDU V1.2.0 : conversion dec->Hex pour affichage
             if (this.rval_shDo_version.length >= 26) {
-              this.rval_shDo_version_motAddress_0 = this.rval_shDo_version[20].toString(16);
-              this.rval_shDo_version_motAddress_1 = this.rval_shDo_version[21].toString(16);
-              this.rval_shDo_version_motAddress_2 = this.rval_shDo_version[22].toString(16);
-              this.rval_shDo_version_motAddress_3 = this.rval_shDo_version[23].toString(16);
-              this.rval_shDo_version_motAddress_4 = this.rval_shDo_version[24].toString(16);
-              this.rval_shDo_version_motAddress_5 = this.rval_shDo_version[25].toString(16);
+              this.rval_shDo_version_motAddress_0 = formatHexByte(this.rval_shDo_version[20]);
+              this.rval_shDo_version_motAddress_1 = formatHexByte(this.rval_shDo_version[21]);
+              this.rval_shDo_version_motAddress_2 = formatHexByte(this.rval_shDo_version[22]);
+              this.rval_shDo_version_motAddress_3 = formatHexByte(this.rval_shDo_version[23]);
+              this.rval_shDo_version_motAddress_4 = formatHexByte(this.rval_shDo_version[24]);
+              this.rval_shDo_version_motAddress_5 = formatHexByte(this.rval_shDo_version[25]);
             } else {
               this.rval_shDo_version_motAddress_0 = '';
               this.rval_shDo_version_motAddress_1 = '';
@@ -2971,6 +2972,10 @@ export class MoventivPage implements OnInit, OnDestroy {
     this.ngZone.run(() => {
       this.statusMessage = message;
     });
+  }
+
+  formatBleDate(yearByte: any, monthByte: any, dayByte: any): string {
+    return formatBleDateValue(yearByte, monthByte, dayByte);
   }
 
   private isMaintenancePasswordValid(password: string): boolean {

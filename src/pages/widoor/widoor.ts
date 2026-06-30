@@ -12,7 +12,8 @@ import { Platform } from 'ionic-angular';
 import { Buffer } from 'buffer';
 import { IonicPage } from 'ionic-angular';
 import { BleconnectserviceProvider } from '../../providers/bleconnectservice/bleconnectservice';
-import { LoggerService } from '../../providers/logger/logger.service';																	  
+import { LoggerService } from '../../providers/logger/logger.service';
+import { formatBleDate as formatBleDateValue } from '../../app/ble-format';
 import * as bcrypt from 'bcryptjs';
 import moment from 'moment';
 
@@ -2806,6 +2807,10 @@ export class WidoorPage implements OnInit, OnDestroy {
     this.ngZone.run(() => {
       this.statusMessage = message;
     });
+  }
+
+  formatBleDate(yearByte: any, monthByte: any, dayByte: any): string {
+    return formatBleDateValue(yearByte, monthByte, dayByte);
   }
 
   maintenancePrompt() {

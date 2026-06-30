@@ -560,14 +560,9 @@
           <ion-label text-wrap>
             {{ "MOVENTIV_PAGE.INFORMATIONS_TAB.GENERAL_INFORMATIONS.DATEOF_FIRSTUSE" | translate }}
           </ion-label>
-          <ion-note
-            *ngIf="(rval_shDo_userDatesCycles[5] != 255) && (rval_shDo_userDatesCycles[4] != 256) && (rval_shDo_userDatesCycles[3] != 256)"
-            item-end text-wrap>
-            {{rval_shDo_userDatesCycles[5] | number : '2.0-0' }}/{{(rval_shDo_userDatesCycles[4]+1)| number : '2.0-0' || 'ND'}}/20{{rval_shDo_userDatesCycles[3]| number : '2.0-0'|| 'ND'}}
+          <ion-note item-end text-wrap>
+            {{formatBleDate(rval_shDo_userDatesCycles[3], rval_shDo_userDatesCycles[4], rval_shDo_userDatesCycles[5])}}
           </ion-note>
-          <ion-note
-            *ngIf="(rval_shDo_userDatesCycles[5] == 256) || (rval_shDo_userDatesCycles[4] == 256) || (rval_shDo_userDatesCycles[3] == 256)"
-            item-end text-wrap>Pas effectuée</ion-note>
         </ion-item>
         <ion-item>
 

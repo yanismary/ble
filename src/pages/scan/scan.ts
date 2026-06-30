@@ -20,6 +20,7 @@ import {
   productTypeLabel,
   versionWordBytesToHex
 } from '../../app/product-detection';
+import { getSignalQualityFromRssi as getBleSignalQualityFromRssi } from '../../app/ble-format';
 
 
 // --- CONFIGURATION DES PRODUITS ---
@@ -629,6 +630,11 @@ export class ScanPage {
     });
   }
 
+
+  getSignalQualityIcon(rssi: any): string {
+    const signalQuality = getBleSignalQualityFromRssi(rssi);
+    return signalQuality >= 0 ? 'assets/img/img_ble_strenght_' + signalQuality + '_4.svg' : '';
+  }
 
   unbondOrBond(device: ScanDevice): void {
     if (!this.platform.is('android')) {

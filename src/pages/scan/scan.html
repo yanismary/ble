@@ -51,21 +51,8 @@
           {{device?.address}}
         </p>
 
-        <p *ngIf="(device.rssi<-90)">{{ "SCAN_PAGE.SIGNAL_QUALITY" | translate }}
-          <span> <img src="assets/img/img_ble_strenght_0_4.svg" class="img-full"> </span>
-        </p>
-        <p *ngIf="(device.rssi<-80) && (device?.rssi>=-90)">{{ "SCAN_PAGE.SIGNAL_QUALITY" | translate }}
-          <span> <img src="assets/img/img_ble_strenght_1_4.svg" class="img-full"> </span>
-        </p>
-        <p *ngIf="(device.rssi<-67) && (device?.rssi>=-80) ">{{ "SCAN_PAGE.SIGNAL_QUALITY" | translate }}
-          <span> <img src="assets/img/img_ble_strenght_2_4.svg" class="img-full"> </span>
-        </p>
-
-        <p *ngIf="(device.rssi<-52) && (device?.rssi>=-67) ">{{ "SCAN_PAGE.SIGNAL_QUALITY" | translate }}
-          <span> <img src="assets/img/img_ble_strenght_3_4.svg" class="img-full"> </span>          
-        </p>
-        <p *ngIf="(device.rssi>=-52)">{{ "SCAN_PAGE.SIGNAL_QUALITY" | translate }}
-          <span> <img src="assets/img/img_ble_strenght_4_4.svg" class="img-full"> </span>
+        <p *ngIf="getSignalQualityIcon(device?.rssi)">{{ "SCAN_PAGE.SIGNAL_QUALITY" | translate }}
+          <span> <img [src]="getSignalQualityIcon(device?.rssi)" class="img-full"> </span>
         </p>
 
         <ion-icon item-start *ngIf="device?.name?.match('#CHA')" name="ai-loc-cha" large color="wimGreyColor">
