@@ -65,16 +65,16 @@ export function getSignalQualityFromRssi(rssi: any): number {
     return -1;
   }
 
-  if (numericRssi >= -55) {
+  if (numericRssi >= -60) {
     return 4;
   }
-  if (numericRssi >= -65) {
+  if (numericRssi >= -70) {
     return 3;
   }
-  if (numericRssi >= -75) {
+  if (numericRssi >= -80) {
     return 2;
   }
-  if (numericRssi >= -85) {
+  if (numericRssi >= -90) {
     return 1;
   }
 
