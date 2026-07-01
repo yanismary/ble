@@ -113,6 +113,15 @@
 
     <ion-item-group *ngSwitchCase="'com'">
       <ion-list lines="none">
+        <!-- Commande - Maintien fermeture -->
+        <ion-item *ngIf="!isGarline">
+          <ion-icon [name]="lockClose ? 'moventiv-lock_off' : 'moventiv-lock_on'" item-start color="wimGreyColor">
+          </ion-icon>
+          <ion-label text-wrap>{{ "MOVENTIV_PAGE.COMMANDS_TAB.COMTOOGLE_LOCKCLOSE" | translate }}</ion-label>
+          <ion-toggle [disabled]="lockOpen" [(ngModel)]="lockClose" (ionChange)="setLockClose($event)"
+            color="mantionSmtgreen"></ion-toggle>
+        </ion-item>
+
         <!-- Commande - bandeau LED -->
         <ion-item>
           <ion-icon name="moventiv-light_off" item-start
