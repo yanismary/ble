@@ -35,6 +35,7 @@ export class RandBLE {
   CALLBACK_TYPE_MATCH_LOST = 4;
 
   private isEnablingBt = false;
+  private bleInitialized = false;
   private TAG = 'RandBLE';
 
   constructor(public platform: Platform, private logger: LoggerService) {
@@ -67,6 +68,11 @@ export class RandBLE {
 }
 
   private async initializeBleClient(context: string): Promise<void> {
+    if (this.bleInitialized) {
+      this.logger.info(this.TAG, 'BLE already initialized, skipping', { context: context });
+      return;
+    }
+
     this.logger.info(this.TAG, 'BLE permission initialization requested', {
       context: context,
       androidNeverForLocation: false
@@ -78,6 +84,7 @@ export class RandBLE {
       await BleClient.initialize();
     }
 
+    this.bleInitialized = true;
     this.logger.info(this.TAG, 'BLE initialized', {
       context: context
     });
@@ -515,11 +522,11 @@ export class RandBLE {
 
   isConnected(params: { address: string }): Observable<{ isConnected: boolean }> {
       return Observable.fromPromise(
-          BleClient.getDevices([params.address]).then(devices => {
+          BleClient.getConnectedDevices([]).then(devices => {
               const found = devices.find(d => d.deviceId === params.address);
               return { isConnected: !!found };
           }).catch(() => {
-              return { isConnected: false};
+              return { isConnected: false };
           })
       );
   }

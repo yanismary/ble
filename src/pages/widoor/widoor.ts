@@ -139,6 +139,8 @@ const WIDOOR_SPEED_MAX = 100;
 const WIDOOR_SHORT_TIMING_DEFAULT = 1;
 const WIDOOR_SHORT_TIMING_MIN = 0;
 const WIDOOR_SHORT_TIMING_MAX = 60;
+const EXPERT_PASSWORD_ALT = 'expert';
+const EXPERT_PASSWORD_OLD = 'WidoorSAV';
 
 
 @IonicPage({
@@ -371,11 +373,11 @@ export class WidoorPage implements OnInit, OnDestroy {
 
 
     var dispOptionalCom = ['dispOptionalCom_MO', 'dispOptionalCom_LC', 'dispOptionalCom_LLB'];
-    if (dispOptionalCom.indexOf('dispOptionalCom_MO'))
+    if (dispOptionalCom.indexOf('dispOptionalCom_MO') !== -1)
       this.dispOptionalCom_MO = true;
-    if (dispOptionalCom.indexOf('dispOptionalCom_LC'))
+    if (dispOptionalCom.indexOf('dispOptionalCom_LC') !== -1)
       this.dispOptionalCom_LC = true;
-    if (dispOptionalCom.indexOf('dispOptionalCom_LLB'))
+    if (dispOptionalCom.indexOf('dispOptionalCom_LLB') !== -1)
       this.dispOptionalCom_LLB = true;
   }
 
@@ -859,7 +861,7 @@ export class WidoorPage implements OnInit, OnDestroy {
                 }
               },
               (_err) => {
-                const attempt = 6 - this.retryConnection;
+                const attempt = 8 - this.retryConnection;
                 const delay = Math.min(500 * Math.pow(2, attempt), 16000);
                 this.logger.debug(this.TAG, `[BLE] Connection error, retrying in ${delay}ms (attempt ${attempt})`);
                 setTimeout(() => this.bleConnect(), delay);
@@ -867,7 +869,7 @@ export class WidoorPage implements OnInit, OnDestroy {
             );
           })
           .catch((error) => {
-            const attempt = 6 - this.retryConnection;
+            const attempt = 8 - this.retryConnection;
             const delay = Math.min(500 * Math.pow(2, attempt), 16000);
             this.logger.warn(this.TAG, `[BLE] Reconnexion Widoor impossible, retry in ${delay}ms`, error);
             setTimeout(() => this.bleConnect(), delay);
@@ -983,12 +985,13 @@ export class WidoorPage implements OnInit, OnDestroy {
       return;
     }
 
+    // Lectures échelonnées pour éviter les erreurs GATT 133 sur Android (ATT séquentiel)
     this.readMotorState();
-    this.readVersion();
-    this.readUserDatesCycles();
-    this.readProMaintenance();
-    this.readUserParam();
-    this.readProParam();
+    setTimeout(() => this.readVersion(), 150);
+    setTimeout(() => this.readUserDatesCycles(), 300);
+    setTimeout(() => this.readProMaintenance(), 450);
+    setTimeout(() => this.readUserParam(), 600);
+    setTimeout(() => this.readProParam(), 750);
   }
 
   readMotorState() {
@@ -1066,10 +1069,8 @@ export class WidoorPage implements OnInit, OnDestroy {
             this.rval_shDo_proMaintenance_NbCyclesSinceInit = buf.readUIntBE(0, 3);
             var buf = Buffer.from([dataStringB[D_SHDO_PROMAINTENANCE_OBSDETECT_02_HOF], dataStringB[D_SHDO_PROMAINTENANCE_OBSDETECT_01_HOF], dataStringB[D_SHDO_PROMAINTENANCE_OBSDETECT_00_HOF]]);
             this.rval_shDo_proMaintenance_NbObsDetect = buf.readUIntBE(0, 3);
-            var buf = Buffer.from([dataStringB[9], dataStringB[10], dataStringB[11]]);
-            this.rval_shDo_proMaintenance_NbErrorEncoder = buf.readUIntBE(0, 3);
-            var buf = Buffer.from([dataStringB[12], dataStringB[13], dataStringB[14]]);
-            this.rval_shDo_proMaintenance_NbErrorMotor = buf.readUIntBE(0, 3);
+            this.rval_shDo_proMaintenance_NbErrorEncoder = dataStringB[D_SHDO_PROMAINTENANCE_EC_HOF];
+            this.rval_shDo_proMaintenance_NbErrorMotor = dataStringB[D_SHDO_PROMAINTENANCE_EM_HOF];
 
           });
         }
@@ -1090,7 +1091,6 @@ export class WidoorPage implements OnInit, OnDestroy {
           this.rval_shDo_userDatesCycles_totCyc = buf.readUIntBE(0, 3);
           var buf = Buffer.from([data_shDo_userDatesCycles[D_SHDO_USERDATESCYCLESALL_LMC_02_UOF], data_shDo_userDatesCycles[D_SHDO_USERDATESCYCLESALL_LMC_01_UOF], data_shDo_userDatesCycles[D_SHDO_USERDATESCYCLESALL_LMC_00_UOF]]);
           this.rval_shDo_userDatesCycles_maintCyc = buf.readUIntBE(0, 3);
-          this.setShdoFirstDate();
         });
       }
     ).catch(err => { this.logger.warn(this.TAG, 'readUserDatesCycles failed', err); });
@@ -1332,7 +1332,7 @@ export class WidoorPage implements OnInit, OnDestroy {
       return;
     }
     this.logger.debug(this.TAG, 'SetDoorOpenLtime');
-    if ((this.device.isDemo) != "true") return;
+    if ((this.device.isDemo) == "true") return;
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
     else {
@@ -2875,39 +2875,6 @@ export class WidoorPage implements OnInit, OnDestroy {
   }
 
 
-  scan() {
-    this.setStatus('Scanning for MLPC Device');
-
-
-
-    let scanParams = {
-      allowDuplicates: false,
-      matchNum: this.randble.MATCH_NUM_MAX_ADVERTISEMENT,
-      callbackType: this.randble.CALLBACK_TYPE_ALL_MATCHES,
-      scanMode: this.randble.SCAN_MODE_BALANCED, //more efficient scan for crowed place (the LE mode seems not efficient for common use)
-      services: [MLPC_SERVICE],
-    };
-
-    this.devices = [];  // clear list
-
-    this.randble.startScan(scanParams);
-
-    setTimeout(() => {
-      this.randble.stopScan().then(
-        () => {
-          this.logger.debug(this.TAG, "Scanning has stopped");
-
-        },
-        () => {
-          this.logger.debug(this.TAG, "Error at stop scan");
-
-        }
-      );
-
-    }, 6000);
-
-  }
-
   paramOnClick() {
     this.logger.debug(this.TAG, "paramOnClick()");
     this.readAll();
@@ -3209,9 +3176,13 @@ export class WidoorPage implements OnInit, OnDestroy {
     }
   }
 
+  private isExpertPasswordValid(password: string): boolean {
+    return password === EXPERT_PASSWORD_ALT || password === EXPERT_PASSWORD_OLD;
+  }
+
   onSubmitformPassword() {
     this.logger.debug(this.TAG, 'submitting form password');
-    if (this.userPassword == 'password') {
+    if (this.isExpertPasswordValid(this.userPassword)) {
       this.passwordValid = true;
       this.logger.debug(this.TAG, 'Password ok');
     }
@@ -3225,7 +3196,7 @@ export class WidoorPage implements OnInit, OnDestroy {
     this.logger.debug(this.TAG, 'submitting form password');
 
 
-    bcrypt.compare("wisavdoor", "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (_err: Error | null, match: boolean) => {
+    bcrypt.compare(this.userPassword, "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (_err: Error | null, match: boolean) => {
       this.logger.debug(this.TAG, 'BCryptCompare');
       this.logger.debug(this.TAG, 'Match result: ' + match);
       if (match == true) {
@@ -3234,6 +3205,7 @@ export class WidoorPage implements OnInit, OnDestroy {
         this.logger.debug(this.TAG, ' match Password BCrypt');
       } else {
         // passwords do not match
+        this.passwordValid = false;
         this.logger.debug(this.TAG, 'Password BCrypt');
       }
     });
@@ -3328,19 +3300,14 @@ export class WidoorPage implements OnInit, OnDestroy {
   presentLoadingDefault() {
     this.translate.get('PROMPT.CONNECTION.TITLE').subscribe(
       res => {
-        let connectionTranslatePrompt = res;
-
         this.loading = this.loadingCtrl.create({
           dismissOnPageChange: true,
-          content: connectionTranslatePrompt,
+          content: res,
           duration: 20000
-
         });
-
+        this.loading.present();
+        this.logger.debug(this.TAG, 'this.loading.present() : connection');
       });
-
-    this.loading.present();
-    this.logger.debug(this.TAG, 'this.loading.present() : connection');
   }
 
   presentReadingDefault() {

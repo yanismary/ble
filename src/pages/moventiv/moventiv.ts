@@ -388,11 +388,11 @@ export class MoventivPage implements OnInit, OnDestroy {
 
 
     var dispOptionalCom = ['dispOptionalCom_MO', 'dispOptionalCom_LC', 'dispOptionalCom_LLB'];
-    if (dispOptionalCom.indexOf('dispOptionalCom_MO'))
+    if (dispOptionalCom.indexOf('dispOptionalCom_MO') !== -1)
       this.dispOptionalCom_MO = true;
-    if (dispOptionalCom.indexOf('dispOptionalCom_LC'))
+    if (dispOptionalCom.indexOf('dispOptionalCom_LC') !== -1)
       this.dispOptionalCom_LC = true;
-    if (dispOptionalCom.indexOf('dispOptionalCom_LLB'))
+    if (dispOptionalCom.indexOf('dispOptionalCom_LLB') !== -1)
       this.dispOptionalCom_LLB = true;
   }
 
@@ -1048,7 +1048,7 @@ export class MoventivPage implements OnInit, OnDestroy {
                 }
               },
               (_err) => {
-                const attempt = 6 - this.retryConnection;
+                const attempt = 8 - this.retryConnection;
                 const delay = Math.min(500 * Math.pow(2, attempt), 16000);
                 this.logger.debug(this.TAG, `[BLE] Connection error, retrying in ${delay}ms (attempt ${attempt})`);
                 setTimeout(() => this.bleConnect(), delay);
@@ -1056,7 +1056,7 @@ export class MoventivPage implements OnInit, OnDestroy {
             );
           })
           .catch((error) => {
-            const attempt = 6 - this.retryConnection;
+            const attempt = 8 - this.retryConnection;
             const delay = Math.min(500 * Math.pow(2, attempt), 16000);
             this.logger.warn(this.TAG, `[BLE] Reconnexion Moventiv impossible, retry in ${delay}ms`, error);
             setTimeout(() => this.bleConnect(), delay);
@@ -1185,12 +1185,13 @@ export class MoventivPage implements OnInit, OnDestroy {
       }).present();
       return;
     }
-    this.readMotorState()
-    this.readVersion();
-    this.readUserDatesCycles();
-    this.readProMaintenance();
-    this.readUserParam();
-    this.readProParam();
+    // Lectures échelonnées pour éviter les erreurs GATT 133 sur Android (ATT séquentiel)
+    this.readMotorState();
+    setTimeout(() => this.readVersion(), 150);
+    setTimeout(() => this.readUserDatesCycles(), 300);
+    setTimeout(() => this.readProMaintenance(), 450);
+    setTimeout(() => this.readUserParam(), 600);
+    setTimeout(() => this.readProParam(), 750);
   }
 
   readMotorState() {
@@ -3086,39 +3087,6 @@ export class MoventivPage implements OnInit, OnDestroy {
   }
 
 
-  scan() {
-    this.setStatus('Scanning for MLPC Device');
-
-
-
-    let scanParams = {
-      allowDuplicates: false,
-      matchNum: this.randble.MATCH_NUM_MAX_ADVERTISEMENT,
-      callbackType: this.randble.CALLBACK_TYPE_ALL_MATCHES,
-      scanMode: this.randble.SCAN_MODE_BALANCED, //more efficient scan for crowed place (the LE mode seems not efficient for common use)
-      services: [MLPC_SERVICE],
-    };
-
-    this.devices = [];  // clear list
-
-    this.randble.startScan(scanParams);
-
-    setTimeout(() => {
-      this.randble.stopScan().then(
-        () => {
-          this.logger.debug(this.TAG, "Scanning has stopped");
-
-        },
-        () => {
-          this.logger.debug(this.TAG, "Error at stop scan");
-
-        }
-      );
-
-    }, 6000);
-
-  }
-
   //JDU : ajout des fonction pour sous-onglet dans REGLAGE
   paramBasicOnclick() {
     this.logger.debug(this.TAG, "paramBAsicOnClick()");
@@ -3454,16 +3422,17 @@ export class MoventivPage implements OnInit, OnDestroy {
     this.logger.debug(this.TAG, 'submitting form password');
 
 
-    bcrypt.compare("wisavdoor", "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (_err: Error | null, match: boolean) => {
+    bcrypt.compare(this.userPassword, "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (_err: Error | null, match: boolean) => {
           this.logger.debug(this.TAG, 'BCryptCompare');
           this.logger.debug(this.TAG, 'Match result: ' + match);
-          
+
           if (match == true) {
             // passwords match
             this.passwordValid = true;
             this.logger.debug(this.TAG, ' match Password BCrypt');
           } else {
             // passwords do not match
+            this.passwordValid = false;
             this.logger.debug(this.TAG, 'Password BCrypt');
             this.showIncorrectPasswordToast();
           }
@@ -3572,18 +3541,13 @@ export class MoventivPage implements OnInit, OnDestroy {
   presentLoadingDefault() {
     this.translate.get('PROMPT.CONNECTION.TITLE').subscribe(
       res => {
-        let connectionTranslatePrompt = res;
-
         this.loading = this.loadingCtrl.create({
-          content: connectionTranslatePrompt,
+          content: res,
           duration: 30000
-
         });
-
+        this.loading.present();
+        this.logger.debug(this.TAG, 'this.loading.present() : connection');
       });
-
-    this.loading.present();
-    this.logger.debug(this.TAG, 'this.loading.present() : connection');
   }
 
   presentReadingDefault() {

@@ -714,6 +714,7 @@ export class ScanPage {
         isPushOnce: this.isPushOnce,
         isConnectionFlowInProgress: this.isConnectionFlowInProgress
       });
+      this.showToast('Connexion deja en cours...', 1200);
       return;
     }
 
@@ -764,7 +765,6 @@ export class ScanPage {
         }
       }
 
-      await dismissLoadingSafely();
       this.isScanning = false;
 	  this.clearScanTimeout();					  
       this.isPushOnce = false;
@@ -774,6 +774,8 @@ export class ScanPage {
         this.bleConnectService.setConnectionStatus('unknown');
       }
 
+      await dismissLoadingSafely();
+
       this.logger.info(this.TAG, 'Connection flow cleanup completed', {
         reason: reason,
         phase: phase,
@@ -782,12 +784,28 @@ export class ScanPage {
     };
 
     try {
-      phase = 'stoppingScan';
+      if (!loading) {
+        loading = this.loadingCtrl.create({ content: 'Connexion en cours...' });
+      }
+
       try {
-        await this.randble.stopScan();
-      } catch (e) {
-        this.logger.warn(this.TAG, 'stopScan before connect failed (ignored)', {
-          error: e,
+        await loading.present();
+      } catch (loadingErr) {
+        this.logger.warn(this.TAG, 'Loading present failed, continuing flow', loadingErr);
+      }
+
+      phase = 'stoppingScan';
+      this.clearScanTimeout();
+      this.clearScanSubscription('connect_start');
+
+      if (this.isScanning) {
+        await this.withTimeout(
+          this.randble.stopScan(),
+          1800,
+          'stopScan before connect'
+        );
+      } else {
+        this.logger.debug(this.TAG, 'stopScan before connect skipped: scan not active', {
           device: device
         });
       }
@@ -865,13 +883,6 @@ export class ScanPage {
         return;
       }
 
-      loading = this.loadingCtrl.create({ content: 'Connexion en cours...' });
-      try {
-        await loading.present();
-      } catch (loadingErr) {
-        this.logger.warn(this.TAG, 'Loading present failed, continuing flow', loadingErr);
-      }
-
       // Securisation de l'adresse (ID pour iOS, Address pour Android)
       let targetAddress = (device && (device.address || device.id)) ? String(device.address || device.id).trim() : '';
       this.logger.info(this.TAG, 'Selected device identifier', {
@@ -898,8 +909,8 @@ export class ScanPage {
       this.bleConnectService.setConnectionStatus('connecting');
       this.logger.info(this.TAG, 'Connecting to selected device', { address: targetAddress });
 
-      connectSubscription = this.randble.connect({ address: targetAddress }).subscribe(
-        (res) => {
+      connectSubscription = this.connectWithRetry(targetAddress, 3).subscribe(
+        (res : any) => {
           if (!flowActive) {
             this.logger.warn(this.TAG, 'Connect event ignored: flow already inactive', {
               event: res,
@@ -1045,7 +1056,7 @@ export class ScanPage {
             cleanupConnectionFlow('runtime_disconnected', true);
           }
         },
-        (err) => {
+        (err : any) => {
           if (!flowActive) {
             this.logger.warn(this.TAG, 'Connect error ignored: flow inactive', { error: err, phase: phase });
             return;
@@ -1510,6 +1521,189 @@ export class ScanPage {
     }).present();
   }
 
+  private withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T | null> {
+    return new Promise<T | null>((resolve) => {
+      let settled = false;
+      const timeoutHandle = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        this.logger.warn(this.TAG, label + ' timed out', { timeoutMs: timeoutMs });
+        resolve(null);
+      }, timeoutMs);
+
+      promise.then((result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutHandle);
+        resolve(result);
+      }).catch((error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutHandle);
+        this.logger.warn(this.TAG, label + ' failed', { error: error });
+        resolve(null);
+      });
+    });
+  }
+
+  private connectWithRetry(address: string, attempts: number = 3): any {
+    const retryDelays = [500, 1000];
+
+    return {
+      subscribe: (next: (value: any) => void, error: (err: any) => void) => {
+        let active = true;
+        let attempt = 0;
+        let connectedOnce = false;
+        let currentSubscription: any = null;
+        let retryTimeout: any = null;
+        let lastError: any = null;
+
+        const clearRetryTimeout = () => {
+          if (retryTimeout) {
+            clearTimeout(retryTimeout);
+            retryTimeout = null;
+          }
+        };
+
+        const unsubscribeCurrent = () => {
+          if (currentSubscription && typeof currentSubscription.unsubscribe === 'function') {
+            try {
+              currentSubscription.unsubscribe();
+            } catch (unsubscribeError) {
+              this.logger.warn(this.TAG, 'BLE connect retry unsubscribe failed', {
+                address: address,
+                attempt: attempt,
+                error: unsubscribeError
+              });
+            }
+          }
+          currentSubscription = null;
+        };
+
+        const failAttempt = (attemptError: any, source: string) => {
+          if (!active) return;
+
+          if (connectedOnce) {
+            this.logger.warn(this.TAG, 'BLE connect stream error after successful connection', {
+              address: address,
+              attempt: attempt,
+              source: source,
+              error: attemptError
+            });
+            error(attemptError);
+            return;
+          }
+
+          lastError = attemptError;
+          this.logger.warn(this.TAG, 'BLE connect attempt failed', {
+            address: address,
+            attempt: attempt,
+            attempts: attempts,
+            source: source,
+            error: attemptError
+          });
+
+          unsubscribeCurrent();
+
+          this.cleanupAfterFailedConnectAttempt(address, attempt, attempts, attemptError).then(() => {
+            if (!active) return;
+
+            if (attempt >= attempts) {
+              active = false;
+              this.logger.error(this.TAG, 'BLE connect failed after retries', {
+                address: address,
+                attempts: attempts,
+                error: lastError
+              });
+              error(lastError || attemptError);
+              return;
+            }
+
+            const delay = retryDelays[Math.min(attempt - 1, retryDelays.length - 1)];
+            this.logger.info(this.TAG, 'BLE connect retry scheduled', {
+              address: address,
+              nextAttempt: attempt + 1,
+              attempts: attempts,
+              delayMs: delay
+            });
+            clearRetryTimeout();
+            retryTimeout = setTimeout(() => startAttempt(), delay);
+          });
+        };
+
+        const startAttempt = () => {
+          if (!active) return;
+
+          attempt++;
+          this.logger.info(this.TAG, 'BLE connect attempt ' + attempt + '/' + attempts, {
+            address: address,
+            attempt: attempt,
+            attempts: attempts
+          });
+
+          try {
+            currentSubscription = this.randble.connect({ address: address }).subscribe(
+              (res: any) => {
+                if (!active) return;
+
+                if (res && res.status === 'connected') {
+                  connectedOnce = true;
+                  this.logger.info(this.TAG, 'BLE connect attempt succeeded', {
+                    address: address,
+                    attempt: attempt,
+                    attempts: attempts
+                  });
+                  next(res);
+                  return;
+                }
+
+                if (res && res.status === 'disconnected' && !connectedOnce) {
+                  const disconnectError: any = new Error('BLE disconnected before connection completed');
+                  disconnectError.event = res;
+                  failAttempt(disconnectError, 'disconnected_before_connected');
+                  return;
+                }
+
+                next(res);
+              },
+              (err: any) => failAttempt(err, 'connect_error')
+            );
+          } catch (connectError) {
+            failAttempt(connectError, 'connect_exception');
+          }
+        };
+
+        startAttempt();
+
+        return {
+          unsubscribe: () => {
+            active = false;
+            clearRetryTimeout();
+            unsubscribeCurrent();
+          }
+        };
+      }
+    };
+  }
+
+  private async cleanupAfterFailedConnectAttempt(address: string, attempt: number, attempts: number, error: any): Promise<void> {
+    if (!address || !this.randble || typeof (this.randble as any).close !== 'function') {
+      return;
+    }
+
+    this.logger.debug(this.TAG, 'BLE cleanup after failed connect attempt', {
+      address: address,
+      attempt: attempt,
+      attempts: attempts,
+      error: error
+    });
+
+    await this.withTimeout(
+      this.randble.close({ address: address }),
+      1000,
+      'BLE close after failed connect attempt'
+    );
+  }
   private clearScanTimeout(): void {
     if (this.scanTimeoutHandle) {
       clearTimeout(this.scanTimeoutHandle);
