@@ -13,6 +13,7 @@ import { Buffer } from 'buffer';
 import { IonicPage } from 'ionic-angular';
 import { BleconnectserviceProvider } from '../../providers/bleconnectservice/bleconnectservice';
 import { LoggerService } from '../../providers/logger/logger.service';
+import { RoomCacheProvider } from '../../providers/roomcache/roomcache';
 import { formatBleDate as formatBleDateValue } from '../../app/ble-format';
 import * as bcrypt from 'bcryptjs';
 import moment from 'moment';
@@ -340,8 +341,10 @@ export class WidoorPage implements OnInit, OnDestroy {
     private toastCtrl: ToastController,
     public bleConnectService: BleconnectserviceProvider,
     private logger: LoggerService,
+    private roomCache: RoomCacheProvider,
 
   ) {
+    this.roomCache.preload();
 
     this.platform.ready().then(() => {
       this.pauseSubscription = this.platform.pause.subscribe(() => {
@@ -3011,13 +3014,22 @@ export class WidoorPage implements OnInit, OnDestroy {
 
   private syncNameInputFromDisplayName(): void {
     const displayName = this.getCurrentDisplayName();
-    const locationSuffix = this.extractLocationSuffix(displayName);
+    const scannedSuffix = this.extractLocationSuffix(displayName);
     const baseName = this.stripLocationSuffix(displayName).trim();
     const hasPendingRoomSelection = !!this.stringLoc;
 
+    // Le cache local (ecrit juste apres une sauvegarde reussie) est prioritaire sur le suffixe
+    // lu depuis le nom BLE courant : ce nom peut provenir d'un objet peripheral/scan pas encore
+    // rafraichi cote Android, ce qui faisait reapparaitre l'ancienne piece a la reconnexion.
+    const deviceKey = this.getDeviceIdFromDevice(this.peripheral) || this.getDeviceIdFromDevice(this.device);
+    const cachedSuffix = deviceKey ? this.roomCache.getRoomSuffix(deviceKey) : null;
+    const locationSuffix = (cachedSuffix !== null && cachedSuffix !== undefined) ? cachedSuffix : scannedSuffix;
+
     this.logger.info(this.TAG, '[ROOM][Widoor] Relecture piece depuis nom courant', {
       displayName: displayName,
-      suffixDetected: locationSuffix,
+      scannedSuffix: scannedSuffix,
+      cachedSuffix: cachedSuffix,
+      suffixRetenu: locationSuffix,
       hasPendingRoomSelection: hasPendingRoomSelection
     });
 
@@ -3213,6 +3225,9 @@ export class WidoorPage implements OnInit, OnDestroy {
       // Selection consommee: on efface le "pending" pour ne pas le voir fuiter vers une
       // sauvegarde ulterieure ni bloquer la relecture (cf. bug piece bloquee sur "Garage").
       this.stringLoc = '';
+      // Source de verite locale pour l'icone de scan : ecrite immediatement, independamment
+      // de ce que le scan BLE Android remontera (parfois pas a jour tant que l'app tourne).
+      this.roomCache.setRoomSuffix(deviceId, locationSuffix);
       this.logger.info(this.TAG, nameChanged ? 'Succes ecriture nom Widoor' : 'Ecriture nom Widoor non necessaire');
       this.logger.info(this.TAG, roomChanged ? 'Succes ecriture piece Widoor' : 'Ecriture piece Widoor non necessaire');
       this.logger.info(this.TAG, 'Validation nom/piece Widoor reussie');

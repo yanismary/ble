@@ -6,6 +6,7 @@ import { MyApp } from './app.component';
 import { RandBLE } from '../providers/randble/randble';
 import { DataProvider } from '../providers/data/data';
 import { BleconnectserviceProvider } from '../providers/bleconnectservice/bleconnectservice';
+import { RoomCacheProvider } from '../providers/roomcache/roomcache';
 
 import { IonicStorageModule } from '@ionic/storage';
 import { CommonModule } from '@angular/common';
@@ -60,9 +61,10 @@ export function createTranslateLoader(http: HttpClient) {
     ],
   providers: [
     {provide: ErrorHandler, useClass: IonicErrorHandler},
-    RandBLE, 
+    RandBLE,
     DataProvider,
     BleconnectserviceProvider,
+    RoomCacheProvider,
     LoggerService,
   ]
 })

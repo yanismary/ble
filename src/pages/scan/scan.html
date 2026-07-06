@@ -55,23 +55,25 @@
           <span> <img [src]="getSignalQualityIcon(device?.rssi)" class="img-full"> </span>
         </p>
 
-        <ion-icon item-start *ngIf="device?.name?.match('#CHA')" name="ai-loc-cha" large color="wimGreyColor">
+        <ion-icon item-start *ngIf="device?._roomSuffix === '#CHA'" name="ai-loc-cha" large color="wimGreyColor">
         </ion-icon>
-        <ion-icon item-start *ngIf="device?.name?.match('#SAL')" name="ai-loc-sal" large color="wimGreyColor">
+        <ion-icon item-start *ngIf="device?._roomSuffix === '#SAL'" name="ai-loc-sal" large color="wimGreyColor">
         </ion-icon>
-        <ion-icon item-start *ngIf="device?.name?.match('#CUI')" name="ai-loc-cui" large color="wimGreyColor">
+        <ion-icon item-start *ngIf="device?._roomSuffix === '#CUI'" name="ai-loc-cui" large color="wimGreyColor">
         </ion-icon>
-        <ion-icon item-start *ngIf="device?.name?.match('#SAM')" name="ai-loc-sam" large color="wimGreyColor">
+        <ion-icon item-start *ngIf="device?._roomSuffix === '#SAM'" name="ai-loc-sam" large color="wimGreyColor">
         </ion-icon>
-        <ion-icon item-start *ngIf="device?.name?.match('#SDB')" name="ai-loc-sdb" large color="wimGreyColor">
+        <ion-icon item-start *ngIf="device?._roomSuffix === '#SDB'" name="ai-loc-sdb" large color="wimGreyColor">
         </ion-icon>
-        <ion-icon item-start *ngIf="device?.name?.match('#WCS')" name="ai-loc-wcs" large color="wimGreyColor">
+        <ion-icon item-start *ngIf="device?._roomSuffix === '#WCS'" name="ai-loc-wcs" large color="wimGreyColor">
         </ion-icon>
-        <ion-icon item-start *ngIf="device?.name?.match('#GAR')" name="ai-loc-garage" large color="wimGreyColor">
+        <ion-icon item-start *ngIf="device?._roomSuffix === '#GAR'" name="ai-loc-garage" large color="wimGreyColor">
         </ion-icon>
-        <ion-icon item-start *ngIf="device?.name?.match('#SDJ')" name="ai-loc-sdj" large color="wimGreyColor">
+        <ion-icon item-start *ngIf="device?._roomSuffix === '#SDJ'" name="ai-loc-sdj" large color="wimGreyColor">
         </ion-icon>
-        <ion-icon item-start *ngIf="!device?.name?.match('#')" name="moventiv-room_other" large color="wimGreyColor">
+        <ion-icon item-start *ngIf="device?._roomSuffix === '#SLL' || device?._roomSuffix === '#ENT'" name="ai-loc-autre" large color="wimGreyColor">
+        </ion-icon>
+        <ion-icon item-start *ngIf="!device?._roomSuffix" name="moventiv-room_other" large color="wimGreyColor">
         </ion-icon>
       </button>
 
