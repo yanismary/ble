@@ -10,12 +10,12 @@ import { LoggerService } from '../../providers/logger/logger.service';
 })
 export class PopoverPage {
   private TAG = 'PopoverPage';
-  private logger: LoggerService = new LoggerService();
 
   constructor(
     public viewCtrl: ViewController,
     public app: App,
-    
+    private logger: LoggerService,
+
   ) {
     this.logger.debug(this.TAG, 'Hello PopoverComponent Component');
 

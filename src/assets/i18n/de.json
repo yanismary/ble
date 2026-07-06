@@ -160,7 +160,19 @@
 				"RECONNECT_REQUIRED": "Die Änderung konnte nicht gespeichert werden. Bitte verbinden Sie sich erneut mit der Motorisierung."
 			},
 			"ADVANCED": {
-				"TITLE": "Fortgeschrittene Einstellungen"
+				"TITLE": "Fortgeschrittene Einstellungen",
+				"ALERT": {
+					"TITLE": "Achtung",
+					"SUBTITLE": "Bitte seien Sie sorgfältig bei Nutzung der fortgeschrittenen Einstellungen, da diese die Führung der Tür beeinflussen können. Lesen Sie die Bedienungsanleitung sorgfältig, bevor Sie Änderungen vornehmen.",
+					"BUTTONS": {
+						"NO": {
+							"TEXT": "Abbrechen",
+							"ROLE": "Abbrechen"
+						},
+						"YES": "Fortsetzen"
+					},
+					"PRESENT": "Parameter werden zurückgesetzt..."
+				}
 			}
 		},
 		"INFORMATIONS_TAB": {
@@ -343,13 +355,33 @@
 				"DOOR_STATE_CLOSE": "Geschlossen",
 				"DOOR_STATE_CLOSING": "Schließen",
 				"DOOR_STATE_CLOSINGDETECTOBS": "Hindernis während des Schließens",
-				"DOOR_STATE_CLOSINGBACKAFTEROBS": "Tür wird nach Hindernis wieder geschlossen"			
+				"DOOR_STATE_CLOSINGBACKAFTEROBS": "Tür wird nach Hindernis wieder geschlossen",
+				"LOCK_PROMPT": {
+					"TITLE": "Dieser Befehl kann nicht ausgeführt werden",
+					"SUBTITLE": "Deaktivieren Sie \"Tür geöffnet halten\" bevor",
+					"BUTTON_OK": "OK"
+				},
+				"RETENTION_PROMPT": {
+					"TITLE": "Dieser Befehl kann nicht ausgeführt werden",
+					"SUBTITLE": "Deaktivieren Sie \"Tür geschlossen halten\" bevor",
+					"BUTTON_OK": "OK"
+				}
 				},
 		"ADJUSTMENTS_TAB": {
 			"BASIC": {
 				"TITLE": "Grundeinstellungen",
 				"MODIFY_NAME_FORMLABEL": "Ändern Sie den Namen Ihres WIDOOR Motors",
 				"ASSOCIATE_FORMLABEL": "Verknüpfen Sie den Raum Ihres WIDOOR Motors",
+				"ASSOCIATEFORM": {
+					"CANCELTEXT": "Abbrechen",
+					"OKTEXT": "Bestätigen",
+					"VALMESSAGE": {
+						"REQUIRED": "Ein Name wird benötigt.",
+						"MINLENGHT": "Der Name muss aus mindestens fünf Zeichen bestehen.",
+						"MAXLENGHT": "Der Name darf nicht aus mehr als 15 Zeichen bestehen.",
+						"PATTERN": "Der Name darf nur Buchstaben, Ziffern, Leerzeichen oder Bindestriche enthalten."
+					}
+				},
 				"SAVE_SUCCESS_NAME": "Name erfolgreich gespeichert. Es kann notwendig sein, die Suche erneut zu starten, um den neuen Namen zu sehen.",
 				"SAVE_SUCCESS_ROOM": "Raum erfolgreich gespeichert.",
 				"SAVE_SUCCESS_NAME_ROOM": "Name und Raum erfolgreich gespeichert. Es kann notwendig sein, die Suche erneut zu starten, um den neuen Namen zu sehen.",

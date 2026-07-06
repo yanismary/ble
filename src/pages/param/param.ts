@@ -17,7 +17,6 @@ import { LoggerService } from '../../providers/logger/logger.service';
 })
 export class ParamPage {
   private TAG = 'ParamPage';
-  private logger: LoggerService = new LoggerService();
 
   @ViewChild(Navbar) navBar!: Navbar;
   toggleLanguageAuto: any;
@@ -41,7 +40,8 @@ export class ParamPage {
     private storage: Storage,
     private translate: TranslateService,
     private config: Config,
-    public platform: Platform
+    public platform: Platform,
+    private logger: LoggerService
   ) {
 
 

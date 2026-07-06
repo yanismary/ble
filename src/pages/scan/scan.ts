@@ -106,6 +106,9 @@ export class ScanPage {
   private scanTimeoutHandle: any = null;			
   private scanSubscription: any = null;
   private detectedDeviceIds: { [key: string]: boolean } = {};
+  // Evite de logguer la qualite de signal a chaque callback de scan (plusieurs fois/seconde) :
+  // on ne re-logue que si le palier de qualite a change pour cet appareil.
+  private lastLoggedSignalQuality: { [key: string]: number | string } = {};
   private TAG = 'ScanPage';
   private UI_MESSAGES = {
     scanSearching: 'Recherche en cours...',
@@ -220,6 +223,7 @@ export class ScanPage {
       this.devices = [];
       this.device = {};
       this.detectedDeviceIds = {};
+      this.lastLoggedSignalQuality = {};
     });
 
     const logDetails = {
@@ -480,10 +484,10 @@ export class ScanPage {
       if (normalizedRssi !== undefined) {
         device.rssi = normalizedRssi;
       }
-      this.logScanSignalQuality(nameInfo.name || device.name, normalizedRssi);
+      this.logScanSignalQuality(deviceKey, nameInfo.name || device.name, normalizedRssi);
 
-      let existingDevice = this.devices.find((d: ScanDevice) => 
-        (d.id && device.id && d.id === device.id) || 
+      let existingDevice = this.devices.find((d: ScanDevice) =>
+        (d.id && device.id && d.id === device.id) ||
         (d.address && device.address && d.address === device.address)
       );
 
@@ -494,7 +498,9 @@ export class ScanPage {
         this.detectedDeviceIds[deviceKey] = true;
       }
 
-      this.logger.info(this.TAG, 'Device detected during scan', {
+      // Ce callback peut se declencher plusieurs fois par seconde (allowDuplicates=true) :
+      // niveau debug pour ne pas polluer Logcat, categorie SCAN pour un filtre facile.
+      this.logger.debug(this.TAG, 'Device detected during scan', {
         deviceKey: deviceKey,
         knownBefore: knownBefore,
         oldName: oldName,
@@ -502,7 +508,7 @@ export class ScanPage {
         nameSource: nameInfo.source,
         isFreshName: nameInfo.isFresh,
         rssi: device ? device.rssi : null
-      });
+      }, 'SCAN');
 
       if (existingDevice) {
         let wasUpdated = false;
@@ -541,12 +547,24 @@ export class ScanPage {
         }
 
         if (wasUpdated) {
-          this.logger.info(this.TAG, 'Existing scan device updated', {
-            deviceKey: deviceKey,
-            oldName: oldName,
-            newName: existingDevice.name,
-            nameSource: nameInfo.source
-          });
+          const nameChanged = oldName !== existingDevice.name;
+          // Un changement de nom (donc potentiellement d'icone de piece) est loggue en info,
+          // car peu frequent et utile au diagnostic. Une simple maj RSSI/metadata reste en
+          // debug pour ne pas polluer Logcat a chaque callback de scan.
+          if (nameChanged) {
+            this.logger.info(this.TAG, 'Existing scan device updated (name changed)', {
+              deviceKey: deviceKey,
+              oldName: oldName,
+              newName: existingDevice.name,
+              nameSource: nameInfo.source
+            }, 'SCAN');
+          } else {
+            this.logger.debug(this.TAG, 'Existing scan device updated', {
+              deviceKey: deviceKey,
+              name: existingDevice.name,
+              rssi: existingDevice.rssi
+            }, 'SCAN');
+          }
           this.devices = this.devices.slice();
         }
       } else {
@@ -563,8 +581,8 @@ export class ScanPage {
           deviceKey: deviceKey,
           name: device.name,
           nameSource: nameInfo.source
-        });
-        
+        }, 'SCAN');
+
         this.checkBondStatus(device);
       }
     });
@@ -640,11 +658,21 @@ export class ScanPage {
     return device.rssi !== undefined ? device.rssi : undefined;
   }
 
-  private logScanSignalQuality(deviceName: any, rssi: any): void {
+  private logScanSignalQuality(deviceKey: string, deviceName: any, rssi: any): void {
     const signalQuality = getBleSignalQualityFromRssi(rssi);
-    const rssiLabel = rssi === undefined || rssi === null ? 'unknown' : rssi;
     const qualityLabel = signalQuality >= 0 ? signalQuality : 'unknown';
-    this.logger.info(this.TAG, 'RSSI ' + (deviceName || 'Unknown') + ' = ' + rssiLabel + ' -> quality ' + qualityLabel);
+
+    // Ce callback peut arriver plusieurs fois par seconde par appareil (allowDuplicates=true) :
+    // on ne logue que lorsque le palier de qualite change, pas a chaque annonce BLE recue.
+    if (deviceKey && this.lastLoggedSignalQuality[deviceKey] === qualityLabel) {
+      return;
+    }
+    if (deviceKey) {
+      this.lastLoggedSignalQuality[deviceKey] = qualityLabel;
+    }
+
+    const rssiLabel = rssi === undefined || rssi === null ? 'unknown' : rssi;
+    this.logger.debug(this.TAG, 'RSSI ' + (deviceName || 'Unknown') + ' = ' + rssiLabel + ' -> quality ' + qualityLabel, undefined, 'SCAN');
   }
 
   unbondOrBond(device: ScanDevice): void {
@@ -1731,6 +1759,7 @@ export class ScanPage {
     this.devices = [];
     this.device = {};
     this.detectedDeviceIds = {};
+    this.lastLoggedSignalQuality = {};
 
     this.logger.info(this.TAG, 'Scan device list cleared', {
       reason: reason,

@@ -160,7 +160,19 @@
 				"RECONNECT_REQUIRED": "Nie udało się zapisać zmiany. Połącz się ponownie z napędem."
 			},
 			"ADVANCED": {
-				"TITLE": "Zaawansowane"
+				"TITLE": "Zaawansowane",
+				"ALERT": {
+					"TITLE": "UWAGA",
+					"SUBTITLE": "Zachowaj ostrożność przy zmianie zaawansowanych ustawień, gdyż może to wpłynąć na działanie drzwi. Przed wprowadzeniem jakichkolwiek zmian przeczytaj instrukcję obsługi.",
+					"BUTTONS": {
+						"NO": {
+							"TEXT": "Anuluj",
+							"ROLE": "Anuluj"
+						},
+						"YES": "Kontynuuj"
+					},
+					"PRESENT": "Resetowanie parametrów..."
+				}
 			}
 		},
 		"INFORMATIONS_TAB": {
@@ -342,13 +354,33 @@
 			"DOOR_STATE_CLOSE": "Zamknięte",
 			"DOOR_STATE_CLOSING": "Zamykanie",
 			"DOOR_STATE_CLOSINGDETECTOBS": "Przeszkoda podczas zamykania",
-			"DOOR_STATE_CLOSINGBACKAFTEROBS": "Powrót po wykryciu przeszkody podczas zamykania"
+			"DOOR_STATE_CLOSINGBACKAFTEROBS": "Powrót po wykryciu przeszkody podczas zamykania",
+			"LOCK_PROMPT": {
+				"TITLE": "Nie można wykonać tego polecenia.",
+				"SUBTITLE": "Najpierw wyłącz \"Trzymaj drzwi otwarte\"",
+				"BUTTON_OK": "OK"
+			},
+			"RETENTION_PROMPT": {
+				"TITLE": "Nie można wykonać tego polecenia.",
+				"SUBTITLE": "Najpierw wyłącz \"Trzymaj drzwi zamknięte\"",
+				"BUTTON_OK": "OK"
+			}
 		},
 		"ADJUSTMENTS_TAB": {
 			"BASIC": {
 				"TITLE": "Podstawowe",
 				"MODIFY_NAME_FORMLABEL": "Zmień nazwę swojego napędu.",
 				"ASSOCIATE_FORMLABEL": "Przypisz pomieszczenie do swojego napędu.",
+				"ASSOCIATEFORM": {
+					"CANCELTEXT": "Anuluj",
+					"OKTEXT": "Potwierdź",
+					"VALMESSAGE": {
+						"REQUIRED": "Nazwa jest wymagana.",
+						"MINLENGHT": "Nazwa musi składać się z co najmniej 5 znaków.",
+						"MAXLENGHT": "Nazwa nie może składać się z więcej niż 15 znaków.",
+						"PATTERN": "Nazwa może zawierać tylko litery, cyfry, spacje lub łączniki."
+					}
+				},
 				"SAVE_SUCCESS_NAME": "Nazwa została pomyślnie zapisana. Może być konieczne ponowne skanowanie, aby zobaczyć nową nazwę.",
 				"SAVE_SUCCESS_ROOM": "Pomieszczenie zostało pomyślnie zapisane.",
 				"SAVE_SUCCESS_NAME_ROOM": "Nazwa i pomieszczenie zostały pomyślnie zapisane. Może być konieczne ponowne skanowanie, aby zobaczyć nową nazwę.",

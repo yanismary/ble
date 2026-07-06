@@ -162,7 +162,19 @@
 				"RECONNECT_REQUIRED": "La modification n'a pas pu être enregistrée. Veuillez vous reconnecter à la motorisation."
 			},
 			"ADVANCED": {
-				"TITLE": "Avancés"
+				"TITLE": "Avancés",
+				"ALERT": {
+					"TITLE": "Attention",
+					"SUBTITLE": "La modifications de ces paramètres peut affecter le bon fonctionnement du système. Veuillez lire la notice au préalable avant toute modification.",
+					"BUTTONS": {
+						"NO": {
+							"TEXT": "Décliner",
+							"ROLE": "Décliner"
+						},
+						"YES": "Confirmer"
+					},
+					"PRESENT": "Remise à zero des paramètres..."
+				}
 			}
 		},
 		"INFORMATIONS_TAB": {
@@ -348,13 +360,33 @@
 			"DOOR_STATE_CLOSE": "Fermée",
 			"DOOR_STATE_CLOSING": "Fermeture en cours",
 			"DOOR_STATE_CLOSINGDETECTOBS": "Obstacle pendant la fermeture",
-			"DOOR_STATE_CLOSINGBACKAFTEROBS": "Retour position fermée après détection d'un obstacle"
+			"DOOR_STATE_CLOSINGBACKAFTEROBS": "Retour position fermée après détection d'un obstacle",
+			"LOCK_PROMPT": {
+				"TITLE": "Commande impossible",
+				"SUBTITLE": "Désactivez le verrouillage de la porte au préalable.",
+				"BUTTON_OK": "OK"
+			},
+			"RETENTION_PROMPT": {
+				"TITLE": "Commande impossible",
+				"SUBTITLE": "Désactivez le maintien de la porte au préalable.",
+				"BUTTON_OK": "OK"
+			}
 		},
 		"ADJUSTMENTS_TAB": {
 			"BASIC": {
 				"TITLE": "Basiques",
 				"MODIFY_NAME_FORMLABEL": "Modifier le nom de votre WIDOOR",
 				"ASSOCIATE_FORMLABEL": "Associer votre WIDOOR à une pièce",
+				"ASSOCIATEFORM": {
+					"CANCELTEXT": "Annuler",
+					"OKTEXT": "Valider",
+					"VALMESSAGE": {
+						"REQUIRED": "Un nom est obligatoirement requis.",
+						"MINLENGHT": "Le nom doit être composé de au moins 5 caractères.",
+						"MAXLENGHT": "Le nom ne peut pas comporter plus de 15 caractères.",
+						"PATTERN": "Le nom ne peut contenir que des lettres, chiffres, espaces ou tirets."
+					}
+				},
 				"SAVE_SUCCESS_NAME": "Nom enregistré avec succès. Il peut être nécessaire de relancer une recherche pour voir le nouveau nom.",
 				"SAVE_SUCCESS_ROOM": "Pièce enregistrée avec succès.",
 				"SAVE_SUCCESS_NAME_ROOM": "Nom et pièce enregistrés avec succès. Il peut être nécessaire de relancer une recherche pour voir le nouveau nom.",

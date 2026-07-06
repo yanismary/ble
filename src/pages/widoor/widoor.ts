@@ -122,7 +122,6 @@ const SHDO_COMMAND_CHARACTERISTIC = 'd5ff2020-f80b-4b61-a3d4-ce0e0e75360e';
 const SHDO_MOTORSTATE_CHARACTERISTIC = 'e56b24a5-3309-487e-9aa6-079cd32270ae';
 const SHDO_PROMAINTENANCE_CHARACTERISTIC = '90a9b170-c180-4af6-8ca0-263170e8a315';
 
-const MLPC_SERVICE = '978ae765-664c-45d8-9157-3b9031e6478e';
 const WIDOOR_SERVICE = '3206890a-650e-46f3-9c73-2bc0840e3b8e';
 const MLPC_USERPARAM_CHARACTERISTIC = '7c7679a6-5a0d-4cbd-8cbe-93b6d6b4b80f';
 const MLPC_PROPARAM_CHARACTERISTIC = '15e9eef3-939b-4e66-baf9-772d8bd18c41';
@@ -152,7 +151,6 @@ const EXPERT_PASSWORD_OLD = 'WidoorSAV';
 })
 export class WidoorPage implements OnInit, OnDestroy {
   private TAG = 'WidoorPage';
-  private logger: LoggerService = new LoggerService();
   WIDOOR_OPEN_SPEED_MIN: number = WIDOOR_OPEN_SPEED_MIN;
   WIDOOR_CLOSE_SPEED_MIN: number = WIDOOR_CLOSE_SPEED_MIN;
   WIDOOR_SPEED_MAX: number = WIDOOR_SPEED_MAX;
@@ -341,6 +339,7 @@ export class WidoorPage implements OnInit, OnDestroy {
     private translate: TranslateService,
     private toastCtrl: ToastController,
     public bleConnectService: BleconnectserviceProvider,
+    private logger: LoggerService,
 
   ) {
 
@@ -1304,7 +1303,7 @@ export class WidoorPage implements OnInit, OnDestroy {
       return;
     }
     if ((this.device.isDemo) == "true") return;
-    this.logger.debug(this.TAG, 'SetDoorOpen');
+    this.logger.debug(this.TAG, 'Commande ouverture porte', { address: this.peripheral.address }, 'WRITE');
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
     else {
@@ -1495,7 +1494,7 @@ export class WidoorPage implements OnInit, OnDestroy {
     this.logger.debug(this.TAG, 'this.rval_shDo_userDatesCycles[4]:' + this.rval_shDo_userDatesCycles[4]);
     this.logger.debug(this.TAG, 'this.rval_shDo_userDatesCycles[3]:' + this.rval_shDo_userDatesCycles[3]);
     if ((this.rval_shDo_userDatesCycles[5] == 0) && (this.rval_shDo_userDatesCycles[4] == 0) && (this.rval_shDo_userDatesCycles[3] == 0)) {
-      this.logger.debug(this.TAG, 'firstUse');
+      this.logger.debug(this.TAG, 'Premiere utilisation detectee: ecriture date de mise en service', { address: this.peripheral.address }, 'WRITE');
       let commandData = new Uint8Array(5);
       commandData[0] = 1;
       commandData[1] = this.todayDateUint8Array[0];
@@ -1517,7 +1516,7 @@ export class WidoorPage implements OnInit, OnDestroy {
     if (this.isBleActionBlocked('setShutterClose')) {
       return;
     }
-    this.logger.debug(this.TAG, 'SetDoorClose');
+    this.logger.debug(this.TAG, 'Commande fermeture porte', { address: this.peripheral.address }, 'WRITE');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
     if (this.lockClose == 2) { this.lockAlert(); }
@@ -1545,7 +1544,7 @@ export class WidoorPage implements OnInit, OnDestroy {
     if (this.isBleActionBlocked('setLockClose')) {
       return;
     }
-    this.logger.debug(this.TAG, 'SetLockClose');
+    this.logger.debug(this.TAG, 'Commande verrouillage porte', { address: this.peripheral.address, lockBefore: this.lock }, 'WRITE');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
 
@@ -1579,7 +1578,7 @@ export class WidoorPage implements OnInit, OnDestroy {
     if (this.isBleActionBlocked('setLockOpen')) {
       return;
     }
-    this.logger.debug(this.TAG, 'SetLockOpen');
+    this.logger.debug(this.TAG, 'Commande deverrouillage porte', { address: this.peripheral.address, lockBefore: this.lock }, 'WRITE');
     this.vibrate();
     if ((this.device.isDemo) == "true") return;
 
@@ -1832,7 +1831,7 @@ export class WidoorPage implements OnInit, OnDestroy {
     if (this.isBleActionBlocked('setUserDynLight')) {
       return;
     }
-    this.logger.debug(this.TAG, 'setUserDynLight');
+    this.logger.debug(this.TAG, 'Commande eclairage dynamique', { address: this.peripheral.address, enabledBefore: this.rval_mlpc_periphCommandLedStripDynamic }, 'WRITE');
     this.vibrate();
 
     if ((this.device.isDemo) == "true") return;
@@ -2026,7 +2025,7 @@ export class WidoorPage implements OnInit, OnDestroy {
     if (this.isBleActionBlocked('setUserRGBIndic')) {
       return;
     }
-    this.logger.debug(this.TAG, 'setUserRGBIndic');
+    this.logger.debug(this.TAG, 'Commande indicateur RGB', { address: this.peripheral.address, enabledBefore: this.rval_mlpc_periphCommandRGBIndic }, 'WRITE');
     this.vibrate();
 
     if ((this.device.isDemo) == "true") return;
@@ -2725,8 +2724,8 @@ export class WidoorPage implements OnInit, OnDestroy {
     this.logger.debug(this.TAG, 'disconnectBeforeSleep()');
 
 
-    if (this.peripheral) { //if there is a peripheral 
-      this.logger.debug(this.TAG, 'peripheralExist');
+    if (this.peripheral) { //if there is a peripheral
+      this.logger.debug(this.TAG, 'Deconnexion avant mise en veille', { address: this.peripheral.address }, 'CONNECT');
       let peripheralAddress = '';
       peripheralAddress = this.peripheral.address;
       //iOS and android use 2 differents flow to disconnect
@@ -2778,24 +2777,24 @@ export class WidoorPage implements OnInit, OnDestroy {
 
 
   lockAlert() {
-    this.translate.get(['MOVENTIV_PAGE.COMMANDS_TAB.LOCK_PROMPT.TITLE', 'MOVENTIV_PAGE.COMMANDS_TAB.LOCK_PROMPT.SUBTITLE', 'MOVENTIV_PAGE.COMMANDS_TAB.LOCK_PROMPT.BUTTON_OK']).subscribe(
+    this.translate.get(['WIDOOR_PAGE.COMMANDS_TAB.LOCK_PROMPT.TITLE', 'WIDOOR_PAGE.COMMANDS_TAB.LOCK_PROMPT.SUBTITLE', 'WIDOOR_PAGE.COMMANDS_TAB.LOCK_PROMPT.BUTTON_OK']).subscribe(
       res => {
         let alert = this.alertCtrl.create({
-          title: res["MOVENTIV_PAGE.COMMANDS_TAB.LOCK_PROMPT.TITLE"],
-          subTitle: res["MOVENTIV_PAGE.COMMANDS_TAB.LOCK_PROMPT.SUBTITLE"],
-          buttons: [res["MOVENTIV_PAGE.COMMANDS_TAB.LOCK_PROMPT.BUTTON_OK"]]
+          title: res["WIDOOR_PAGE.COMMANDS_TAB.LOCK_PROMPT.TITLE"],
+          subTitle: res["WIDOOR_PAGE.COMMANDS_TAB.LOCK_PROMPT.SUBTITLE"],
+          buttons: [res["WIDOOR_PAGE.COMMANDS_TAB.LOCK_PROMPT.BUTTON_OK"]]
         });
         alert.present();
       });
   }
 
   retentionAlert() {
-    this.translate.get(['MOVENTIV_PAGE.COMMANDS_TAB.RETENTION_PROMPT.TITLE', 'MOVENTIV_PAGE.COMMANDS_TAB.RETENTION_PROMPT.SUBTITLE', 'MOVENTIV_PAGE.COMMANDS_TAB.RETENTION_PROMPT.BUTTON_OK']).subscribe(
+    this.translate.get(['WIDOOR_PAGE.COMMANDS_TAB.RETENTION_PROMPT.TITLE', 'WIDOOR_PAGE.COMMANDS_TAB.RETENTION_PROMPT.SUBTITLE', 'WIDOOR_PAGE.COMMANDS_TAB.RETENTION_PROMPT.BUTTON_OK']).subscribe(
       res => {
         let alert = this.alertCtrl.create({
-          title: res["MOVENTIV_PAGE.COMMANDS_TAB.RETENTION_PROMPT.TITLE"],
-          subTitle: res["MOVENTIV_PAGE.COMMANDS_TAB.RETENTION_PROMPT.SUBTITLE"],
-          buttons: [res["MOVENTIV_PAGE.COMMANDS_TAB.RETENTION_PROMPT.BUTTON_OK"]]
+          title: res["WIDOOR_PAGE.COMMANDS_TAB.RETENTION_PROMPT.TITLE"],
+          subTitle: res["WIDOOR_PAGE.COMMANDS_TAB.RETENTION_PROMPT.SUBTITLE"],
+          buttons: [res["WIDOOR_PAGE.COMMANDS_TAB.RETENTION_PROMPT.BUTTON_OK"]]
         });
         alert.present();
       });
@@ -2825,13 +2824,13 @@ export class WidoorPage implements OnInit, OnDestroy {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.TEXT"],
                 role: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.ROLE"],
                 handler: () => {
-                  this.logger.debug(this.TAG, 'clicked Cancel');
+                  this.logger.debug(this.TAG, 'Confirmation maintenance annulee par utilisateur', undefined, 'UI');
                 }
               },
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES"],
                 handler: () => {
-                  //faire nécessaire maintenance 
+                  //faire nécessaire maintenance
                   this.logger.debug(this.TAG, 'clicked go maintenance done')
                   this.setShdoMaintenanceDate();
                   this.setShdoFirstDate();//La fonction check si c'est bien la première mise en service
@@ -2853,13 +2852,13 @@ export class WidoorPage implements OnInit, OnDestroy {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.TEXT"],
                 role: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.ROLE"],
                 handler: () => {
-                  this.logger.debug(this.TAG, 'clicked Cancel');
+                  this.logger.debug(this.TAG, 'Confirmation mise en service annulee par utilisateur', undefined, 'UI');
                 }
               },
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES"],
                 handler: () => {
-                  //faire nécessaire maintenance 
+                  //faire nécessaire maintenance
                   this.logger.debug(this.TAG, 'clicked go setup done')
                   this.setShdoMaintenanceDate();
                   this.setShdoFirstDate();//La fonction check si c'est bien la première mise en service
@@ -2904,16 +2903,16 @@ export class WidoorPage implements OnInit, OnDestroy {
 
   //*******************  Formulaire  ******************************************************************************************************/
   ngOnInit(): any {
-    this.translate.get(['MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.REQUIRED', 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.MINLENGHT', 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.MAXLENGHT', 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.PATTERN', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.SUPERADVANCEDTUNING.PASSWORD.VALMESSAGE.NAME', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.SUPERADVANCEDTUNING.PASSWORD.VALMESSAGE.MAXLENGHT']).subscribe(
+    this.translate.get(['WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.ASSOCIATEFORM.VALMESSAGE.REQUIRED', 'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.ASSOCIATEFORM.VALMESSAGE.MINLENGHT', 'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.ASSOCIATEFORM.VALMESSAGE.MAXLENGHT', 'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.ASSOCIATEFORM.VALMESSAGE.PATTERN', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.SUPERADVANCEDTUNING.PASSWORD.VALMESSAGE.NAME', 'MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.SUPERADVANCEDTUNING.PASSWORD.VALMESSAGE.MAXLENGHT']).subscribe(
       res => {
 
         this.validation_messages = {
 
           'mlpcName': [
-            { type: 'required', message: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.REQUIRED"] },
-            { type: 'minlength', message: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.MINLENGHT"] },
-            { type: 'maxlength', message: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.MAXLENGHT"] },
-            { type: 'pattern', message: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ASSOCIATEFORM.VALMESSAGE.PATTERN"] },
+            { type: 'required', message: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.ASSOCIATEFORM.VALMESSAGE.REQUIRED"] },
+            { type: 'minlength', message: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.ASSOCIATEFORM.VALMESSAGE.MINLENGHT"] },
+            { type: 'maxlength', message: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.ASSOCIATEFORM.VALMESSAGE.MAXLENGHT"] },
+            { type: 'pattern', message: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.ASSOCIATEFORM.VALMESSAGE.PATTERN"] },
           ],
 
           'mlpcPassword': [
@@ -3250,33 +3249,14 @@ export class WidoorPage implements OnInit, OnDestroy {
   }
 
   onSubmitformPassword() {
-    this.logger.debug(this.TAG, 'submitting form password');
-    if (this.isExpertPasswordValid(this.userPassword)) {
-      this.passwordValid = true;
-      this.logger.debug(this.TAG, 'Password ok');
-    }
-    else {
-      this.passwordValid = false;
-      this.logger.debug(this.TAG, 'Password nok');
-    }
+    this.passwordValid = this.isExpertPasswordValid(this.userPassword);
+    this.logger.debug(this.TAG, 'Verification mot de passe expert (legacy)', { valid: this.passwordValid }, 'AUTH');
   }
 
   onSubmitformPasswordBCrypt() {
-    this.logger.debug(this.TAG, 'submitting form password');
-
-
     bcrypt.compare(this.userPassword, "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (_err: Error | null, match: boolean) => {
-      this.logger.debug(this.TAG, 'BCryptCompare');
-      this.logger.debug(this.TAG, 'Match result: ' + match);
-      if (match == true) {
-        // passwords match
-        this.passwordValid = true;
-        this.logger.debug(this.TAG, ' match Password BCrypt');
-      } else {
-        // passwords do not match
-        this.passwordValid = false;
-        this.logger.debug(this.TAG, 'Password BCrypt');
-      }
+      this.passwordValid = match === true;
+      this.logger.debug(this.TAG, 'Verification mot de passe expert (bcrypt)', { valid: this.passwordValid }, 'AUTH');
     });
   }
 
@@ -3466,7 +3446,7 @@ export class WidoorPage implements OnInit, OnDestroy {
               text: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.TEXT"],
               role: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.ROLE"],
               handler: () => {
-                this.logger.debug(this.TAG, 'clicked Cancel');
+                this.logger.debug(this.TAG, 'Acces onglet avance annule par utilisateur', undefined, 'UI');
                 this.paramSubmenuType = 'basic';
 
               }
@@ -3524,7 +3504,7 @@ export class WidoorPage implements OnInit, OnDestroy {
   }
 
   async delay(ms: number) {
-    await new Promise<void>(resolve => setTimeout(() => resolve(), ms)).then(() => this.logger.debug(this.TAG, "fired"));
+    await new Promise<void>(resolve => setTimeout(() => resolve(), ms));
   }
 
   isGreaterVersion3e(majorA: number, minorA: number, patchA: number, patchB: number, majorB: number, minorB: number,) {

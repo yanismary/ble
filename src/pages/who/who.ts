@@ -9,7 +9,6 @@ import { LoggerService } from '../../providers/logger/logger.service';
 })
 export class WhoPage {
   private TAG = 'WhoPage';
-  private logger: LoggerService = new LoggerService();
 
   @ViewChild(Navbar) navBar!: Navbar;
 
@@ -17,6 +16,7 @@ export class WhoPage {
     public navCtrl: NavController,
     public navParams: NavParams,
     public platform: Platform,
+    private logger: LoggerService,
   ) { }
 
 

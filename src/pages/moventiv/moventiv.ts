@@ -167,7 +167,6 @@ const EXPERT_PASSWORD_OLD      = 'WidoorSAV';
 
 export class MoventivPage implements OnInit, OnDestroy {
   private TAG = 'MoventivPage';
-  private logger: LoggerService = new LoggerService();
   @ViewChild(Content) content!: Content;
   formName!: FormGroup;
   formPassword!: FormGroup;
@@ -354,6 +353,7 @@ export class MoventivPage implements OnInit, OnDestroy {
     private translate: TranslateService,
     private toastCtrl: ToastController,
     public bleConnectService: BleconnectserviceProvider,
+    private logger: LoggerService,
 
   ) {
 
@@ -1529,29 +1529,12 @@ export class MoventivPage implements OnInit, OnDestroy {
   onStateChange(_buffer: ArrayBuffer) {
   }
 
-
-  //  setTimings(event) {//???
-  // let timingData = new Uint8Array(3);
-  // timingData[0] = this.shortTiming;
-  //timingData[1] = this.lockOpen;
-  // timingData[2] = this.lockClose;
-  //  let encodedString = this.randble.bytesToEncodedString(timingData);
-  /*
-    this.randble.write({address: this.peripheral.address, service: MLPC_SERVICE , characteristic:TIMING_CHARACTERISTIC, value:encodedString }).then(
-      (returnObj) => {
-        let bytes = this.randble.encodedStringToBytes(returnObj.value);
-        this.logger.debug(this.TAG, 'returned timing value: ' + bytes[0]);
-      }, 
-    );
-     */
-  // }
-
   setShutterOpen() {
     if (this.isBleActionBlocked('setShutterOpen')) {
       return;
     }
     if ((this.device.isDemo) == "true") return;
-    this.logger.debug(this.TAG, 'SetDoorOpen');
+    this.logger.debug(this.TAG, 'Commande ouverture porte', { address: this.peripheral.address }, 'WRITE');
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
     else {
@@ -1687,7 +1670,7 @@ export class MoventivPage implements OnInit, OnDestroy {
     }
     this.logger.debug(this.TAG, 'setShdoFirstDate');
     if ((this.rval_shDo_userDatesCycles[5] == 0xFF) && (this.rval_shDo_userDatesCycles[4] == 0xFF) && (this.rval_shDo_userDatesCycles[3] == 0xFF)) {
-      this.logger.debug(this.TAG, 'firstUse');
+      this.logger.debug(this.TAG, 'Premiere utilisation detectee: ecriture date de mise en service', { address: this.peripheral.address }, 'WRITE');
       let commandData = new Uint8Array(5);  
       commandData[0] = 1;
       commandData[1] = this.todayDateUint8Array[0];
@@ -1709,7 +1692,7 @@ export class MoventivPage implements OnInit, OnDestroy {
     if (this.isBleActionBlocked('setShutterClose')) {
       return;
     }
-    this.logger.debug(this.TAG, 'SetDoorClose');
+    this.logger.debug(this.TAG, 'Commande fermeture porte', { address: this.peripheral.address }, 'WRITE');
     if (this.lockClose == 1) { this.lockAlert(); }
     else if (this.lockOpen == 1) { this.retentionAlert(); }
     else {
@@ -1735,7 +1718,7 @@ export class MoventivPage implements OnInit, OnDestroy {
     if (this.isBleActionBlocked('setLockClose')) {
       return;
     }
-    this.logger.debug(this.TAG, 'SetLockClose');
+    this.logger.debug(this.TAG, 'Commande verrouillage porte', { address: this.peripheral.address, lockCloseBefore: this.lockClose }, 'WRITE');
 
     if (this.lockClose != 0){
       this.lockConfirm();
@@ -1784,7 +1767,7 @@ export class MoventivPage implements OnInit, OnDestroy {
     if (this.isBleActionBlocked('setLockOpen')) {
       return;
     }
-    this.logger.debug(this.TAG, 'SetLockOpen');
+    this.logger.debug(this.TAG, 'Commande deverrouillage porte', { address: this.peripheral.address }, 'WRITE');
 
     this.vibrate();
     let commandData = new Uint8Array(2);
@@ -2040,7 +2023,7 @@ export class MoventivPage implements OnInit, OnDestroy {
     if (this.isBleActionBlocked('setUserDynLight')) {
       return;
     }
-    this.logger.debug(this.TAG, 'setUserDynLight');
+    this.logger.debug(this.TAG, 'Commande eclairage dynamique', { address: this.peripheral.address }, 'WRITE');
 
     this.vibrate();
     let commandData = new Uint8Array(3);
@@ -2128,7 +2111,7 @@ export class MoventivPage implements OnInit, OnDestroy {
     if (this.isBleActionBlocked('setUserRGBIndic')) {
       return;
     }
-    this.logger.debug(this.TAG, 'setUserRGBIndic');
+    this.logger.debug(this.TAG, 'Commande indicateur RGB', { address: this.peripheral.address }, 'WRITE');
 
     this.vibrate();
     let commandData = new Uint8Array(3);
@@ -2157,7 +2140,7 @@ export class MoventivPage implements OnInit, OnDestroy {
     if (this.isBleActionBlocked('setWeightRange')) {
       return;
     }
-    this.logger.debug(this.TAG, 'setWeightRange');
+    this.logger.debug(this.TAG, 'Commande plage de poids', { address: this.peripheral.address, userRangeWeight: this.userRangeWeight }, 'WRITE');
 
     if (this.userRangeWeight == 255)
       return;
@@ -2889,8 +2872,8 @@ export class MoventivPage implements OnInit, OnDestroy {
     this.logger.debug(this.TAG, 'disconnectBeforeSleep()');
 
 
-    if (this.peripheral) { //if there is a peripheral 
-      this.logger.debug(this.TAG, 'peripheralExist');
+    if (this.peripheral) { //if there is a peripheral
+      this.logger.debug(this.TAG, 'Deconnexion avant mise en veille', { address: this.peripheral.address }, 'CONNECT');
       let peripheralAddress = '';
       peripheralAddress = this.peripheral.address;
       //iOS and android use 2 differents flow to disconnect
@@ -3007,20 +2990,20 @@ export class MoventivPage implements OnInit, OnDestroy {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.TEXT"],
                 role: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.ROLE"],
                 handler: () => {
-                  this.logger.debug(this.TAG, 'clicked Cancel');
+                  this.logger.debug(this.TAG, 'Confirmation maintenance annulee par utilisateur', undefined, 'UI');
                 }
               },
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES"],
                 handler: data => {
                   if (this.isMaintenancePasswordValid(data.MaintenancePassword)) {
-                    //faire nécessaire maintenance 
-                    this.logger.debug(this.TAG, 'clicked go maintenance done')
+                    //faire nécessaire maintenance
+                    this.logger.debug(this.TAG, 'Maintenance confirmee: ecriture date maintenance', { address: this.peripheral.address }, 'WRITE');
                     this.setShdoMaintenanceDate();
                     this.setShdoFirstDate();//La fonction check si c'est bien la première mise en service
                   }
                   else{
-                    this.logger.debug(this.TAG, 'Wrong password')
+                    this.logger.debug(this.TAG, 'Mot de passe maintenance invalide', undefined, 'AUTH');
                     let WPAlert = this.alertCtrl.create({
                       subTitle: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.WRONG_PASSWORD"],
                       buttons: [{
@@ -3056,21 +3039,21 @@ export class MoventivPage implements OnInit, OnDestroy {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.TEXT"],
                 role: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.NO.ROLE"],
                 handler: () => {
-                  this.logger.debug(this.TAG, 'clicked Cancel');
+                  this.logger.debug(this.TAG, 'Confirmation mise en service annulee par utilisateur', undefined, 'UI');
                 }
               },
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.BUTTONS.YES"],
                 handler: data => {
                   if (this.isMaintenancePasswordValid(data.MaintenancePassword)) {
-                    //faire nécessaire maintenance 
-                    this.logger.debug(this.TAG, 'clicked go setup done')
+                    //faire nécessaire maintenance
+                    this.logger.debug(this.TAG, 'Mise en service confirmee: ecriture dates', { address: this.peripheral.address }, 'WRITE');
                     this.setShdoMaintenanceDate();
                     this.setShdoFirstDate();//La fonction check si c'est bien la première mise en service
                     this.readAll();
                   }
                   else{
-                    this.logger.debug(this.TAG, 'Wrong password')
+                    this.logger.debug(this.TAG, 'Mot de passe maintenance invalide', undefined, 'AUTH');
                     let WPAlert = this.alertCtrl.create({
                       subTitle: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.MAINTENANCE.PROMPT.WRONG_PASSWORD"]
                     })
@@ -3104,23 +3087,23 @@ export class MoventivPage implements OnInit, OnDestroy {
 
   //Alerte si appuis sur onglet ADVANCED
   advancedAlert() {
-    this.translate.get(['WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.TITLE', 'WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.SUBTITLE', 'WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.TEXT', 'WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.ROLE', 'WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.YES']).subscribe(
+    this.translate.get(['MOVENTIV_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.TITLE', 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.SUBTITLE', 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.TEXT', 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.ROLE', 'MOVENTIV_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.YES']).subscribe(
       res => {
         let alert = this.alertCtrl.create({
-          title: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.TITLE"],
-          subTitle: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.SUBTITLE"],
+          title: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.TITLE"],
+          subTitle: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.SUBTITLE"],
           buttons: [
             {
-              text: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.TEXT"],
-              role: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.ROLE"],
+              text: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.TEXT"],
+              role: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.NO.ROLE"],
               handler: () => {
-                this.logger.debug(this.TAG, 'clicked Cancel');
+                this.logger.debug(this.TAG, 'Acces onglet avance annule par utilisateur', undefined, 'UI');
                 this.paramSubmenuType = 'basic';
 
               }
             },
             {
-              text: res["WIDOOR_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.YES"],
+              text: res["MOVENTIV_PAGE.ADJUSTMENTS_TAB.ADVANCED.ALERT.BUTTONS.YES"],
               handler: () => {
 
               }
@@ -3488,35 +3471,19 @@ export class MoventivPage implements OnInit, OnDestroy {
 
   
   onSubmitformPasswordBCrypt() {
-    this.logger.debug(this.TAG, 'submitting form password');
-
-
     bcrypt.compare(this.userPassword, "$2y$10$28PK5/oKpPwAuLskXdujVu.LwRxiyy.bXXHNahfeiEbWVkvkHpmfq", (_err: Error | null, match: boolean) => {
-          this.logger.debug(this.TAG, 'BCryptCompare');
-          this.logger.debug(this.TAG, 'Match result: ' + match);
-
-          if (match == true) {
-            // passwords match
-            this.passwordValid = true;
-            this.logger.debug(this.TAG, ' match Password BCrypt');
-          } else {
-            // passwords do not match
-            this.passwordValid = false;
-            this.logger.debug(this.TAG, 'Password BCrypt');
+          this.passwordValid = match === true;
+          this.logger.debug(this.TAG, 'Verification mot de passe expert (bcrypt)', { valid: this.passwordValid }, 'AUTH');
+          if (!this.passwordValid) {
             this.showIncorrectPasswordToast();
           }
         });
   }
 
   onSubmitformPassword() {
-    this.logger.debug(this.TAG, 'submitting form password');
-    if (this.isExpertPasswordValid(this.userPassword)) {
-      this.passwordValid = true;
-      this.logger.debug(this.TAG, 'Password ok');
-    }
-    else {
-      this.passwordValid = false;
-      this.logger.debug(this.TAG, 'Password nok');
+    this.passwordValid = this.isExpertPasswordValid(this.userPassword);
+    this.logger.debug(this.TAG, 'Verification mot de passe expert (legacy)', { valid: this.passwordValid }, 'AUTH');
+    if (!this.passwordValid) {
       this.showIncorrectPasswordToast();
     }
   }
@@ -3673,8 +3640,6 @@ export class MoventivPage implements OnInit, OnDestroy {
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.WEIGHTCHECK.BUTTON.OK"],
                 handler: () => {
-
-                  this.logger.debug(this.TAG, 'clicked')
                 }
               }
             ]
@@ -3693,8 +3658,6 @@ export class MoventivPage implements OnInit, OnDestroy {
               {
                 text: res["MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.WEIGHT_TUNING.WEIGHTCHECK.BUTTON.OK"],
                 handler: () => {
-
-                  this.logger.debug(this.TAG, 'clicked')
                 }
               }
             ]
@@ -3738,6 +3701,6 @@ export class MoventivPage implements OnInit, OnDestroy {
   }
 
   async delay(ms: number) {
-    await new Promise<void>(resolve => setTimeout(() => resolve(), ms)).then(() => this.logger.debug(this.TAG, "fired"));
+    await new Promise<void>(resolve => setTimeout(() => resolve(), ms));
   }
 }
