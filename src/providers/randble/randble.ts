@@ -520,9 +520,14 @@ export class RandBLE {
   }
 }
 
-  isConnected(params: { address: string }): Observable<{ isConnected: boolean }> {
+  // ATTENTION: sur iOS, getConnectedDevices() utilise CBCentralManager.retrieveConnectedPeripherals(withServices:)
+  // qui ne renvoie RIEN si la liste de services est vide (documente par le plugin @capacitor-community/bluetooth-le).
+  // Sur Android, la liste de services est ignoree (BluetoothManager.getConnectedDevices ne filtre pas dessus).
+  // Sans le service concerne, cet appel renvoie donc toujours isConnected=false sur iOS, meme si l'appareil
+  // est bien connecte : les appelants doivent fournir le(s) service(s) UUID de l'ecriture qu'ils s'appretent a faire.
+  isConnected(params: { address: string, services?: string[] }): Observable<{ isConnected: boolean }> {
       return Observable.fromPromise(
-          BleClient.getConnectedDevices([]).then(devices => {
+          BleClient.getConnectedDevices(params.services || []).then(devices => {
               const found = devices.find(d => d.deviceId === params.address);
               return { isConnected: !!found };
           }).catch(() => {

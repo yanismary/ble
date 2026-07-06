@@ -2276,7 +2276,7 @@ export class WidoorPage implements OnInit, OnDestroy {
       let subscription: any = null;
       let settled = false;
 
-      subscription = this.randble.isConnected({ address: deviceId }).subscribe(
+      subscription = this.randble.isConnected({ address: deviceId, services: [SHDO_SERVICE] }).subscribe(
         (res) => {
           if (!settled) {
             settled = true;
@@ -2375,32 +2375,34 @@ export class WidoorPage implements OnInit, OnDestroy {
 
   private ensureNameWriteConnection(deviceId: string): Promise<void> {
     const connectionStatus = this.bleConnectService ? this.bleConnectService.getConnectionStatus() : 'unknown';
+    const needConnect = this.bleConnectService ? this.bleConnectService.getNeedConnect() : null;
 
+    this.logger.info(this.TAG, '[ROOM] current deviceId', { deviceId: deviceId }, 'ROOM');
+    this.logger.info(this.TAG, '[ROOM] current address', { address: this.peripheral ? this.peripheral.address : null }, 'ROOM');
+    this.logger.info(this.TAG, '[ROOM] needConnect', { needConnect: needConnect }, 'ROOM');
     this.logger.info(this.TAG, 'Etat connexion Widoor avant ecriture', {
       deviceId: deviceId,
       connectionStatus: connectionStatus
     });
 
     if (!deviceId) {
+      this.logger.warn(this.TAG, '[ROOM] connection guard result', { result: 'blocked', reason: 'deviceId absent' }, 'ROOM');
       return Promise.reject(this.createNameWriteError(
         'DeviceId absent pour ecriture nom/piece Widoor',
         'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_NOT_CONNECTED'
       ));
     }
 
+    // Le flag isConnected (base sur getConnectedDevices) sert uniquement de diagnostic ici :
+    // sur iOS, retrieveConnectedPeripherals(withServices:) peut renvoyer un faux "non connecte"
+    // meme quand la connexion est bien active (voir randble.isConnected). On ne bloque donc plus
+    // l'ecriture sur ce flag : on tente l'ecriture BLE reelle et on ne montre une erreur que si
+    // elle echoue vraiment (cf. .catch() dans SetName()).
     return this.isDeviceConnected(deviceId).then((isConnected) => {
-      this.logger.info(this.TAG, 'Etat connecte Widoor verifie avant ecriture', {
-        deviceId: deviceId,
-        connectionStatus: connectionStatus,
-        isConnected: isConnected
-      });
-
-      if (!isConnected) {
-        throw this.createNameWriteError(
-          'Motorisation Widoor non connectee avant ecriture nom/piece',
-          'WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.SAVE_NOT_CONNECTED'
-        );
-      }
+      this.logger.info(this.TAG, '[ROOM] isConnected flag', { deviceId: deviceId, isConnected: isConnected }, 'ROOM');
+      this.logger.info(this.TAG, '[ROOM] connection guard result', { result: 'write attempted regardless of isConnected flag' }, 'ROOM');
+    }).catch((error) => {
+      this.logger.warn(this.TAG, '[ROOM] isConnected flag check failed, ecriture tentee quand meme', error, 'ROOM');
     });
   }
 
@@ -3116,6 +3118,9 @@ export class WidoorPage implements OnInit, OnDestroy {
   }
 
   async onSubmitformName() {
+    this.logger.info(this.TAG, '[ROOM] validate clicked', undefined, 'ROOM');
+    this.logger.info(this.TAG, '[ROOM] selected room', { localisation: this.localisation, stringLoc: this.stringLoc }, 'ROOM');
+
     if (this.isNameWriteInProgress) {
       this.logger.warn(this.TAG, 'Validation nom/piece Widoor ignoree: ecriture deja en cours');
       this.showWidoorNameToast('WIDOOR_PAGE.ADJUSTMENTS_TAB.BASIC.WRITE_IN_PROGRESS');
@@ -3218,8 +3223,10 @@ export class WidoorPage implements OnInit, OnDestroy {
       }
 
       await this.delay(NAME_WRITE_PRE_DELAY_MS);
+      this.logger.info(this.TAG, '[ROOM] write name start', { deviceId: deviceId, value: valueToWrite }, 'ROOM');
       await this.SetName(valueToWrite, deviceId);
       writeSucceeded = true;
+      this.logger.info(this.TAG, '[ROOM] write name success', { deviceId: deviceId, value: valueToWrite }, 'ROOM');
 
       this.updateLocalNameDisplay(baseName, locationSuffix);
       // Selection consommee: on efface le "pending" pour ne pas le voir fuiter vers une
@@ -3241,6 +3248,7 @@ export class WidoorPage implements OnInit, OnDestroy {
       this.showWidoorNameToast(this.getNameSaveSuccessTranslationKey(nameChanged, roomChanged));
     } catch (error) {
       const nameError: any = error;
+      this.logger.error(this.TAG, '[ROOM] write name error', error, 'ROOM');
       this.logger.error(this.TAG, 'Validation nom/piece Widoor en erreur', error);
       if (error && nameError.unstableConnection) {
         await this.handleNameWriteConnectionUnstable(deviceId, error);
