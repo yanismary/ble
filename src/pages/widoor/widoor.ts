@@ -2968,6 +2968,40 @@ export class WidoorPage implements OnInit, OnDestroy {
     return '';
   }
 
+  private mapSuffixToLocalisation(suffix: string): string {
+    switch (suffix) {
+      case '#CHA': return 'locValRoom';
+      case '#ENT': return 'locValEntree';
+      case '#SAL': return 'locValLivingRoom';
+      case '#CUI': return 'locValKitchen';
+      case '#SAM': return 'locValDiningRoom';
+      case '#SDB': return 'locValBathroom';
+      case '#WCS': return 'locValToilet';
+      case '#GAR': return 'LocValGarage_UtilityRoom';
+      case '#SLL': return 'LocValSalle';
+      case '#SDJ': return 'LocValPlayroom';
+      default: return '';
+    }
+  }
+
+  // Reprend le mapping utilise par la liste de scan (scan.html) pour permettre le diagnostic.
+  private resolveRoomIconName(suffix: string): string {
+    switch (suffix) {
+      case '#CHA': return 'ai-loc-cha';
+      case '#SAL': return 'ai-loc-sal';
+      case '#CUI': return 'ai-loc-cui';
+      case '#SAM': return 'ai-loc-sam';
+      case '#SDB': return 'ai-loc-sdb';
+      case '#WCS': return 'ai-loc-wcs';
+      case '#GAR': return 'ai-loc-garage';
+      case '#SDJ': return 'ai-loc-sdj';
+      case '#SLL':
+      case '#ENT':
+        return 'ai-loc-autre';
+      default: return 'moventiv-room_other';
+    }
+  }
+
   private getCurrentBaseName(): string {
     return this.stripLocationSuffix(this.getCurrentDisplayName()).trim();
   }
@@ -2980,9 +3014,28 @@ export class WidoorPage implements OnInit, OnDestroy {
     const displayName = this.getCurrentDisplayName();
     const locationSuffix = this.extractLocationSuffix(displayName);
     const baseName = this.stripLocationSuffix(displayName).trim();
+    const hasPendingRoomSelection = !!this.stringLoc;
+
+    this.logger.info(this.TAG, '[ROOM][Widoor] Relecture piece depuis nom courant', {
+      displayName: displayName,
+      suffixDetected: locationSuffix,
+      hasPendingRoomSelection: hasPendingRoomSelection
+    });
 
     if (locationSuffix) {
       this.currentLocationSuffix = locationSuffix;
+      // Ne pas ecraser une selection utilisateur pas encore validee (ex: reconnexion BLE en arriere-plan
+      // pendant que l'utilisateur choisit une nouvelle piece), sinon la piece precedemment sauvegardee
+      // (ex: Garage) reste affichee quoi que l'utilisateur selectionne ensuite.
+      if (!hasPendingRoomSelection) {
+        this.localisation = this.mapSuffixToLocalisation(locationSuffix);
+        this.logger.info(this.TAG, '[ROOM][Widoor] Piece affichee apres relecture', {
+          localisation: this.localisation,
+          icone: this.resolveRoomIconName(locationSuffix)
+        });
+      } else {
+        this.logger.info(this.TAG, '[ROOM][Widoor] Relecture ignoree: selection utilisateur en cours', { stringLoc: this.stringLoc });
+      }
     }
 
     if (!baseName) {
@@ -3090,6 +3143,13 @@ export class WidoorPage implements OnInit, OnDestroy {
         value: valueToWrite,
         length: valueToWrite.length
       });
+      this.logger.info(this.TAG, '[ROOM][Widoor] Valeur qui sera ecrite en BLE', {
+        localisation: this.localisation,
+        stringLoc: this.stringLoc,
+        currentLocationSuffix: this.currentLocationSuffix,
+        locationSuffixResolu: locationSuffix,
+        valueToWrite: valueToWrite
+      });
 
       if (typedName && control && control.hasError('pattern')) {
         control.markAsTouched();
@@ -3151,9 +3211,18 @@ export class WidoorPage implements OnInit, OnDestroy {
       writeSucceeded = true;
 
       this.updateLocalNameDisplay(baseName, locationSuffix);
+      // Selection consommee: on efface le "pending" pour ne pas le voir fuiter vers une
+      // sauvegarde ulterieure ni bloquer la relecture (cf. bug piece bloquee sur "Garage").
+      this.stringLoc = '';
       this.logger.info(this.TAG, nameChanged ? 'Succes ecriture nom Widoor' : 'Ecriture nom Widoor non necessaire');
       this.logger.info(this.TAG, roomChanged ? 'Succes ecriture piece Widoor' : 'Ecriture piece Widoor non necessaire');
       this.logger.info(this.TAG, 'Validation nom/piece Widoor reussie');
+      this.logger.info(this.TAG, '[ROOM][Widoor] Valeur reellement ecrite en BLE', {
+        valueWritten: valueToWrite,
+        locationSuffixWritten: locationSuffix,
+        currentLocationSuffixApresEcriture: this.currentLocationSuffix,
+        icone: this.resolveRoomIconName(locationSuffix)
+      });
 
       this.showWidoorNameToast(this.getNameSaveSuccessTranslationKey(nameChanged, roomChanged));
     } catch (error) {
@@ -3230,6 +3299,7 @@ export class WidoorPage implements OnInit, OnDestroy {
 
   onLocChange() {
     this.logger.debug(this.TAG, "Selected localisation");
+    this.logger.info(this.TAG, '[ROOM][Widoor] Piece selectionnee par utilisateur', { localisation: this.localisation });
 
     switch (this.localisation) {
       case "locValRoom":
@@ -3266,6 +3336,11 @@ export class WidoorPage implements OnInit, OnDestroy {
         this.stringLoc = '';
         break;
     }
+
+    this.logger.info(this.TAG, '[ROOM][Widoor] Identifiant technique piece resolu', {
+      localisation: this.localisation,
+      stringLoc: this.stringLoc
+    });
   }
 
 
