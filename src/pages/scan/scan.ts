@@ -537,7 +537,7 @@ export class ScanPage {
           existingDevice.isBonded = device.isBonded;
           wasUpdated = true;
         }
-        if (this.shouldUpdateDisplayedName(existingDevice.name, nameInfo, !!existingDevice._hasFreshLocalName)) {
+        if (this.shouldUpdateDisplayedName(existingDevice.name, nameInfo)) {
           existingDevice.name = nameInfo.name;
           wasUpdated = true;
         }
@@ -1819,7 +1819,7 @@ export class ScanPage {
     };
   }
 
-  private shouldUpdateDisplayedName(currentName: string | undefined, nameInfo: { name: string, source: string, isFresh: boolean }, currentHasFreshLocalName: boolean): boolean {
+  private shouldUpdateDisplayedName(currentName: string | undefined, nameInfo: { name: string, source: string, isFresh: boolean }): boolean {
     const current = currentName ? String(currentName).trim() : '';
     const next = nameInfo && nameInfo.name ? String(nameInfo.name).trim() : '';
 
@@ -1827,14 +1827,12 @@ export class ScanPage {
       return false;
     }
 
-    if (!current || current === 'Unknown' || current === 'Unnamed') {
-      return true;
-    }
-
-    if (nameInfo.isFresh && current !== next) {
-      return true;
-    }
-
-    return !currentHasFreshLocalName && current !== next;
+    // Avant, une fois qu'un nom "frais" (advertisement.localName) avait ete vu, tout futur
+    // callback non-fresh (device.name, moins fiable sur certains stacks Android) etait ignore
+    // meme s'il refletait un vrai changement (ex: pièce reaffectee sur Widoor/Moventiv/Garline).
+    // Resultat : apres un changement de piece, la liste de scan restait bloquee sur l'ancien nom.
+    // Les deux sources sont deja filtrees des valeurs "Unknown"/"Unnamed" en amont
+    // (firstNonEmptyString), donc un nom different ici est toujours un vrai changement a refleter.
+    return current !== next;
   }
 }
