@@ -3,16 +3,20 @@ import { Storage } from '@ionic/storage';
 import { LoggerService } from '../logger/logger.service';
 
 interface RoomCacheEntry {
-  suffix: string;
+  suffix?: string;
+  name?: string;
   updatedAt: number;
 }
 
 const STORAGE_KEY = 'StoredRoomAssignments';
 
-// Source de verite locale pour l'icone de piece affichee au scan (WIDOOR/MOVENTIV/GARLINE).
-// Le protocole moteur ne change pas : la piece reste ecrite en suffixe du nom BLE. Ce cache
-// sert uniquement a l'affichage app, pour ne plus dependre du nom BLE tel que remonte par le
-// scan Android (parfois en cache/pas a jour tant que l'app n'a pas ete relancee).
+// Source de verite locale pour l'affichage (icone de piece + nom du moteur) au scan et sur les
+// pages produit (WIDOOR/MOVENTIV/GARLINE). Le protocole moteur ne change pas : la piece et le nom
+// restent ecrits comme avant sur le moteur (nom BLE = nom + suffixe de piece). Ce cache sert
+// uniquement a l'affichage app, pour ne plus dependre du nom BLE tel que remonte par le scan
+// Android/iOS (parfois en cache/pas a jour tant que l'app n'a pas ete relancee).
+// Un seul cache pour les deux car ils partagent la meme cle (deviceId/address/uuid) et la meme
+// resolution d'affichage cote scan.ts : mutualise plutot que duplique.
 @Injectable()
 export class RoomCacheProvider {
   private readonly TAG = 'RoomCacheProvider';
@@ -27,7 +31,7 @@ export class RoomCacheProvider {
   }
 
   // Charge le cache une seule fois (idempotent) ; a appeler tot (constructeur de page) pour
-  // que getRoomSuffix() soit deja pret au moment du premier callback de scan.
+  // que getRoomSuffix()/getDeviceName() soient deja prets au moment du premier callback de scan.
   preload(): Promise<void> {
     if (this.loaded) {
       return Promise.resolve();
@@ -36,14 +40,26 @@ export class RoomCacheProvider {
       this.loadPromise = this.storage.get(STORAGE_KEY).then((raw) => {
         this.cache = raw ? JSON.parse(raw) : {};
         this.loaded = true;
-        this.logger.debug(this.TAG, 'Cache pieces charge', { count: Object.keys(this.cache).length }, 'ROOM');
+        this.logger.debug(this.TAG, 'Cache local moteur charge', { count: Object.keys(this.cache).length }, 'ROOM');
       }).catch((error) => {
-        this.logger.warn(this.TAG, 'Chargement cache pieces echoue, cache vide utilise', error, 'ROOM');
+        this.logger.warn(this.TAG, 'Chargement cache local moteur echoue, cache vide utilise', error, 'ROOM');
         this.cache = {};
         this.loaded = true;
       });
     }
     return this.loadPromise;
+  }
+
+  private async persistEntry(key: string, patch: Partial<RoomCacheEntry>): Promise<void> {
+    await this.preload();
+    const existing = this.cache[key] || {};
+    this.cache[key] = { ...existing, ...patch, updatedAt: Date.now() };
+
+    try {
+      await this.storage.set(STORAGE_KEY, JSON.stringify(this.cache));
+    } catch (error) {
+      this.logger.warn(this.TAG, 'Sauvegarde locale moteur echouee (cache memoire conserve)', error, 'ROOM');
+    }
   }
 
   async setRoomSuffix(deviceKey: string, suffix: string): Promise<void> {
@@ -53,26 +69,39 @@ export class RoomCacheProvider {
       return;
     }
 
-    await this.preload();
-    this.cache[key] = { suffix: suffix || '', updatedAt: Date.now() };
-
-    try {
-      await this.storage.set(STORAGE_KEY, JSON.stringify(this.cache));
-      this.logger.debug(this.TAG, 'Piece sauvegardee localement', { deviceKey: key, suffix: suffix }, 'ROOM');
-    } catch (error) {
-      this.logger.warn(this.TAG, 'Sauvegarde locale piece echouee (cache memoire conserve)', error, 'ROOM');
-    }
+    await this.persistEntry(key, { suffix: suffix || '' });
+    this.logger.debug(this.TAG, 'Piece sauvegardee localement', { deviceKey: key, suffix: suffix }, 'ROOM');
   }
 
-  // Synchrone par design : utilise depuis le callback de scan (appele plusieurs fois par
+  async setDeviceName(deviceKey: string, name: string): Promise<void> {
+    const key = this.normalizeKey(deviceKey);
+    if (!key) {
+      this.logger.warn(this.TAG, '[NAME] local cache update ignore: deviceKey absent', { name: name }, 'NAME');
+      return;
+    }
+
+    await this.persistEntry(key, { name: name || '' });
+    this.logger.debug(this.TAG, '[NAME] local cache updated', { deviceKey: key, name: name }, 'NAME');
+  }
+
+  // Synchrones par design : utilises depuis le callback de scan (appele plusieurs fois par
   // seconde), donc pas question d'attendre une promesse Storage a chaque appel.
-  // Renvoie null tant que le cache n'a pas fini son premier chargement (preload()).
+  // Renvoient null tant que le cache n'a pas fini son premier chargement (preload()).
   getRoomSuffix(deviceKey: string): string | null {
     const key = this.normalizeKey(deviceKey);
     if (!key || !this.loaded) {
       return null;
     }
     const entry = this.cache[key];
-    return entry ? entry.suffix : null;
+    return entry && entry.suffix !== undefined ? entry.suffix : null;
+  }
+
+  getDeviceName(deviceKey: string): string | null {
+    const key = this.normalizeKey(deviceKey);
+    if (!key || !this.loaded) {
+      return null;
+    }
+    const entry = this.cache[key];
+    return entry && entry.name !== undefined ? entry.name : null;
   }
 }

@@ -22,7 +22,7 @@ import {
   versionWordBytesToHex
 } from '../../app/product-detection';
 import { getSignalQualityFromRssi as getBleSignalQualityFromRssi } from '../../app/ble-format';
-import { extractRoomSuffix } from '../../app/room-suffix';
+import { extractRoomSuffix, stripRoomSuffix } from '../../app/room-suffix';
 
 
 // --- CONFIGURATION DES PRODUITS ---
@@ -46,6 +46,8 @@ interface ScanDevice {
   advertisement?: any;
   // Suffixe de piece resolu pour l'affichage de l'icone (cache local en priorite, sinon nom BLE scanne).
   _roomSuffix?: string;
+  // Nom de base resolu pour l'affichage (cache local en priorite, sinon nom BLE scanne, sans suffixe de piece).
+  _displayName?: string;
   [key: string]: any;
 }
 
@@ -494,12 +496,24 @@ export class ScanPage {
       this.logScanSignalQuality(deviceKey, nameInfo.name || device.name, normalizedRssi);
 
       // Le cache local (rempli juste apres une ecriture BLE reussie sur la page produit) est
-      // prioritaire sur le nom BLE tel que scanne : Android ne remonte pas toujours le nom a
-      // jour immediatement, ce qui laissait l'icone bloquee sur l'ancienne piece.
+      // prioritaire sur le nom BLE tel que scanne : Android/iOS ne remontent pas toujours le nom
+      // a jour immediatement, ce qui laissait l'icone/le nom bloques sur l'ancienne valeur.
       const cachedRoomSuffix = this.roomCache.getRoomSuffix(deviceKey);
       const effectiveRoomSuffix = cachedRoomSuffix !== null && cachedRoomSuffix !== undefined
         ? cachedRoomSuffix
         : extractRoomSuffix(nameInfo.name || device.name || '');
+
+      const cachedDeviceName = this.roomCache.getDeviceName(deviceKey);
+      const scannedBaseName = stripRoomSuffix(nameInfo.name || device.name || '');
+      const effectiveDisplayName = cachedDeviceName !== null && cachedDeviceName !== undefined
+        ? cachedDeviceName
+        : scannedBaseName;
+
+      this.logger.debug(this.TAG, '[NAME] scan resolved name source', {
+        deviceKey: deviceKey,
+        source: cachedDeviceName !== null && cachedDeviceName !== undefined ? 'local cache' : 'BLE scan',
+        effectiveDisplayName: effectiveDisplayName
+      }, 'NAME');
 
       let existingDevice = this.devices.find((d: ScanDevice) =>
         (d.id && device.id && d.id === device.id) ||
@@ -508,6 +522,7 @@ export class ScanPage {
 
       const oldName = existingDevice ? existingDevice.name : '';
       const oldRoomSuffix = existingDevice ? existingDevice._roomSuffix : '';
+      const oldDisplayName = existingDevice ? existingDevice._displayName : '';
       const knownBefore = !!(deviceKey && this.detectedDeviceIds[deviceKey]);
 
       if (deviceKey) {
@@ -567,21 +582,28 @@ export class ScanPage {
           existingDevice._roomSuffix = effectiveRoomSuffix;
           wasUpdated = true;
         }
+        if (existingDevice._displayName !== effectiveDisplayName) {
+          existingDevice._displayName = effectiveDisplayName;
+          wasUpdated = true;
+        }
 
         if (wasUpdated) {
           const nameChanged = oldName !== existingDevice.name;
           const roomSuffixChanged = oldRoomSuffix !== existingDevice._roomSuffix;
+          const displayNameChanged = oldDisplayName !== existingDevice._displayName;
           // Un changement de nom ou d'icone de piece est loggue en info, car peu frequent
           // et utile au diagnostic. Une simple maj RSSI/metadata reste en debug pour ne pas
           // polluer Logcat a chaque callback de scan.
-          if (nameChanged || roomSuffixChanged) {
+          if (nameChanged || roomSuffixChanged || displayNameChanged) {
             this.logger.info(this.TAG, 'Existing scan device updated (name/piece changed)', {
               deviceKey: deviceKey,
               oldName: oldName,
               newName: existingDevice.name,
               nameSource: nameInfo.source,
               oldRoomSuffix: oldRoomSuffix,
-              newRoomSuffix: existingDevice._roomSuffix
+              newRoomSuffix: existingDevice._roomSuffix,
+              oldDisplayName: oldDisplayName,
+              newDisplayName: existingDevice._displayName
             }, 'SCAN');
           } else {
             this.logger.debug(this.TAG, 'Existing scan device updated', {
@@ -602,13 +624,16 @@ export class ScanPage {
            device.isBonded = false;
         }
         device._roomSuffix = effectiveRoomSuffix;
+        device._displayName = effectiveDisplayName;
         this.devices.push(device);
         this.logger.info(this.TAG, 'New scan device added', {
           deviceKey: deviceKey,
           name: device.name,
           nameSource: nameInfo.source,
           roomSuffix: effectiveRoomSuffix,
-          roomSource: cachedRoomSuffix !== null && cachedRoomSuffix !== undefined ? 'cache' : 'scan'
+          roomSource: cachedRoomSuffix !== null && cachedRoomSuffix !== undefined ? 'cache' : 'scan',
+          displayName: effectiveDisplayName,
+          displayNameSource: cachedDeviceName !== null && cachedDeviceName !== undefined ? 'cache' : 'scan'
         }, 'SCAN');
 
         this.checkBondStatus(device);

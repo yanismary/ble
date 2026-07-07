@@ -3230,15 +3230,24 @@ export class MoventivPage implements OnInit, OnDestroy {
   private syncNameInputFromDisplayName(): void {
     const displayName = this.getCurrentDisplayName();
     const scannedSuffix = this.extractLocationSuffix(displayName);
-    const baseName = this.stripLocationSuffix(displayName).trim();
+    const scannedBaseName = this.stripLocationSuffix(displayName).trim();
     const hasPendingRoomSelection = !!this.stringLoc;
 
-    // Le cache local (ecrit juste apres une sauvegarde reussie) est prioritaire sur le suffixe
-    // lu depuis le nom BLE courant : ce nom peut provenir d'un objet peripheral/scan pas encore
-    // rafraichi cote Android, ce qui faisait reapparaitre l'ancienne piece a la reconnexion.
+    // Le cache local (ecrit juste apres une sauvegarde reussie) est prioritaire sur le suffixe/nom
+    // lus depuis le nom BLE courant : ce nom peut provenir d'un objet peripheral/scan pas encore
+    // rafraichi cote Android/iOS, ce qui faisait reapparaitre l'ancienne piece/l'ancien nom.
     const deviceKey = this.getDeviceIdFromDevice(this.peripheral) || this.getDeviceIdFromDevice(this.device);
     const cachedSuffix = deviceKey ? this.roomCache.getRoomSuffix(deviceKey) : null;
     const locationSuffix = (cachedSuffix !== null && cachedSuffix !== undefined) ? cachedSuffix : scannedSuffix;
+
+    const cachedName = deviceKey ? this.roomCache.getDeviceName(deviceKey) : null;
+    const baseName = (cachedName !== null && cachedName !== undefined) ? cachedName : scannedBaseName;
+    this.logger.info(this.TAG, '[NAME] product page displayed name updated', {
+      scannedBaseName: scannedBaseName,
+      cachedName: cachedName,
+      nameRetenu: baseName,
+      source: (cachedName !== null && cachedName !== undefined) ? 'local cache' : 'BLE scan'
+    }, 'NAME');
 
     this.logger.info(this.TAG, '[ROOM][Moventiv] Relecture piece depuis nom courant', {
       displayName: displayName,
@@ -3268,9 +3277,16 @@ export class MoventivPage implements OnInit, OnDestroy {
       return;
     }
 
+    const control = this.formName ? this.formName.get('mlpcName') : null;
+    // Meme logique que pour la piece : ne pas ecraser un nom en cours de frappe pas encore
+    // valide (control "dirty") si une resynchronisation se declenche en arriere-plan.
+    if (control && control.dirty) {
+      this.logger.info(this.TAG, '[NAME] relecture ignoree: saisie utilisateur en cours', undefined, 'NAME');
+      return;
+    }
+
     this.peripheralNameAff = baseName;
     this.userConfig.mlpcName = baseName;
-    const control = this.formName ? this.formName.get('mlpcName') : null;
     if (control) {
       control.setValue(baseName, { emitEvent: false });
       control.markAsPristine();
@@ -3435,19 +3451,25 @@ export class MoventivPage implements OnInit, OnDestroy {
         return;
       }
 
+      this.logger.info(this.TAG, '[NAME] selected/new name', { newName: baseName, nameChanged: nameChanged }, 'NAME');
+      this.logger.info(this.TAG, '[NAME] old displayed name', { oldName: currentBaseName }, 'NAME');
       await this.delay(NAME_WRITE_PRE_DELAY_MS);
       this.logger.info(this.TAG, '[ROOM] write name start', { deviceId: deviceId, value: valueToWrite }, 'ROOM');
+      this.logger.info(this.TAG, '[NAME] BLE write start', { deviceId: deviceId, value: valueToWrite }, 'NAME');
       await this.SetName(valueToWrite, deviceId);
       writeSucceeded = true;
       this.logger.info(this.TAG, '[ROOM] write name success', { deviceId: deviceId, value: valueToWrite }, 'ROOM');
+      this.logger.info(this.TAG, '[NAME] BLE write success', { deviceId: deviceId, value: valueToWrite }, 'NAME');
 
       this.updateLocalNameDisplay(baseName, locationSuffix);
       // Selection consommee: on efface le "pending" pour ne pas le voir fuiter vers une
       // sauvegarde ulterieure ni bloquer la relecture (cf. bug piece bloquee sur "Garage").
       this.stringLoc = '';
-      // Source de verite locale pour l'icone de scan : ecrite immediatement, independamment
-      // de ce que le scan BLE Android remontera (parfois pas a jour tant que l'app tourne).
+      // Source de verite locale pour l'icone/le nom de scan : ecrite immediatement, independamment
+      // de ce que le scan BLE Android/iOS remontera (parfois pas a jour tant que l'app tourne).
       this.roomCache.setRoomSuffix(deviceId, locationSuffix);
+      this.roomCache.setDeviceName(deviceId, baseName);
+      this.logger.info(this.TAG, '[NAME] local cache updated', { deviceId: deviceId, name: baseName }, 'NAME');
       this.logger.info(this.TAG, nameChanged ? 'Succes ecriture nom Moventiv' : 'Ecriture nom Moventiv non necessaire');
       this.logger.info(this.TAG, roomChanged ? 'Succes ecriture piece Moventiv' : 'Ecriture piece Moventiv non necessaire');
       this.logger.info(this.TAG, 'Validation nom/piece Moventiv reussie');

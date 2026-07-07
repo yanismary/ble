@@ -18,6 +18,18 @@ export function extractRoomSuffix(name: string): string {
   return '';
 }
 
+// Nom de base (sans suffixe de piece), utilise pour l'affichage du nom du moteur au scan.
+export function stripRoomSuffix(name: string): string {
+  let value = name || '';
+  for (let i = 0; i < ROOM_SUFFIXES.length; i++) {
+    const suffix = ROOM_SUFFIXES[i];
+    if (value.lastIndexOf(suffix) === value.length - suffix.length) {
+      value = value.substring(0, value.length - suffix.length);
+    }
+  }
+  return value;
+}
+
 export function roomIconForSuffix(suffix: string): string {
   switch (suffix) {
     case '#CHA': return 'ai-loc-cha';

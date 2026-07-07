@@ -39,8 +39,7 @@
     <ion-item-sliding *ngFor="let device of devices" (ionDrag)="itemDragged($event, device)" (ionSwipe)="swipe()">
       <button ion-item (click)="deviceSelected(device)">
         <h2 text-wrap>
-          <b>{{ "SCAN_PAGE.NAME" | translate }}</b> {{device?.name?.replace('#CHA','').replace('#CUI','').replace('#SDB','').replace('#ENT','').replace('#SAL','').replace('#WCS','').replace('#SDJ','').replace('#SLL','').replace('#GAR','').replace('#SAM','')
-            || 'Unnamed' }}</h2>
+          <b>{{ "SCAN_PAGE.NAME" | translate }}</b> {{device?._displayName || 'Unnamed' }}</h2>
 
         <p text-wrap *ngIf="(isVisibleMac) && (!viewisIos)">
           {{ "SCAN_PAGE.MAC_ADDRESS" | translate }}
