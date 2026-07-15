@@ -455,13 +455,14 @@
           </ion-list-header>
 
           <ion-item *ngIf="!isGarline">
-            <ion-badge *ngIf="(rval_mlpc_proParam_periphs1_butOrRadar1 )" item-end
+            <ion-badge *ngIf="!isInputConfigLoaded" item-end color="wimGreyColor">--</ion-badge>
+            <ion-badge *ngIf="isInputConfigLoaded && (rval_mlpc_proParam_periphs1_butOrRadar1 )" item-end
               [color]="rval_mlpc_proParam_periphs1_butOrRadar1  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
               {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.RADAR" | translate }}</ion-badge>
-            <ion-badge *ngIf="(!rval_mlpc_proParam_periphs1_butOrRadar1 )" item-end
+            <ion-badge *ngIf="isInputConfigLoaded && (!rval_mlpc_proParam_periphs1_butOrRadar1 )" item-end
               [color]="rval_mlpc_proParam_periphs1_butOrRadar1  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
               {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.BUTTON" | translate }}</ion-badge>
-            <ion-icon [name]="rval_mlpc_proParam_periphs1_butOrRadar1 ? 'moventiv-radar' : 'moventiv-button'" item-start
+            <ion-icon *ngIf="isInputConfigLoaded" [name]="rval_mlpc_proParam_periphs1_butOrRadar1 ? 'moventiv-radar' : 'moventiv-button'" item-start
               color="wimGreyColor"></ion-icon>
 
 
@@ -469,24 +470,25 @@
 
             </ion-label>
             <ion-toggle [(ngModel)]="rval_mlpc_proParam_periphs1_butOrRadar1" (ionChange)="setUserbutOrRadar1($event)"
-              color="mantionSmtgreen">
+              color="mantionSmtgreen" [disabled]="!isInputConfigLoaded || isInitializingInputConfig">
             </ion-toggle>
 
           </ion-item>
 
           <ion-item *ngIf="!isGarline" no-lines>
-            <ion-badge *ngIf="(rval_mlpc_proParam_periphs1_butOrRadar2 )" item-end
+            <ion-badge *ngIf="!isInputConfigLoaded" item-end color="wimGreyColor">--</ion-badge>
+            <ion-badge *ngIf="isInputConfigLoaded && (rval_mlpc_proParam_periphs1_butOrRadar2 )" item-end
               [color]="rval_mlpc_proParam_periphs1_butOrRadar2  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
               {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.RADAR" | translate }}</ion-badge>
-            <ion-badge *ngIf="(!rval_mlpc_proParam_periphs1_butOrRadar2 )" item-end
+            <ion-badge *ngIf="isInputConfigLoaded && (!rval_mlpc_proParam_periphs1_butOrRadar2 )" item-end
               [color]="rval_mlpc_proParam_periphs1_butOrRadar2  ? 'mantionSmtgreen' : 'mantionSmtRed'" color="">
               {{"MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT1.BUTTON" | translate }}</ion-badge>
-            <ion-icon [name]="rval_mlpc_proParam_periphs1_butOrRadar2 ? 'moventiv-radar' : 'moventiv-button'" item-start
+            <ion-icon *ngIf="isInputConfigLoaded" [name]="rval_mlpc_proParam_periphs1_butOrRadar2 ? 'moventiv-radar' : 'moventiv-button'" item-start
               color="wimGreyColor"></ion-icon>
             <ion-label text-wrap>{{ "MOVENTIV_PAGE.PUTTINGINTOSERVICE_TAB.RADARORBUTTON.INPUT2.NAME" | translate }}
             </ion-label>
             <ion-toggle [(ngModel)]="rval_mlpc_proParam_periphs1_butOrRadar2" (ionChange)="setUserbutOrRadar2($event)"
-              color="mantionSmtgreen">
+              color="mantionSmtgreen" [disabled]="!isInputConfigLoaded || isInitializingInputConfig">
             </ion-toggle>
           </ion-item>
           <!--END- REGLAGE/ADV - Bouton/radar -->

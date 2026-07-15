@@ -279,6 +279,9 @@ export class MoventivPage implements OnInit, OnDestroy {
   rval_mlpc_proParam_periphs1_forceTest1!: boolean;
   rval_mlpc_proParam_periphs1_forceTest2!: boolean;
   rval_mlpc_proParam_periphs1_forceLock!: boolean;
+  isInputConfigLoaded: boolean = false;
+  isInitializingInputConfig: boolean = false;
+  private inputConfigReadSequence: number = 0;
 
   rval_mlpc_periphCommandLedStripStatic!: boolean;
   rval_mlpc_periphCommandLedStripDynamic!: boolean;
@@ -536,6 +539,12 @@ export class MoventivPage implements OnInit, OnDestroy {
     }
 
     this.readUserParam();
+    setTimeout(() => this.readProParam(), 150);
+  }
+
+  private resetInputConfigurationForRead(): void {
+    this.inputConfigReadSequence++;
+    this.isInitializingInputConfig = true;
   }
 
   private normalizeOpenTimeShort(value: any): number {
@@ -939,6 +948,7 @@ export class MoventivPage implements OnInit, OnDestroy {
   ionViewWillEnter() {
     this.logger.debug(this.TAG, '[Moventiv] ionViewWillEnter');
     this.localisation = '';
+    this.resetInputConfigurationForRead();
 
     //  si peripheral perdu entre les pages, on le restaure
     if (!this.peripheral || !this.peripheral.address) {
@@ -1094,6 +1104,7 @@ export class MoventivPage implements OnInit, OnDestroy {
     this.logger.debug(this.TAG, '[STEP 1] Connected to hardware');
     this.isBleConnectionUnstable = false;
     this.isBleBusy = false;
+    this.resetInputConfigurationForRead();
     this.peripheral = this.normalizeBleDevice(Object.assign(this.peripheral || {}, peripheral || {}));
     this.device = this.normalizeBleDevice(Object.assign(this.device || {}, this.peripheral || {}));
     this.bleConnectService.setConnectedPeripheral(this.peripheral);
@@ -1387,10 +1398,21 @@ export class MoventivPage implements OnInit, OnDestroy {
     if (this.isBleActionBlocked('readProParam')) {
       return;
     }
+    const readSequence = ++this.inputConfigReadSequence;
+    this.isInitializingInputConfig = true;
+    this.logger.debug(this.TAG, '[INPUT_CONFIG] start read from motor');
     this.randble.read({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC }).then
       (
         buffer => {
           let dataStringB = this.randble.encodedStringToBytes(buffer.value)
+          this.logger.debug(this.TAG, '[INPUT_CONFIG] raw BLE value = ' + Array.from(dataStringB).join(','));
+          if (readSequence !== this.inputConfigReadSequence) {
+            this.logger.debug(this.TAG, '[INPUT_CONFIG] stale read ignored');
+            return;
+          }
+          if (!dataStringB || dataStringB.length <= D_MLPC_PROPARAM_PC2_HOF) {
+            throw new Error('Invalid MLPC_PROPARAM payload length: ' + (dataStringB ? dataStringB.length : 0));
+          }
           this.ngZone.run(() => {
             this.rval_mlpc_proParam_weightRangeBot = dataStringB[D_MLPC_PROPARAM_WR_01_HOF];
             this.logger.debug(this.TAG, 'rval_mlpc_proParam_weightRangeBot' + this.rval_mlpc_proParam_weightRangeBot);
@@ -1451,12 +1473,23 @@ export class MoventivPage implements OnInit, OnDestroy {
             this.rval_mlpc_proParam_periphs2 = dataStringB[D_MLPC_PROPARAM_PC2_HOF];
             this.rval_mlpc_proParam_periphs1_butOrRadar1 = Boolean((1 << 7) & this.rval_mlpc_proParam_periphs1);
             this.rval_mlpc_proParam_periphs1_butOrRadar2 = Boolean((1 << 6) & this.rval_mlpc_proParam_periphs1);
+            this.logger.debug(this.TAG, '[INPUT_CONFIG] parsed input 1 = ' + (this.rval_mlpc_proParam_periphs1_butOrRadar1 ? 'RADAR' : 'BUTTON'));
+            this.logger.debug(this.TAG, '[INPUT_CONFIG] parsed input 2 = ' + (this.rval_mlpc_proParam_periphs1_butOrRadar2 ? 'RADAR' : 'BUTTON'));
             this.rval_mlpc_proParam_periphs1_forceTest1 = Boolean((1 << 5) & this.rval_mlpc_proParam_periphs1);
             this.rval_mlpc_proParam_periphs1_forceTest2 = Boolean((1 << 4) & this.rval_mlpc_proParam_periphs1);
             this.rval_mlpc_proParam_periphs1_forceLock = Boolean((1 << 3) & this.rval_mlpc_proParam_periphs1);
+            this.isInputConfigLoaded = true;
+            this.logger.debug(this.TAG, '[INPUT_CONFIG] applied to UI');
+            setTimeout(() => { this.isInitializingInputConfig = false; }, 0);
           });
         }
-      ).catch(err => { this.logger.warn(this.TAG, 'readProParam failed', err); });
+      ).catch(err => {
+        if (readSequence === this.inputConfigReadSequence) {
+          this.isInitializingInputConfig = false;
+        }
+        this.logger.warn(this.TAG, '[INPUT_CONFIG] read error', err);
+        this.logger.warn(this.TAG, 'readProParam failed', err);
+      });
   }
 
   subscribeMotorState() {
@@ -2052,10 +2085,13 @@ export class MoventivPage implements OnInit, OnDestroy {
   }
 
   setUserbutOrRadar1() {
+    if (this.isInitializingInputConfig || !this.isInputConfigLoaded) {
+      return;
+    }
     if (this.isBleActionBlocked('setUserbutOrRadar1')) {
       return;
     }
-    this.logger.debug(this.TAG, 'setUserbutOrRadar1');
+    this.logger.debug(this.TAG, '[INPUT_CONFIG] user changed input 1 = ' + (this.rval_mlpc_proParam_periphs1_butOrRadar1 ? 'RADAR' : 'BUTTON'));
 
     this.vibrate();
     let commandData = new Uint8Array(3);
@@ -2072,19 +2108,25 @@ export class MoventivPage implements OnInit, OnDestroy {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
+    this.logger.debug(this.TAG, '[INPUT_CONFIG] write start');
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
+        this.logger.debug(this.TAG, '[INPUT_CONFIG] write success');
       },
+      (err) => this.logger.warn(this.TAG, '[INPUT_CONFIG] write error', err)
     );
   }
 
   setUserbutOrRadar2() {
+    if (this.isInitializingInputConfig || !this.isInputConfigLoaded) {
+      return;
+    }
     if (this.isBleActionBlocked('setUserbutOrRadar2')) {
       return;
     }
-    this.logger.debug(this.TAG, 'setUserbutOrRadar2');
+    this.logger.debug(this.TAG, '[INPUT_CONFIG] user changed input 2 = ' + (this.rval_mlpc_proParam_periphs1_butOrRadar2 ? 'RADAR' : 'BUTTON'));
 
     this.vibrate();
     let commandData = new Uint8Array(3);
@@ -2101,11 +2143,14 @@ export class MoventivPage implements OnInit, OnDestroy {
 
     let encodedString = this.randble.bytesToEncodedString(commandData);
 
+    this.logger.debug(this.TAG, '[INPUT_CONFIG] write start');
     this.randble.write({ address: this.peripheral.address, service: MLPC_SERVICE, characteristic: MLPC_PROPARAM_CHARACTERISTIC, value: encodedString }).then(
       (returnObj) => {
         let bytes = this.randble.encodedStringToBytes(returnObj.value);
         this.logger.debug(this.TAG, 'page: ' + bytes[0] + 'periph nb ' + bytes[1] + 'periph set ' + bytes[2]);
+        this.logger.debug(this.TAG, '[INPUT_CONFIG] write success');
       },
+      (err) => this.logger.warn(this.TAG, '[INPUT_CONFIG] write error', err)
     );
   }
 
@@ -2862,6 +2907,8 @@ export class MoventivPage implements OnInit, OnDestroy {
     //rval_mlpc_proParam_periphs2: number;
     this.rval_mlpc_proParam_periphs1_butOrRadar1 = false;
     this.rval_mlpc_proParam_periphs1_butOrRadar2 = true;
+    this.isInputConfigLoaded = true;
+    this.isInitializingInputConfig = false;
     //this.rval_mlpc_proParam_periphs1_radarTest1 = false;
     //this.rval_mlpc_proParam_periphs1_radarTest2 = false;
     //rval_mlpc_proParam_periphs1_lock: boolean;
