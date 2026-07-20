@@ -3014,6 +3014,71 @@ export class WidoorPage implements OnInit, OnDestroy {
     return NAME_ALLOWED_PATTERN.test(name || '');
   }
 
+  private resolveLocationSuffix(localisation: string): string {
+    switch (localisation) {
+      case "locValRoom": return "#CHA";
+      case "locValEntree": return "#ENT";
+      case "locValLivingRoom": return "#SAL";
+      case "locValKitchen": return "#CUI";
+      case "locValDiningRoom": return "#SAM";
+      case "locValBathroom": return "#SDB";
+      case "locValToilet": return "#WCS";
+      case "LocValGarage_UtilityRoom": return "#GAR";
+      case "LocValSalle": return "#SLL";
+      case "LocValPlayroom": return "#SDJ";
+      default: return '';
+    }
+  }
+
+  private buildNameRoomWriteContext(control: any): any {
+    const typedName = (this.userConfig.mlpcName || '').trim();
+    const currentDisplayName = this.getCurrentDisplayName();
+    const currentBaseName = this.stripLocationSuffix(currentDisplayName).trim();
+    const selectedLocationSuffix = this.resolveLocationSuffix(this.localisation);
+    const pendingLocationSuffix = this.stringLoc || (selectedLocationSuffix && selectedLocationSuffix !== this.currentLocationSuffix ? selectedLocationSuffix : '');
+    const baseName = typedName || currentBaseName;
+    const locationSuffix = pendingLocationSuffix || this.currentLocationSuffix || this.extractLocationSuffix(currentDisplayName);
+    const valueToWrite = (baseName + locationSuffix).trim();
+
+    return {
+      control: control,
+      typedName: typedName,
+      currentDisplayName: currentDisplayName,
+      currentBaseName: currentBaseName,
+      baseName: baseName,
+      selectedLocationSuffix: selectedLocationSuffix,
+      pendingLocationSuffix: pendingLocationSuffix,
+      locationSuffix: locationSuffix,
+      valueToWrite: valueToWrite,
+      nameChanged: !!typedName && typedName !== currentBaseName,
+      roomChanged: !!pendingLocationSuffix && pendingLocationSuffix !== this.currentLocationSuffix
+    };
+  }
+
+  private logNameRoomValidationContext(context: any, deviceId: string): void {
+    this.logger.info(this.TAG, '[ROOM] selected room =', {
+      localisation: this.localisation,
+      stringLoc: this.stringLoc,
+      selectedLocationSuffix: context.selectedLocationSuffix,
+      pendingLocationSuffix: context.pendingLocationSuffix,
+      resolvedLocationSuffix: context.locationSuffix
+    }, 'ROOM');
+    this.logger.info(this.TAG, '[ROOM] current motor name =', {
+      displayName: context.currentDisplayName,
+      baseName: context.currentBaseName
+    }, 'ROOM');
+    this.logger.info(this.TAG, '[ROOM] final name to write =', {
+      deviceId: deviceId,
+      value: context.valueToWrite
+    }, 'ROOM');
+    this.logger.info(this.TAG, '[ROOM] final name length =', {
+      length: context.valueToWrite.length
+    }, 'ROOM');
+    this.logger.info(this.TAG, '[ROOM] max allowed length =', {
+      maxLength: NAME_WRITE_MAX_LENGTH
+    }, 'ROOM');
+  }
+
   private syncNameInputFromDisplayName(): void {
     const displayName = this.getCurrentDisplayName();
     const scannedSuffix = this.extractLocationSuffix(displayName);
@@ -3157,17 +3222,18 @@ export class WidoorPage implements OnInit, OnDestroy {
 
     try {
       const control = this.formName ? this.formName.get('mlpcName') : null;
-      const typedName = (this.userConfig.mlpcName || '').trim();
-      const currentDisplayName = this.getCurrentDisplayName();
-      const currentBaseName = this.stripLocationSuffix(currentDisplayName).trim();
-      const baseName = typedName || currentBaseName;
-      const locationSuffix = this.stringLoc || this.currentLocationSuffix || this.extractLocationSuffix(currentDisplayName);
-      const valueToWrite = (baseName + locationSuffix).trim();
-      const nameChanged = !!typedName && typedName !== currentBaseName;
-      const roomChanged = !!this.stringLoc;
+      const nameRoomContext = this.buildNameRoomWriteContext(control);
+      const typedName = nameRoomContext.typedName;
+      const currentBaseName = nameRoomContext.currentBaseName;
+      const baseName = nameRoomContext.baseName;
+      const locationSuffix = nameRoomContext.locationSuffix;
+      const valueToWrite = nameRoomContext.valueToWrite;
+      const nameChanged = nameRoomContext.nameChanged;
+      const roomChanged = nameRoomContext.roomChanged;
       deviceId = this.resolveNameWriteDeviceId();
 
       this.logger.info(this.TAG, 'DeviceId utilise validation nom/piece Widoor', { deviceId: deviceId });
+      this.logNameRoomValidationContext(nameRoomContext, deviceId);
       this.logger.info(this.TAG, nameChanged ? 'Nom Widoor a ecrire' : 'Nom Widoor ignore car inchange', { name: baseName });
       this.logger.info(this.TAG, roomChanged ? 'Piece Widoor a ecrire' : 'Piece Widoor ignoree car inchangee', { room: locationSuffix });
       this.logger.info(this.TAG, 'Valeur nom/piece Widoor preparee', {
@@ -3229,6 +3295,13 @@ export class WidoorPage implements OnInit, OnDestroy {
       }
 
       if (valueToWrite.length > NAME_WRITE_MAX_LENGTH) {
+        this.logger.warn(this.TAG, '[ROOM] validation result = too long', {
+          value: valueToWrite,
+          length: valueToWrite.length,
+          maxLength: NAME_WRITE_MAX_LENGTH
+        }, 'ROOM');
+        this.logger.warn(this.TAG, '[ROOM] BLE write skipped because name too long', { value: valueToWrite }, 'ROOM');
+        this.logger.info(this.TAG, '[ROOM] cache not updated', { reason: 'name too long', deviceId: deviceId }, 'ROOM');
         this.logger.warn(this.TAG, 'Validation nom/piece Widoor bloquee: valeur trop longue', {
           value: valueToWrite,
           length: valueToWrite.length,
@@ -3238,6 +3311,7 @@ export class WidoorPage implements OnInit, OnDestroy {
         return;
       }
 
+      this.logger.info(this.TAG, '[ROOM] validation result = OK', { value: valueToWrite }, 'ROOM');
       this.logger.info(this.TAG, '[NAME] selected/new name', { newName: baseName, nameChanged: nameChanged }, 'NAME');
       this.logger.info(this.TAG, '[NAME] old displayed name', { oldName: currentBaseName }, 'NAME');
       await this.delay(NAME_WRITE_PRE_DELAY_MS);
@@ -3245,6 +3319,7 @@ export class WidoorPage implements OnInit, OnDestroy {
       this.logger.info(this.TAG, '[NAME] BLE write start', { deviceId: deviceId, value: valueToWrite }, 'NAME');
       await this.SetName(valueToWrite, deviceId);
       writeSucceeded = true;
+      this.logger.info(this.TAG, '[ROOM] BLE write success', { deviceId: deviceId, value: valueToWrite }, 'ROOM');
       this.logger.info(this.TAG, '[ROOM] write name success', { deviceId: deviceId, value: valueToWrite }, 'ROOM');
       this.logger.info(this.TAG, '[NAME] BLE write success', { deviceId: deviceId, value: valueToWrite }, 'NAME');
 
@@ -3254,8 +3329,9 @@ export class WidoorPage implements OnInit, OnDestroy {
       this.stringLoc = '';
       // Source de verite locale pour l'icone/le nom de scan : ecrite immediatement, independamment
       // de ce que le scan BLE Android/iOS remontera (parfois pas a jour tant que l'app tourne).
-      this.roomCache.setRoomSuffix(deviceId, locationSuffix);
-      this.roomCache.setDeviceName(deviceId, baseName);
+      await this.roomCache.setRoomSuffix(deviceId, locationSuffix);
+      await this.roomCache.setDeviceName(deviceId, baseName);
+      this.logger.info(this.TAG, '[ROOM] cache updated', { deviceId: deviceId, suffix: locationSuffix, name: baseName }, 'ROOM');
       this.logger.info(this.TAG, '[NAME] local cache updated', { deviceId: deviceId, name: baseName }, 'NAME');
       this.logger.info(this.TAG, nameChanged ? 'Succes ecriture nom Widoor' : 'Ecriture nom Widoor non necessaire');
       this.logger.info(this.TAG, roomChanged ? 'Succes ecriture piece Widoor' : 'Ecriture piece Widoor non necessaire');
@@ -3270,6 +3346,8 @@ export class WidoorPage implements OnInit, OnDestroy {
       this.showWidoorNameToast(this.getNameSaveSuccessTranslationKey(nameChanged, roomChanged));
     } catch (error) {
       const nameError: any = error;
+      this.logger.error(this.TAG, '[ROOM] BLE write error', error, 'ROOM');
+      this.logger.info(this.TAG, '[ROOM] cache not updated', { deviceId: deviceId }, 'ROOM');
       this.logger.error(this.TAG, '[ROOM] write name error', error, 'ROOM');
       this.logger.error(this.TAG, 'Validation nom/piece Widoor en erreur', error);
       if (error && nameError.unstableConnection) {
@@ -3322,45 +3400,12 @@ export class WidoorPage implements OnInit, OnDestroy {
 
 
 
-  onLocChange() {
+  onLocChange(event?: any) {
     this.logger.debug(this.TAG, "Selected localisation");
+    const selectedLocalisation = event && event.value !== undefined ? event.value : this.localisation;
+    this.localisation = selectedLocalisation || this.localisation;
+    this.stringLoc = this.resolveLocationSuffix(this.localisation);
     this.logger.info(this.TAG, '[ROOM][Widoor] Piece selectionnee par utilisateur', { localisation: this.localisation });
-
-    switch (this.localisation) {
-      case "locValRoom":
-        this.stringLoc = "#CHA"
-        break;
-      case "locValEntree":
-        this.stringLoc = "#ENT"
-        break;
-      case "locValLivingRoom":
-        this.stringLoc = "#SAL"
-        break;
-      case "locValKitchen":
-        this.stringLoc = "#CUI"
-        break;
-      case "locValDiningRoom":
-        this.stringLoc = "#SAM"
-        break;
-      case "locValBathroom":
-        this.stringLoc = "#SDB"
-        break;
-      case "locValToilet":
-        this.stringLoc = "#WCS"
-        break;
-      case "LocValGarage_UtilityRoom":
-        this.stringLoc = "#GAR"
-        break;
-      case "LocValSalle":
-        this.stringLoc = "#SLL"
-        break;
-      case "LocValPlayroom":
-        this.stringLoc = "#SDJ"
-        break;
-      default:
-        this.stringLoc = '';
-        break;
-    }
 
     this.logger.info(this.TAG, '[ROOM][Widoor] Identifiant technique piece resolu', {
       localisation: this.localisation,
