@@ -67,3 +67,5 @@ Thumbs.db
 .gradle-home/
 .gradle/
 android/.gradle/
+
+.angular/
