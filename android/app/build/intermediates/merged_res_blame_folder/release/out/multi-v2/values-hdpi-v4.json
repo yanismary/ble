@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.mantion.doorcontrol.app-mergeReleaseResources-3:/values-hdpi-v4/values-hdpi-v4.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\MaryY\\.gradle\\caches\\transforms-3\\acdc77a68b60867f286938ef6413a94c\\transformed\\appcompat-1.2.0\\res\\values-hdpi-v4\\values-hdpi-v4.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "6",
+                        "endColumns": "13",
+                        "endOffsets": "327"
+                    }
+                }
+            ]
+        }
+    ]
+}

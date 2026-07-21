@@ -1,0 +1,260 @@
+-- Merging decision tree log ---
+provider#androidx.core.content.FileProvider
+INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:23:9-29:20
+	android:grantUriPermissions
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:27:13-47
+	android:authorities
+		INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:25:13-64
+	android:exported
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:26:13-37
+	android:name
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:24:13-62
+manifest
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:2:1-47:12
+INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:2:1-47:12
+INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:2:1-47:12
+INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:2:1-47:12
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:2:1-27:12
+MERGED from [:capacitor-app] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\app\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:2:1-7:12
+MERGED from [:capacitor-device] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\device\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:2:1-7:12
+MERGED from [:capacitor-haptics] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\haptics\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:2:1-9:12
+MERGED from [:capacitor-splash-screen] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\splash-screen\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:2:1-7:12
+MERGED from [:capacitor-status-bar] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\status-bar\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:2:1-7:12
+MERGED from [:capacitor-android] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\android\capacitor\build\intermediates\merged_manifest\release\AndroidManifest.xml:2:1-7:12
+MERGED from [:capacitor-cordova-android-plugins] C:\Dev\Appli_ble\V2.0\android\capacitor-cordova-android-plugins\build\intermediates\merged_manifest\release\AndroidManifest.xml:2:1-11:12
+MERGED from [androidx.appcompat:appcompat:1.2.0] C:\Users\MaryY\.gradle\caches\transforms-3\acdc77a68b60867f286938ef6413a94c\transformed\appcompat-1.2.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\892eb49c43d40001998edc6805a4832e\transformed\cursoradapter-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.appcompat:appcompat-resources:1.2.0] C:\Users\MaryY\.gradle\caches\transforms-3\929741f752afa314b2299f32245c24f7\transformed\jetified-appcompat-resources-1.2.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.drawerlayout:drawerlayout:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\bd84567ab99428ed6029b56d4d04c6bd\transformed\drawerlayout-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.fragment:fragment:1.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\4efdc8ab2fc96920461b9c5b46c92a83\transformed\fragment-1.3.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.activity:activity:1.2.0] C:\Users\MaryY\.gradle\caches\transforms-3\86634e9835b98f7fa6cc8f64398c9e71\transformed\jetified-activity-1.2.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.coordinatorlayout:coordinatorlayout:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\c2d15f6f0469b1e15717196f1767f36a\transformed\coordinatorlayout-1.1.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.core:core-ktx:1.6.0] C:\Users\MaryY\.gradle\caches\transforms-3\a8bf10f64611886bf3925aa818d12513\transformed\jetified-core-ktx-1.6.0\AndroidManifest.xml:2:1-9:12
+MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\775aec12cc33f397dde8eb83b2b6df0a\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\b438bd8c7f4d9694c05b9999d16f5b5f\transformed\vectordrawable-1.1.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.viewpager:viewpager:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\311dbd1abbe18c38d78ddf512b1dcf34\transformed\viewpager-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.customview:customview:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\7ed47414c4f7d31d671ea929320bb72e\transformed\customview-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.loader:loader:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\6848041df3f5293312cfdef9f5e8b3bf\transformed\loader-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.core:core:1.6.0] C:\Users\MaryY\.gradle\caches\transforms-3\02704bd92830f217fe9755961586185f\transformed\core-1.6.0\AndroidManifest.xml:17:1-26:12
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\MaryY\.gradle\caches\transforms-3\60b09d1c1b842aeced370d4b4301abcd\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:17:1-27:12
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-savedstate:2.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\8919d856e847c5d42197ff7d8c83714e\transformed\jetified-lifecycle-viewmodel-savedstate-2.3.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\b1002ead2c8cea2f602397bb6773cfb2\transformed\lifecycle-viewmodel-2.3.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.savedstate:savedstate:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\bef73e5bb98b69cb3d4fc9473ad59c3e\transformed\jetified-savedstate-1.1.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\c30c1b65f7ce5c43c610e986d00e47af\transformed\lifecycle-runtime-2.3.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\663fd670248798428b648a8c4d72638d\transformed\jetified-tracing-1.0.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\8ecb365de676b600701187fb58468cbc\transformed\interpolator-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-livedata:2.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\2bb433ecff511b1533d7eb22ec1b4d8b\transformed\lifecycle-livedata-2.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\0be34a3b9e9e5a54d008d822da8f5d83\transformed\lifecycle-livedata-core-2.3.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.arch.core:core-runtime:2.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\b71ed0a497a960106ac845656f41113e\transformed\core-runtime-2.1.0\AndroidManifest.xml:17:1-24:12
+MERGED from [org.apache.cordova:framework:10.1.1] C:\Users\MaryY\.gradle\caches\transforms-3\0de9820944d225c334bc04cc974c5143\transformed\jetified-framework-10.1.1\AndroidManifest.xml:20:1-27:12
+MERGED from [androidx.annotation:annotation-experimental:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\8137b484c1b7319b080245643b8a5e69\transformed\jetified-annotation-experimental-1.1.0\AndroidManifest.xml:17:1-24:12
+INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:2:1-47:12
+INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:2:1-47:12
+INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:2:1-47:12
+	package
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:2:70-103
+		INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+	android:versionName
+		INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:2:1-47:12
+		INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+	android:versionCode
+		INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:2:1-47:12
+		INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+	xmlns:android
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:2:11-69
+application
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:3:5-30:19
+MERGED from [:capacitor-cordova-android-plugins] C:\Dev\Appli_ble\V2.0\android\capacitor-cordova-android-plugins\build\intermediates\merged_manifest\release\AndroidManifest.xml:8:5-9:19
+MERGED from [:capacitor-cordova-android-plugins] C:\Dev\Appli_ble\V2.0\android\capacitor-cordova-android-plugins\build\intermediates\merged_manifest\release\AndroidManifest.xml:8:5-9:19
+MERGED from [androidx.core:core:1.6.0] C:\Users\MaryY\.gradle\caches\transforms-3\02704bd92830f217fe9755961586185f\transformed\core-1.6.0\AndroidManifest.xml:24:5-89
+MERGED from [androidx.core:core:1.6.0] C:\Users\MaryY\.gradle\caches\transforms-3\02704bd92830f217fe9755961586185f\transformed\core-1.6.0\AndroidManifest.xml:24:5-89
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\MaryY\.gradle\caches\transforms-3\60b09d1c1b842aeced370d4b4301abcd\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\MaryY\.gradle\caches\transforms-3\60b09d1c1b842aeced370d4b4301abcd\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
+	android:appComponentFactory
+		ADDED from [androidx.core:core:1.6.0] C:\Users\MaryY\.gradle\caches\transforms-3\02704bd92830f217fe9755961586185f\transformed\core-1.6.0\AndroidManifest.xml:24:18-86
+	android:supportsRtl
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:8:9-35
+	android:label
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:6:9-41
+	android:roundIcon
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:7:9-54
+	android:icon
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:5:9-43
+	android:allowBackup
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:4:9-35
+	android:theme
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:9:9-40
+activity#com.mantion.doorcontrol.MainActivity
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:10:9-21:20
+	android:label
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:13:13-56
+	android:launchMode
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:15:13-44
+	android:exported
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:16:13-36
+	android:configChanges
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:11:13-129
+	android:theme
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:14:13-62
+	android:name
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:12:13-64
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:17:13-20:29
+action#android.intent.action.MAIN
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:18:17-69
+	android:name
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:18:25-66
+category#android.intent.category.LAUNCHER
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:19:17-77
+	android:name
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:19:27-74
+uses-permission#android.permission.INTERNET
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:34:5-67
+	android:name
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:34:22-64
+uses-permission#android.permission.BLUETOOTH
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:37:5-95
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:10:5-12:38
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:10:5-12:38
+	android:maxSdkVersion
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:37:66-92
+	android:name
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:37:22-65
+uses-permission#android.permission.BLUETOOTH_ADMIN
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:38:5-101
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:13:5-15:38
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:13:5-15:38
+	android:maxSdkVersion
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:38:72-98
+	android:name
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:38:22-71
+uses-permission#android.permission.BLUETOOTH_SCAN
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:41:5-73
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:16:5-18:31
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:16:5-18:31
+	tools:targetApi
+		ADDED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:18:9-28
+	android:name
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:41:22-70
+uses-permission#android.permission.BLUETOOTH_CONNECT
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:42:5-76
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:19:5-21:31
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:19:5-21:31
+	tools:targetApi
+		ADDED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:21:9-28
+	android:name
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:42:22-73
+uses-permission#android.permission.ACCESS_COARSE_LOCATION
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:45:5-81
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:8:5-81
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:8:5-81
+	android:name
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:45:22-78
+uses-permission#android.permission.ACCESS_FINE_LOCATION
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:46:5-79
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:9:5-79
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:9:5-79
+	android:name
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:46:22-76
+uses-sdk
+INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:6:5-44
+MERGED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:6:5-44
+MERGED from [:capacitor-app] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\app\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:5:5-44
+MERGED from [:capacitor-app] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\app\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:5:5-44
+MERGED from [:capacitor-device] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\device\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:5:5-44
+MERGED from [:capacitor-device] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\device\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:5:5-44
+MERGED from [:capacitor-haptics] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\haptics\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:5:5-44
+MERGED from [:capacitor-haptics] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\haptics\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:5:5-44
+MERGED from [:capacitor-splash-screen] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\splash-screen\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:5:5-44
+MERGED from [:capacitor-splash-screen] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\splash-screen\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:5:5-44
+MERGED from [:capacitor-status-bar] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\status-bar\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:5:5-44
+MERGED from [:capacitor-status-bar] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\status-bar\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:5:5-44
+MERGED from [:capacitor-android] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\android\capacitor\build\intermediates\merged_manifest\release\AndroidManifest.xml:5:5-44
+MERGED from [:capacitor-android] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\android\capacitor\build\intermediates\merged_manifest\release\AndroidManifest.xml:5:5-44
+MERGED from [:capacitor-cordova-android-plugins] C:\Dev\Appli_ble\V2.0\android\capacitor-cordova-android-plugins\build\intermediates\merged_manifest\release\AndroidManifest.xml:6:5-44
+MERGED from [:capacitor-cordova-android-plugins] C:\Dev\Appli_ble\V2.0\android\capacitor-cordova-android-plugins\build\intermediates\merged_manifest\release\AndroidManifest.xml:6:5-44
+MERGED from [androidx.appcompat:appcompat:1.2.0] C:\Users\MaryY\.gradle\caches\transforms-3\acdc77a68b60867f286938ef6413a94c\transformed\appcompat-1.2.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.appcompat:appcompat:1.2.0] C:\Users\MaryY\.gradle\caches\transforms-3\acdc77a68b60867f286938ef6413a94c\transformed\appcompat-1.2.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\892eb49c43d40001998edc6805a4832e\transformed\cursoradapter-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\892eb49c43d40001998edc6805a4832e\transformed\cursoradapter-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.appcompat:appcompat-resources:1.2.0] C:\Users\MaryY\.gradle\caches\transforms-3\929741f752afa314b2299f32245c24f7\transformed\jetified-appcompat-resources-1.2.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.appcompat:appcompat-resources:1.2.0] C:\Users\MaryY\.gradle\caches\transforms-3\929741f752afa314b2299f32245c24f7\transformed\jetified-appcompat-resources-1.2.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.drawerlayout:drawerlayout:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\bd84567ab99428ed6029b56d4d04c6bd\transformed\drawerlayout-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.drawerlayout:drawerlayout:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\bd84567ab99428ed6029b56d4d04c6bd\transformed\drawerlayout-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.fragment:fragment:1.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\4efdc8ab2fc96920461b9c5b46c92a83\transformed\fragment-1.3.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.fragment:fragment:1.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\4efdc8ab2fc96920461b9c5b46c92a83\transformed\fragment-1.3.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.activity:activity:1.2.0] C:\Users\MaryY\.gradle\caches\transforms-3\86634e9835b98f7fa6cc8f64398c9e71\transformed\jetified-activity-1.2.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.activity:activity:1.2.0] C:\Users\MaryY\.gradle\caches\transforms-3\86634e9835b98f7fa6cc8f64398c9e71\transformed\jetified-activity-1.2.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.coordinatorlayout:coordinatorlayout:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\c2d15f6f0469b1e15717196f1767f36a\transformed\coordinatorlayout-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.coordinatorlayout:coordinatorlayout:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\c2d15f6f0469b1e15717196f1767f36a\transformed\coordinatorlayout-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.core:core-ktx:1.6.0] C:\Users\MaryY\.gradle\caches\transforms-3\a8bf10f64611886bf3925aa818d12513\transformed\jetified-core-ktx-1.6.0\AndroidManifest.xml:5:5-7:41
+MERGED from [androidx.core:core-ktx:1.6.0] C:\Users\MaryY\.gradle\caches\transforms-3\a8bf10f64611886bf3925aa818d12513\transformed\jetified-core-ktx-1.6.0\AndroidManifest.xml:5:5-7:41
+MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\775aec12cc33f397dde8eb83b2b6df0a\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\775aec12cc33f397dde8eb83b2b6df0a\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\b438bd8c7f4d9694c05b9999d16f5b5f\transformed\vectordrawable-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\b438bd8c7f4d9694c05b9999d16f5b5f\transformed\vectordrawable-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.viewpager:viewpager:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\311dbd1abbe18c38d78ddf512b1dcf34\transformed\viewpager-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.viewpager:viewpager:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\311dbd1abbe18c38d78ddf512b1dcf34\transformed\viewpager-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.customview:customview:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\7ed47414c4f7d31d671ea929320bb72e\transformed\customview-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.customview:customview:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\7ed47414c4f7d31d671ea929320bb72e\transformed\customview-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.loader:loader:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\6848041df3f5293312cfdef9f5e8b3bf\transformed\loader-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.loader:loader:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\6848041df3f5293312cfdef9f5e8b3bf\transformed\loader-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core:1.6.0] C:\Users\MaryY\.gradle\caches\transforms-3\02704bd92830f217fe9755961586185f\transformed\core-1.6.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.core:core:1.6.0] C:\Users\MaryY\.gradle\caches\transforms-3\02704bd92830f217fe9755961586185f\transformed\core-1.6.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\MaryY\.gradle\caches\transforms-3\60b09d1c1b842aeced370d4b4301abcd\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\MaryY\.gradle\caches\transforms-3\60b09d1c1b842aeced370d4b4301abcd\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-savedstate:2.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\8919d856e847c5d42197ff7d8c83714e\transformed\jetified-lifecycle-viewmodel-savedstate-2.3.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-savedstate:2.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\8919d856e847c5d42197ff7d8c83714e\transformed\jetified-lifecycle-viewmodel-savedstate-2.3.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\b1002ead2c8cea2f602397bb6773cfb2\transformed\lifecycle-viewmodel-2.3.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\b1002ead2c8cea2f602397bb6773cfb2\transformed\lifecycle-viewmodel-2.3.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.savedstate:savedstate:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\bef73e5bb98b69cb3d4fc9473ad59c3e\transformed\jetified-savedstate-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.savedstate:savedstate:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\bef73e5bb98b69cb3d4fc9473ad59c3e\transformed\jetified-savedstate-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\c30c1b65f7ce5c43c610e986d00e47af\transformed\lifecycle-runtime-2.3.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\c30c1b65f7ce5c43c610e986d00e47af\transformed\lifecycle-runtime-2.3.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\663fd670248798428b648a8c4d72638d\transformed\jetified-tracing-1.0.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\663fd670248798428b648a8c4d72638d\transformed\jetified-tracing-1.0.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\8ecb365de676b600701187fb58468cbc\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\8ecb365de676b600701187fb58468cbc\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata:2.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\2bb433ecff511b1533d7eb22ec1b4d8b\transformed\lifecycle-livedata-2.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata:2.0.0] C:\Users\MaryY\.gradle\caches\transforms-3\2bb433ecff511b1533d7eb22ec1b4d8b\transformed\lifecycle-livedata-2.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\0be34a3b9e9e5a54d008d822da8f5d83\transformed\lifecycle-livedata-core-2.3.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.3.0] C:\Users\MaryY\.gradle\caches\transforms-3\0be34a3b9e9e5a54d008d822da8f5d83\transformed\lifecycle-livedata-core-2.3.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.arch.core:core-runtime:2.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\b71ed0a497a960106ac845656f41113e\transformed\core-runtime-2.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.arch.core:core-runtime:2.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\b71ed0a497a960106ac845656f41113e\transformed\core-runtime-2.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [org.apache.cordova:framework:10.1.1] C:\Users\MaryY\.gradle\caches\transforms-3\0de9820944d225c334bc04cc974c5143\transformed\jetified-framework-10.1.1\AndroidManifest.xml:25:5-44
+MERGED from [org.apache.cordova:framework:10.1.1] C:\Users\MaryY\.gradle\caches\transforms-3\0de9820944d225c334bc04cc974c5143\transformed\jetified-framework-10.1.1\AndroidManifest.xml:25:5-44
+MERGED from [androidx.annotation:annotation-experimental:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\8137b484c1b7319b080245643b8a5e69\transformed\jetified-annotation-experimental-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.annotation:annotation-experimental:1.1.0] C:\Users\MaryY\.gradle\caches\transforms-3\8137b484c1b7319b080245643b8a5e69\transformed\jetified-annotation-experimental-1.1.0\AndroidManifest.xml:20:5-22:41
+INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+meta-data#android.support.FILE_PROVIDER_PATHS
+ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:28:13-112
+	android:resource
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:28:75-109
+	android:name
+		ADDED from C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:28:24-74
+uses-feature#android.hardware.bluetooth_le
+ADDED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:23:5-25:36
+	android:required
+		ADDED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:25:9-33
+	android:name
+		ADDED from [:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:24:9-53
+uses-permission#android.permission.VIBRATE
+ADDED from [:capacitor-haptics] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\haptics\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:7:5-66
+	android:name
+		ADDED from [:capacitor-haptics] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\haptics\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:7:22-63

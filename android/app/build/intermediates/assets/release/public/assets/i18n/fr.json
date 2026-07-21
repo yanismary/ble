@@ -1,0 +1,687 @@
+{
+	"GENERIC": {
+		"BACK": "Retour"
+	},
+	"SCAN_PAGE": {
+		"NAVBAR": {
+			"SELECTION": "Sélection",
+			"SEARCH": "Rechercher"
+		},
+		"SEARCHING_INPROGRESS": "Recherche en cours...",
+		"SEARCHING_NOMOT": "Aucune motorisation détectée.",
+		"NAME": "Nom : ",
+		"MAC_ADDRESS": "MAC:",
+		"UUID_ADDRESS": "UUID:",
+		"SIGNAL_QUALITY": "Qualité du signal : ",
+		"SIGNAL_QUALITY_VERYBAD": "Très mauvais",
+		"SIGNAL_QUALITY_BAD": "Mauvais",
+		"SIGNAL_QUALITY_GOOD": "Bon",
+		"SIGNAL_QUALITY_VERYGOOD": "Très bon",
+		"SIGNAL_QUALITY_EXCELLENT": "Excellent",
+		"PAIR": "Appairer",
+		"UNPAIR": "Dé-appairer",
+		"PERM_PROMPT": {
+			"TITLE": "Autorisation requise",
+			"MESSAGE": "Il est nécessaire d'autoriser l'application à accéder aux fonctions de LOCALISATION de l'appareil afin d'utiliser le Bluetooth. Aucune donnée personnelle n'est utilisée ou transmise par l'application.",
+			"BUTTONS": {
+				"NO": {
+					"TEXT": "Refuser",
+					"ROLE": "Refuser"
+				},
+				"YES": "Accéder à la demande d'autorisation"
+			}
+		},
+		"QUIT_PROMPT": {
+			"MESSAGE": "Souhaitez-vous quitter l'application ?",
+			"BUTTONS": {
+				"NO": "Annuler",
+				"YES": "Quitter"
+			}
+		},
+		"ALERT": {
+			"BLENOTENABLE": {
+				"TITLE": "Le Bluetooth est désactivé",
+				"MESSAGE": "Le bluetooth est actuellement désactivé sur le smartphone, activer le bluetooth et lancer une recherche ?",
+				"BUTTONS": {
+					"NO": {
+						"TEXT": "Annuler",
+						"ROLE": "Annuler"
+					},
+					"YES": "Activer"
+				}
+			}
+		},
+		"CIRCLEBUTTONS": {
+			"EXAMPLE": "Exemple"
+		},
+		"DEMO_SELECTOR": {
+			"CANCEL": "Annuler",
+			"MOVENTIV_EXAMPLE": "MOVENTIV exemple",
+			"GARLINE_EXAMPLE": "GARLINE exemple",
+			"WIDOOR_EXAMPLE": "WIDOOR exemple"
+		}
+	},
+	"POPOVER": {
+		"PARAMETERS": "Configuration de l'application",
+		"HELP": "Aide",
+		"ABOUT": "À propos",
+		"WHO": "Qui sommes nous ?",
+		"CONTACTS": "Contacts",
+		"LEGAL_NOTICE": "Mentions légales"
+	},
+	"MOVENTIV_PAGE": {
+		"NAVBAR_TITLE": "Commandes",
+		"CONTROLLED_DOOR": "Porte  contrôlée : ",
+		"CONTROLLED_DOOR_NOCONNECTEDDOOR": "aucune porte connectée",
+		"COMMANDS_TAB": {
+			"COMMANDS_TAB_TITLE": "Commandes",
+			"DOOR_STATE": "Etat de la porte : ",
+			"DOOR_STATE_UNKNOW": "Inconnu",
+			"DOOR_STATE_OPEN": "Ouverte",
+			"DOOR_STATE_OPENING": "Ouverture en cours",
+			"DOOR_STATE_LEARNINGFIRSTSTOP": "Apprentissage de la première butée",
+			"DOOR_STATE_LEARNINGSECONDSTOP": "Apprentissage de la seconde butée",
+			"DOOR_STATE_WAITINGLEARNINGSTOP": "En attente de l'apprentissage des butées",
+			"DOOR_STATE_OPENINGDETECTOBS": "Détection obstacle pendant ouverture",
+			"DOOR_STATE_OPENINGBACKAFTEROBS": "Retour position fermée après détection d'un obstacle",
+			"DOOR_STATE_CLOSE": "Fermée",
+			"DOOR_STATE_CLOSING": "Fermeture en cours",
+			"DOOR_STATE_CLOSINGDETECTOBS": "Détection obstacle pendant fermeture",
+			"DOOR_STATE_CLOSINGBACKAFTEROBS": "Retour position ouverte après détection d'un obstacle",
+			"COMBUTTON_OPEN": "Ouvrir",
+			"COMBUTTON_CLOSE": "Fermer",
+			"COMTOOGLE_MAINTAINOPEN": "Maintien de la porte en position ouverte",
+			"COMTOOGLE_LOCKCLOSE": "Porte condamnée en position fermée",
+			"COMTOOGLE_LEDLIGHTBAND": "Activation du bandeau lumineux",
+			"LOCK_PROMPT": {
+				"TITLE": "Commande impossible",
+				"SUBTITLE": "Désactivez le verrouillage de la porte au préalable.",
+				"BUTTON_OK": "OK"
+			},
+			"LOCK_CONFIRM":{
+				"TITLE": "Condamnation de la porte",
+				"SUBTITLE" : "Vous allez condamner la porte en fermeture, il vous sera impossible de l'ouvrir sans désactiver cette option.",
+				"BUTTON_OK" : "OK"
+			},
+			"RETENTION_PROMPT": {
+				"TITLE": "Commande impossible",
+				"SUBTITLE": "Désactivez le maintien de la porte au préalable.",
+				"BUTTON_OK": "OK"
+			}
+		},
+		"ADJUSTMENTS_TAB": {
+			"INCDECBUTTON": {
+				"INC": "Incrémenter",
+				"DEC": "Décrémenter"
+			},
+			"ADJUSTMENTS_TAB_TITLE": "Réglages",
+			"COMTOOGLE_DYNLEDLIGHTBAND": "Eclairage lors de l'ouverture",
+			"COMTOOGLE_RGBINDIC": "LED Principale",
+			"CLOSE_SPEED_LABEL": "Vitesse de fermeture",
+			"OPEN_SPEED_LABEL": "Vitesse d'ouverture",
+			"AUTOCLOSING_TIMEDELAYSHORT_LABEL": "Temporisation courte à la fermeture",
+			"AUTOCLOSING_TIMEDELAYLONG_LABEL": "Temporisation longue à la fermeture",
+			"NAME_AND_LOCALIZATION_LABEL": "Nom et localisation",
+			"MODIFY_NAME_FORMLABEL": "Modifier le nom de votre {{productName}}",
+			"ASSOCIATE_FORMLABEL": "Associer votre {{productName}} à une pièce",
+			"ASSOCIATEFORM": {
+				"CANCELTEXT": "Annuler",
+				"OKTEXT": "Valider",
+				"VALMESSAGE": {
+					"REQUIRED": "Un nom est obligatoirement requis.",
+					"MINLENGHT": "Le nom doit être composé de au moins 5 caractères.",
+					"MAXLENGHT": "Le nom ne peut pas comporter plus de 15 caractères.",
+					"PATTERN": "Le nom ne peut contenir que des lettres, chiffres, espaces ou tirets."
+				}
+			},
+			"ROOM_TYPE": {
+				"BEDROOM": "Chambre",
+				"LIVING_ROOM": "Salon",
+				"DINING_ROOM": "Salle à manger",
+				"KITCHEN": "Cuisine",
+				"BATHROOM": "Salle de bain",
+				"TOILET": "Toilettes",
+				"GARAGE_UTILITYROOM": "Garage / Buanderie",
+				"PLAYROOM": "Salle de jeux"
+			},
+			"FORMBUTTON_VALIDATE": "VALIDER",
+			"BASIC": {
+				"TITLE": "Basiques",
+				"SAVE_SUCCESS_NAME": "Nom enregistré avec succès. Il peut être nécessaire de relancer une recherche pour voir le nouveau nom.",
+				"SAVE_SUCCESS_ROOM": "Pièce enregistrée avec succès.",
+				"SAVE_SUCCESS_NAME_ROOM": "Configuration enregistrée avec succès. Il peut être nécessaire de relancer une recherche pour voir le nouveau nom.",
+				"SAVE_ERROR": "La modification n'a pas pu être enregistrée.",
+				"SAVE_NOT_CONNECTED": "La motorisation n'est plus connectée. Veuillez relancer une connexion.",
+				"SAVE_INVALID_NAME": "Le nom saisi n'est pas valide.",
+				"SAVE_INVALID_CHARACTERS": "Le nom ne peut contenir que des lettres, chiffres, espaces ou tirets.",
+				"NAME_REQUIRED": "Veuillez saisir un nom avant d'enregistrer.",
+				"NAME_TOO_LONG": "Le nom complet ne peut pas dépasser 15 caractères, pièce comprise.",
+				"NO_CHANGE": "Aucune modification à enregistrer.",
+				"WRITE_IN_PROGRESS": "Écriture déjà en cours.",
+				"BLE_BUSY": "Opération en cours, veuillez patienter.",
+				"RECONNECT_REQUIRED": "La modification n'a pas pu être enregistrée. Veuillez vous reconnecter à la motorisation."
+			},
+			"ADVANCED": {
+				"TITLE": "Avancés",
+				"ALERT": {
+					"TITLE": "Attention",
+					"SUBTITLE": "La modifications de ces paramètres peut affecter le bon fonctionnement du système. Veuillez lire la notice au préalable avant toute modification.",
+					"BUTTONS": {
+						"NO": {
+							"TEXT": "Décliner",
+							"ROLE": "Décliner"
+						},
+						"YES": "Confirmer"
+					},
+					"PRESENT": "Remise à zero des paramètres..."
+				}
+			}
+		},
+		"INFORMATIONS_TAB": {
+			"INFORMATIONS_TAB_TITLE": "Informations",
+			"SWITCHSTATES": {
+				"HEADER": "Etats des switchs",
+				"PUSHAGO": {
+					"LABEL": "Push'n Go",
+					"STATE": {
+						"ON": "Activé",
+						"OFF": "Désactivé"
+					}
+				},
+				"BLE": {
+					"LABEL": "Bluetooth",
+					"STATE": {
+						"ON": "Activé",
+						"OFF": "Désactivé"
+					}
+				},
+				"CLOSEMODE": {
+					"LABEL": "Mode de fermeture",
+					"STATE": {
+						"MANUAL": "Manuel",
+						"AUTO": "Automatique"
+					}
+				},
+				"OPENDIRECTION": {
+					"LABEL": "Ouverture",
+					"STATE": {
+						"LEFT": "opposé sortie câbles",
+						"RIGHT": "Vers sortie câbles"
+					}
+				},
+				"PAIRLEARN": {
+					"LABEL": "Appairage / Apprentissage",
+					"STATE": {
+						"PEER": "Apprentissage",
+						"LEARN": "Appairage"
+					}
+				}
+			},
+			"GENERAL_INFORMATIONS_SUBTITLE": "Informations générales",
+			"GENERAL_INFORMATIONS": {
+				"ACTUAL_WEIGHTPROFILE": "Profil actuel",
+				"MAX_WEIGHT": "Poids maximum autorisé",
+				"DATEOF_FIRSTUSE": "Date de la première mise en service",
+				"NB_CYCLE_TOT": "Nombre de cycles réalisés depuis la première mise en service"
+			},
+			"MAINTENANCE_SUBTITLE": "Maintenance",
+			"MAINTENANCE": {
+				"DATEOF_LASTMAINT": "Date de la dernière maintenance",
+				"NB_CYCLES_SINCELASTMAINT": "Nombre de cycles réalisés depuis la dernière maintenance"
+			},
+			"FIRMWARE_REV_SUBTITLE": "Versions des logiciels",
+			"FIRMWARE_REV": {
+				"MOTOR": "Version microprogramme motorisation",
+				"BLE": "Version microprogramme bluetooth",
+				"STACKBLE": "Version stack bluetooth"
+			},
+			"HARD_REV_SUBTITLE": "Materiel",
+			"HARD_REV": {
+				"CONTROL": "Identifiant matériel",
+				"SN" : "Numéro de série"
+			},
+			"SUPINFO": {
+				"HEADER": "Informations supplémentaires",
+				"INIT": "Nombre de redémarrages",
+				"CINIT": "Nombre de cycle depuis le dernier redémarrage",
+				"OBSDETECT": "Nombre de détections d'obstacles",
+				"WSO": "Nombre de mauvaises arrivées en ouverture",
+				"WSC": "Nombre de mauvaises arrivées en fermeture",
+				"OHM": "Nombre de surchauffes moteur",
+				"LC" : "Nombre d'apprentissages",
+				"EC": "Nombre d'erreurs codeur",
+				"EM": "Nombre d'erreurs moteur"
+			}
+		},
+		"PUTTINGINTOSERVICE_TAB": {
+			"TAB_TITLE": "Service",
+			"WEIGHT_TUNING": {
+				"TITLE": "Réglage du poids",
+				"SELECTION_PAGE": "Sélectionner le poids de la porte",
+				"UNDER20": "< 20 kg",
+				"20TO40": "20 - 30 kg",
+				"40TO50": "30 - 40 kg",
+				"50TO60": "40 - 50 kg",
+				"40TO60": "40 - 60 kg",
+				"60MORE": "50 - 60 kg",
+				"WARNING": "ATTENTION : La modification de ce paramètre entrainera la réinitialisation des paramètres de vitesse !",
+				"BUTTONS": {
+					"CANCEL": "Annuler",
+					"OK": "Valider"
+				},
+				"WEIGHTCHECK": {
+					"LOADER": "Vérification de l'enregistrement du paramètre",
+					"OK": {
+						"TITLE": "Confirmation requise",
+						"MESSAGE": "Le paramètre a été correctement enregistré"
+					},
+					"BUTTON": {
+						"OK": "OK"
+					},
+					"ERROR": {
+						"TITLE": "Confirmation requise",
+						"MESSAGE": "Une erreur s'est produise, merci de réessayer "
+					}
+				}
+			},
+			"MAINTENANCE": {
+				"PROMPT": {
+					"TITLE": "Confirmation requise",
+					"MESSAGE_MAINTENANCE": {
+						"MESSAGE": "Confirmez-vous qu'une maintenance a été effectuée le : ",
+						"MESSAGE2": "Le compteur de cycles depuis la dernière maintenance sera définitivement réinitialisé."
+					},
+					"MESSAGE_SETUP": {
+						"MESSAGE": "Confirmez-vous qu'une mise en service a été effectuée le : ",
+						"MESSAGE2": "La date de mise en service sera définitivement enregistrée"
+					},
+					"PASSWORD": "Enter le mot de passe",
+					"WRONG_PASSWORD": "Mauvais mot de passe",
+					"BUTTONS": {
+						"NO": {
+							"TEXT": "Décliner",
+							"ROLE": "Décliner"
+						},
+						"YES": "Confirmer"
+					}
+				}
+			},
+			"RADARORBUTTON": {
+				"HEADER": "Configuration des entrées",
+				"INPUT1": {
+					"NAME": "Entrée 1",
+					"RADAR": "Radar",
+					"BUTTON": "Bouton"
+				},
+				"INPUT2": {
+					"NAME": "Entrée 2",
+					"RADAR": "Radar",
+					"BUTTON": "Boutton"
+				}
+			},
+			"EXTRA_COMMANDS": {
+				"TITLE": "Commandes supplémentaires",
+				"LEARNING_BUTTON": "Apprentissage des butées",
+				"RESET_BUTTON": "Reset de tous les paramètres",
+				"MAINTENANCE_BUTTON": "Maintenance effectuée",
+				"SETUP_BUTTON": "Mise en service effectuée"
+			},
+			"ADVANCEDTUNING": {
+				"TITLE": "Réglages avancés",
+				"SPEEDNEARCLOSE": "Vitesse en fin de fermeture",
+				"SPEEDNEAROPEN": "Vitesse en fin d'ouverture",
+				"TORQUENEARCLOSE": "Force en fin de fermeture",
+				"TORQUENEAROPEN": "Force en fin d'ouverture",
+				"BRAKINGPOWER": "Freinage en ouverture",
+				"OBSTACLESENSI" : "Sensibilité de la detection d'obstacle"
+			},
+			"SUPERADVANCEDTUNING": {
+				"TITLE": "Réglages expert",
+				"ASKPASSWORD": "Rentrez le mot de passe",
+				"PASSWORD.VALMESSAGE": "Un mot de passe est nécessaire",
+				"PASSWORD.MAXLENGHT": "Le mot de passe doit être inférieur à 35 caractères"
+			}
+		}
+	},
+	"WIDOOR_PAGE": {
+		"COMMANDS_TAB": {
+			"COMMANDS_TAB_TITLE": "Commandes",
+			"DOOR_STATE": "Etat de la porte : ",
+			"DOOR_STATE_UNKNOW": "Inconnu",
+			"DOOR_STATE_OPEN": "Ouverte",
+			"DOOR_STATE_OPENING": "Ouverture en cours",
+			"DOOR_STATE_LEARNINGFIRSTSTOP": "Recherche de la première butée",
+			"DOOR_STATE_LEARNINGSECONDSTOP": "Recherche de la seconde butée",
+			"DOOR_STATE_LEARNINGSINGLESTOP": "Initialisation de l'apprentissage",
+			"DOOR_STATE_WAITINGLEARNINGSTOP": "En attente de l'apprentissage des butées",
+			"DOOR_STATE_OPENINGDETECTOBS": "Obstacle pendant l'ouverture",
+			"DOOR_STATE_OPENINGBACKAFTEROBS": "Retour position ouverte après détection d'un obstacle",
+			"DOOR_STATE_STOPINOPENOBS": "Ouverte suite à de multiples détections d'obstacles",
+			"DOOR_STATE_CLOSE": "Fermée",
+			"DOOR_STATE_CLOSING": "Fermeture en cours",
+			"DOOR_STATE_CLOSINGDETECTOBS": "Obstacle pendant la fermeture",
+			"DOOR_STATE_CLOSINGBACKAFTEROBS": "Retour position fermée après détection d'un obstacle",
+			"LOCK_PROMPT": {
+				"TITLE": "Commande impossible",
+				"SUBTITLE": "Désactivez le verrouillage de la porte au préalable.",
+				"BUTTON_OK": "OK"
+			},
+			"RETENTION_PROMPT": {
+				"TITLE": "Commande impossible",
+				"SUBTITLE": "Désactivez le maintien de la porte au préalable.",
+				"BUTTON_OK": "OK"
+			}
+		},
+		"ADJUSTMENTS_TAB": {
+			"BASIC": {
+				"TITLE": "Basiques",
+				"MODIFY_NAME_FORMLABEL": "Modifier le nom de votre WIDOOR",
+				"ASSOCIATE_FORMLABEL": "Associer votre WIDOOR à une pièce",
+				"ASSOCIATEFORM": {
+					"CANCELTEXT": "Annuler",
+					"OKTEXT": "Valider",
+					"VALMESSAGE": {
+						"REQUIRED": "Un nom est obligatoirement requis.",
+						"MINLENGHT": "Le nom doit être composé de au moins 5 caractères.",
+						"MAXLENGHT": "Le nom ne peut pas comporter plus de 15 caractères.",
+						"PATTERN": "Le nom ne peut contenir que des lettres, chiffres, espaces ou tirets."
+					}
+				},
+				"SAVE_SUCCESS_NAME": "Nom enregistré avec succès. Il peut être nécessaire de relancer une recherche pour voir le nouveau nom.",
+				"SAVE_SUCCESS_ROOM": "Pièce enregistrée avec succès.",
+				"SAVE_SUCCESS_NAME_ROOM": "Nom et pièce enregistrés avec succès. Il peut être nécessaire de relancer une recherche pour voir le nouveau nom.",
+				"SAVE_ERROR": "La modification n'a pas pu être enregistrée.",
+				"SAVE_NOT_CONNECTED": "La motorisation n'est plus connectée. Veuillez relancer une connexion.",
+				"SAVE_INVALID_NAME": "Le nom saisi n'est pas valide.",
+				"SAVE_INVALID_CHARACTERS": "Le nom ne peut contenir que des lettres, chiffres, espaces ou tirets.",
+				"NAME_REQUIRED": "Veuillez saisir un nom avant d'enregistrer.",
+				"NAME_TOO_LONG": "Le nom complet ne peut pas dépasser 15 caractères, pièce comprise.",
+				"NO_CHANGE": "Aucune modification à enregistrer.",
+				"WRITE_IN_PROGRESS": "Écriture déjà en cours.",
+				"BLE_BUSY": "Opération en cours, veuillez patienter.",
+				"RECONNECT_REQUIRED": "La modification n'a pas pu être enregistrée. Veuillez vous reconnecter à la motorisation."
+			},
+			"ADVANCED": {
+				"TITLE": "Avancés",
+				"BREAKFORCEATOPEN": {
+					"TITLE": "Force de freinage à l'ouverture"
+				},
+				"ALERT": {
+					"TITLE": "Attention",
+					"SUBTITLE": "La modifications de ces paramètres peut affecter le bon fonctionnement du système. Veuillez lire la notice au préalable avant toute modification.",
+					"BUTTONS": {
+						"NO": {
+							"TEXT": "Décliner",
+							"ROLE": "Décliner"
+						},
+						"YES": "Confirmer"
+					},
+					"PRESENT": "Remise à zero des paramètres..."
+				},
+				"RESETALERT": {
+					"TITLE": "Attention",
+					"SUBTITLE": "Poursuivre entrainera la réinitialisation complète de tous les paramètres.",
+					"BUTTONS": {
+						"NO": {
+							"TEXT": "Décliner",
+							"ROLE": "Décliner"
+						},
+						"YES": "Confirmer"
+					}
+				},
+				"LOCK": {
+					"TITLE": "Configuration des sorties",
+					"STATE_ENABLED": "Activé",
+					"STATE_DISABLED": "Désactivé",
+					"NAME": "Verrou"
+				},
+				"RADAR_TEST": {
+					"TITLE": "Configuration des sorties test radar",
+					"STATE_ENABLED": "Activée",
+					"STATE_DISABLED": "Désactivée",
+					"OUTPUT1": {
+						"NAME": "T1"
+					},
+					"OUTPUT2": {
+						"NAME": "T2"
+					}
+				}
+			}
+		},
+		"INFORMATIONS_TAB": {
+			"SWITCHSTATES": {
+				"OPENDIRECTION": {
+					"STATE": {
+						"CCW": "Antihoraire",
+						"CW": "Horaire"
+					},
+					"LABEL": "Sens de rotation"
+				}
+			}
+		}
+	},
+	"HELP_PAGE": {
+		"TITLE": "Aide",
+		"PRODUCT_CHOICE": {
+			"TITLE": "Quel produit souhaitez-vous appairer ?",
+			"WIDOOR": "WIDOOR",
+			"MOVENTIV": "MOVENTIV/GARLINE"
+		},
+		"PAIRING": {
+			"TITLE": "Appairage",
+			"ANDROID": {
+				"TEXT": "<h6>Opération d'appairage</h6><br><p>Du coté du téléphone se rendre dans le menu d'appairage(généralement : paramètres > connexions > Bluetooth > ANALYSER). Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement). Ensuite du coté du téléphone appuyer sur {{productName}}, celui-ci doit migrer dans PERIPHERIQUES<p>"
+			},
+			"IOS": {				
+				"TEXT": "<h6>Opération d'appairage</h6><br><p>Du coté de votre Iphone, effectuer un recherche des motorisation via l'appli. Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement).Ensuite dans l'application appuyer sur {{productName}} et accepter la demande de jumelage.</p><br><br><h6>Opération de dé-appairage</h6><br><p>Du coté de votre smartphone, aller dans le menu réglage > Bluetooth. Dans CONNEXION A MES APPAREILS : appuyer sur i > oublier cet appareil. Du coté de la motorisation, effectuer un effacement de tous les appareils (cela effacera aussi les émetteurs radio) : mettre le switch 1 sur OFF >appuyer et relacher le bouton prg (la LED passe en magenta), ensuite rester appuyer sur le bouton prg au moins 10 secondes puis le ralcher (la led doit clignoter très rapidement en magenta indiquant la réussite de l'opération) </p>"
+			}
+		},
+		"PAIRINGTROUBLES": {
+			"TITLE": "Difficulté d'appairage",
+			"ANDROID": {
+				"TEXT": "<h6>1.</h6><br><p>Verifiez que le bluetooth est activé sur votre smartphone<p>"
+			},
+			"IOS": {				
+				"TEXT": "<h6>1.</h6><br><p>Verifiez que le bluetooth est activé sur votre Iphone</p>"
+			}
+		}
+	},
+	"ABOUT_PAGE": {
+		"NAVBAR_TITLE": "A propos",
+		"CONTENT_TITLE": "MANTION Door Control",
+		"VERSION": "Version :",
+		"LAST_MODIFICATION": "Dernières modifications : ",
+		"PARAGRAPHE1": "Nouvelle application regroupant les anciennes applications MANTION. Les fonctionnalités principales restent identiques, avec une meilleure stabilité et une interface utilisateur améliorée.",
+		"PARAGRAPHE2": "Ajout d'un avertissement lors du changement de poids",
+		"PARAGRAPHE2_LIST": {
+			"ITEM1": "",
+			"ITEM2": "",
+			"ITEM3": ""
+		},
+		"PARAGRAPHE3": "Ajout de cette page (A propos), Ajout de la page : Qui sommes nous ?",	
+		"PARAGRAPHE4": "Ajout de la plage de poids 60-80kg (moteur aprés SN-2307 seulement)"
+	},
+	"WHO_PAGE": {
+		"NAVBAR_TITLE": "Qui sommes nous ?",
+		"CONTENT_TITLE": "MANTION SMT",
+		"CONTENT_SUBTITLE": "LE SPÉCIALISTE DE LA MOTORISATION POUR L'HABITAT",
+		"PARGRAPH1": "De la conception à la réalisation, de la fabrication à la commercialisation, MANTION SMT vous accompagne dans vos projets de motorisation, grâce à une équipe soucieuse de répondre à vos besoins.",
+		"PARGRAPH2": "MANTION SMT propose une gamme complète de produits de qualité, garantis 5 ans",
+		"PARGRAPH2_LIST": {
+			"ITEM1": "Motorisations pour volets battants",
+			"ITEM2": "Motorisations pour volets coulissants",
+			"ITEM3": "Motorisations pour portes intérieures coulissantes"
+		},
+		"PARGRAPH3": "Les produits MANTION SMT sont innovants et brevetés. Ils apportent un confort important et une réelle avancée dans le domaine de l'aide à la personne.",
+		"PARGRAPH4": "Des solutions simples aux solutions les plus élaborées, MANTION SMT met son savoir faire à votre disposition afin de vous satisfaire. Le département MANTION SMT réalise des produits \"à la carte\" (devis sur demande)",
+		"ADDRESS": {
+			"PRESENTATION": "L’ensemble des services commerciaux, la R&D, la fabrication, les services administratifs ainsi qu’une salle d’exposition sont situés :",
+			"LOCALIZATION": "2, rue des métiers, ZA de la Tille, 21110 GENLIS (France)"
+		}
+	},
+	"CONTACT_PAGE": {
+		"NAVBAR_TITLE": "Contact",
+		"SEND_A_MESSAGE": "Envoyer un message",
+		"CONTACT_1": {		
+			"PHONE": {
+				"USERSEE": "Tél +33 (0)3 81 50 56 77",
+				"SYSTEMCALL": "33381505677"
+			},
+			"ADDRESS": {
+				"NAME": "MANTION SAS",
+				"STATE": "FRANCE",
+				"STREET": "7 rue Gay Lussac",
+				"CITY": "25000 BESANÇON"
+			},
+			"SEND_MESSAGE": {
+				"TO": "contact@mantion.com",
+				"CC": "contact@mantion-smt.com",
+				"SUBJECT": "Produit Moventiv",
+				"BODY": "Bonjour,"
+			}
+		},
+		"CONTACT_2": {
+			"PHONE": {
+				"USERSEE": "Tél +33 (0)3 80 37 85 71",
+				"SYSTEMCALL": "33380378571"
+			},
+			"ADDRESS": {
+				"NAME": "MANTION SMT",
+				"STATE": "FRANCE",
+				"STREET": "2 rue des métiers",
+				"CITY": "21110 Genlis"
+			},
+			"SEND_MESSAGE": {
+				"TO": "contact@mantion-smt.com",
+				"CC": "",
+				"SUBJECT": "Produit Moventiv",
+				"BODY": "Bonjour,"
+			}
+		}
+	},
+	"PARAM_PAGE": {
+		"NAVBAR_TITLE": "Configuration de l'application",
+		"LISTHEADER_LANG": "Langage",
+		"OPT_TAB": {
+			"HEADER": "Affichage des onglets",
+			"ADJUST": "Réglages",
+			"INFOS": "Informations"
+		},
+		"SCAN_PAGE": {
+			"HEADER": {
+				"ANDROID": "Affichage de l'adresse MAC",
+				"IOS": "Affichage de l'UUID"
+			},
+			"MACADDRESS": "Affichage de l'adresse MAC",
+			"UUID": "Affichage de l'UUID"
+		},
+		"LISTHEADER_OPT_COM": "Affichage des commandes optionnelles",
+		"LABEL_COM": "Onglet commandes",
+		"LABEL_LANG": "Détection automatique de la langue",
+		"SELECTLANG_FORMLABEL": "Sélectionner votre langue",
+		"LANGUAGE_MENU": {
+			"CANCELTEXT": "Annuler",
+			"OKTEXT": "Valider"
+		},
+		"LANGUAGE": {
+			"DE": "Deutsch",
+			"ENG": "English",
+			"FR": "Français",
+			"PL": "Polski"
+		},
+		"OTHER_OPTION": {
+			"HEADER": "Option",
+			"VIBRATE": "Retour vibrations",
+			"BLUETOOTH": "Activation/désactivation automatique Bluetooth"
+		},
+		"LOADINGTEXT_REBOOT": "Les changements seront effectifs au prochain redémarrage"
+	},
+	"GCU_PAGE": {
+		"NAVBAR_TITLE": "CGU",
+		"TITLE": "Conditions Générales d’Utilisation de l’Application",
+		"SUB_TITLE_1": "1. Objet",
+		"CHAPTER_1": {
+			"PARA_1": "Les présentes conditions Générales ont pour objet de définir les modalités des mises à disposition et d'utilisation de l'application de MANTION SMT, ainsi que les services associés. Tout accès et/ou utilisation de l'Application, et des services associés suppose l'acceptation et les respect de l'ensemble des termes des présentes Conditions.",
+			"PARA_2": "Dans le cas ou l'utilisateur d'Application ne souhaite pas accepter tout ou parties des présentes conditions générales, celle-ci ne lui sera plus accessible.",
+			"PARA_3": "La version actuelle en ligne de ces conditions générales d'utilisation de l'Application et des services associés, et ce jusqu'à qu'une nouvelle version la remplace."
+		},
+		"SUB_TITLE_2": "2. Mentions légales",
+		"CHAPTER_2": {
+			"PARA_1": "L' Application est éditée pas la société MANTION SMT. L'Editeur est titulaire de l'ensemble des droits sur l'Application, et les services associés."
+		},
+		"SUB_TITLE_3": "3. Définitions",
+		"CHAPTER_3": {
+			"DEF_OBJECT_1": "Application : ",
+			"DEF_1": "Désigne l'application et les services associés. Elles sont constituées de mannière non limitative d'un logiciel, de mise à jour d'un logiciel, de mises à jour de ce logiciel et de tout ou partie des éléments suivants : base de données, contenu éditorial, graphisme, photo, vidéo. Il s'agit d'un programme rendu accessible par MANTION SMT.",
+			"DEF_OBJECT_2": "Utilisateur : ",
+			"DEF_2": "Désigne toute personne physique majeure qui est responsable de l'utilisation de l'Application.",
+			"DEF_OBJECT_3": "Editeur : ",
+			"DEF_3": "Désigne MANTION SMT"
+		}
+	},
+	"PROMPT": {
+		"CONNECTION": {
+			"TITLE": "Connexion"
+		},
+		"DISCONNECTED": {
+			"TITLE": "Déconnecté"
+		}
+	},
+	"INFOSLIDE": {
+		"SKIP": "Passer",
+		"CHOICE": {
+			"TITLE": "Choisissez un tutoriel",
+			"WIDOOR": "Tuto Widoor",
+			"MOVENTIV": "Tuto Moventiv",
+			"GARLINE": "Tuto Garline"
+		},
+		"END": {
+			"READY": "Prêt à utiliser votre Widoor ?",
+			"CONTINUE": "Continuer"
+		},
+		"SLIDE1": {
+			"TITLE": "Bienvenue dans le tutoriel !",
+			"DESC": "Ce tutoriel va vous montrer les éléments clés de l'application."
+		},
+		"SLIDE2": {
+			"TITLE": "Piloter votre motorisation",
+			"DESC": "Vous pouvez piloter votre Moventiv avec votre smartphone, comme vous le feriez avec une télécommande."
+		},
+		"SLIDE3": {
+			"TITLE": "Régler votre motorisation",
+			"DESC": "Vous pouvez ajuster la vitesse de votre motorisation, changer la temporisation de fermeture etc..."
+		},
+		"SLIDE4": {
+			"TITLE": "Configurer votre motorisation",
+			"DESC": "Changez l'assignement des borniers, lancer un apprentissage des butées etc..."
+		},
+		"SLIDE5": {
+			"TITLE": "Accéder aux informations",
+			"DESC": "Vous pouvez par exemple connaitre la position des switchs."
+		},
+		"SLIDE6": {
+			"TITLE": "Configurer l'application",
+			"DESC": "Vous pouvez par exemple désactiver les menus que vous n'utilisez pas."
+		},
+		"SLIDE7": {
+			"ANDROID": {
+				"TITLE": "Appairage avec votre Widoor",
+				"DESC": "Du coté du smartphone se rendre dans le menu Bluetooth (généralement : paramètres > connexions > Bluetooth > ANALYSER). Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement). Ensuite du coté du téléphone appuyer sur Widoor, celui-ci doit migrer dans PERIPHERIQUES Associés. "
+			},
+			"IOS": {
+				"TITLE": "Appairage avec votre Widoor",
+				"DESC": "Du coté de votre smartphone, effectuer une recherche de motorisation via l'appli. Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement). Ensuite dans l'application appuyer sur Widoor et accepter la demande de jumelage. "
+			}
+		},
+		"SLIDE8": {
+			"ANDROID": {
+				"TITLE": "Renommer votre Widoor",
+				"DESC": "Une fois connecté vous pouver renommer votre Widoor et l'associer à une pièce"
+			},
+			"IOS": {
+				"TITLE": "Renommer votre Widoor",
+				"DESC": "Une fois connecté vous pouver renommer votre Widoor et l'associer à une pièce. (Le renommage peut mettre quelques minutes à être visible depuis votre smartphone)"
+			}
+		}
+	}
+}

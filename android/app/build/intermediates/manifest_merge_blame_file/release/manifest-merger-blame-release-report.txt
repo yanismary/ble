@@ -1,0 +1,121 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.mantion.doorcontrol"
+4    android:versionCode="13"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="23"
+8-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+9        android:targetSdkVersion="35" />
+9-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml
+10
+11    <!-- Permissions -->
+12
+13    <uses-permission android:name="android.permission.INTERNET" />
+13-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:34:5-67
+13-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:34:22-64
+14
+15    <!-- BLE permissions (legacy API 30 and below) -->
+16    <uses-permission
+16-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:37:5-95
+17        android:name="android.permission.BLUETOOTH"
+17-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:37:22-65
+18        android:maxSdkVersion="30" />
+18-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:37:66-92
+19    <uses-permission
+19-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:38:5-101
+20        android:name="android.permission.BLUETOOTH_ADMIN"
+20-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:38:22-71
+21        android:maxSdkVersion="30" />
+21-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:38:72-98
+22
+23    <!-- BLE permissions (API 31+) -->
+24    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+24-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:41:5-73
+24-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:41:22-70
+25    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+25-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:42:5-76
+25-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:42:22-73
+26
+27    <!-- Location (required for BLE scan on older devices) -->
+28    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+28-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:45:5-81
+28-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:45:22-78
+29    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+29-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:46:5-79
+29-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:46:22-76
+30
+31    <uses-feature
+31-->[:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:23:5-25:36
+32        android:name="android.hardware.bluetooth_le"
+32-->[:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:24:9-53
+33        android:required="false" />
+33-->[:capacitor-community-bluetooth-le] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor-community\bluetooth-le\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:25:9-33
+34
+35    <uses-permission android:name="android.permission.VIBRATE" />
+35-->[:capacitor-haptics] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\haptics\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:7:5-66
+35-->[:capacitor-haptics] C:\Dev\Appli_ble\V2.0\node_modules\@capacitor\haptics\android\build\intermediates\merged_manifest\release\AndroidManifest.xml:7:22-63
+36
+37    <application
+37-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:3:5-30:19
+38        android:allowBackup="true"
+38-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:4:9-35
+39        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+39-->[androidx.core:core:1.6.0] C:\Users\MaryY\.gradle\caches\transforms-3\02704bd92830f217fe9755961586185f\transformed\core-1.6.0\AndroidManifest.xml:24:18-86
+40        android:extractNativeLibs="false"
+41        android:icon="@mipmap/ic_launcher"
+41-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:5:9-43
+42        android:label="@string/app_name"
+42-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:6:9-41
+43        android:roundIcon="@mipmap/ic_launcher_round"
+43-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:7:9-54
+44        android:supportsRtl="true"
+44-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:8:9-35
+45        android:theme="@style/AppTheme" >
+45-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:9:9-40
+46        <activity
+46-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:10:9-21:20
+47            android:name="com.mantion.doorcontrol.MainActivity"
+47-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:12:13-64
+48            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+48-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:11:13-129
+49            android:exported="true"
+49-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:16:13-36
+50            android:label="@string/title_activity_main"
+50-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:13:13-56
+51            android:launchMode="singleTask"
+51-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:15:13-44
+52            android:theme="@style/AppTheme.NoActionBarLaunch" >
+52-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:14:13-62
+53            <intent-filter>
+53-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:17:13-20:29
+54                <action android:name="android.intent.action.MAIN" />
+54-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:18:17-69
+54-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:18:25-66
+55
+56                <category android:name="android.intent.category.LAUNCHER" />
+56-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:19:17-77
+56-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:19:27-74
+57            </intent-filter>
+58        </activity>
+59
+60        <provider
+61            android:name="androidx.core.content.FileProvider"
+61-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:24:13-62
+62            android:authorities="com.mantion.doorcontrol.fileprovider"
+62-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:25:13-64
+63            android:exported="false"
+63-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:26:13-37
+64            android:grantUriPermissions="true" >
+64-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:27:13-47
+65            <meta-data
+65-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:28:13-112
+66                android:name="android.support.FILE_PROVIDER_PATHS"
+66-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:28:24-74
+67                android:resource="@xml/file_paths" />
+67-->C:\Dev\Appli_ble\V2.0\android\app\src\main\AndroidManifest.xml:28:75-109
+68        </provider>
+69    </application>
+70
+71</manifest>
