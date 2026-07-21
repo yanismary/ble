@@ -1,8 +1,7 @@
 {
-  "name": "MANTION Door Control",
+  "name": "V2.1",
   "integrations": {
     "capacitor": {}
   },
-  "type": "ionic-angular",
-  "id": "be7e5ef6"
+  "type": "angular-standalone"
 }
