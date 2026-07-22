@@ -70,5 +70,8 @@ testem.log
 Thumbs.db
 
 .gradle-home/
+/.gradle/
+/android/.kotlin/
+*.salive
 
 .angular/

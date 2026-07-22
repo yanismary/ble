@@ -1,0 +1,62 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>Scan BLE</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <ion-header collapse="condense">
+    <ion-toolbar>
+      <ion-title size="large">Scan BLE</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <div class="scan-actions">
+    <ion-button expand="block" (click)="startScan()" [disabled]="scanning">
+      Lancer le scan
+    </ion-button>
+    <ion-button
+      expand="block"
+      color="medium"
+      fill="outline"
+      (click)="stopScan()"
+      [disabled]="!scanning"
+    >
+      Arrêter le scan
+    </ion-button>
+  </div>
+
+  @if (scanning) {
+    <div class="scan-status" role="status">
+      <ion-spinner name="crescent"></ion-spinner>
+      <span>Recherche d’appareils BLE…</span>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <p class="error-message" role="alert">{{ errorMessage }}</p>
+  }
+
+  @if (devices.length > 0) {
+    <ion-list class="device-list">
+      @for (device of devices; track device.deviceId) {
+        <ion-item>
+          <ion-label>
+            <h2>{{ device.name }}</h2>
+            <p>{{ device.deviceId }}</p>
+            <p>
+              RSSI :
+              @if (device.rssi !== null) {
+                {{ device.rssi }} dBm
+              } @else {
+                Indisponible
+              }
+            </p>
+          </ion-label>
+        </ion-item>
+      }
+    </ion-list>
+  } @else if (hasScanned && !scanning && !errorMessage) {
+    <p class="empty-message">Aucun appareil détecté.</p>
+  }
+</ion-content>
