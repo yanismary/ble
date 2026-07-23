@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import {
   BleClient,
+  BleService as DiscoveredBleService,
   ScanResult,
 } from '@capacitor-community/bluetooth-le';
 import { Observable, Subject } from 'rxjs';
@@ -164,6 +165,58 @@ export class BleService {
         this.disconnectPromise = null;
       }
     }
+  }
+
+  async discoverServices(deviceId?: string): Promise<DiscoveredBleService[]> {
+    if (this.connectedDeviceIdValue === null) {
+      throw new Error('No BLE device is connected.');
+    }
+
+    const targetDeviceId = deviceId === undefined
+      ? this.connectedDeviceIdValue
+      : deviceId.trim();
+
+    if (!targetDeviceId) {
+      throw new Error('A deviceId is required to discover services.');
+    }
+
+    return BleClient.getServices(targetDeviceId);
+  }
+
+  async readCharacteristic(
+    serviceUuid: string,
+    characteristicUuid: string,
+    deviceId?: string,
+  ): Promise<DataView> {
+    if (this.connectedDeviceIdValue === null) {
+      throw new Error('No BLE device is connected.');
+    }
+
+    const normalizedServiceUuid = serviceUuid.trim();
+    const normalizedCharacteristicUuid = characteristicUuid.trim();
+    const targetDeviceId = deviceId === undefined
+      ? this.connectedDeviceIdValue
+      : deviceId.trim();
+
+    if (!normalizedServiceUuid) {
+      throw new Error('A service UUID is required to read a characteristic.');
+    }
+
+    if (!normalizedCharacteristicUuid) {
+      throw new Error(
+        'A characteristic UUID is required to read a characteristic.',
+      );
+    }
+
+    if (!targetDeviceId) {
+      throw new Error('A deviceId is required to read a characteristic.');
+    }
+
+    return BleClient.read(
+      targetDeviceId,
+      normalizedServiceUuid,
+      normalizedCharacteristicUuid,
+    );
   }
 
   isScanning(): boolean {

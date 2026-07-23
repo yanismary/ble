@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import {
   BleClient,
+  BleService as DiscoveredBleService,
   ScanResult,
 } from '@capacitor-community/bluetooth-le';
 
@@ -21,6 +22,8 @@ describe('BleService', () => {
     spyOn(BleClient, 'requestEnable').and.resolveTo();
     connectSpy = spyOn(BleClient, 'connect').and.resolveTo();
     spyOn(BleClient, 'disconnect').and.resolveTo();
+    spyOn(BleClient, 'getServices').and.resolveTo([]);
+    spyOn(BleClient, 'read').and.resolveTo(new DataView(new ArrayBuffer(0)));
 
     service = TestBed.inject(BleService);
   });
@@ -204,4 +207,102 @@ describe('BleService', () => {
       { deviceId: 'device-1', reason: 'local' },
     ]);
   });
+
+  it('should reject service discovery when no device is connected', async () => {
+    await expectAsync(service.discoverServices()).toBeRejectedWithError(
+      'No BLE device is connected.',
+    );
+    expect(BleClient.getServices).not.toHaveBeenCalled();
+  });
+
+  it('should reject an empty deviceId for service discovery', async () => {
+    await service.connect('device-1');
+
+    await expectAsync(service.discoverServices('   ')).toBeRejectedWithError(
+      'A deviceId is required to discover services.',
+    );
+    expect(BleClient.getServices).not.toHaveBeenCalled();
+  });
+
+  it('should return services for the connected device', async () => {
+    const services: DiscoveredBleService[] = [
+      {
+        uuid: 'service-1',
+        characteristics: [
+          {
+            uuid: 'characteristic-1',
+            properties: createCharacteristicProperties({ read: true }),
+            descriptors: [],
+          },
+        ],
+      },
+    ];
+    const getServicesSpy = BleClient.getServices as jasmine.Spy<
+      typeof BleClient.getServices
+    >;
+    getServicesSpy.and.resolveTo(services);
+    await service.connect('device-1');
+
+    const result = await service.discoverServices();
+
+    expect(getServicesSpy).toHaveBeenCalledOnceWith('device-1');
+    expect(result).toBe(services);
+  });
+
+  it('should reject a characteristic read when no device is connected', async () => {
+    await expectAsync(
+      service.readCharacteristic('service-1', 'characteristic-1'),
+    ).toBeRejectedWithError('No BLE device is connected.');
+    expect(BleClient.read).not.toHaveBeenCalled();
+  });
+
+  it('should read a characteristic from the connected device', async () => {
+    const value = new DataView(Uint8Array.from([1, 2, 3]).buffer);
+    const readSpy = BleClient.read as jasmine.Spy<typeof BleClient.read>;
+    readSpy.and.resolveTo(value);
+    await service.connect('device-1');
+
+    const result = await service.readCharacteristic(
+      ' service-uuid ',
+      ' characteristic-uuid ',
+    );
+
+    expect(readSpy).toHaveBeenCalledOnceWith(
+      'device-1',
+      'service-uuid',
+      'characteristic-uuid',
+    );
+    expect(result).toBe(value);
+  });
+
+  it('should use an explicit device identifier for a characteristic read', async () => {
+    await service.connect('device-1');
+
+    await service.readCharacteristic(
+      'service-uuid',
+      'characteristic-uuid',
+      'device-2',
+    );
+
+    expect(BleClient.read).toHaveBeenCalledOnceWith(
+      'device-2',
+      'service-uuid',
+      'characteristic-uuid',
+    );
+  });
 });
+
+function createCharacteristicProperties(
+  overrides: Partial<DiscoveredBleService['characteristics'][number]['properties']> = {},
+): DiscoveredBleService['characteristics'][number]['properties'] {
+  return {
+    authenticatedSignedWrites: false,
+    broadcast: false,
+    indicate: false,
+    notify: false,
+    read: false,
+    write: false,
+    writeWithoutResponse: false,
+    ...overrides,
+  };
+}

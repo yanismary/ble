@@ -1,0 +1,197 @@
+import { Injectable } from '@angular/core';
+import { BleService as DiscoveredBleService } from '@capacitor-community/bluetooth-le';
+
+export const BLE_UUIDS = {
+  shdoService: 'dc06d52e-6ee8-471e-a5fd-0f40674a061d',
+  versionCharacteristic: '175d6bc8-5840-4037-95da-a778395a036c',
+  widoorService: '3206890a-650e-46f3-9c73-2bc0840e3b8e',
+  moventivGarlineService: '978ae765-664c-45d8-9157-3b9031e6478e',
+} as const;
+
+export type SecondaryBleProfile =
+  | 'Widoor'
+  | 'Moventiv / Garline'
+  | 'Contradictoire'
+  | 'Inconnu';
+
+export type DetectedProductType =
+  | 'Widoor'
+  | 'Moventiv 60 kg'
+  | 'Moventiv 80 kg'
+  | 'Garline'
+  | 'Ambigu'
+  | 'Inconnu';
+
+export type DetectionConfidence = 'Forte' | 'Faible' | 'Indéterminée';
+
+export interface VersionIdentification {
+  readonly rawHex: string;
+  readonly length: number;
+  readonly productByte: number | null;
+  readonly subtypeByte: number | null;
+  readonly detectedType: DetectedProductType;
+  readonly ambiguous: boolean;
+  readonly detectionReason: string;
+  readonly detectionConfidence: DetectionConfidence;
+}
+
+@Injectable({
+  providedIn: 'root',
+})
+export class ProductDetection {
+  detectSecondaryProfile(
+    services: readonly DiscoveredBleService[],
+  ): SecondaryBleProfile {
+    const serviceUuids = new Set(
+      services.map(({ uuid }) => this.normalizeUuid(uuid)),
+    );
+    const hasWidoorService = serviceUuids.has(BLE_UUIDS.widoorService);
+    const hasMoventivGarlineService = serviceUuids.has(
+      BLE_UUIDS.moventivGarlineService,
+    );
+
+    if (hasWidoorService && hasMoventivGarlineService) {
+      return 'Contradictoire';
+    }
+
+    if (hasWidoorService) {
+      return 'Widoor';
+    }
+
+    if (hasMoventivGarlineService) {
+      return 'Moventiv / Garline';
+    }
+
+    return 'Inconnu';
+  }
+
+  interpretVersion(
+    value: DataView,
+    bluetoothName: string | null | undefined,
+    secondaryProfile: SecondaryBleProfile,
+  ): VersionIdentification {
+    const bytes = new Uint8Array(
+      value.buffer,
+      value.byteOffset,
+      value.byteLength,
+    );
+    const productByte = bytes.length > 12 ? bytes[12] : null;
+    const subtypeByte = bytes.length > 13 ? bytes[13] : null;
+    const mappedType = this.mapProductByte(productByte);
+    const isWidoorName = bluetoothName?.trim().toUpperCase().startsWith('WI')
+      ?? false;
+    const detection = this.detectProductType(
+      secondaryProfile,
+      isWidoorName,
+      mappedType,
+      productByte,
+    );
+
+    if (detection.ambiguous) {
+      console.warn('Incohérence dans les indices d’identification BLE.', {
+        bluetoothName: bluetoothName ?? null,
+        secondaryProfile,
+        productByte,
+        mappedType,
+        reason: detection.reason,
+      });
+    }
+
+    return {
+      rawHex: Array.from(bytes, (byte) =>
+        byte.toString(16).padStart(2, '0'),
+      ).join(' '),
+      length: bytes.length,
+      productByte,
+      subtypeByte,
+      detectedType: detection.type,
+      ambiguous: detection.ambiguous,
+      detectionReason: detection.reason,
+      detectionConfidence: detection.confidence,
+    };
+  }
+
+  private detectProductType(
+    secondaryProfile: SecondaryBleProfile,
+    isWidoorName: boolean,
+    mappedType: DetectedProductType,
+    productByte: number | null,
+  ): {
+    readonly type: DetectedProductType;
+    readonly ambiguous: boolean;
+    readonly reason: string;
+    readonly confidence: DetectionConfidence;
+  } {
+    if (secondaryProfile === 'Contradictoire') {
+      return {
+        type: 'Ambigu',
+        ambiguous: true,
+        reason: 'Services secondaires contradictoires',
+        confidence: 'Indéterminée',
+      };
+    }
+
+    if (secondaryProfile === 'Widoor') {
+      return {
+        type: 'Widoor',
+        ambiguous: false,
+        reason: 'Service secondaire Widoor détecté',
+        confidence: 'Forte',
+      };
+    }
+
+    if (secondaryProfile === 'Moventiv / Garline') {
+      if (isWidoorName) {
+        return {
+          type: 'Ambigu',
+          ambiguous: true,
+          reason:
+            'Service Moventiv/Garline contradictoire avec le nom Bluetooth WI',
+          confidence: 'Indéterminée',
+        };
+      }
+
+      return {
+        type: mappedType,
+        ambiguous: false,
+        reason: productByte === null
+          ? 'Service Moventiv/Garline sans octet produit'
+          : `Service Moventiv/Garline + octet produit ${productByte}`,
+        confidence: mappedType === 'Inconnu' ? 'Indéterminée' : 'Forte',
+      };
+    }
+
+    if (isWidoorName) {
+      return {
+        type: 'Widoor',
+        ambiguous: false,
+        reason: 'Nom Bluetooth WI sans service secondaire connu',
+        confidence: 'Faible',
+      };
+    }
+
+    return {
+      type: 'Inconnu',
+      ambiguous: false,
+      reason: 'Aucun indice de produit reconnu',
+      confidence: 'Indéterminée',
+    };
+  }
+
+  private mapProductByte(productByte: number | null): DetectedProductType {
+    switch (productByte) {
+      case 0:
+        return 'Moventiv 60 kg';
+      case 1:
+        return 'Moventiv 80 kg';
+      case 2:
+        return 'Garline';
+      default:
+        return 'Inconnu';
+    }
+  }
+
+  private normalizeUuid(uuid: string): string {
+    return uuid.trim().toLowerCase();
+  }
+}

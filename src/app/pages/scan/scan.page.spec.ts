@@ -1,11 +1,15 @@
 import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
-import { ScanResult } from '@capacitor-community/bluetooth-le';
+import {
+  BleService as DiscoveredBleService,
+  ScanResult,
+} from '@capacitor-community/bluetooth-le';
 import { Observable, Subject } from 'rxjs';
 
 import {
   BleDisconnectionEvent,
   BleService,
 } from '../../core/services/ble';
+import { BLE_UUIDS } from '../../core/services/product-detection';
 import { ScanPage } from './scan.page';
 
 class FakeBleService {
@@ -13,6 +17,8 @@ class FakeBleService {
   private connectedDeviceIdValue: string | null = null;
   private scanning = false;
   private scanCallback: ((result: ScanResult) => void) | null = null;
+  servicesResult: DiscoveredBleService[] = [];
+  readResult: DataView = new DataView(new ArrayBuffer(0));
 
   readonly disconnections$: Observable<BleDisconnectionEvent> =
     this.disconnectionSubject.asObservable();
@@ -49,6 +55,18 @@ class FakeBleService {
 
   async disconnect(): Promise<void> {
     this.connectedDeviceIdValue = null;
+  }
+
+  async discoverServices(_deviceId?: string): Promise<DiscoveredBleService[]> {
+    return this.servicesResult;
+  }
+
+  async readCharacteristic(
+    _serviceUuid: string,
+    _characteristicUuid: string,
+    _deviceId?: string,
+  ): Promise<DataView> {
+    return this.readResult;
   }
 
   emit(result: ScanResult): void {
@@ -241,6 +259,188 @@ describe('ScanPage', () => {
     expect(buttons[0].disabled).toBeFalse();
     expect(buttons[2].disabled).toBeFalse();
   });
+
+  it('should discover and display services after connecting', async () => {
+    bleService.servicesResult = createServices();
+    const discoverSpy = spyOn(bleService, 'discoverServices').and.callThrough();
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+    component.selectDevice(component.devices[0]);
+
+    await component.connectSelectedDevice();
+    fixture.detectChanges();
+
+    expect(discoverSpy).toHaveBeenCalledOnceWith('device-1');
+    expect(fixture.nativeElement.textContent).toContain('service-uuid');
+    expect(fixture.nativeElement.textContent).toContain('characteristic-uuid');
+    expect(fixture.nativeElement.textContent).toContain('Lecture');
+    expect(fixture.nativeElement.textContent).toContain('Notification');
+  });
+
+  it('should display the service discovery state', fakeAsync(() => {
+    let resolveServices!: (services: DiscoveredBleService[]) => void;
+    const pendingServices = new Promise<DiscoveredBleService[]>((resolve) => {
+      resolveServices = resolve;
+    });
+    spyOn(bleService, 'discoverServices').and.returnValue(pendingServices);
+    void component.startScan();
+    flushMicrotasks();
+    bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+    component.selectDevice(component.devices[0]);
+
+    void component.connectSelectedDevice();
+    flushMicrotasks();
+    fixture.detectChanges();
+
+    expect(component.discoveringServices).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Découverte des services',
+    );
+
+    resolveServices([]);
+    flushMicrotasks();
+  }));
+
+  it('should stay connected when service discovery fails', async () => {
+    spyOn(bleService, 'discoverServices').and.rejectWith(
+      new Error('Découverte indisponible'),
+    );
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+    component.selectDevice(component.devices[0]);
+
+    await component.connectSelectedDevice();
+    fixture.detectChanges();
+
+    expect(component.connectedDeviceId).toBe('device-1');
+    expect(component.discoveryError).toContain('Découverte indisponible');
+    expect(fixture.nativeElement.textContent).toContain('Connecté');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Découverte indisponible',
+    );
+  });
+
+  it('should clear discovered services after a remote disconnection', async () => {
+    bleService.servicesResult = createServices();
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+    component.selectDevice(component.devices[0]);
+    await component.connectSelectedDevice();
+    expect(component.services.length).toBe(1);
+
+    bleService.emitRemoteDisconnection('device-1');
+
+    expect(component.services).toEqual([]);
+    expect(component.discoveringServices).toBeFalse();
+  });
+
+  it('should read and display identification after service discovery', async () => {
+    bleService.servicesResult = createIdentificationServices();
+    bleService.readResult = createVersionWord(2, 4);
+    const readSpy = spyOn(
+      bleService,
+      'readCharacteristic',
+    ).and.callThrough();
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Garline'));
+    component.selectDevice(component.devices[0]);
+
+    await component.connectSelectedDevice();
+    fixture.detectChanges();
+
+    expect(readSpy).toHaveBeenCalledOnceWith(
+      BLE_UUIDS.shdoService,
+      BLE_UUIDS.versionCharacteristic,
+      'device-1',
+    );
+    expect(component.identification?.rawHex).toContain('02 04');
+    expect(component.identification?.detectedType).toBe('Garline');
+    expect(fixture.nativeElement.textContent).toContain('02 04');
+    expect(fixture.nativeElement.textContent).toContain('Garline');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Service Moventiv/Garline + octet produit 2',
+    );
+  });
+
+  it('should display the Widoor detection reason for an old product name', async () => {
+    bleService.servicesResult = createWidoorIdentificationServices();
+    bleService.readResult = createVersionWord(1, 0);
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Firma#CHA'));
+    component.selectDevice(component.devices[0]);
+
+    await component.connectSelectedDevice();
+    fixture.detectChanges();
+
+    expect(component.identification?.detectedType).toBe('Widoor');
+    expect(component.identification?.productByte).toBe(1);
+    expect(component.identification?.detectionReason).toBe(
+      'Service secondaire Widoor détecté',
+    );
+    expect(component.identification?.detectionConfidence).toBe('Forte');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Service secondaire Widoor détecté',
+    );
+  });
+
+  it('should display the identification reading state', fakeAsync(() => {
+    bleService.servicesResult = createIdentificationServices();
+    let resolveRead!: (value: DataView) => void;
+    const pendingRead = new Promise<DataView>((resolve) => {
+      resolveRead = resolve;
+    });
+    spyOn(bleService, 'readCharacteristic').and.returnValue(pendingRead);
+    void component.startScan();
+    flushMicrotasks();
+    bleService.emit(createScanResult('device-1', -42, 'Produit'));
+    component.selectDevice(component.devices[0]);
+
+    void component.connectSelectedDevice();
+    flushMicrotasks();
+    fixture.detectChanges();
+
+    expect(component.readingIdentification).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Lecture de l’identification',
+    );
+
+    resolveRead(createVersionWord(0, 1));
+    flushMicrotasks();
+  }));
+
+  it('should stay connected when identification reading fails', async () => {
+    bleService.servicesResult = createIdentificationServices();
+    spyOn(bleService, 'readCharacteristic').and.rejectWith(
+      new Error('Lecture refusée'),
+    );
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Produit'));
+    component.selectDevice(component.devices[0]);
+
+    await component.connectSelectedDevice();
+    fixture.detectChanges();
+
+    expect(component.connectedDeviceId).toBe('device-1');
+    expect(component.identificationError).toContain('Lecture refusée');
+    expect(fixture.nativeElement.textContent).toContain('Connect');
+    expect(fixture.nativeElement.textContent).toContain('Lecture refusée');
+  });
+
+  it('should clear identification after a remote disconnection', async () => {
+    bleService.servicesResult = createIdentificationServices();
+    bleService.readResult = createVersionWord(0, 1);
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Produit'));
+    component.selectDevice(component.devices[0]);
+    await component.connectSelectedDevice();
+    expect(component.identification).not.toBeNull();
+
+    bleService.emitRemoteDisconnection('device-1');
+
+    expect(component.identification).toBeNull();
+    expect(component.secondaryProfile).toBe('Inconnu');
+    expect(component.readingIdentification).toBeFalse();
+  });
 });
 
 function createScanResult(
@@ -252,4 +452,74 @@ function createScanResult(
     device: { deviceId, name },
     rssi,
   };
+}
+
+function createServices(): DiscoveredBleService[] {
+  return [
+    {
+      uuid: 'service-uuid',
+      characteristics: [
+        {
+          uuid: 'characteristic-uuid',
+          descriptors: [],
+          properties: {
+            authenticatedSignedWrites: false,
+            broadcast: false,
+            indicate: false,
+            notify: true,
+            read: true,
+            write: false,
+            writeWithoutResponse: false,
+          },
+        },
+      ],
+    },
+  ];
+}
+
+function createIdentificationServices(): DiscoveredBleService[] {
+  return [
+    {
+      uuid: BLE_UUIDS.shdoService,
+      characteristics: [
+        {
+          uuid: BLE_UUIDS.versionCharacteristic,
+          descriptors: [],
+          properties: {
+            authenticatedSignedWrites: false,
+            broadcast: false,
+            indicate: false,
+            notify: false,
+            read: true,
+            write: false,
+            writeWithoutResponse: false,
+          },
+        },
+      ],
+    },
+    {
+      uuid: BLE_UUIDS.moventivGarlineService,
+      characteristics: [],
+    },
+  ];
+}
+
+function createWidoorIdentificationServices(): DiscoveredBleService[] {
+  const services = createIdentificationServices();
+
+  return [
+    services[0],
+    {
+      uuid: BLE_UUIDS.widoorService,
+      characteristics: [],
+    },
+  ];
+}
+
+function createVersionWord(productByte: number, subtypeByte: number): DataView {
+  return new DataView(Uint8Array.from([
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    productByte,
+    subtypeByte,
+  ]).buffer);
 }

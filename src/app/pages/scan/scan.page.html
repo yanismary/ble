@@ -67,6 +67,104 @@
       @if (connectionError) {
         <p class="error-message" role="alert">{{ connectionError }}</p>
       }
+
+      @if (connectedDeviceId === device.deviceId) {
+        <section class="services-panel" aria-live="polite">
+          <h2>Services BLE</h2>
+
+          @if (discoveringServices) {
+            <div class="connection-status" role="status">
+              <ion-spinner name="crescent"></ion-spinner>
+              <span>Découverte des services…</span>
+            </div>
+          }
+
+          @if (discoveryError) {
+            <p class="error-message" role="alert">{{ discoveryError }}</p>
+          }
+
+          @if ((!discoveringServices || readingIdentification) && !discoveryError) {
+            <section class="identification-panel">
+              <h2>Identification du produit</h2>
+              <p><strong>Nom Bluetooth :</strong> {{ device.name }}</p>
+              <p>
+                <strong>Profil secondaire :</strong> {{ secondaryProfile }}
+              </p>
+
+              @if (readingIdentification) {
+                <div class="connection-status" role="status">
+                  <ion-spinner name="crescent"></ion-spinner>
+                  <span>Lecture de l’identification…</span>
+                </div>
+              }
+
+              @if (identificationError) {
+                <p class="error-message" role="alert">
+                  {{ identificationError }}
+                </p>
+              }
+
+              @if (identification; as result) {
+                <dl class="identification-details">
+                  <dt>Mot de version brut</dt>
+                  <dd><code>{{ result.rawHex }}</code></dd>
+                  <dt>Longueur</dt>
+                  <dd>{{ result.length }} octet(s)</dd>
+                  <dt>Octet produit</dt>
+                  <dd>{{ result.productByte ?? 'Absent' }}</dd>
+                  <dt>Sous-type</dt>
+                  <dd>{{ result.subtypeByte ?? 'Absent' }}</dd>
+                  <dt>Type produit détecté</dt>
+                  <dd>{{ result.detectedType }}</dd>
+                </dl>
+              }
+            </section>
+          }
+
+          @for (service of services; track service.uuid) {
+            <article class="ble-service">
+              <h3>Service</h3>
+              <code>{{ service.uuid }}</code>
+
+              @for (characteristic of service.characteristics; track characteristic.uuid) {
+                <div class="ble-characteristic">
+                  <h4>Caractéristique</h4>
+                  <code>{{ characteristic.uuid }}</code>
+                  <div class="property-list">
+                    @if (characteristic.properties.read) {
+                      <span>Lecture</span>
+                    }
+                    @if (characteristic.properties.write) {
+                      <span>Écriture</span>
+                    }
+                    @if (characteristic.properties.writeWithoutResponse) {
+                      <span>Écriture sans réponse</span>
+                    }
+                    @if (characteristic.properties.notify) {
+                      <span>Notification</span>
+                    }
+                    @if (characteristic.properties.indicate) {
+                      <span>Indication</span>
+                    }
+                    @if (characteristic.properties.broadcast) {
+                      <span>Diffusion</span>
+                    }
+                    @if (characteristic.properties.authenticatedSignedWrites) {
+                      <span>Écriture signée</span>
+                    }
+                  </div>
+                </div>
+              } @empty {
+                <p>Aucune caractéristique exposée.</p>
+              }
+            </article>
+          } @empty {
+            @if (!discoveringServices && !discoveryError) {
+              <p>Aucun service BLE exposé.</p>
+            }
+          }
+        </section>
+      }
     </section>
   }
 
