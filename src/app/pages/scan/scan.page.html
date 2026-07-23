@@ -12,7 +12,11 @@
   </ion-header>
 
   <div class="scan-actions">
-    <ion-button expand="block" (click)="startScan()" [disabled]="scanning">
+    <ion-button
+      expand="block"
+      (click)="startScan()"
+      [disabled]="scanning || connecting || connectedDeviceId !== null"
+    >
       Lancer le scan
     </ion-button>
     <ion-button
@@ -20,7 +24,7 @@
       color="medium"
       fill="outline"
       (click)="stopScan()"
-      [disabled]="!scanning"
+      [disabled]="!scanning || connecting"
     >
       Arrêter le scan
     </ion-button>
@@ -37,10 +41,45 @@
     <p class="error-message" role="alert">{{ errorMessage }}</p>
   }
 
+  @if (selectedDevice; as device) {
+    <section class="connection-panel" aria-live="polite">
+      <p><strong>Appareil sélectionné :</strong> {{ device.name }}</p>
+      <p>{{ device.deviceId }}</p>
+
+      <ion-button
+        expand="block"
+        color="success"
+        (click)="connectSelectedDevice()"
+        [disabled]="connecting || connectedDeviceId !== null"
+      >
+        Connecter
+      </ion-button>
+
+      @if (connecting) {
+        <div class="connection-status" role="status">
+          <ion-spinner name="crescent"></ion-spinner>
+          <span>Connexion en cours…</span>
+        </div>
+      } @else if (connectedDeviceId === device.deviceId) {
+        <p class="connected-status" role="status">Connecté</p>
+      }
+
+      @if (connectionError) {
+        <p class="error-message" role="alert">{{ connectionError }}</p>
+      }
+    </section>
+  }
+
   @if (devices.length > 0) {
     <ion-list class="device-list">
       @for (device of devices; track device.deviceId) {
-        <ion-item>
+        <ion-item
+          button
+          detail="false"
+          (click)="selectDevice(device)"
+          [disabled]="connecting"
+          [class.selected-device]="selectedDeviceId === device.deviceId"
+        >
           <ion-label>
             <h2>{{ device.name }}</h2>
             <p>{{ device.deviceId }}</p>

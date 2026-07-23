@@ -1,12 +1,25 @@
 import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 import { ScanResult } from '@capacitor-community/bluetooth-le';
+import { Observable, Subject } from 'rxjs';
 
-import { BleService } from '../../core/services/ble';
+import {
+  BleDisconnectionEvent,
+  BleService,
+} from '../../core/services/ble';
 import { ScanPage } from './scan.page';
 
 class FakeBleService {
+  private readonly disconnectionSubject = new Subject<BleDisconnectionEvent>();
+  private connectedDeviceIdValue: string | null = null;
   private scanning = false;
   private scanCallback: ((result: ScanResult) => void) | null = null;
+
+  readonly disconnections$: Observable<BleDisconnectionEvent> =
+    this.disconnectionSubject.asObservable();
+
+  get connectedDeviceId(): string | null {
+    return this.connectedDeviceIdValue;
+  }
 
   async initialize(): Promise<void> {}
 
@@ -29,8 +42,22 @@ class FakeBleService {
     return this.scanning;
   }
 
+  async connect(deviceId: string): Promise<void> {
+    this.scanning = false;
+    this.connectedDeviceIdValue = deviceId;
+  }
+
+  async disconnect(): Promise<void> {
+    this.connectedDeviceIdValue = null;
+  }
+
   emit(result: ScanResult): void {
     this.scanCallback?.(result);
+  }
+
+  emitRemoteDisconnection(deviceId: string): void {
+    this.connectedDeviceIdValue = null;
+    this.disconnectionSubject.next({ deviceId, reason: 'remote' });
   }
 }
 
@@ -142,6 +169,78 @@ describe('ScanPage', () => {
     expect(stopScanSpy).toHaveBeenCalledTimes(1);
     expect(component.scanning).toBeFalse();
   }));
+
+  it('should select a detected device', async () => {
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+
+    component.selectDevice(component.devices[0]);
+
+    expect(component.selectedDeviceId).toBe('device-1');
+    expect(component.selectedDevice?.name).toBe('Capteur');
+    await component.stopScan();
+  });
+
+  it('should stop scanning and display the connection state', fakeAsync(() => {
+    const stopScanSpy = spyOn(bleService, 'stopScan').and.callThrough();
+    const connectSpy = spyOn(bleService, 'connect').and.callThrough();
+    void component.startScan();
+    flushMicrotasks();
+    bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+    component.selectDevice(component.devices[0]);
+
+    void component.connectSelectedDevice();
+    expect(component.connecting).toBeTrue();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Connexion en cours');
+    flushMicrotasks();
+    fixture.detectChanges();
+
+    expect(stopScanSpy).toHaveBeenCalledBefore(connectSpy);
+    expect(component.connectedDeviceId).toBe('device-1');
+    expect(fixture.nativeElement.textContent).toContain('Connecté');
+  }));
+
+  it('should display a readable connection error', async () => {
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+    component.selectDevice(component.devices[0]);
+    spyOn(bleService, 'connect').and.rejectWith(
+      new Error('Connexion refusée'),
+    );
+
+    await component.connectSelectedDevice();
+    fixture.detectChanges();
+
+    expect(component.connectionError).toContain('Connexion refusée');
+    expect(fixture.nativeElement.textContent).toContain('Connexion refusée');
+    expect(component.connecting).toBeFalse();
+  });
+
+  it('should leave the connected state after a remote disconnection', async () => {
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+    component.selectDevice(component.devices[0]);
+    await component.connectSelectedDevice();
+
+    bleService.emitRemoteDisconnection('device-1');
+    fixture.detectChanges();
+
+    expect(component.connectedDeviceId).toBeNull();
+    expect(component.connecting).toBeFalse();
+    expect(component.connectionError).toBe(
+      'Connexion perdue avec l’appareil.',
+    );
+    expect(fixture.nativeElement.textContent).toContain(
+      'Connexion perdue avec l’appareil',
+    );
+
+    const buttons = fixture.nativeElement.querySelectorAll(
+      'ion-button',
+    ) as NodeListOf<HTMLButtonElement>;
+    expect(buttons[0].disabled).toBeFalse();
+    expect(buttons[2].disabled).toBeFalse();
+  });
 });
 
 function createScanResult(
