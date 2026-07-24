@@ -4,6 +4,7 @@ import { BleService as DiscoveredBleService } from '@capacitor-community/bluetoo
 export const BLE_UUIDS = {
   shdoService: 'dc06d52e-6ee8-471e-a5fd-0f40674a061d',
   versionCharacteristic: '175d6bc8-5840-4037-95da-a778395a036c',
+  motorStateCharacteristic: 'e56b24a5-3309-487e-9aa6-079cd32270ae',
   widoorService: '3206890a-650e-46f3-9c73-2bc0840e3b8e',
   moventivGarlineService: '978ae765-664c-45d8-9157-3b9031e6478e',
 } as const;
@@ -35,10 +36,65 @@ export interface VersionIdentification {
   readonly detectionConfidence: DetectionConfidence;
 }
 
+export interface MotorSwitchStates {
+  readonly raw: number;
+  readonly unknownHighBits: number;
+  readonly pushAndGo: boolean;
+  readonly ble: boolean;
+  readonly automaticManual: boolean;
+  readonly direction: boolean;
+  readonly pairing: boolean;
+}
+
+export interface MotorStateFrame {
+  readonly rawHex: string;
+  readonly length: number;
+  readonly state: number | null;
+  readonly currentPosition: number | null;
+  readonly maximumPosition: number | null;
+  readonly error: number | null;
+  readonly switches: MotorSwitchStates | null;
+}
+
 @Injectable({
   providedIn: 'root',
 })
 export class ProductDetection {
+  interpretMotorState(value: DataView): MotorStateFrame {
+    const bytes = new Uint8Array(
+      value.buffer,
+      value.byteOffset,
+      value.byteLength,
+    );
+    const switchesValue = bytes.length > 6 ? bytes[6] : null;
+
+    return {
+      rawHex: Array.from(bytes, (byte) =>
+        byte.toString(16).padStart(2, '0'),
+      ).join(' '),
+      length: bytes.length,
+      state: bytes.length > 0 ? bytes[0] : null,
+      currentPosition: bytes.length > 2
+        ? this.readUnsignedBigEndian16(bytes[1], bytes[2])
+        : null,
+      maximumPosition: bytes.length > 4
+        ? this.readUnsignedBigEndian16(bytes[3], bytes[4])
+        : null,
+      error: bytes.length > 5 ? bytes[5] : null,
+      switches: switchesValue === null
+        ? null
+        : {
+            raw: switchesValue,
+            unknownHighBits: switchesValue & 0xe0,
+            pushAndGo: Boolean(switchesValue & 0x10),
+            ble: Boolean(switchesValue & 0x08),
+            automaticManual: Boolean(switchesValue & 0x04),
+            direction: Boolean(switchesValue & 0x02),
+            pairing: Boolean(switchesValue & 0x01),
+          },
+    };
+  }
+
   detectSecondaryProfile(
     services: readonly DiscoveredBleService[],
   ): SecondaryBleProfile {
@@ -189,6 +245,13 @@ export class ProductDetection {
       default:
         return 'Inconnu';
     }
+  }
+
+  private readUnsignedBigEndian16(
+    mostSignificantByte: number,
+    leastSignificantByte: number,
+  ): number {
+    return (mostSignificantByte << 8) | leastSignificantByte;
   }
 
   private normalizeUuid(uuid: string): string {

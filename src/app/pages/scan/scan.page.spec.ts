@@ -17,6 +17,7 @@ class FakeBleService {
   private connectedDeviceIdValue: string | null = null;
   private scanning = false;
   private scanCallback: ((result: ScanResult) => void) | null = null;
+  private notificationCallback: ((value: DataView) => void) | null = null;
   servicesResult: DiscoveredBleService[] = [];
   readResult: DataView = new DataView(new ArrayBuffer(0));
 
@@ -69,6 +70,23 @@ class FakeBleService {
     return this.readResult;
   }
 
+  async startNotifications(
+    _serviceUuid: string,
+    _characteristicUuid: string,
+    callback: (value: DataView) => void,
+    _deviceId?: string,
+  ): Promise<void> {
+    this.notificationCallback = callback;
+  }
+
+  async stopNotifications(
+    _serviceUuid: string,
+    _characteristicUuid: string,
+    _deviceId?: string,
+  ): Promise<void> {
+    this.notificationCallback = null;
+  }
+
   emit(result: ScanResult): void {
     this.scanCallback?.(result);
   }
@@ -76,6 +94,10 @@ class FakeBleService {
   emitRemoteDisconnection(deviceId: string): void {
     this.connectedDeviceIdValue = null;
     this.disconnectionSubject.next({ deviceId, reason: 'remote' });
+  }
+
+  emitNotification(value: DataView): void {
+    this.notificationCallback?.(value);
   }
 }
 
@@ -441,6 +463,93 @@ describe('ScanPage', () => {
     expect(component.secondaryProfile).toBe('Inconnu');
     expect(component.readingIdentification).toBeFalse();
   });
+
+  it('should subscribe to motor state after identification', async () => {
+    bleService.servicesResult = createIdentificationServices();
+    bleService.readResult = createVersionWord(0, 1);
+    const startNotificationsSpy = spyOn(
+      bleService,
+      'startNotifications',
+    ).and.callThrough();
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Produit'));
+    component.selectDevice(component.devices[0]);
+
+    await component.connectSelectedDevice();
+
+    expect(startNotificationsSpy).toHaveBeenCalledOnceWith(
+      BLE_UUIDS.shdoService,
+      BLE_UUIDS.motorStateCharacteristic,
+      jasmine.any(Function),
+      'device-1',
+    );
+  });
+
+  it('should display motor state notifications and increment their count', async () => {
+    bleService.servicesResult = createIdentificationServices();
+    bleService.readResult = createVersionWord(0, 1);
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Produit'));
+    component.selectDevice(component.devices[0]);
+    await component.connectSelectedDevice();
+
+    bleService.emitNotification(createMotorStateFrame());
+    bleService.emitNotification(createMotorStateFrame());
+    fixture.detectChanges();
+
+    expect(component.motorNotificationCount).toBe(2);
+    expect(component.motorState?.rawHex).toBe('03 01 02 03 04 05 1d');
+    expect(component.motorState?.currentPosition).toBe(258);
+    expect(component.motorState?.maximumPosition).toBe(772);
+    expect(component.lastMotorStateReceivedAt).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('État moteur');
+    expect(fixture.nativeElement.textContent).toContain(
+      '03 01 02 03 04 05 1d',
+    );
+    expect(fixture.nativeElement.textContent).toContain(
+      'Notifications reçues : 2',
+    );
+  });
+
+  it('should clear motor state after a remote disconnection', async () => {
+    bleService.servicesResult = createIdentificationServices();
+    bleService.readResult = createVersionWord(0, 1);
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Produit'));
+    component.selectDevice(component.devices[0]);
+    await component.connectSelectedDevice();
+    bleService.emitNotification(createMotorStateFrame());
+    expect(component.motorNotificationCount).toBe(1);
+
+    bleService.emitRemoteDisconnection('device-1');
+
+    expect(component.motorState).toBeNull();
+    expect(component.motorNotificationCount).toBe(0);
+    expect(component.lastMotorStateReceivedAt).toBeNull();
+  });
+
+  it('should stay connected when the motor subscription fails', async () => {
+    bleService.servicesResult = createIdentificationServices();
+    bleService.readResult = createVersionWord(0, 1);
+    spyOn(bleService, 'startNotifications').and.rejectWith(
+      new Error('Notifications refusées'),
+    );
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Produit'));
+    component.selectDevice(component.devices[0]);
+
+    await component.connectSelectedDevice();
+    fixture.detectChanges();
+
+    expect(component.connectedDeviceId).toBe('device-1');
+    expect(component.motorNotificationError).toContain(
+      'Notifications refusées',
+    );
+    expect(fixture.nativeElement.textContent).toContain('Connect');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Notifications refusées',
+    );
+  });
 });
 
 function createScanResult(
@@ -495,6 +604,19 @@ function createIdentificationServices(): DiscoveredBleService[] {
             writeWithoutResponse: false,
           },
         },
+        {
+          uuid: BLE_UUIDS.motorStateCharacteristic,
+          descriptors: [],
+          properties: {
+            authenticatedSignedWrites: false,
+            broadcast: false,
+            indicate: false,
+            notify: true,
+            read: true,
+            write: false,
+            writeWithoutResponse: false,
+          },
+        },
       ],
     },
     {
@@ -522,4 +644,10 @@ function createVersionWord(productByte: number, subtypeByte: number): DataView {
     productByte,
     subtypeByte,
   ]).buffer);
+}
+
+function createMotorStateFrame(): DataView {
+  return new DataView(
+    Uint8Array.from([3, 0x01, 0x02, 0x03, 0x04, 5, 0x1d]).buffer,
+  );
 }

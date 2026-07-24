@@ -24,6 +24,8 @@ describe('BleService', () => {
     spyOn(BleClient, 'disconnect').and.resolveTo();
     spyOn(BleClient, 'getServices').and.resolveTo([]);
     spyOn(BleClient, 'read').and.resolveTo(new DataView(new ArrayBuffer(0)));
+    spyOn(BleClient, 'startNotifications').and.resolveTo();
+    spyOn(BleClient, 'stopNotifications').and.resolveTo();
 
     service = TestBed.inject(BleService);
   });
@@ -286,6 +288,121 @@ describe('BleService', () => {
 
     expect(BleClient.read).toHaveBeenCalledOnceWith(
       'device-2',
+      'service-uuid',
+      'characteristic-uuid',
+    );
+  });
+
+  it('should reject notifications when no device is connected', async () => {
+    const callback = jasmine.createSpy<(value: DataView) => void>(
+      'notification',
+    );
+
+    await expectAsync(
+      service.startNotifications('service-1', 'characteristic-1', callback),
+    ).toBeRejectedWithError('No BLE device is connected.');
+    expect(BleClient.startNotifications).not.toHaveBeenCalled();
+  });
+
+  it('should start and stop notifications with the connected device', async () => {
+    const callback = jasmine.createSpy<(value: DataView) => void>(
+      'notification',
+    );
+    await service.connect('device-1');
+
+    await service.startNotifications(
+      ' service-uuid ',
+      ' characteristic-uuid ',
+      callback,
+    );
+
+    expect(BleClient.startNotifications).toHaveBeenCalledOnceWith(
+      'device-1',
+      'service-uuid',
+      'characteristic-uuid',
+      callback,
+    );
+
+    await service.stopNotifications(
+      'service-uuid',
+      'characteristic-uuid',
+    );
+
+    expect(BleClient.stopNotifications).toHaveBeenCalledOnceWith(
+      'device-1',
+      'service-uuid',
+      'characteristic-uuid',
+    );
+  });
+
+  it('should not duplicate an active notification subscription', async () => {
+    const firstCallback = jasmine.createSpy<(value: DataView) => void>(
+      'firstNotification',
+    );
+    const secondCallback = jasmine.createSpy<(value: DataView) => void>(
+      'secondNotification',
+    );
+    await service.connect('device-1');
+
+    await Promise.all([
+      service.startNotifications(
+        'service-uuid',
+        'characteristic-uuid',
+        firstCallback,
+      ),
+      service.startNotifications(
+        'SERVICE-UUID',
+        'CHARACTERISTIC-UUID',
+        secondCallback,
+      ),
+    ]);
+
+    expect(BleClient.startNotifications).toHaveBeenCalledTimes(1);
+  });
+
+  it('should stop active notifications before a local disconnection', async () => {
+    const callback = jasmine.createSpy<(value: DataView) => void>(
+      'notification',
+    );
+    await service.connect('device-1');
+    await service.startNotifications(
+      'service-uuid',
+      'characteristic-uuid',
+      callback,
+    );
+
+    await service.disconnect();
+
+    expect(BleClient.stopNotifications).toHaveBeenCalledOnceWith(
+      'device-1',
+      'service-uuid',
+      'characteristic-uuid',
+    );
+    expect(BleClient.stopNotifications).toHaveBeenCalledBefore(
+      BleClient.disconnect,
+    );
+  });
+
+  it('should clear active notifications after a remote disconnection', async () => {
+    let onDisconnect: ((deviceId: string) => void) | undefined;
+    connectSpy.and.callFake(async (_deviceId, callback) => {
+      onDisconnect = callback;
+    });
+    const callback = jasmine.createSpy<(value: DataView) => void>(
+      'notification',
+    );
+    await service.connect('device-1');
+    await service.startNotifications(
+      'service-uuid',
+      'characteristic-uuid',
+      callback,
+    );
+
+    onDisconnect?.('device-1');
+    await Promise.resolve();
+
+    expect(BleClient.stopNotifications).toHaveBeenCalledOnceWith(
+      'device-1',
       'service-uuid',
       'characteristic-uuid',
     );

@@ -22,6 +22,7 @@ import {
 } from '../../core/services/ble';
 import {
   BLE_UUIDS,
+  MotorStateFrame,
   ProductDetection,
   SecondaryBleProfile,
   VersionIdentification,
@@ -69,11 +70,16 @@ export class ScanPage implements OnDestroy {
   hasScanned = false;
   identification: VersionIdentification | null = null;
   identificationError: string | null = null;
+  lastMotorStateReceivedAt: string | null = null;
+  motorNotificationCount = 0;
+  motorNotificationError: string | null = null;
+  motorState: MotorStateFrame | null = null;
   readingIdentification = false;
   scanning = false;
   secondaryProfile = 'Inconnu';
   services: DiscoveredBleService[] = [];
   selectedDeviceId: string | null = null;
+  subscribingMotorState = false;
 
   constructor() {
     this.disconnectionSubscription = this.bleService.disconnections$.subscribe(
@@ -169,6 +175,7 @@ export class ScanPage implements OnDestroy {
 
     this.connectionError = null;
     this.discoveryError = null;
+    this.clearMotorState();
     this.clearIdentification();
     this.services = [];
     this.connecting = true;
@@ -190,11 +197,15 @@ export class ScanPage implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    const connectedDeviceId = this.connectedDeviceId;
     this.destroyed = true;
     this.scanning = false;
     this.clearScanTimeout();
     this.disconnectionSubscription.unsubscribe();
     void this.bleService.stopScan().catch(() => undefined);
+    if (connectedDeviceId !== null) {
+      void this.stopMotorStateNotifications(connectedDeviceId);
+    }
   }
 
   private handleDisconnection(event: BleDisconnectionEvent): void {
@@ -206,6 +217,7 @@ export class ScanPage implements OnDestroy {
     this.connecting = false;
     this.discoveringServices = false;
     this.discoveryError = null;
+    this.clearMotorState();
     this.clearIdentification();
     this.services = [];
 
@@ -282,6 +294,7 @@ export class ScanPage implements OnDestroy {
           `${this.detectedSecondaryProfile} — ` +
           `${identification.detectionReason} ` +
           `(confiance ${identification.detectionConfidence.toLowerCase()})`;
+        await this.startMotorStateNotifications(deviceId, services);
       }
     } catch (error: unknown) {
       if (!this.destroyed && this.connectedDeviceId === deviceId) {
@@ -294,6 +307,77 @@ export class ScanPage implements OnDestroy {
       if (!this.destroyed && this.connectedDeviceId === deviceId) {
         this.readingIdentification = false;
       }
+    }
+  }
+
+  private async startMotorStateNotifications(
+    deviceId: string,
+    services: readonly DiscoveredBleService[],
+  ): Promise<void> {
+    const motorStateCharacteristic = services
+      .find(
+        ({ uuid }) => this.normalizeUuid(uuid) === BLE_UUIDS.shdoService,
+      )
+      ?.characteristics.find(
+        ({ uuid }) =>
+          this.normalizeUuid(uuid) === BLE_UUIDS.motorStateCharacteristic,
+      );
+
+    if (motorStateCharacteristic === undefined) {
+      this.motorNotificationError =
+        'La caractéristique d’état moteur BLE est absente.';
+      return;
+    }
+
+    if (!motorStateCharacteristic.properties.notify) {
+      this.motorNotificationError =
+        'La caractéristique d’état moteur ne supporte pas les notifications.';
+      return;
+    }
+
+    this.subscribingMotorState = true;
+    this.motorNotificationError = null;
+
+    try {
+      await this.bleService.startNotifications(
+        BLE_UUIDS.shdoService,
+        BLE_UUIDS.motorStateCharacteristic,
+        (value: DataView) => {
+          this.ngZone.run(() => {
+            if (!this.destroyed && this.connectedDeviceId === deviceId) {
+              this.motorState =
+                this.productDetection.interpretMotorState(value);
+              this.motorNotificationCount += 1;
+              this.lastMotorStateReceivedAt =
+                new Date().toLocaleTimeString();
+            }
+          });
+        },
+        deviceId,
+      );
+    } catch (error: unknown) {
+      if (!this.destroyed && this.connectedDeviceId === deviceId) {
+        const details = error instanceof Error ? error.message : String(error);
+        this.motorNotificationError = details
+          ? `Impossible de s’abonner à l’état moteur : ${details}`
+          : 'Impossible de s’abonner à l’état moteur.';
+      }
+    } finally {
+      if (!this.destroyed && this.connectedDeviceId === deviceId) {
+        this.subscribingMotorState = false;
+      }
+    }
+  }
+
+  private async stopMotorStateNotifications(deviceId: string): Promise<void> {
+    try {
+      await this.bleService.stopNotifications(
+        BLE_UUIDS.shdoService,
+        BLE_UUIDS.motorStateCharacteristic,
+        deviceId,
+      );
+    } catch {
+      // BleService also clears native subscriptions on disconnection.
     }
   }
 
@@ -335,6 +419,14 @@ export class ScanPage implements OnDestroy {
     this.readingIdentification = false;
     this.detectedSecondaryProfile = 'Inconnu';
     this.secondaryProfile = 'Inconnu';
+  }
+
+  private clearMotorState(): void {
+    this.lastMotorStateReceivedAt = null;
+    this.motorNotificationCount = 0;
+    this.motorNotificationError = null;
+    this.motorState = null;
+    this.subscribingMotorState = false;
   }
 
   private normalizeUuid(uuid: string): string {

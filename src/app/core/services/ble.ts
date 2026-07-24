@@ -13,11 +13,20 @@ export interface BleDisconnectionEvent {
   reason: BleDisconnectionReason;
 }
 
+interface NotificationSubscription {
+  readonly deviceId: string;
+  readonly serviceUuid: string;
+  readonly characteristicUuid: string;
+  readonly startPromise: Promise<void>;
+}
+
 @Injectable({
   providedIn: 'root',
 })
 export class BleService {
   private readonly disconnectionSubject = new Subject<BleDisconnectionEvent>();
+  private readonly notificationSubscriptions =
+    new Map<string, NotificationSubscription>();
   private initializationPromise: Promise<void> | null = null;
   private stopPromise: Promise<void> | null = null;
   private connectionPromise: Promise<void> | null = null;
@@ -152,6 +161,7 @@ export class BleService {
     }
 
     this.locallyDisconnectingDeviceId = deviceId;
+    await this.stopAllNotifications(deviceId);
     const disconnection = BleClient.disconnect(deviceId);
     this.disconnectPromise = disconnection;
 
@@ -219,6 +229,60 @@ export class BleService {
     );
   }
 
+  async startNotifications(
+    serviceUuid: string,
+    characteristicUuid: string,
+    callback: (value: DataView) => void,
+    deviceId?: string,
+  ): Promise<void> {
+    const target = this.validateNotificationTarget(
+      serviceUuid,
+      characteristicUuid,
+      deviceId,
+    );
+    const key = this.notificationKey(target);
+    const existingSubscription = this.notificationSubscriptions.get(key);
+
+    if (existingSubscription !== undefined) {
+      await existingSubscription.startPromise;
+      return;
+    }
+
+    const startPromise = BleClient.startNotifications(
+      target.deviceId,
+      target.serviceUuid,
+      target.characteristicUuid,
+      callback,
+    );
+    const subscription: NotificationSubscription = {
+      ...target,
+      startPromise,
+    };
+    this.notificationSubscriptions.set(key, subscription);
+
+    try {
+      await startPromise;
+    } catch (error: unknown) {
+      if (this.notificationSubscriptions.get(key) === subscription) {
+        this.notificationSubscriptions.delete(key);
+      }
+      throw error;
+    }
+  }
+
+  async stopNotifications(
+    serviceUuid: string,
+    characteristicUuid: string,
+    deviceId?: string,
+  ): Promise<void> {
+    const target = this.validateNotificationTarget(
+      serviceUuid,
+      characteristicUuid,
+      deviceId,
+    );
+    await this.stopNotificationSubscription(target);
+  }
+
   isScanning(): boolean {
     return this.scanning;
   }
@@ -253,9 +317,99 @@ export class BleService {
       return;
     }
 
+    void this.stopAllNotifications(deviceId);
     this.connectedDeviceIdValue = null;
     this.connectingDeviceId = null;
     this.connecting = false;
     this.disconnectionSubject.next({ deviceId, reason: 'remote' });
+  }
+
+  private validateNotificationTarget(
+    serviceUuid: string,
+    characteristicUuid: string,
+    deviceId?: string,
+  ): Omit<NotificationSubscription, 'startPromise'> {
+    if (this.connectedDeviceIdValue === null) {
+      throw new Error('No BLE device is connected.');
+    }
+
+    const normalizedServiceUuid = serviceUuid.trim();
+    const normalizedCharacteristicUuid = characteristicUuid.trim();
+    const targetDeviceId = deviceId === undefined
+      ? this.connectedDeviceIdValue
+      : deviceId.trim();
+
+    if (!normalizedServiceUuid) {
+      throw new Error(
+        'A service UUID is required to manage notifications.',
+      );
+    }
+
+    if (!normalizedCharacteristicUuid) {
+      throw new Error(
+        'A characteristic UUID is required to manage notifications.',
+      );
+    }
+
+    if (!targetDeviceId) {
+      throw new Error('A deviceId is required to manage notifications.');
+    }
+
+    return {
+      deviceId: targetDeviceId,
+      serviceUuid: normalizedServiceUuid,
+      characteristicUuid: normalizedCharacteristicUuid,
+    };
+  }
+
+  private notificationKey(
+    target: Omit<NotificationSubscription, 'startPromise'>,
+  ): string {
+    return [
+      target.deviceId,
+      target.serviceUuid.toLowerCase(),
+      target.characteristicUuid.toLowerCase(),
+    ].join('|');
+  }
+
+  private async stopNotificationSubscription(
+    target: Omit<NotificationSubscription, 'startPromise'>,
+  ): Promise<void> {
+    const key = this.notificationKey(target);
+    const subscription = this.notificationSubscriptions.get(key);
+
+    if (subscription === undefined) {
+      return;
+    }
+
+    this.notificationSubscriptions.delete(key);
+    await subscription.startPromise;
+    await BleClient.stopNotifications(
+      subscription.deviceId,
+      subscription.serviceUuid,
+      subscription.characteristicUuid,
+    );
+  }
+
+  private async stopAllNotifications(deviceId: string): Promise<void> {
+    const subscriptions = [...this.notificationSubscriptions.entries()]
+      .filter(([, subscription]) => subscription.deviceId === deviceId);
+
+    subscriptions.forEach(([key]) => {
+      this.notificationSubscriptions.delete(key);
+    });
+
+    await Promise.all(subscriptions.map(async ([, subscription]) => {
+      try {
+        await subscription.startPromise;
+        await BleClient.stopNotifications(
+          subscription.deviceId,
+          subscription.serviceUuid,
+          subscription.characteristicUuid,
+        );
+      } catch {
+        // A physical disconnection already stops native notifications.
+      }
+    }));
   }
 }

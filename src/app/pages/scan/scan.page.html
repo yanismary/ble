@@ -121,6 +121,64 @@
             </section>
           }
 
+          @if (identification) {
+            <section class="motor-state-panel" aria-live="polite">
+              <h2>État moteur</h2>
+
+              @if (subscribingMotorState) {
+                <div class="connection-status" role="status">
+                  <ion-spinner name="crescent"></ion-spinner>
+                  <span>Abonnement à l’état moteur…</span>
+                </div>
+              }
+
+              @if (motorNotificationError) {
+                <p class="error-message" role="alert">
+                  {{ motorNotificationError }}
+                </p>
+              }
+
+              <p>
+                <strong>Notifications reçues :</strong>
+                {{ motorNotificationCount }}
+              </p>
+
+              @if (motorState; as state) {
+                <dl class="motor-state-details">
+                  <dt>Dernière réception</dt>
+                  <dd>{{ lastMotorStateReceivedAt }}</dd>
+                  <dt>Trame brute</dt>
+                  <dd><code>{{ state.rawHex }}</code></dd>
+                  <dt>Longueur</dt>
+                  <dd>{{ state.length }} octet(s)</dd>
+                  <dt>État moteur brut</dt>
+                  <dd>{{ state.state ?? 'Absent' }}</dd>
+                  <dt>Position courante</dt>
+                  <dd>{{ state.currentPosition ?? 'Absente' }}</dd>
+                  <dt>Position maximale</dt>
+                  <dd>{{ state.maximumPosition ?? 'Absente' }}</dd>
+                  <dt>Erreur moteur</dt>
+                  <dd>{{ state.error ?? 'Absente' }}</dd>
+                  <dt>Contacteurs bruts</dt>
+                  <dd>{{ state.switches?.raw ?? 'Absents' }}</dd>
+                </dl>
+
+                @if (state.switches; as switches) {
+                  <div class="switch-state-list">
+                    <span>Push &amp; Go : {{ switches.pushAndGo }}</span>
+                    <span>BLE : {{ switches.ble }}</span>
+                    <span>Auto/Manuel : {{ switches.automaticManual }}</span>
+                    <span>Direction : {{ switches.direction }}</span>
+                    <span>Appairage : {{ switches.pairing }}</span>
+                    <span>Bits 7–5 bruts : {{ switches.unknownHighBits }}</span>
+                  </div>
+                }
+              } @else if (!subscribingMotorState && !motorNotificationError) {
+                <p>Aucune notification d’état moteur reçue.</p>
+              }
+            </section>
+          }
+
           @for (service of services; track service.uuid) {
             <article class="ble-service">
               <h3>Service</h3>

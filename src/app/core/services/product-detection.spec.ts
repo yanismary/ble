@@ -18,6 +18,40 @@ describe('ProductDetection', () => {
     expect(service).toBeTruthy();
   });
 
+  it('should interpret the confirmed seven-byte motor state frame', () => {
+    const result = service.interpretMotorState(
+      dataView([3, 0x01, 0x02, 0x03, 0x04, 5, 0xbd]),
+    );
+
+    expect(result.rawHex).toBe('03 01 02 03 04 05 bd');
+    expect(result.length).toBe(7);
+    expect(result.state).toBe(3);
+    expect(result.currentPosition).toBe(258);
+    expect(result.maximumPosition).toBe(772);
+    expect(result.error).toBe(5);
+    expect(result.switches).toEqual({
+      raw: 0xbd,
+      unknownHighBits: 0xa0,
+      pushAndGo: true,
+      ble: true,
+      automaticManual: true,
+      direction: false,
+      pairing: true,
+    });
+  });
+
+  it('should interpret a short motor state frame without unsafe access', () => {
+    const result = service.interpretMotorState(dataView([7, 0x01]));
+
+    expect(result.rawHex).toBe('07 01');
+    expect(result.length).toBe(2);
+    expect(result.state).toBe(7);
+    expect(result.currentPosition).toBeNull();
+    expect(result.maximumPosition).toBeNull();
+    expect(result.error).toBeNull();
+    expect(result.switches).toBeNull();
+  });
+
   it('should interpret a version word that is too short safely', () => {
     const result = service.interpretVersion(
       dataView([0xaa, 0xbb]),

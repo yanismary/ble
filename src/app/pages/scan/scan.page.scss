@@ -59,31 +59,41 @@
   padding-top: 1rem;
 }
 
-.identification-panel {
+.identification-panel,
+.motor-state-panel {
   background: rgba(var(--ion-color-primary-rgb), 0.08);
   border-radius: 0.5rem;
   margin-top: 0.75rem;
   padding: 0.75rem;
 }
 
-.identification-panel h2 {
+.identification-panel h2,
+.motor-state-panel h2 {
   margin-top: 0;
 }
 
-.identification-details {
+.identification-details,
+.motor-state-details {
   display: grid;
   gap: 0.35rem 0.75rem;
   grid-template-columns: max-content minmax(0, 1fr);
-  margin-bottom: 0;
 }
 
-.identification-details dt {
+.identification-details dt,
+.motor-state-details dt {
   font-weight: 600;
 }
 
-.identification-details dd {
+.identification-details dd,
+.motor-state-details dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.switch-state-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
 .ble-service {
