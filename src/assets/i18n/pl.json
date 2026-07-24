@@ -52,6 +52,8 @@
 			}
 		},
 		"CIRCLEBUTTONS": {
+			"INFO": "Info",
+			"DEMO": "Demo",
 			"EXAMPLE": "Przykład"
 		},
 		"DEMO_SELECTOR": {
@@ -86,6 +88,7 @@
 			"DOOR_STATE_CLOSINGDETECTOBS": "Wykrycie przeszkody podczas zamykania.",
 			"DOOR_STATE_CLOSINGBACKAFTEROBS": "Powrót do pozycji otwartej po wykryciu przeszkody.",
 			"COMBUTTON_OPEN": "Otwórz",
+			"COMBUTTON_OPEN_DELAYED": "Otwórz za {{seconds}} s",
 			"COMBUTTON_CLOSE": "Zamknij",
 			"COMTOOGLE_MAINTAINOPEN": "Trzymaj drzwi otwarte.",
 			"COMTOOGLE_LOCKCLOSE": "Drzwi zablokowane w pozycji zamkniętej.",
@@ -117,8 +120,8 @@
 			"COMTOOGLE_RGBINDIC": "Główna dioda LED",
 			"CLOSE_SPEED_LABEL": "Prędkość zamykania",
 			"OPEN_SPEED_LABEL": "Prędkość otwierania",
-			"AUTOCLOSING_TIMEDELAYSHORT_LABEL": "Krótkie opóźnienie przed zamknięciem.",
-			"AUTOCLOSING_TIMEDELAYLONG_LABEL": "Długie opóźnienie przed zamknięciem.",
+			"AUTOCLOSING_TIMEDELAYSHORT_LABEL": "Opóźnienie zamykania drzwi (sekundy)",
+			"AUTOCLOSING_TIMEDELAYLONG_LABEL": "Opóźnienie zamykania drzwi (minuty)",
 			"NAME_AND_LOCALIZATION_LABEL": "Nazwa i lokalizacja",
 			"MODIFY_NAME_FORMLABEL": "Zmień nazwę swojego {{productName}}",
 			"ASSOCIATE_FORMLABEL": "Przypisz swój {{productName}} do pomieszczenia",
@@ -202,16 +205,16 @@
 					}
 				},
 				"OPENDIRECTION": {
-					"LABEL": "Otwieranie",
+					"LABEL": "Kierunek otwierania",
 					"STATE": {
 						"LEFT": "Przeciwnie do wyjścia kabla.",
 						"RIGHT": "W kierunku wyjścia kabla."
 					}
 				},
 				"PAIRLEARN": {
-					"LABEL": "Parowanie/Uczenie",
+					"LABEL": "Parowanie/Kalibracja",
 					"STATE": {
-						"PEER": "Uczenie",
+						"PEER": "Kalibracja",
 						"LEARN": "Parowanie"
 					}
 				}
@@ -220,12 +223,12 @@
 				"ACTUAL_WEIGHTPROFILE": "Aktualny profil wagowy",
 				"MAX_WEIGHT": "Maksymalna waga",
 				"DATEOF_FIRSTUSE": "Data pierwszego użycia",
-				"NB_CYCLE_TOT": "Liczba cykli otwarcia/zamknięcia od pierwszego użycia."
+				"NB_CYCLE_TOT": "Liczba cykli otwarcia/zamknięcia od pierwszego użycia"
 			},
 			"MAINTENANCE_SUBTITLE": "Konserwacja",
 			"MAINTENANCE": {
-				"DATEOF_LASTMAINT": "Data ostatniej konserwacji.",
-				"NB_CYCLES_SINCELASTMAINT": "Liczba cykli otwarcia/zamknięcia od ostatniej konserwacji."
+				"DATEOF_LASTMAINT": "Data ostatniej konserwacji",
+				"NB_CYCLES_SINCELASTMAINT": "Liczba cykli otwarcia/zamknięcia od ostatniej konserwacji"
 			},
 			"FIRMWARE_REV_SUBTITLE": "Wersja oprogramowania",
 			"FIRMWARE_REV": {
@@ -241,12 +244,12 @@
 			"SUPINFO": {
 				"HEADER": "Informacje dodatkowe",
 				"INIT": "Liczba restartów",
-				"CINIT": "Liczba cykli od ostatniego restartu.",
+				"CINIT": "Liczba cykli od ostatniego restartu",
 				"OBSDETECT": "Liczba wykrytych przeszkód",
 				"WSO": "Liczba błędnych zatrzymań przy otwieraniu",
 				"WSC": "Liczba błędnych zatrzymań przy zamykaniu",
 				"OHM": "Liczba przegrzań silnika",
-				"LC": "Liczba procesów uczenia",
+				"LC": "Liczba procesów kalibracji",
 				"EC": "Liczba błędów enkodera",
 				"EM": "Liczba błędów silnika"
 			}
@@ -315,7 +318,7 @@
 			},
 			"EXTRA_COMMANDS": {
 				"TITLE": "Dodatkowe polecenia",
-				"LEARNING_BUTTON": "Uczenie pozycji krańcowych",
+				"LEARNING_BUTTON": "Kalibracja pozycji krańcowych",
 				"RESET_BUTTON": "Resetuj wszystkie parametry",
 				"MAINTENANCE_BUTTON": "Konserwacja wykonana",
 				"SETUP_BUTTON": "Konfiguracja zakończona"
@@ -346,7 +349,7 @@
 			"DOOR_STATE_OPENING": "Otwieranie",
 			"DOOR_STATE_LEARNINGFIRSTSTOP": "Szukanie pierwszej pozycji krańcowej",
 			"DOOR_STATE_LEARNINGSECONDSTOP": "Szukanie drugiej pozycji krańcowej",
-			"DOOR_STATE_LEARNINGSINGLESTOP": "Inicjalizacja uczenia",
+			"DOOR_STATE_LEARNINGSINGLESTOP": "Inicjalizacja kalibracji",
 			"DOOR_STATE_WAITINGLEARNINGSTOP": "Oczekiwanie na pozycje krańcowe",
 			"DOOR_STATE_OPENINGDETECTOBS": "Przeszkoda podczas otwierania",
 			"DOOR_STATE_OPENINGBACKAFTEROBS": "Powrót po wykryciu przeszkody podczas otwierania",
@@ -464,19 +467,19 @@
 		"PAIRING": {
 			"TITLE": "Parowanie",
 			"ANDROID": {
-				"TEXT": "<h6>Procedura parowania</h6><br><p>Na telefonie przejdź do menu Bluetooth (zazwyczaj: Ustawienia > Połączenia > Bluetooth > Skanowanie). Po stronie napędu ustaw Przełącznik 1 w pozycji OFF, naciśnij przycisk PRG (dioda LED zaświeci się na kolor magenta). Następnie naciśnij {{productName}} na telefonie — urządzenie powinno pojawić się w sekcji Sparowane urządzenia.<p>"
+				"TEXT": "<h6>Procedura parowania</h6><br><p>Na telefonie przejdź do menu Bluetooth (zazwyczaj: Ustawienia > Połączenia > Bluetooth > Skanowanie). Po stronie napędu ustaw Przełącznik 1 w pozycji OFF, naciśnij przycisk PRG (dioda LED zaświeci się purpurowym światłem). Następnie naciśnij {{productName}} na telefonie — urządzenie powinno pojawić się w sekcji Sparowane urządzenia.<p>"
 			},
 			"IOS": {
-				"TEXT": "<h6>Procedura parowania</h6><br><p>Na telefonie przejdź do menu Bluetooth (zazwyczaj: Ustawienia > Połączenia > Bluetooth > Skanowanie). Po stronie napędu ustaw Przełącznik 1 w pozycji OFF, naciśnij przycisk PRG (dioda LED zaświeci się na kolor magenta). Następnie naciśnij {{productName}} na telefonie — urządzenie powinno pojawić się w sekcji Sparowane urządzenia.<p>"
+				"TEXT": "<h6>Procedura parowania</h6><br><p>Na telefonie przejdź do menu Bluetooth (zazwyczaj: Ustawienia > Połączenia > Bluetooth > Skanowanie). Po stronie napędu ustaw Przełącznik 1 w pozycji OFF, naciśnij przycisk PRG (dioda LED zaświeci się purpurowym światłem). Następnie naciśnij {{productName}} na telefonie — urządzenie powinno pojawić się w sekcji Sparowane urządzenia.<p>"
 			}
 		},
 		"PAIRINGTROUBLES": {
 			"TITLE": "Problemy z parowaniem",
 			"ANDROID": {
-				"TEXT": "<h6>1.</h6><br><p>Sprawdź, czy Bluetooth jest włączony na swoim smartfonie.<p>"
+				"TEXT": "<h6>1.</h6><p>Sprawdź, czy Bluetooth jest włączony na Twoim smartfonie.</p>"
 			},
 			"IOS": {
-				"TEXT": "<h6>1.</h6><br><p>Sprawdź, czy Bluetooth jest włączony na swoim smartfonie.</p>"
+				"TEXT": "<h6>1.</h6><p>Sprawdź, czy Bluetooth jest włączony na Twoim smartfonie.</p>"
 			}
 		}
 	},
@@ -485,7 +488,7 @@
 		"CONTENT_TITLE": "WIDOOR",
 		"VERSION": "Wersja:",
 		"LAST_MODIFICATION": "Ostatnie modyfikacje:",
-		"PARAGRAPHE1": "Lista wyboru wagi wyświetla teraz ostatnio dokonany wybór.",
+		"PARAGRAPHE1": "Lista wyboru wagi zapamiętuje ostatnio wybraną wartość.",
 		"PARAGRAPHE2": "Dodanie ostrzeżenia przy zmianie wagi.",
 		"PARAGRAPHE2_LIST": {
 			"ITEM1": "",
@@ -647,7 +650,7 @@
 		},
 		"SLIDE4": {
 			"TITLE": "Skonfiguruj swój napęd",
-			"DESC": "Zmień przypisanie zacisków, uruchom uczenie pozycji krańcowych itp."
+			"DESC": "Zmień przypisanie zacisków, uruchom kalibrację pozycji krańcowych itp."
 		},
 		"SLIDE5": {
 			"TITLE": "Dostęp do informacji",
@@ -655,16 +658,16 @@
 		},
 		"SLIDE6": {
 			"TITLE": "Skonfiguruj aplikację",
-			"DESC": "Możesz na przykład ukryć menu, których nie potrzebujesz."
+			"DESC": "Możesz na przykład ukryć menu, którego nie potrzebujesz."
 		},
 		"SLIDE7": {
 			"ANDROID": {
 				"TITLE": "Sparuj z napędem",
-				"DESC": "Na telefonie przejdź do menu parowania (zazwyczaj: Ustawienia > Połączenia > Bluetooth > Wyszukaj urządzenia). Po stronie napędu ustaw Przełącznik 1 w pozycji OFF i naciśnij przycisk PRG (dioda LED powinna świecić stałym światłem magenta). Następnie na telefonie wybierz swój napęd — powinien pojawić się w sekcji Sparowane urządzenia."
+				"DESC": "Na telefonie przejdź do menu parowania (zazwyczaj: Ustawienia > Połączenia > Bluetooth > Wyszukaj urządzenia). Po stronie napędu ustaw Przełącznik 1 w pozycji OFF i naciśnij przycisk PRG (dioda LED powinna świecić stałym purpurowym światłem). Następnie na telefonie wybierz swój napęd — powinien pojawić się w sekcji Sparowane urządzenia."
 			},
 			"IOS": {
 				"TITLE": "Sparuj z napędem",
-				"DESC": "Na iPhonie wyszukaj napęd za pomocą aplikacji. Po stronie \"nazwa Twojego napędu\" ustaw Przełącznik 1 w pozycji OFF i naciśnij oraz zwolnij przycisk PRG (dioda LED powinna świecić na magenta). Następnie w aplikacji naciśnij \"nazwa Twojego napędu\" i zaakceptuj prośbę o parowanie. "
+				"DESC": "Na iPhonie wyszukaj napęd za pomocą aplikacji. Po stronie \"nazwa Twojego napędu\" ustaw Przełącznik 1 w pozycji OFF i naciśnij oraz zwolnij przycisk PRG (dioda LED powinna świecić purpurowym światłem). Następnie w aplikacji naciśnij \"nazwa Twojego napędu\" i zaakceptuj prośbę o parowanie. "
 			}
 		},
 		"SLIDE8": {

@@ -31,7 +31,8 @@ interface ProductConfig {
   name: string;
   serviceUUID: string;
   page: string;
-  demoName: string;
+  demoNameKey: string;
+  demoNameFallback: string;
 }
 
 interface ScanDevice {
@@ -60,21 +61,24 @@ export const PRODUCTS_CONFIG: ProductConfig[] = [
     name: 'Widoor',
     serviceUUID: '3206890A-650E-46F3-9C73-2BC0840E3B8E', 
     page: 'WidoorPage',
-    demoName: 'WidoorExemple'
+    demoNameKey: 'SCAN_PAGE.DEMO_SELECTOR.WIDOOR_EXAMPLE',
+    demoNameFallback: 'WIDOOR Demo'
   },
   {
     id: 'moventiv',
     name: 'Moventiv',
     serviceUUID: '978AE765-664C-45D8-9157-3B9031E6478E',
     page: 'MoventivPage',
-    demoName: 'MoventivExemple'
+    demoNameKey: 'SCAN_PAGE.DEMO_SELECTOR.MOVENTIV_EXAMPLE',
+    demoNameFallback: 'MOVENTIV Demo'
   },
   {
     id: 'garline',
     name: 'Garline',
     serviceUUID: '978AE765-664C-45D8-9157-3B9031E6478E', // même que Moventiv
     page: 'MoventivPage',
-    demoName: 'GarlineExemple'
+    demoNameKey: 'SCAN_PAGE.DEMO_SELECTOR.GARLINE_EXAMPLE',
+    demoNameFallback: 'GARLINE Demo'
   }
   /*{
     id: 'nouveau_produit',
@@ -1302,21 +1306,21 @@ export class ScanPage {
     const demoProducts = [
       {
         id: 'moventiv',
-        title: this.getTranslatedText('SCAN_PAGE.DEMO_SELECTOR.MOVENTIV_EXAMPLE', 'MOVENTIV exemple')
+        title: this.getTranslatedText('SCAN_PAGE.DEMO_SELECTOR.MOVENTIV_EXAMPLE', 'MOVENTIV Demo')
       },
       {
         id: 'garline',
-        title: this.getTranslatedText('SCAN_PAGE.DEMO_SELECTOR.GARLINE_EXAMPLE', 'GARLINE exemple')
+        title: this.getTranslatedText('SCAN_PAGE.DEMO_SELECTOR.GARLINE_EXAMPLE', 'GARLINE Demo')
       },
       {
         id: 'widoor',
-        title: this.getTranslatedText('SCAN_PAGE.DEMO_SELECTOR.WIDOOR_EXAMPLE', 'WIDOOR exemple')
+        title: this.getTranslatedText('SCAN_PAGE.DEMO_SELECTOR.WIDOOR_EXAMPLE', 'WIDOOR Demo')
       }
     ];
     const cancelText = this.getTranslatedText('SCAN_PAGE.DEMO_SELECTOR.CANCEL', 'Annuler');
 
     let alert = this.alertCtrl.create({
-      title: this.getTranslatedText('SCAN_PAGE.CIRCLEBUTTONS.EXAMPLE', 'Exemple'),
+      title: this.getTranslatedText('SCAN_PAGE.CIRCLEBUTTONS.DEMO', 'Demo'),
       cssClass: 'demo-product-alert',
       buttons: [
         {
@@ -1367,7 +1371,7 @@ export class ScanPage {
     if (!productConfig) {
       this.logger.warn(this.TAG, 'Demo product not found', { productId: productId });
       this.toastCtrl.create({
-        message: 'Exemple non disponible',
+        message: 'Démo non disponible',
         duration: 2000,
         position: 'bottom'
       }).present();
@@ -1393,7 +1397,7 @@ export class ScanPage {
       }).catch((navErr) => {
         this.logger.error(this.TAG, 'Demo navigation failed', navErr);
         this.toastCtrl.create({
-          message: 'Impossible d’ouvrir cet exemple.',
+          message: 'Impossible d’ouvrir cette démo.',
           duration: 2500,
           position: 'bottom'
         }).present();
@@ -1401,12 +1405,15 @@ export class ScanPage {
     });
   }
 
-  private createDemoDevice(productConfig: any, demoProductType: DetectedProductType) {
+  private createDemoDevice(productConfig: ProductConfig, demoProductType: DetectedProductType): ScanDevice {
+    const demoName = this.getTranslatedText(productConfig.demoNameKey, productConfig.demoNameFallback);
+    const demoId = productConfig.id.toUpperCase() + '-DEMO-0001';
+
     return {
       rssi: -45,
-      name: productConfig.demoName,
-      address: productConfig.id.toUpperCase() + '-EXEMPLE-0001',
-      id: productConfig.id.toUpperCase() + '-EXEMPLE-0001',
+      name: demoName,
+      address: demoId,
+      id: demoId,
       isBonded: true,
       advertisement: {
         serviceUuids: [productConfig.serviceUUID]

@@ -2854,10 +2854,16 @@ export class MoventivPage implements OnInit, OnDestroy {
     //this.rval_shDo_userDatesCycles[4] = this.todayDateUint8Array[1];
     //this.rval_shDo_userDatesCycles[3] = this.todayDateUint8Array[2];
 
+    const demoNameKey = this.isGarline
+      ? 'SCAN_PAGE.DEMO_SELECTOR.GARLINE_EXAMPLE'
+      : 'SCAN_PAGE.DEMO_SELECTOR.MOVENTIV_EXAMPLE';
+    const translatedDemoName = this.translate.instant(demoNameKey);
+    const demoNameFallback = this.isGarline ? 'GARLINE Demo' : 'MOVENTIV Demo';
+
     this.peripheralNameAff =
       this.navParams.get('displayName') ||
       (this.device ? (this.device.customName || this.device.name) : '') ||
-      (this.isGarline ? "GarlineEx" : "MoventivEx");
+      (translatedDemoName && translatedDemoName !== demoNameKey ? translatedDemoName : demoNameFallback);
     this.syncNameInputFromDisplayName();
 
     this.rval_shDo_version = new Uint8Array(26);
@@ -2893,7 +2899,7 @@ export class MoventivPage implements OnInit, OnDestroy {
 
     this.rval_mlpc_userParam_speedOpenTune = 90;
     this.rval_mlpc_userParam_speedCloseTune = 95;
-    this.rval_mlpc_userParam_openTimeShort = 4;
+    this.rval_mlpc_userParam_openTimeShort = this.isGarline ? 1 : 4;
     this.rval_mlpc_userParam_openTimeLong = 10;
 
     //rval_mlpc_userParam_periphs1: number;

@@ -28,7 +28,6 @@
         </ion-item>
         <ion-item text-wrap (click)="hsPairingTroubles()">
             <h2 text-wrap>{{"HELP_PAGE.PAIRINGTROUBLES.TITLE"| translate}}</h2>
-            <div *ngIf="showPairingTroubles"><br/> </div>
           <span  *ngIf="showPairingTroubles && isIos" text-wrap [innerHtml]="'HELP_PAGE.PAIRINGTROUBLES.IOS.TEXT' | translate"></span>
           <span  *ngIf="showPairingTroubles && isAndroid" text-wrap [innerHtml]="'HELP_PAGE.PAIRINGTROUBLES.ANDROID.TEXT' | translate"></span>
           </ion-item>

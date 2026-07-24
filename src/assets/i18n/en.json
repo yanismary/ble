@@ -52,6 +52,8 @@
 			}
 		},
 		"CIRCLEBUTTONS": {
+			"INFO": "Info",
+			"DEMO": "Demo",
 			"EXAMPLE": "Example"
 		},
 		"DEMO_SELECTOR": {
@@ -86,6 +88,7 @@
 			"DOOR_STATE_CLOSINGDETECTOBS": "Détection obstacle pendant fermeture",
 			"DOOR_STATE_CLOSINGBACKAFTEROBS": "Retour position ouverte après détection d'un obstacle",
 			"COMBUTTON_OPEN": "Open",
+			"COMBUTTON_OPEN_DELAYED": "Open in {{seconds}} s",
 			"COMBUTTON_CLOSE": "Close",
 			"COMTOOGLE_MAINTAINOPEN": "Keep door open",
 			"COMTOOGLE_LOCKCLOSE": "Door locked in closed position",

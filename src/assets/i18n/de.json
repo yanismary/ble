@@ -52,6 +52,8 @@
 			}
 		},
 		"CIRCLEBUTTONS": {
+			"INFO": "Info",
+			"DEMO": "Demo",
 			"EXAMPLE": "Beispiel"
 		},
 		"DEMO_SELECTOR": {
@@ -86,6 +88,7 @@
 			"DOOR_STATE_CLOSINGDETECTOBS": "Auf ein Hindernis beim Schließen gestoßen",
 			"DOOR_STATE_CLOSINGBACKAFTEROBS": "Tür öffnet sich nachdem beim Schließen auf ein Hindernis gestoßen wurde",
 			"COMBUTTON_OPEN": "Öffnen",
+			"COMBUTTON_OPEN_DELAYED": "In {{seconds}} s öffnen",
 			"COMBUTTON_CLOSE": "Schließen",
 			"COMTOOGLE_MAINTAINOPEN": "Tür geöffnet halten",
 			"COMTOOGLE_LOCKCLOSE": "Tür geschlossen halten",

@@ -2672,7 +2672,14 @@ export class WidoorPage implements OnInit, OnDestroy {
     //this.rval_shDo_userDatesCycles[4] = this.todayDateUint8Array[1];
     //this.rval_shDo_userDatesCycles[3] = this.todayDateUint8Array[2];
 
-    this.peripheralNameAff = "WidoorExemple";
+    const demoNameKey = 'SCAN_PAGE.DEMO_SELECTOR.WIDOOR_EXAMPLE';
+    const translatedDemoName = this.translate.instant(demoNameKey);
+    const demoNameFallback = 'WIDOOR Demo';
+
+    this.peripheralNameAff =
+      this.navParams.get('displayName') ||
+      (this.device ? (this.device.customName || this.device.name) : '') ||
+      (translatedDemoName && translatedDemoName !== demoNameKey ? translatedDemoName : demoNameFallback);
 
     this.rval_shDo_version_bleStack_major = 1;
     this.rval_shDo_version_bleStack_minor = 2;
