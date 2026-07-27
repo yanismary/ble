@@ -482,10 +482,10 @@
 		"PAIRINGTROUBLES": {
 			"TITLE": "Difficulté d'appairage",
 			"ANDROID": {
-				"TEXT": "<h6>1.</h6><br><p>Verifiez que le bluetooth est activé sur votre smartphone<p>"
+				"TEXT": "<p><strong>1.</strong> Verifiez que le bluetooth est activé sur votre smartphone</p>"
 			},
 			"IOS": {				
-				"TEXT": "<h6>1.</h6><br><p>Verifiez que le bluetooth est activé sur votre Iphone</p>"
+				"TEXT": "<p><strong>1.</strong> Verifiez que le bluetooth est activé sur votre Iphone</p>"
 			}
 		}
 	},

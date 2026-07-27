@@ -179,7 +179,7 @@
             </button>
           </ion-list-header>
 
-          <ion-item>
+          <ion-item class="slider-unlock-zone" (click)="unlockSliderFromZone('openSpeed', $event)">
             <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
             <ion-range [min]="isGarline ? 0 : 50" max="100" debounce="300"
               [disabled]="!isSliderUnlocked('openSpeed')"
@@ -224,7 +224,7 @@
               <ion-icon [name]="isSliderUnlocked('closeSpeed') ? 'unlock' : 'lock'" color="wimGreyColor"></ion-icon>
             </button>
           </ion-list-header>
-          <ion-item>
+          <ion-item class="slider-unlock-zone" (click)="unlockSliderFromZone('closeSpeed', $event)">
             <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
             <ion-range [min]="isGarline ? 0 : 50" max="100" debounce="300"
               [disabled]="!isSliderUnlocked('closeSpeed')"
@@ -269,7 +269,7 @@
               <ion-icon [name]="isSliderUnlocked('shortTiming') ? 'unlock' : 'lock'" color="wimGreyColor"></ion-icon>
             </button>
           </ion-list-header>
-          <ion-item>
+          <ion-item class="slider-unlock-zone" (click)="unlockSliderFromZone('shortTiming', $event)">
             <ion-icon name="moventiv-delay" item-start color="wimGreyColor"></ion-icon>
             <ion-range min="0" max="60" debounce="300" [(ngModel)]="rval_mlpc_userParam_openTimeShort"
               [disabled]="!isSliderUnlocked('shortTiming')"
@@ -315,7 +315,7 @@
               <ion-icon [name]="isSliderUnlocked('longTiming') ? 'unlock' : 'lock'" color="wimGreyColor"></ion-icon>
             </button>
           </ion-list-header>
-          <ion-item>
+          <ion-item class="slider-unlock-zone" (click)="unlockSliderFromZone('longTiming', $event)">
             <ion-icon name="moventiv-delay" item-start color="wimGreyColor"></ion-icon>
             <ion-range min="1" max="60" debounce="300" [(ngModel)]="rval_mlpc_userParam_openTimeLong"
               [disabled]="!isSliderUnlocked('longTiming')"
@@ -538,7 +538,7 @@
                 </button>
               </ion-list-header>
               
-              <ion-item>
+              <ion-item class="slider-unlock-zone" (click)="unlockSliderFromZone('nearOpenSpeed', $event)">
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
                 <ion-range [min]="isGarline ? 0 : 1" max="100" debounce="300"
                   [disabled]="!isSliderUnlocked('nearOpenSpeed')"
@@ -584,7 +584,7 @@
               </ion-list-header>
               <ion-list>
 
-              <ion-item>
+              <ion-item class="slider-unlock-zone" (click)="unlockSliderFromZone('nearCloseSpeed', $event)">
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
                 <ion-range [min]="isGarline ? 0 : 1" max="100" debounce="300"
                   [disabled]="!isSliderUnlocked('nearCloseSpeed')"
@@ -666,7 +666,7 @@
                 </button>
               </ion-list-header>
 
-              <ion-item>
+              <ion-item class="slider-unlock-zone" (click)="unlockSliderFromZone('nearCloseTorque', $event)">
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
                 <ion-range min='1' max="200" debounce="300"
                   [disabled]="!isSliderUnlocked('nearCloseTorque')"
@@ -719,7 +719,7 @@
                 </button>
               </ion-list-header>
 
-              <ion-item>
+              <ion-item class="slider-unlock-zone" (click)="unlockSliderFromZone('nearOpenTorque', $event)">
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
                 <ion-range min='1' max="200" debounce="300"
                   [disabled]="!isSliderUnlocked('nearOpenTorque')"
@@ -771,7 +771,7 @@
                 </button>
               </ion-list-header>
 
-              <ion-item>
+              <ion-item class="slider-unlock-zone" (click)="unlockSliderFromZone('brakingOpenPower', $event)">
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
                 <ion-range min='1' max="100" debounce="300"
                   [disabled]="!isSliderUnlocked('brakingOpenPower')"
@@ -823,7 +823,7 @@
                 </button>
               </ion-list-header>
 
-              <ion-item>
+              <ion-item class="slider-unlock-zone" (click)="unlockSliderFromZone('obstacleSensibility', $event)">
                 <ion-icon name="moventiv-speed" item-start color="wimGreyColor"></ion-icon>
                 <ion-range min='1' max="5" debounce="300"
                   [disabled]="!isSliderUnlocked('obstacleSensibility')"

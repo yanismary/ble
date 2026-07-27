@@ -8,6 +8,7 @@
     "compodoc": "compodoc -p tsconfig.json -w -s",
     "clean": "ionic-app-scripts clean",
     "build": "ionic-app-scripts build",
+    "postinstall": "patch-package",
     "lint": "ionic-app-scripts lint",
     "ionic:build": "ionic-app-scripts build",
     "ionic:serve": "ionic-app-scripts serve",
@@ -57,6 +58,7 @@
     "@ionic/app-scripts": "^3.2.4",
     "@types/node": "12.20.55",
     "gulp-preprocess": "^3.0.2",
+    "patch-package": "^8.0.0",
     "sass": "1.57.1",
     "typescript": "3.8.3"
   },

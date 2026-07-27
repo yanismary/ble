@@ -476,16 +476,16 @@
 		"PAIRINGTROUBLES": {
 			"TITLE": "Problemy z parowaniem",
 			"ANDROID": {
-				"TEXT": "<h6>1.</h6><p>Sprawdź, czy Bluetooth jest włączony na Twoim smartfonie.</p>"
+				"TEXT": "<p><strong>1.</strong> Sprawdź, czy Bluetooth jest włączony na Twoim smartfonie.</p>"
 			},
 			"IOS": {
-				"TEXT": "<h6>1.</h6><p>Sprawdź, czy Bluetooth jest włączony na Twoim smartfonie.</p>"
+				"TEXT": "<p><strong>1.</strong> Sprawdź, czy Bluetooth jest włączony na Twoim smartfonie.</p>"
 			}
 		}
 	},
 	"ABOUT_PAGE": {
 		"NAVBAR_TITLE": "O aplikacji",
-		"CONTENT_TITLE": "WIDOOR",
+		"CONTENT_TITLE": "MANTION Door Control",
 		"VERSION": "Wersja:",
 		"LAST_MODIFICATION": "Ostatnie modyfikacje:",
 		"PARAGRAPHE1": "Lista wyboru wagi zapamiętuje ostatnio wybraną wartość.",

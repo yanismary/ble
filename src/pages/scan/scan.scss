@@ -63,4 +63,11 @@ page-scan {
   text-align: center;
 }
 
+ion-fab.scan-footer-fab {
+  bottom: 16px;
+  bottom: calc(16px + constant(safe-area-inset-bottom));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 1000;
+}
+
 } 

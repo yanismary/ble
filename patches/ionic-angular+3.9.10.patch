@@ -1,0 +1,40 @@
+diff --git a/node_modules/ionic-angular/themes/ionic.functions.scss b/node_modules/ionic-angular/themes/ionic.functions.scss
+index 742cb2e..da02f01 100644
+--- a/node_modules/ionic-angular/themes/ionic.functions.scss
++++ b/node_modules/ionic-angular/themes/ionic.functions.scss
+@@ -3,33 +3,12 @@
+ // --------------------------------------------------
+ 
+ @function color-error($color-value, $color-name: null) {
+-  $error-msg: "
+-
+-  The value `#{$color-value}` must be a color.
+-  If you are setting the value as a map make sure
+-  both the base and contrast are defined as colors.
+-
+-  For example:
+-
+-  $colors: (
+-    primary:    #327eff,
+-    secondary:  (base: #32db64, contrast: #000),
+-  );";
++  $error-msg: "\a\a The value `#{$color-value}` must be a color.\a If you are setting the value as a map make sure\a both the base and contrast are defined as colors.\a\a For example:\a\a $colors: (\a   primary:    #327eff,\a   secondary:  (base: #32db64, contrast: #000),\a );";
+ 
+   // If there was a name passed it means the value doesn't exist
+   // so error that the value isn't defined
+   @if ($color-name) {
+-    $error-msg: "
+-
+-    The map color `#{$color-name}` is not defined.
+-    Please make sure the color exists in your
+-    `$colors` map.
+-
+-    For example:
+-
+-    $colors: (
+-      #{$color-name}:    #327eff
+-    );";
++    $error-msg: "\a\a The map color `#{$color-name}` is not defined.\a Please make sure the color exists in your\a `$colors` map.\a\a For example:\a\a $colors: (\a   #{$color-name}:    #327eff\a );";
+   }
+ 
+   @error $error-msg;

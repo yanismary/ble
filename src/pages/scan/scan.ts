@@ -1,5 +1,5 @@
-import { Component, NgZone } from '@angular/core';
-import { LoadingController, NavController, AlertController, ToastController, NavParams, Platform } from 'ionic-angular';
+import { Component, NgZone, ViewChild } from '@angular/core';
+import { Content, LoadingController, NavController, AlertController, ToastController, NavParams, Platform } from 'ionic-angular';
 import { Storage } from '@ionic/storage';
 import { PopoverController } from 'ionic-angular';
 import { TranslateService } from '@ngx-translate/core';
@@ -97,6 +97,8 @@ export const PRODUCTS_CONFIG: ProductConfig[] = [
   templateUrl: 'scan.html'
 })
 export class ScanPage {
+
+  @ViewChild(Content) content: Content;
 
   devices: ScanDevice[] = [];
   device: ScanDevice = {};
@@ -1269,6 +1271,9 @@ export class ScanPage {
   ionViewDidEnter() {
     this.logger.debug(this.TAG, 'ionViewDidEnter');
     this.isPushOnce = false;
+    if (this.content) {
+      this.content.resize();
+    }
   }
 
 

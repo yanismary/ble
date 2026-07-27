@@ -594,6 +594,14 @@ export class MoventivPage implements OnInit, OnDestroy {
     return this.activeSliderKey === key;
   }
 
+  unlockSliderFromZone(key: string, event?: Event): void {
+    if (!key || this.isSliderUnlocked(key)) {
+      return;
+    }
+
+    this.toggleSliderLock(key, event);
+  }
+
   toggleSliderLock(key: string, event?: Event): void {
     if (event && event.stopPropagation) {
       event.stopPropagation();

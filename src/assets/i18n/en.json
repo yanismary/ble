@@ -477,10 +477,10 @@
 		"PAIRINGTROUBLES": {
 			"TITLE": "Pairring issues",
 			"ANDROID": {
-				"TEXT": "<h6>1.</h6><br><p>Check that bluetooth is activated on your smartphone<p>"
+				"TEXT": "<p><strong>1.</strong> Check that bluetooth is activated on your smartphone</p>"
 			},
 			"IOS": {				
-				"TEXT": "<h6>1.</h6><br><p>Check that bluetooth is activated on your smartphone</p>"
+				"TEXT": "<p><strong>1.</strong> Check that bluetooth is activated on your smartphone</p>"
 			}
 		}
 	},

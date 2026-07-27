@@ -1,0 +1,12 @@
+diff --git a/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java b/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java
+index b6c5c14..e20902d 100644
+--- a/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java
++++ b/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java
+@@ -437,7 +437,6 @@ public class Bridge {
+         settings.setDomStorageEnabled(true);
+         settings.setGeolocationEnabled(true);
+         settings.setDatabaseEnabled(true);
+-        settings.setAppCacheEnabled(true);
+         settings.setMediaPlaybackRequiresUserGesture(false);
+         settings.setJavaScriptCanOpenWindowsAutomatically(true);
+         if (this.config.isMixedContentAllowed()) {
