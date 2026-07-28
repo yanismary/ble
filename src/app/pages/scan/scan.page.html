@@ -179,6 +179,90 @@
             </section>
           }
 
+          @if (showMotorTestPanel) {
+            <section
+              class="identification-panel motor-test-panel"
+              aria-live="polite"
+            >
+              <h2>{{ motorTestText.title }}</h2>
+              <p class="error-message" role="alert">
+                {{ motorTestText.warning }}
+              </p>
+
+              <dl class="identification-details motor-test-details">
+                <dt>{{ motorTestText.profile }}</dt>
+                <dd>{{ productProfile }}</dd>
+                <dt>{{ motorTestText.deviceName }}</dt>
+                <dd>{{ device.name }}</dd>
+                <dt>{{ motorTestText.deviceId }}</dt>
+                <dd>{{ connectedDeviceId }}</dd>
+                <dt>{{ motorTestText.currentPosition }}</dt>
+                <dd>{{ motorState?.currentPosition ?? '—' }}</dd>
+                <dt>{{ motorTestText.maximumPosition }}</dt>
+                <dd>{{ motorState?.maximumPosition ?? '—' }}</dd>
+                <dt>{{ motorTestText.availability }}</dt>
+                <dd>{{ motorCommandAvailability.reason }}</dd>
+              </dl>
+
+              <ion-button
+                expand="block"
+                color="danger"
+                (click)="requestOpenMotorTest()"
+                [disabled]="!motorCommandAvailability.enabled"
+              >
+                {{ motorTestText.open }}
+              </ion-button>
+
+              @if (motorTestStatus === 'awaiting-confirmation') {
+                <div class="connection-status" role="status">
+                  <ion-spinner name="crescent"></ion-spinner>
+                  <span>{{ motorTestText.awaiting }}</span>
+                </div>
+              } @else if (motorTestStatus === 'confirmed') {
+                <div class="connected-status" role="status">
+                  <p>{{ motorTestText.confirmed }}</p>
+                  <p>
+                    {{ motorTestText.newPosition }} :
+                    {{ motorTestResult?.notification?.currentPosition }}
+                  </p>
+                  @if (motorConfirmationDurationMs !== null) {
+                    <p>
+                      {{ motorTestText.confirmationDuration }} :
+                      {{ motorConfirmationDurationMs }} ms
+                    </p>
+                  }
+                </div>
+              } @else if (motorTestStatus === 'timeout') {
+                <p role="status">
+                  {{ motorTestText.timeout }}
+                </p>
+              } @else if (motorTestStatus === 'disconnected') {
+                <p class="error-message" role="alert">
+                  {{ motorTestText.disconnectedDuringCommand }}
+                </p>
+              } @else if (motorTestStatus === 'failed') {
+                <div class="error-message" role="alert">
+                  <p>{{ motorTestText.failed }}</p>
+                  @if (motorTestFailureReason) {
+                    <p>{{ motorTestFailureReason }}</p>
+                  }
+                </div>
+              }
+
+              @if (motorTestStatus !== 'idle' &&
+                  motorTestStatus !== 'awaiting-confirmation') {
+                <ion-button
+                  expand="block"
+                  fill="outline"
+                  color="medium"
+                  (click)="resetMotorTest()"
+                >
+                  {{ motorTestText.reset }}
+                </ion-button>
+              }
+            </section>
+          }
+
           @for (service of services; track service.uuid) {
             <article class="ble-service">
               <h3>Service</h3>

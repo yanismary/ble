@@ -3,6 +3,7 @@ import {
   BleService as DiscoveredBleService,
   ScanResult,
 } from '@capacitor-community/bluetooth-le';
+import { AlertController } from '@ionic/angular/standalone';
 import { Observable, Subject } from 'rxjs';
 
 import {
@@ -10,6 +11,7 @@ import {
   BleService,
 } from '../../core/services/ble';
 import { BLE_UUIDS } from '../../core/services/product-detection';
+import { MotorCommandService } from '../../core/services/motor-command.service';
 import { ScanPage } from './scan.page';
 
 class FakeBleService {
@@ -18,6 +20,7 @@ class FakeBleService {
   private scanning = false;
   private scanCallback: ((result: ScanResult) => void) | null = null;
   private notificationCallback: ((value: DataView) => void) | null = null;
+  isWriting = false;
   servicesResult: DiscoveredBleService[] = [];
   readResult: DataView = new DataView(new ArrayBuffer(0));
 
@@ -96,6 +99,10 @@ class FakeBleService {
     this.disconnectionSubject.next({ deviceId, reason: 'remote' });
   }
 
+  setConnectedDeviceId(deviceId: string | null): void {
+    this.connectedDeviceIdValue = deviceId;
+  }
+
   emitNotification(value: DataView): void {
     this.notificationCallback?.(value);
   }
@@ -105,13 +112,40 @@ describe('ScanPage', () => {
   let component: ScanPage;
   let fixture: ComponentFixture<ScanPage>;
   let bleService: FakeBleService;
+  let alertCreate: jasmine.Spy;
+  let alertOptions: TestAlertOptions[];
+  let sendMotorCommandWithConfirmation: jasmine.Spy;
 
   beforeEach(async () => {
     bleService = new FakeBleService();
+    alertOptions = [];
+    alertCreate = jasmine.createSpy('create').and.callFake(
+      async (options: TestAlertOptions) => {
+        alertOptions.push(options);
+        return {
+          present: async () => undefined,
+          onDidDismiss: async () => ({ role: 'cancel' }),
+        };
+      },
+    );
+    sendMotorCommandWithConfirmation =
+      jasmine.createSpy('sendMotorCommandWithConfirmation').and.resolveTo(
+        motorCommandResult('confirmed'),
+      );
 
     await TestBed.configureTestingModule({
       imports: [ScanPage],
-      providers: [{ provide: BleService, useValue: bleService }],
+      providers: [
+        { provide: BleService, useValue: bleService },
+        {
+          provide: AlertController,
+          useValue: { create: alertCreate },
+        },
+        {
+          provide: MotorCommandService,
+          useValue: { sendMotorCommandWithConfirmation },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ScanPage);
@@ -407,6 +441,362 @@ describe('ScanPage', () => {
     );
   });
 
+  it('should hide the motor test without a known connected profile', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.motor-test-panel')).toBeNull();
+
+    configureMotorTest('unknown');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.motor-test-panel')).toBeNull();
+
+    configureMotorTest('ambiguous');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.motor-test-panel')).toBeNull();
+  });
+
+  it('should hide the motor test while scan, discovery or identification is active',
+    () => {
+      configureMotorTest('widoor');
+
+      component.scanning = true;
+      expect(component.showMotorTestPanel).toBeFalse();
+      component.scanning = false;
+      component.discoveringServices = true;
+      expect(component.showMotorTestPanel).toBeFalse();
+      component.discoveringServices = false;
+      component.readingIdentification = true;
+      expect(component.showMotorTestPanel).toBeFalse();
+      component.readingIdentification = false;
+      component.identification = null;
+      expect(component.showMotorTestPanel).toBeFalse();
+    },
+  );
+
+  it('should require the native connection to match the page connection', () => {
+    configureMotorTest('widoor');
+    bleService.setConnectedDeviceId('device-2');
+
+    expect(component.showMotorTestPanel).toBeFalse();
+    expect(component.motorCommandAvailability.enabled).toBeFalse();
+  });
+
+  ['widoor', 'moventiv-60', 'moventiv-80', 'garline'].forEach((profile) => {
+    it(`should show the motor test for ${profile}`, () => {
+      configureMotorTest(
+        profile as 'widoor' | 'moventiv-60' | 'moventiv-80' | 'garline',
+      );
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.motor-test-panel'))
+        .not.toBeNull();
+    });
+  });
+
+  it('should centralize the OPEN availability conditions', () => {
+    configureMotorTest('widoor');
+    component.motorState = null;
+    expect(component.motorCommandAvailability.reason).toBe(
+      component.motorTestText.waitingFirstState,
+    );
+
+    component.motorState = motorState(null, 500);
+    expect(component.motorCommandAvailability.reason).toBe(
+      component.motorTestText.invalidPosition,
+    );
+
+    component.motorState = motorState(100, 0);
+    expect(component.motorCommandAvailability.reason).toBe(
+      component.motorTestText.invalidPosition,
+    );
+
+    component.motorState = motorState(500, 500);
+    expect(component.motorCommandAvailability.reason).toBe(
+      component.motorTestText.alreadyOpen,
+    );
+
+    component.motorState = motorState(100, 500);
+    expect(component.motorCommandAvailability.enabled).toBeTrue();
+  });
+
+  it('should reject an invalid numeric motor position', () => {
+    configureMotorTest('widoor');
+    component.motorState = motorState(Number.NaN, 500);
+
+    expect(component.motorCommandAvailability.enabled).toBeFalse();
+    expect(component.motorCommandAvailability.reason).toBe(
+      component.motorTestText.invalidPosition,
+    );
+  });
+
+  it('should only accept motor state from the current expected BLE target', () => {
+    configureMotorTest('widoor');
+    component.motorStateSource = {
+      deviceId: 'device-2',
+      serviceUuid: BLE_UUIDS.shdoService,
+      characteristicUuid: BLE_UUIDS.motorStateCharacteristic,
+    };
+    expect(component.motorCommandAvailability.enabled).toBeFalse();
+
+    component.motorStateSource = {
+      deviceId: 'device-1',
+      serviceUuid: 'different-service',
+      characteristicUuid: BLE_UUIDS.motorStateCharacteristic,
+    };
+    expect(component.motorCommandAvailability.enabled).toBeFalse();
+
+    component.motorStateSource = {
+      deviceId: 'device-1',
+      serviceUuid: BLE_UUIDS.shdoService,
+      characteristicUuid: 'different-characteristic',
+    };
+    expect(component.motorCommandAvailability.enabled).toBeFalse();
+
+    component.motorStateSource = {
+      deviceId: 'device-1',
+      serviceUuid: BLE_UUIDS.shdoService.toUpperCase(),
+      characteristicUuid: BLE_UUIDS.motorStateCharacteristic.toUpperCase(),
+    };
+    expect(component.motorCommandAvailability.enabled).toBeTrue();
+  });
+
+  it('should open one confirmation alert without sending automatically',
+    async () => {
+      configureMotorTest('widoor');
+
+      await component.requestOpenMotorTest();
+
+      expect(alertCreate).toHaveBeenCalledTimes(1);
+      expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+      expect(alertOptions[0].message).toContain('100');
+      expect(alertOptions[0].message).toContain('500');
+    },
+  );
+
+  it('should not send when the confirmation is cancelled', async () => {
+    configureMotorTest('widoor');
+    await component.requestOpenMotorTest();
+
+    expect(alertOptions[0].buttons[0].role).toBe('cancel');
+    expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+  });
+
+  it('should send exactly one OPEN with the captured safety data', async () => {
+    configureMotorTest('garline');
+    await component.requestOpenMotorTest();
+
+    alertOptions[0].buttons[1].handler?.();
+    await settlePromises();
+
+    expect(sendMotorCommandWithConfirmation).toHaveBeenCalledOnceWith(
+      'garline',
+      'OPEN',
+      100,
+      'device-1',
+      undefined,
+      500,
+    );
+  });
+
+  it('should use the latest valid motor state when the alert is confirmed',
+    async () => {
+      configureMotorTest('widoor');
+      await component.requestOpenMotorTest();
+      component.motorState = motorState(150, 600);
+
+      alertOptions[0].buttons[1].handler?.();
+      await settlePromises();
+
+      expect(sendMotorCommandWithConfirmation).toHaveBeenCalledOnceWith(
+        'widoor',
+        'OPEN',
+        150,
+        'device-1',
+        undefined,
+        600,
+      );
+    },
+  );
+
+  it('should not send if the latest state reaches maximum in the alert',
+    async () => {
+      configureMotorTest('widoor');
+      await component.requestOpenMotorTest();
+      component.motorState = motorState(500, 500);
+
+      alertOptions[0].buttons[1].handler?.();
+      await settlePromises();
+
+      expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should prevent two alerts and two command validations', async () => {
+    configureMotorTest('widoor');
+    let resolveAlert!: () => void;
+    alertCreate.and.callFake(async (options: TestAlertOptions) => {
+      alertOptions.push(options);
+      return {
+        present: async () => undefined,
+        onDidDismiss: () => new Promise<{ role: string }>(
+          (resolve) => resolveAlert = () => resolve({ role: 'confirm' }),
+        ),
+      };
+    });
+    const firstAlert = component.requestOpenMotorTest();
+    await Promise.resolve();
+    await component.requestOpenMotorTest();
+    expect(alertCreate).toHaveBeenCalledTimes(1);
+
+    let resolveCommand!: () => void;
+    sendMotorCommandWithConfirmation.and.returnValue(new Promise(
+      (resolve) => resolveCommand = () =>
+        resolve(motorCommandResult('timeout')),
+    ));
+    alertOptions[0].buttons[1].handler?.();
+    alertOptions[0].buttons[1].handler?.();
+    await Promise.resolve();
+    expect(sendMotorCommandWithConfirmation).toHaveBeenCalledTimes(1);
+
+    resolveCommand();
+    resolveAlert();
+    await firstAlert;
+  });
+
+  [
+    { status: 'confirmed', expected: 'Début d’ouverture confirmé' },
+    {
+      status: 'timeout',
+      expected: 'aucune augmentation de position',
+    },
+    {
+      status: 'disconnected',
+      expected: 'Connexion perdue pendant la commande',
+    },
+  ].forEach(({ status, expected }) => {
+    it(`should display the ${status} motor result`, async () => {
+      configureMotorTest('widoor');
+      sendMotorCommandWithConfirmation.and.resolveTo(
+        motorCommandResult(
+          status as 'confirmed' | 'timeout' | 'disconnected',
+        ),
+      );
+      await confirmOpen();
+      fixture.detectChanges();
+
+      expect(component.motorTestStatus).toBe(status);
+      expect(fixture.nativeElement.textContent).toContain(expected);
+      expect(fixture.nativeElement.querySelector('ion-spinner')).toBeNull();
+    });
+  });
+
+  it('should preserve the native failure reason and release local state',
+    async () => {
+      configureMotorTest('widoor');
+      sendMotorCommandWithConfirmation.and.resolveTo({
+        ...motorCommandResult('failed'),
+        failureReason: 'Native GATT write failed',
+      });
+
+      await confirmOpen();
+      fixture.detectChanges();
+
+      expect(component.motorTestStatus).toBe('failed');
+      expect(fixture.nativeElement.textContent).toContain(
+        'Native GATT write failed',
+      );
+      expect(component.motorCommandAvailability.enabled).toBeTrue();
+    },
+  );
+
+  it('should cancel the send if the connected device changed', async () => {
+    configureMotorTest('widoor');
+    await component.requestOpenMotorTest();
+    component.connectedDeviceId = 'device-2';
+
+    alertOptions[0].buttons[1].handler?.();
+    await settlePromises();
+
+    expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+    expect(component.motorTestFailureReason).toBe(
+      component.motorTestText.deviceChanged,
+    );
+  });
+
+  it('should not send after disconnection or profile loss in the alert',
+    async () => {
+      configureMotorTest('widoor');
+      await component.requestOpenMotorTest();
+      bleService.emitRemoteDisconnection('device-1');
+      alertOptions[0].buttons[1].handler?.();
+      await settlePromises();
+      expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+
+      configureMotorTest('widoor');
+      await component.requestOpenMotorTest();
+      component.productProfile = 'unknown';
+      alertOptions[1].buttons[1].handler?.();
+      await settlePromises();
+      expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should release the alert lock after an external dismissal', async () => {
+    configureMotorTest('widoor');
+
+    await component.requestOpenMotorTest();
+    await component.requestOpenMotorTest();
+
+    expect(alertCreate).toHaveBeenCalledTimes(2);
+    expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+  });
+
+  it('should hide and stop the test UI on disconnection during a command',
+    async () => {
+      configureMotorTest('widoor');
+      let resolveCommand!: () => void;
+      sendMotorCommandWithConfirmation.and.returnValue(new Promise(
+        (resolve) => resolveCommand = () =>
+          resolve(motorCommandResult('disconnected')),
+      ));
+      await component.requestOpenMotorTest();
+      alertOptions[0].buttons[1].handler?.();
+      await Promise.resolve();
+
+      bleService.emitRemoteDisconnection('device-1');
+      fixture.detectChanges();
+
+      expect(component.motorTestStatus).toBe('disconnected');
+      expect(component.showMotorTestPanel).toBeFalse();
+      expect(fixture.nativeElement.querySelector('.motor-test-panel')).toBeNull();
+
+      resolveCommand();
+      await settlePromises();
+    },
+  );
+
+  it('should ignore an old command result after a new connection', async () => {
+    configureMotorTest('widoor');
+    let resolveCommand!: () => void;
+    sendMotorCommandWithConfirmation.and.returnValue(new Promise(
+      (resolve) => resolveCommand = () =>
+        resolve(motorCommandResult('confirmed')),
+    ));
+    await component.requestOpenMotorTest();
+    alertOptions[0].buttons[1].handler?.();
+    await Promise.resolve();
+
+    bleService.emitRemoteDisconnection('device-1');
+    bleService.servicesResult = createIdentificationServices();
+    bleService.readResult = createVersionWord(0, 1);
+    await component.connectSelectedDevice();
+
+    resolveCommand();
+    await settlePromises();
+
+    expect(component.motorTestStatus).toBe('idle');
+    expect(component.motorTestResult).toBeNull();
+  });
+
   it('should store ambiguous for contradictory detection clues', async () => {
     spyOn(console, 'warn');
     bleService.servicesResult = createContradictoryIdentificationServices();
@@ -527,6 +917,7 @@ describe('ScanPage', () => {
     expect(fixture.nativeElement.textContent).toContain(
       'Notifications reçues : 2',
     );
+    expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
   });
 
   it('should clear motor state after a remote disconnection', async () => {
@@ -568,7 +959,94 @@ describe('ScanPage', () => {
       'Notifications refusées',
     );
   });
+
+  function configureMotorTest(
+    profile:
+      | 'widoor'
+      | 'moventiv-60'
+      | 'moventiv-80'
+      | 'garline'
+      | 'unknown'
+      | 'ambiguous',
+  ): void {
+    component.devices = [
+      { deviceId: 'device-1', name: 'Moteur banc', rssi: -40 },
+    ];
+    component.selectedDeviceId = 'device-1';
+    component.connectedDeviceId = 'device-1';
+    bleService.setConnectedDeviceId('device-1');
+    component.productProfile = profile;
+    component.identification = {
+      rawHex: '',
+      length: 14,
+      productByte: 0,
+      subtypeByte: 0,
+      detectedType: 'Widoor',
+      ambiguous: false,
+      detectionReason: '',
+      detectionConfidence: 'Forte',
+    };
+    component.motorState = motorState(100, 500);
+    component.motorStateSource = {
+      deviceId: 'device-1',
+      serviceUuid: BLE_UUIDS.shdoService,
+      characteristicUuid: BLE_UUIDS.motorStateCharacteristic,
+    };
+    component.services = createIdentificationServices();
+    component.discoveringServices = false;
+    component.readingIdentification = false;
+    component.scanning = false;
+  }
+
+  async function confirmOpen(): Promise<void> {
+    await component.requestOpenMotorTest();
+    alertOptions[0].buttons[1].handler?.();
+    await settlePromises();
+  }
 });
+
+interface TestAlertOptions {
+  readonly message: string;
+  readonly buttons: readonly {
+    readonly role?: string;
+    readonly handler?: () => void;
+  }[];
+}
+
+function motorState(
+  currentPosition: number | null,
+  maximumPosition: number | null,
+) {
+  return {
+    rawHex: '',
+    length: 7,
+    state: null,
+    currentPosition,
+    maximumPosition,
+    error: null,
+    switches: null,
+  };
+}
+
+function motorCommandResult(
+  status: 'confirmed' | 'timeout' | 'disconnected' | 'failed',
+) {
+  return {
+    status,
+    command: 'OPEN' as const,
+    profile: 'widoor' as const,
+    sentAt: 100,
+    confirmedAt: status === 'confirmed' ? 150 : null,
+    notification: status === 'confirmed' ? motorState(120, 500) : null,
+    failureReason: status === 'failed' ? 'Failed' : null,
+  };
+}
+
+async function settlePromises(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+}
 
 function createScanResult(
   deviceId: string,

@@ -5,6 +5,7 @@ import {
 } from '@capacitor-community/bluetooth-le';
 import { Subscription } from 'rxjs';
 import {
+  AlertController,
   IonButton,
   IonContent,
   IonHeader,
@@ -29,11 +30,37 @@ import {
   VersionIdentification,
 } from '../../core/services/product-detection';
 import { ProductProfile } from '../../core/services/ble-profile-catalog';
+import {
+  MotorCommandConfirmation,
+} from '../../core/services/motor-command-confirmation';
+import {
+  MotorCommandService,
+} from '../../core/services/motor-command.service';
+import { SCAN_MOTOR_TEST_TEXT } from './scan-motor-test.text';
 
 interface ScannedDevice {
   deviceId: string;
   name: string;
   rssi: number | null;
+}
+
+type MotorTestStatus =
+  | 'idle'
+  | 'awaiting-confirmation'
+  | 'confirmed'
+  | 'timeout'
+  | 'disconnected'
+  | 'failed';
+
+interface MotorCommandAvailability {
+  readonly enabled: boolean;
+  readonly reason: string;
+}
+
+interface MotorStateSource {
+  readonly deviceId: string;
+  readonly serviceUuid: string;
+  readonly characteristicUuid: string;
 }
 
 @Component({
@@ -55,12 +82,17 @@ interface ScannedDevice {
 })
 export class ScanPage implements OnDestroy {
   private readonly bleService = inject(BleService);
+  private readonly alertController = inject(AlertController);
+  private readonly motorCommandService = inject(MotorCommandService);
   private readonly ngZone = inject(NgZone);
   private readonly productDetection = inject(ProductDetection);
   private readonly disconnectionSubscription: Subscription;
   private scanTimeout: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
   private detectedSecondaryProfile: SecondaryBleProfile = 'Inconnu';
+  private connectionGeneration = 0;
+  private motorCommandInProgress = false;
+  private motorConfirmationAlertOpen = false;
 
   devices: ScannedDevice[] = [];
   connectedDeviceId: string | null = null;
@@ -76,6 +108,11 @@ export class ScanPage implements OnDestroy {
   motorNotificationCount = 0;
   motorNotificationError: string | null = null;
   motorState: MotorStateFrame | null = null;
+  motorStateSource: MotorStateSource | null = null;
+  motorTestFailureReason: string | null = null;
+  motorTestResult: MotorCommandConfirmation | null = null;
+  motorTestStatus: MotorTestStatus = 'idle';
+  readonly motorTestText = SCAN_MOTOR_TEST_TEXT;
   productProfile: ProductProfile = 'unknown';
   readingIdentification = false;
   scanning = false;
@@ -96,6 +133,68 @@ export class ScanPage implements OnDestroy {
     return this.devices.find(
       ({ deviceId }) => deviceId === this.selectedDeviceId,
     ) ?? null;
+  }
+
+  get showMotorTestPanel(): boolean {
+    return this.connectedDeviceId !== null &&
+      this.bleService.connectedDeviceId === this.connectedDeviceId &&
+      !this.scanning &&
+      !this.discoveringServices &&
+      !this.readingIdentification &&
+      this.services.length > 0 &&
+      this.identification !== null &&
+      this.isKnownProductProfile(this.productProfile);
+  }
+
+  get motorCommandAvailability(): MotorCommandAvailability {
+    if (this.connectedDeviceId === null ||
+        this.bleService.connectedDeviceId !== this.connectedDeviceId) {
+      return this.unavailable(this.motorTestText.disconnected);
+    }
+    if (this.scanning) {
+      return this.unavailable(this.motorTestText.scanning);
+    }
+    if (!this.isKnownProductProfile(this.productProfile)) {
+      return this.unavailable(this.motorTestText.unconfirmedProfile);
+    }
+    if (!this.showMotorTestPanel) {
+      return this.unavailable(this.motorTestText.detectionInProgress);
+    }
+    if (this.motorCommandInProgress ||
+        this.motorConfirmationAlertOpen ||
+        this.bleService.isWriting) {
+      return this.unavailable(this.motorTestText.commandInProgress);
+    }
+    if (this.motorState === null || !this.hasCurrentMotorStateSource()) {
+      return this.unavailable(this.motorTestText.waitingFirstState);
+    }
+    const currentPosition = this.motorState.currentPosition;
+    const maximumPosition = this.motorState.maximumPosition;
+    if (currentPosition === null ||
+        maximumPosition === null ||
+        !Number.isFinite(currentPosition) ||
+        !Number.isFinite(maximumPosition) ||
+        currentPosition < 0 ||
+        maximumPosition <= 0 ||
+        currentPosition > maximumPosition) {
+      return this.unavailable(this.motorTestText.invalidPosition);
+    }
+    if (currentPosition >= maximumPosition) {
+      return this.unavailable(this.motorTestText.alreadyOpen);
+    }
+    return {
+      enabled: true,
+      reason: this.motorTestText.ready,
+    };
+  }
+
+  get motorConfirmationDurationMs(): number | null {
+    const result = this.motorTestResult;
+    return result?.confirmedAt !== null &&
+      result?.confirmedAt !== undefined &&
+      result.sentAt > 0
+      ? result.confirmedAt - result.sentAt
+      : null;
   }
 
   async startScan(): Promise<void> {
@@ -178,6 +277,8 @@ export class ScanPage implements OnDestroy {
 
     this.connectionError = null;
     this.discoveryError = null;
+    this.connectionGeneration += 1;
+    this.resetMotorTest();
     this.clearMotorState();
     this.clearIdentification();
     this.services = [];
@@ -199,6 +300,66 @@ export class ScanPage implements OnDestroy {
     }
   }
 
+  async requestOpenMotorTest(): Promise<void> {
+    if (!this.motorCommandAvailability.enabled ||
+        this.motorConfirmationAlertOpen) {
+      return;
+    }
+
+    const deviceId = this.connectedDeviceId;
+    const connectionGeneration = this.connectionGeneration;
+    const state = this.motorState;
+    if (deviceId === null ||
+        state === null ||
+        state.currentPosition === null ||
+        state.maximumPosition === null) {
+      return;
+    }
+
+    this.motorConfirmationAlertOpen = true;
+    try {
+      const alert = await this.alertController.create({
+        header: this.motorTestText.confirmTitle,
+        message: [
+          `${this.motorTestText.confirmMessage}`,
+          `${this.motorTestText.profile} : ${this.productProfile}`,
+          `${this.motorTestText.currentPosition} : ${state.currentPosition}`,
+          `${this.motorTestText.maximumPosition} : ${state.maximumPosition}`,
+        ].join('<br>'),
+        buttons: [
+          {
+            text: this.motorTestText.cancel,
+            role: 'cancel',
+          },
+          {
+            text: this.motorTestText.open,
+            role: 'confirm',
+            handler: () => {
+              this.motorConfirmationAlertOpen = false;
+              void this.executeOpenMotorTest(
+                deviceId,
+                connectionGeneration,
+              );
+            },
+          },
+        ],
+      });
+      await alert.present();
+      await alert.onDidDismiss();
+    } finally {
+      this.motorConfirmationAlertOpen = false;
+    }
+  }
+
+  resetMotorTest(): void {
+    if (this.motorCommandInProgress) {
+      return;
+    }
+    this.motorTestFailureReason = null;
+    this.motorTestResult = null;
+    this.motorTestStatus = 'idle';
+  }
+
   ngOnDestroy(): void {
     const connectedDeviceId = this.connectedDeviceId;
     this.destroyed = true;
@@ -216,6 +377,8 @@ export class ScanPage implements OnDestroy {
       return;
     }
 
+    const commandWasActive = this.motorCommandInProgress;
+    this.connectionGeneration += 1;
     this.connectedDeviceId = null;
     this.connecting = false;
     this.discoveringServices = false;
@@ -223,9 +386,86 @@ export class ScanPage implements OnDestroy {
     this.clearMotorState();
     this.clearIdentification();
     this.services = [];
+    this.motorTestStatus = commandWasActive ? 'disconnected' : 'idle';
 
     if (event.reason === 'remote') {
       this.connectionError = 'Connexion perdue avec l’appareil.';
+    }
+  }
+
+  private async executeOpenMotorTest(
+    expectedDeviceId: string,
+    expectedConnectionGeneration: number,
+  ): Promise<void> {
+    if (this.motorCommandInProgress) {
+      return;
+    }
+
+    const availability = this.motorCommandAvailability;
+    const deviceId = this.connectedDeviceId;
+    const state = this.motorState;
+    if (expectedConnectionGeneration !== this.connectionGeneration) {
+      return;
+    }
+    if (!availability.enabled ||
+        deviceId === null ||
+        deviceId !== expectedDeviceId ||
+        !this.isKnownProductProfile(this.productProfile) ||
+        state === null ||
+        state.currentPosition === null ||
+        state.maximumPosition === null) {
+      this.motorTestStatus = 'failed';
+      this.motorTestFailureReason = deviceId !== expectedDeviceId
+        ? this.motorTestText.deviceChanged
+        : availability.reason;
+      return;
+    }
+
+    const profile = this.productProfile;
+    const baselinePosition = state.currentPosition;
+    const baselineMaximumPosition = state.maximumPosition;
+    this.motorCommandInProgress = true;
+    this.motorTestStatus = 'awaiting-confirmation';
+    this.motorTestFailureReason = null;
+    this.motorTestResult = null;
+
+    try {
+      const result =
+        await this.motorCommandService.sendMotorCommandWithConfirmation(
+          profile,
+          'OPEN',
+          baselinePosition,
+          deviceId,
+          undefined,
+          baselineMaximumPosition,
+        );
+      if (expectedConnectionGeneration !== this.connectionGeneration ||
+          this.connectedDeviceId !== deviceId) {
+        return;
+      }
+      this.motorTestResult = result;
+      this.motorTestStatus = result.status === 'pending'
+        ? 'awaiting-confirmation'
+        : result.status;
+      this.motorTestFailureReason = result.status === 'failed'
+        ? result.failureReason
+        : null;
+    } catch (error: unknown) {
+      if (expectedConnectionGeneration === this.connectionGeneration &&
+          this.connectedDeviceId === deviceId) {
+        this.motorTestStatus = 'failed';
+        this.motorTestFailureReason =
+          error instanceof Error ? error.message : String(error);
+      }
+    } finally {
+      this.motorCommandInProgress = false;
+      if (this.connectedDeviceId !== null &&
+          (expectedConnectionGeneration !== this.connectionGeneration ||
+           this.connectedDeviceId !== deviceId)) {
+        this.motorTestFailureReason = null;
+        this.motorTestResult = null;
+        this.motorTestStatus = 'idle';
+      }
     }
   }
 
@@ -352,6 +592,11 @@ export class ScanPage implements OnDestroy {
             if (!this.destroyed && this.connectedDeviceId === deviceId) {
               this.motorState =
                 this.productDetection.interpretMotorState(value);
+              this.motorStateSource = {
+                deviceId,
+                serviceUuid: BLE_UUIDS.shdoService,
+                characteristicUuid: BLE_UUIDS.motorStateCharacteristic,
+              };
               this.motorNotificationCount += 1;
               this.lastMotorStateReceivedAt =
                 new Date().toLocaleTimeString();
@@ -432,7 +677,25 @@ export class ScanPage implements OnDestroy {
     this.motorNotificationCount = 0;
     this.motorNotificationError = null;
     this.motorState = null;
+    this.motorStateSource = null;
     this.subscribingMotorState = false;
+  }
+
+  private isKnownProductProfile(profile: ProductProfile): boolean {
+    return profile !== 'unknown' && profile !== 'ambiguous';
+  }
+
+  private hasCurrentMotorStateSource(): boolean {
+    const source = this.motorStateSource;
+    return source !== null &&
+      source.deviceId === this.connectedDeviceId &&
+      this.normalizeUuid(source.serviceUuid) === BLE_UUIDS.shdoService &&
+      this.normalizeUuid(source.characteristicUuid) ===
+        BLE_UUIDS.motorStateCharacteristic;
+  }
+
+  private unavailable(reason: string): MotorCommandAvailability {
+    return { enabled: false, reason };
   }
 
   private normalizeUuid(uuid: string): string {
