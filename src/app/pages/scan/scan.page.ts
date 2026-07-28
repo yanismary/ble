@@ -22,11 +22,13 @@ import {
 } from '../../core/services/ble';
 import {
   BLE_UUIDS,
+  mapDetectionResultToProductProfile,
   MotorStateFrame,
   ProductDetection,
   SecondaryBleProfile,
   VersionIdentification,
 } from '../../core/services/product-detection';
+import { ProductProfile } from '../../core/services/ble-profile-catalog';
 
 interface ScannedDevice {
   deviceId: string;
@@ -74,6 +76,7 @@ export class ScanPage implements OnDestroy {
   motorNotificationCount = 0;
   motorNotificationError: string | null = null;
   motorState: MotorStateFrame | null = null;
+  productProfile: ProductProfile = 'unknown';
   readingIdentification = false;
   scanning = false;
   secondaryProfile = 'Inconnu';
@@ -290,6 +293,8 @@ export class ScanPage implements OnDestroy {
           this.detectedSecondaryProfile,
         );
         this.identification = identification;
+        this.productProfile =
+          mapDetectionResultToProductProfile(identification);
         this.secondaryProfile =
           `${this.detectedSecondaryProfile} — ` +
           `${identification.detectionReason} ` +
@@ -417,6 +422,7 @@ export class ScanPage implements OnDestroy {
     this.identification = null;
     this.identificationError = null;
     this.readingIdentification = false;
+    this.productProfile = 'unknown';
     this.detectedSecondaryProfile = 'Inconnu';
     this.secondaryProfile = 'Inconnu';
   }

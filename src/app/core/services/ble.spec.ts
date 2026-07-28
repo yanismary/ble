@@ -492,7 +492,7 @@ describe('BleService', () => {
       'device-1',
       'service-uuid',
       'characteristic-uuid',
-      callback,
+      jasmine.any(Function),
     );
 
     await service.stopNotifications(
@@ -506,6 +506,41 @@ describe('BleService', () => {
       'characteristic-uuid',
     );
   });
+
+  it('should publish notification metadata without changing the callback',
+    async () => {
+      const callback = jasmine.createSpy<(value: DataView) => void>(
+        'notification',
+      );
+      const observer = jasmine.createSpy('observer');
+      service.notifications$.subscribe(observer);
+      await service.connect('device-1');
+      await service.startNotifications(
+        'service-uuid',
+        'characteristic-uuid',
+        callback,
+      );
+      const nativeCallback =
+        (BleClient.startNotifications as jasmine.Spy)
+          .calls.mostRecent().args[3] as (value: DataView) => void;
+      const value = new DataView(Uint8Array.from([1, 2, 3]).buffer);
+
+      nativeCallback(value);
+
+      expect(callback).toHaveBeenCalledOnceWith(value);
+      expect(observer).toHaveBeenCalledTimes(1);
+      expect(observer.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+        deviceId: 'device-1',
+        serviceUuid: 'service-uuid',
+        characteristicUuid: 'characteristic-uuid',
+        sequence: 1,
+        value,
+      }));
+      expect(observer.calls.mostRecent().args[0].receivedAt)
+        .toEqual(jasmine.any(Number));
+      expect(service.lastNotificationSequence).toBe(1);
+    },
+  );
 
   it('should not duplicate an active notification subscription', async () => {
     const firstCallback = jasmine.createSpy<(value: DataView) => void>(

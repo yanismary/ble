@@ -377,6 +377,7 @@ describe('ScanPage', () => {
     );
     expect(component.identification?.rawHex).toContain('02 04');
     expect(component.identification?.detectedType).toBe('Garline');
+    expect(component.productProfile).toBe('garline');
     expect(fixture.nativeElement.textContent).toContain('02 04');
     expect(fixture.nativeElement.textContent).toContain('Garline');
     expect(fixture.nativeElement.textContent).toContain(
@@ -400,9 +401,24 @@ describe('ScanPage', () => {
       'Service secondaire Widoor détecté',
     );
     expect(component.identification?.detectionConfidence).toBe('Forte');
+    expect(component.productProfile).toBe('widoor');
     expect(fixture.nativeElement.textContent).toContain(
       'Service secondaire Widoor détecté',
     );
+  });
+
+  it('should store ambiguous for contradictory detection clues', async () => {
+    spyOn(console, 'warn');
+    bleService.servicesResult = createContradictoryIdentificationServices();
+    bleService.readResult = createVersionWord(1, 0);
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Produit'));
+    component.selectDevice(component.devices[0]);
+
+    await component.connectSelectedDevice();
+
+    expect(component.identification?.detectedType).toBe('Ambigu');
+    expect(component.productProfile).toBe('ambiguous');
   });
 
   it('should display the identification reading state', fakeAsync(() => {
@@ -456,12 +472,14 @@ describe('ScanPage', () => {
     component.selectDevice(component.devices[0]);
     await component.connectSelectedDevice();
     expect(component.identification).not.toBeNull();
+    expect(component.productProfile).toBe('moventiv-60');
 
     bleService.emitRemoteDisconnection('device-1');
 
     expect(component.identification).toBeNull();
     expect(component.secondaryProfile).toBe('Inconnu');
     expect(component.readingIdentification).toBeFalse();
+    expect(component.productProfile).toBe('unknown');
   });
 
   it('should subscribe to motor state after identification', async () => {
@@ -631,6 +649,16 @@ function createWidoorIdentificationServices(): DiscoveredBleService[] {
 
   return [
     services[0],
+    {
+      uuid: BLE_UUIDS.widoorService,
+      characteristics: [],
+    },
+  ];
+}
+
+function createContradictoryIdentificationServices(): DiscoveredBleService[] {
+  return [
+    ...createIdentificationServices(),
     {
       uuid: BLE_UUIDS.widoorService,
       characteristics: [],

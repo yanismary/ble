@@ -3,6 +3,8 @@ import { BleService as DiscoveredBleService } from '@capacitor-community/bluetoo
 
 import {
   BLE_UUIDS,
+  DetectedProductType,
+  mapDetectionResultToProductProfile,
   ProductDetection,
 } from './product-detection';
 
@@ -194,6 +196,49 @@ describe('ProductDetection', () => {
       'Services secondaires contradictoires',
     );
     expect(console.warn).toHaveBeenCalled();
+  });
+});
+
+describe('mapDetectionResultToProductProfile', () => {
+  [
+    { detectedType: 'Widoor', expected: 'widoor' },
+    { detectedType: 'Moventiv 60 kg', expected: 'moventiv-60' },
+    { detectedType: 'Moventiv 80 kg', expected: 'moventiv-80' },
+    { detectedType: 'Garline', expected: 'garline' },
+    { detectedType: 'Inconnu', expected: 'unknown' },
+    { detectedType: 'Ambigu', expected: 'ambiguous' },
+  ].forEach(({ detectedType, expected }) => {
+    it(`should map ${detectedType} to ${expected}`, () => {
+      expect(mapDetectionResultToProductProfile({
+        detectedType: detectedType as DetectedProductType,
+        ambiguous: detectedType === 'Ambigu',
+        detectionConfidence: 'Forte',
+      })).toBe(expected);
+    });
+  });
+
+  it('should prefer ambiguous when otherwise known clues contradict', () => {
+    expect(mapDetectionResultToProductProfile({
+      detectedType: 'Widoor',
+      ambiguous: true,
+      detectionConfidence: 'Forte',
+    })).toBe('ambiguous');
+  });
+
+  it('should not make a low-confidence detection writable', () => {
+    expect(mapDetectionResultToProductProfile({
+      detectedType: 'Widoor',
+      ambiguous: false,
+      detectionConfidence: 'Faible',
+    })).toBe('unknown');
+  });
+
+  it('should safely map an unrecognized runtime value to unknown', () => {
+    expect(mapDetectionResultToProductProfile({
+      detectedType: 'Unexpected' as DetectedProductType,
+      ambiguous: false,
+      detectionConfidence: 'Forte',
+    })).toBe('unknown');
   });
 });
 

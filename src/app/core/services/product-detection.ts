@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { BleService as DiscoveredBleService } from '@capacitor-community/bluetooth-le';
 
 import { BLE_UUIDS } from './ble-profile-catalog';
+import { ProductProfile } from './ble-profile-catalog';
 
 export { BLE_UUIDS } from './ble-profile-catalog';
 
@@ -50,6 +51,36 @@ export interface MotorStateFrame {
   readonly maximumPosition: number | null;
   readonly error: number | null;
   readonly switches: MotorSwitchStates | null;
+}
+
+export function mapDetectionResultToProductProfile(
+  result: Pick<
+    VersionIdentification,
+    'detectedType' | 'ambiguous' | 'detectionConfidence'
+  >,
+): ProductProfile {
+  if (result.ambiguous || result.detectedType === 'Ambigu') {
+    return 'ambiguous';
+  }
+
+  if (result.detectionConfidence !== 'Forte') {
+    return 'unknown';
+  }
+
+  switch (result.detectedType) {
+    case 'Widoor':
+      return 'widoor';
+    case 'Moventiv 60 kg':
+      return 'moventiv-60';
+    case 'Moventiv 80 kg':
+      return 'moventiv-80';
+    case 'Garline':
+      return 'garline';
+    case 'Inconnu':
+      return 'unknown';
+    default:
+      return 'unknown';
+  }
 }
 
 @Injectable({

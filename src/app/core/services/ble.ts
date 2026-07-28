@@ -13,6 +13,15 @@ export interface BleDisconnectionEvent {
   reason: BleDisconnectionReason;
 }
 
+export interface BleNotificationEvent {
+  readonly deviceId: string;
+  readonly serviceUuid: string;
+  readonly characteristicUuid: string;
+  readonly value: DataView;
+  readonly sequence: number;
+  readonly receivedAt: number;
+}
+
 interface NotificationSubscription {
   readonly deviceId: string;
   readonly serviceUuid: string;
@@ -25,6 +34,7 @@ interface NotificationSubscription {
 })
 export class BleService {
   private readonly disconnectionSubject = new Subject<BleDisconnectionEvent>();
+  private readonly notificationSubject = new Subject<BleNotificationEvent>();
   private readonly notificationSubscriptions =
     new Map<string, NotificationSubscription>();
   private initializationPromise: Promise<void> | null = null;
@@ -35,11 +45,14 @@ export class BleService {
   private connectingDeviceId: string | null = null;
   private locallyDisconnectingDeviceId: string | null = null;
   private writePromise: Promise<void> | null = null;
+  private notificationSequenceValue = 0;
   private connecting = false;
   private scanning = false;
 
   readonly disconnections$: Observable<BleDisconnectionEvent> =
     this.disconnectionSubject.asObservable();
+  readonly notifications$: Observable<BleNotificationEvent> =
+    this.notificationSubject.asObservable();
 
   get connectedDeviceId(): string | null {
     return this.connectedDeviceIdValue;
@@ -47,6 +60,10 @@ export class BleService {
 
   get isWriting(): boolean {
     return this.writePromise !== null;
+  }
+
+  get lastNotificationSequence(): number {
+    return this.notificationSequenceValue;
   }
 
   async initialize(): Promise<void> {
@@ -324,7 +341,16 @@ export class BleService {
       target.deviceId,
       target.serviceUuid,
       target.characteristicUuid,
-      callback,
+      (value: DataView) => {
+        this.notificationSequenceValue += 1;
+        this.notificationSubject.next({
+          ...target,
+          value,
+          sequence: this.notificationSequenceValue,
+          receivedAt: Date.now(),
+        });
+        callback(value);
+      },
     );
     const subscription: NotificationSubscription = {
       ...target,
