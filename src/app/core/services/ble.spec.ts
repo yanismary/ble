@@ -11,6 +11,7 @@ describe('BleService', () => {
   let service: BleService;
   let requestLEScanSpy: jasmine.Spy<typeof BleClient.requestLEScan>;
   let connectSpy: jasmine.Spy<typeof BleClient.connect>;
+  let writeSpy: jasmine.Spy<typeof BleClient.write>;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
@@ -24,6 +25,8 @@ describe('BleService', () => {
     spyOn(BleClient, 'disconnect').and.resolveTo();
     spyOn(BleClient, 'getServices').and.resolveTo([]);
     spyOn(BleClient, 'read').and.resolveTo(new DataView(new ArrayBuffer(0)));
+    writeSpy = spyOn(BleClient, 'write').and.resolveTo();
+    spyOn(BleClient, 'writeWithoutResponse').and.resolveTo();
     spyOn(BleClient, 'startNotifications').and.resolveTo();
     spyOn(BleClient, 'stopNotifications').and.resolveTo();
 
@@ -291,6 +294,175 @@ describe('BleService', () => {
       'service-uuid',
       'characteristic-uuid',
     );
+  });
+
+  it('should reject a characteristic write when no device is connected', async () => {
+    await expectAsync(
+      service.writeCharacteristic(
+        'service-uuid',
+        'characteristic-uuid',
+        Uint8Array.from([1]),
+      ),
+    ).toBeRejectedWithError('No BLE device is connected.');
+    expect(BleClient.write).not.toHaveBeenCalled();
+  });
+
+  it('should write a non-empty value to the connected device with response', async () => {
+    await service.connect('device-1');
+
+    await service.writeCharacteristic(
+      ' SERVICE-UUID ',
+      ' CHARACTERISTIC-UUID ',
+      Uint8Array.from([0x00, 0x20, 0x00, 0x00]),
+    );
+
+    expect(writeSpy).toHaveBeenCalledOnceWith(
+      'device-1',
+      'service-uuid',
+      'characteristic-uuid',
+      jasmine.any(DataView),
+    );
+    const value = writeSpy.calls.mostRecent().args[3];
+    expect(Array.from(
+      new Uint8Array(value.buffer, value.byteOffset, value.byteLength),
+    )).toEqual([0x00, 0x20, 0x00, 0x00]);
+    expect(BleClient.writeWithoutResponse).not.toHaveBeenCalled();
+    expect(service.isWriting).toBeFalse();
+  });
+
+  it('should reject an explicit device other than the connected device', async () => {
+    await service.connect('device-1');
+
+    await expectAsync(
+      service.writeCharacteristic(
+        'service-uuid',
+        'characteristic-uuid',
+        Uint8Array.from([1]),
+        'device-2',
+      ),
+    ).toBeRejectedWithError(
+      'The target device is not the connected BLE device.',
+    );
+    expect(BleClient.write).not.toHaveBeenCalled();
+  });
+
+  [
+    {
+      serviceUuid: ' ',
+      characteristicUuid: 'characteristic-uuid',
+      expected: 'A service UUID is required to write a characteristic.',
+    },
+    {
+      serviceUuid: 'service-uuid',
+      characteristicUuid: ' ',
+      expected:
+        'A characteristic UUID is required to write a characteristic.',
+    },
+  ].forEach(({ serviceUuid, characteristicUuid, expected }) => {
+    it(`should reject an invalid write target: ${expected}`, async () => {
+      await service.connect('device-1');
+
+      await expectAsync(
+        service.writeCharacteristic(
+          serviceUuid,
+          characteristicUuid,
+          Uint8Array.from([1]),
+        ),
+      ).toBeRejectedWithError(expected);
+      expect(BleClient.write).not.toHaveBeenCalled();
+    });
+  });
+
+  it('should reject an empty characteristic value', async () => {
+    await service.connect('device-1');
+
+    await expectAsync(
+      service.writeCharacteristic(
+        'service-uuid',
+        'characteristic-uuid',
+        new Uint8Array(0),
+      ),
+    ).toBeRejectedWithError(
+      'A non-empty value is required for a BLE write.',
+    );
+    expect(BleClient.write).not.toHaveBeenCalled();
+  });
+
+  it('should reject a second simultaneous characteristic write', async () => {
+    let releaseWrite!: () => void;
+    writeSpy.and.returnValue(new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    }));
+    await service.connect('device-1');
+
+    const firstWrite = service.writeCharacteristic(
+      'service-uuid',
+      'characteristic-uuid',
+      Uint8Array.from([1]),
+    );
+    expect(service.isWriting).toBeTrue();
+
+    await expectAsync(
+      service.writeCharacteristic(
+        'service-uuid',
+        'characteristic-uuid',
+        Uint8Array.from([2]),
+      ),
+    ).toBeRejectedWithError('A BLE write is already in progress.');
+    expect(writeSpy).toHaveBeenCalledTimes(1);
+
+    releaseWrite();
+    await firstWrite;
+    expect(service.isWriting).toBeFalse();
+  });
+
+  it('should propagate a native write error and release its lock', async () => {
+    const writeError = new Error('Native write failed');
+    writeSpy.and.rejectWith(writeError);
+    await service.connect('device-1');
+
+    await expectAsync(
+      service.writeCharacteristic(
+        'service-uuid',
+        'characteristic-uuid',
+        Uint8Array.from([1]),
+      ),
+    ).toBeRejectedWith(writeError);
+    expect(service.isWriting).toBeFalse();
+
+    writeSpy.and.resolveTo();
+    await expectAsync(
+      service.writeCharacteristic(
+        'service-uuid',
+        'characteristic-uuid',
+        Uint8Array.from([2]),
+      ),
+    ).toBeResolved();
+  });
+
+  it('should reject when the device disconnects during a write', async () => {
+    let onDisconnect: ((deviceId: string) => void) | undefined;
+    connectSpy.and.callFake(async (_deviceId, callback) => {
+      onDisconnect = callback;
+    });
+    let releaseWrite!: () => void;
+    writeSpy.and.returnValue(new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    }));
+    await service.connect('device-1');
+
+    const write = service.writeCharacteristic(
+      'service-uuid',
+      'characteristic-uuid',
+      Uint8Array.from([1]),
+    );
+    onDisconnect?.('device-1');
+    releaseWrite();
+
+    await expectAsync(write).toBeRejectedWithError(
+      'The BLE device disconnected during the write.',
+    );
+    expect(service.isWriting).toBeFalse();
   });
 
   it('should reject notifications when no device is connected', async () => {

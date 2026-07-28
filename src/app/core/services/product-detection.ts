@@ -1,13 +1,9 @@
 import { Injectable } from '@angular/core';
 import { BleService as DiscoveredBleService } from '@capacitor-community/bluetooth-le';
 
-export const BLE_UUIDS = {
-  shdoService: 'dc06d52e-6ee8-471e-a5fd-0f40674a061d',
-  versionCharacteristic: '175d6bc8-5840-4037-95da-a778395a036c',
-  motorStateCharacteristic: 'e56b24a5-3309-487e-9aa6-079cd32270ae',
-  widoorService: '3206890a-650e-46f3-9c73-2bc0840e3b8e',
-  moventivGarlineService: '978ae765-664c-45d8-9157-3b9031e6478e',
-} as const;
+import { BLE_UUIDS } from './ble-profile-catalog';
+
+export { BLE_UUIDS } from './ble-profile-catalog';
 
 export type SecondaryBleProfile =
   | 'Widoor'

@@ -34,6 +34,7 @@ export class BleService {
   private connectedDeviceIdValue: string | null = null;
   private connectingDeviceId: string | null = null;
   private locallyDisconnectingDeviceId: string | null = null;
+  private writePromise: Promise<void> | null = null;
   private connecting = false;
   private scanning = false;
 
@@ -42,6 +43,10 @@ export class BleService {
 
   get connectedDeviceId(): string | null {
     return this.connectedDeviceIdValue;
+  }
+
+  get isWriting(): boolean {
+    return this.writePromise !== null;
   }
 
   async initialize(): Promise<void> {
@@ -227,6 +232,73 @@ export class BleService {
       normalizedServiceUuid,
       normalizedCharacteristicUuid,
     );
+  }
+
+  async writeCharacteristic(
+    serviceUuid: string,
+    characteristicUuid: string,
+    value: DataView | Uint8Array,
+    deviceId?: string,
+  ): Promise<void> {
+    const connectedDeviceId = this.connectedDeviceIdValue;
+
+    if (connectedDeviceId === null) {
+      throw new Error('No BLE device is connected.');
+    }
+
+    const normalizedServiceUuid = serviceUuid.trim().toLowerCase();
+    const normalizedCharacteristicUuid =
+      characteristicUuid.trim().toLowerCase();
+    const targetDeviceId = deviceId === undefined
+      ? connectedDeviceId
+      : deviceId.trim();
+
+    if (!normalizedServiceUuid) {
+      throw new Error('A service UUID is required to write a characteristic.');
+    }
+
+    if (!normalizedCharacteristicUuid) {
+      throw new Error(
+        'A characteristic UUID is required to write a characteristic.',
+      );
+    }
+
+    if (!targetDeviceId) {
+      throw new Error('A deviceId is required to write a characteristic.');
+    }
+
+    if (targetDeviceId !== connectedDeviceId) {
+      throw new Error('The target device is not the connected BLE device.');
+    }
+
+    if (value.byteLength === 0) {
+      throw new Error('A non-empty value is required for a BLE write.');
+    }
+
+    if (this.writePromise !== null) {
+      throw new Error('A BLE write is already in progress.');
+    }
+
+    const dataView = new DataView(value.buffer, value.byteOffset, value.byteLength);
+    const write = BleClient.write(
+      targetDeviceId,
+      normalizedServiceUuid,
+      normalizedCharacteristicUuid,
+      dataView,
+    );
+    this.writePromise = write;
+
+    try {
+      await write;
+
+      if (this.connectedDeviceIdValue !== targetDeviceId) {
+        throw new Error('The BLE device disconnected during the write.');
+      }
+    } finally {
+      if (this.writePromise === write) {
+        this.writePromise = null;
+      }
+    }
   }
 
   async startNotifications(
