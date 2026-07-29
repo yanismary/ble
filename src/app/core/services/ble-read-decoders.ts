@@ -44,14 +44,61 @@ export interface BleVersionFrame {
   readonly motorAddressHex: string | null;
 }
 
-export type HistoricalBleDateStatus = 'present' | 'not-initialized';
+export type HistoricalBleDateStatus =
+  | 'present'
+  | 'not-initialized'
+  | 'invalid';
 
-export interface HistoricalBleDate {
+export type HistoricalBleDateInvalidReason =
+  | 'zero-date'
+  | 'invalid-calendar-date';
+
+interface HistoricalBleDateRaw {
+  readonly rawYear: number;
+  readonly rawMonth: number;
+  readonly rawDay: number;
+  readonly rawHour: number | null;
+  readonly raw: readonly number[];
+}
+
+export interface PresentHistoricalBleDate extends HistoricalBleDateRaw {
+  readonly status: 'present';
   readonly year: number;
   readonly month: number;
   readonly day: number;
   readonly hour: number | null;
-  readonly status: HistoricalBleDateStatus;
+  readonly invalidReason: null;
+}
+
+export interface NotInitializedHistoricalBleDate
+  extends HistoricalBleDateRaw {
+  readonly status: 'not-initialized';
+  readonly year: null;
+  readonly month: null;
+  readonly day: null;
+  readonly hour: null;
+  readonly invalidReason: null;
+}
+
+export interface InvalidHistoricalBleDate extends HistoricalBleDateRaw {
+  readonly status: 'invalid';
+  readonly year: null;
+  readonly month: null;
+  readonly day: null;
+  readonly hour: null;
+  readonly invalidReason: HistoricalBleDateInvalidReason;
+}
+
+export type HistoricalBleDate =
+  | PresentHistoricalBleDate
+  | NotInitializedHistoricalBleDate
+  | InvalidHistoricalBleDate;
+
+export interface HistoricalBleRawField {
+  readonly status: 'raw-only';
+  readonly rawYear: number;
+  readonly rawMonth: number;
+  readonly rawDay: number;
   readonly raw: readonly number[];
 }
 
@@ -59,7 +106,7 @@ export interface BleDatesAndCycles {
   /**
    * Named FAD in Phase 1. Its business meaning is not documented there.
    */
-  readonly historicalFadDate: HistoricalBleDate;
+  readonly historicalFadDate: HistoricalBleRawField;
   readonly firstCommissioningDate: HistoricalBleDate;
   readonly lastMaintenanceDate: HistoricalBleDate;
   readonly totalCycles: number;
@@ -285,7 +332,7 @@ export function decodeBleDatesAndCycles(
   }
 
   return validResult(bytes, {
-    historicalFadDate: decodeHistoricalDate(bytes, 0, false),
+    historicalFadDate: decodeHistoricalRawField(bytes, 0),
     firstCommissioningDate: decodeHistoricalDate(bytes, 3, true),
     lastMaintenanceDate: decodeHistoricalDate(bytes, 7, true),
     totalCycles,
@@ -447,19 +494,114 @@ function decodeHistoricalDate(
 ): HistoricalBleDate {
   const length = includesHour ? 4 : 3;
   const raw = Array.from(bytes.slice(offset, offset + length));
+  const rawYear = raw[0];
+  const rawMonth = raw[1];
+  const rawDay = raw[2];
+  const rawHour = includesHour ? raw[3] : null;
   // Phase 1 treats any 0xFF year/month/day component as an absent date.
   const isSentinel = raw.slice(0, 3).some((byte) =>
     byte === HISTORICAL_DATE_SENTINEL,
   );
 
+  if (isSentinel) {
+    return {
+      rawYear,
+      rawMonth,
+      rawDay,
+      rawHour,
+      year: null,
+      month: null,
+      day: null,
+      hour: null,
+      status: 'not-initialized',
+      invalidReason: null,
+      raw,
+    };
+  }
+
+  const year = 2000 + rawYear;
+  const month = rawMonth + 1;
+  const invalidReason = rawYear === 0 && rawMonth === 0 && rawDay === 0
+    ? 'zero-date'
+    : isValidCalendarDate(year, month, rawDay)
+      ? null
+      : 'invalid-calendar-date';
+
+  if (invalidReason !== null) {
+    return {
+      rawYear,
+      rawMonth,
+      rawDay,
+      rawHour,
+      year: null,
+      month: null,
+      day: null,
+      hour: null,
+      status: 'invalid',
+      invalidReason,
+      raw,
+    };
+  }
+
   return {
-    year: raw[0],
-    month: raw[1],
-    day: raw[2],
-    hour: includesHour ? raw[3] : null,
-    status: isSentinel ? 'not-initialized' : 'present',
+    rawYear,
+    rawMonth,
+    rawDay,
+    rawHour,
+    year,
+    month,
+    day: rawDay,
+    hour: rawHour,
+    status: 'present',
+    invalidReason: null,
     raw,
   };
+}
+
+function decodeHistoricalRawField(
+  bytes: Uint8Array,
+  offset: number,
+): HistoricalBleRawField {
+  const raw = Array.from(bytes.slice(offset, offset + 3));
+
+  return {
+    status: 'raw-only',
+    rawYear: raw[0],
+    rawMonth: raw[1],
+    rawDay: raw[2],
+    raw,
+  };
+}
+
+function isValidCalendarDate(
+  year: number,
+  month: number,
+  day: number,
+): boolean {
+  if (month < 1 || month > 12 || day < 1) {
+    return false;
+  }
+
+  const daysByMonth = [
+    31,
+    isLeapYear(year) ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ];
+
+  return day <= daysByMonth[month - 1];
+}
+
+function isLeapYear(year: number): boolean {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
 
 function validateMinimumLength(

@@ -145,8 +145,24 @@ describe('decodeBleDatesAndCycles', () => {
     if (!result.valid) return;
 
     expect(result.value.historicalFadDate).toEqual({
-      year: 24, month: 1, day: 2, hour: null,
-      status: 'present', raw: [24, 1, 2],
+      status: 'raw-only',
+      rawYear: 24,
+      rawMonth: 1,
+      rawDay: 2,
+      raw: [24, 1, 2],
+    });
+    expect(result.value.firstCommissioningDate).toEqual({
+      rawYear: 24,
+      rawMonth: 3,
+      rawDay: 4,
+      rawHour: 5,
+      year: 2024,
+      month: 4,
+      day: 4,
+      hour: 5,
+      status: 'present',
+      invalidReason: null,
+      raw: [24, 3, 4, 5],
     });
     expect(result.value.firstCommissioningDate.hour).toBe(5);
     expect(result.value.lastMaintenanceDate.hour).toBe(8);
@@ -162,7 +178,7 @@ describe('decodeBleDatesAndCycles', () => {
     expect(result.valid).toBeTrue();
     if (!result.valid) return;
 
-    expect(result.value.historicalFadDate.status).toBe('not-initialized');
+    expect(result.value.historicalFadDate.status).toBe('raw-only');
     expect(result.value.firstCommissioningDate.status).toBe('not-initialized');
     expect(result.value.lastMaintenanceDate.status).toBe('not-initialized');
   });
@@ -176,18 +192,124 @@ describe('decodeBleDatesAndCycles', () => {
 
     expect(result.valid).toBeTrue();
     if (result.valid) {
-      expect(result.value.historicalFadDate.status).toBe('not-initialized');
+      expect(result.value.historicalFadDate.status).toBe('raw-only');
       expect(result.value.firstCommissioningDate.status).toBe('present');
     }
   });
 
-  it('distinguishes zero data from absence', () => {
+  it('keeps zero counters but rejects a zero calendar date', () => {
     const result = decodeBleDatesAndCycles(new Uint8Array(17));
 
     expect(result.valid).toBeTrue();
     if (result.valid) {
-      expect(result.value.firstCommissioningDate.status).toBe('present');
+      expect(result.value.firstCommissioningDate.status).toBe('invalid');
+      expect(result.value.firstCommissioningDate.invalidReason)
+        .toBe('zero-date');
       expect(result.value.totalCycles).toBe(0);
+      expect(result.value.cyclesSinceMaintenance).toBe(0);
+    }
+  });
+
+  it('reproduces the physical Widoor dates and cycles frame', () => {
+    const result = decodeBleDatesAndCycles(bytes(
+      0x00, 0x00, 0x00,
+      0x13, 0x07, 0x1b, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x67, 0xd4,
+      0x00, 0x00, 0x00,
+    ));
+
+    expect(result.valid).toBeTrue();
+    if (!result.valid) return;
+
+    expect(result.value.historicalFadDate.raw).toEqual([0, 0, 0]);
+    expect(result.value.firstCommissioningDate).toEqual({
+      rawYear: 19,
+      rawMonth: 7,
+      rawDay: 27,
+      rawHour: 0,
+      year: 2019,
+      month: 8,
+      day: 27,
+      hour: 0,
+      status: 'present',
+      invalidReason: null,
+      raw: [19, 7, 27, 0],
+    });
+    expect(result.value.lastMaintenanceDate.status).toBe('invalid');
+    expect(result.value.lastMaintenanceDate.invalidReason).toBe('zero-date');
+    expect(result.value.lastMaintenanceDate.raw).toEqual([0, 0, 0, 0]);
+    expect(result.value.totalCycles).toBe(26580);
+    expect(result.value.cyclesSinceMaintenance).toBe(0);
+  });
+
+  it('normalizes raw month zero to January', () => {
+    const frame = bytes(
+      0, 0, 0, 20, 0, 1, 0, 20, 0, 1, 0,
+      0, 0, 0, 0, 0, 0,
+    );
+    const result = decodeBleDatesAndCycles(frame);
+
+    expect(result.valid).toBeTrue();
+    if (result.valid) {
+      expect(result.value.firstCommissioningDate.year).toBe(2020);
+      expect(result.value.firstCommissioningDate.month).toBe(1);
+      expect(result.value.firstCommissioningDate.day).toBe(1);
+      expect(result.value.firstCommissioningDate.status).toBe('present');
+    }
+  });
+
+  it('normalizes raw month eleven to December', () => {
+    const frame = bytes(
+      0, 0, 0, 20, 11, 31, 0, 20, 0, 1, 0,
+      0, 0, 0, 0, 0, 0,
+    );
+    const result = decodeBleDatesAndCycles(frame);
+
+    expect(result.valid).toBeTrue();
+    if (result.valid) {
+      expect(result.value.firstCommissioningDate.month).toBe(12);
+      expect(result.value.firstCommissioningDate.status).toBe('present');
+    }
+  });
+
+  it('rejects invalid day and normalized month values', () => {
+    const invalidDay = bytes(
+      0, 0, 0, 20, 0, 0, 0, 20, 0, 1, 0,
+      0, 0, 0, 0, 0, 0,
+    );
+    const invalidMonth = bytes(
+      0, 0, 0, 20, 12, 1, 0, 20, 0, 1, 0,
+      0, 0, 0, 0, 0, 0,
+    );
+    const dayResult = decodeBleDatesAndCycles(invalidDay);
+    const monthResult = decodeBleDatesAndCycles(invalidMonth);
+
+    expect(dayResult.valid).toBeTrue();
+    expect(monthResult.valid).toBeTrue();
+    if (dayResult.valid && monthResult.valid) {
+      expect(dayResult.value.firstCommissioningDate.status).toBe('invalid');
+      expect(monthResult.value.firstCommissioningDate.status).toBe('invalid');
+    }
+  });
+
+  it('accepts February 29 only in leap years', () => {
+    const leap = bytes(
+      0, 0, 0, 20, 1, 29, 0, 20, 0, 1, 0,
+      0, 0, 0, 0, 0, 0,
+    );
+    const nonLeap = bytes(
+      0, 0, 0, 21, 1, 29, 0, 20, 0, 1, 0,
+      0, 0, 0, 0, 0, 0,
+    );
+    const leapResult = decodeBleDatesAndCycles(leap);
+    const nonLeapResult = decodeBleDatesAndCycles(nonLeap);
+
+    expect(leapResult.valid).toBeTrue();
+    expect(nonLeapResult.valid).toBeTrue();
+    if (leapResult.valid && nonLeapResult.valid) {
+      expect(leapResult.value.firstCommissioningDate.status).toBe('present');
+      expect(nonLeapResult.value.firstCommissioningDate.status).toBe('invalid');
     }
   });
 

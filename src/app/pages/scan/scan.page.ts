@@ -919,10 +919,22 @@ export class ScanPage implements OnDestroy {
     if (value.status === 'not-initialized') {
       return this.productReadText.notInitialized;
     }
-    const hour = value.hour === null
-      ? ''
-      : ` ${value.hour} ${this.productReadText.hourSuffix}`;
-    return `${value.day}/${value.month}/${value.year}${hour}`;
+    if (
+      value.status === 'invalid'
+      || value.day === null
+      || value.month === null
+      || value.year === null
+    ) {
+      return value.invalidReason === 'zero-date'
+        ? this.productReadText.notInitialized
+        : this.productReadText.invalidDate;
+    }
+
+    return [
+      value.day.toString().padStart(2, '0'),
+      value.month.toString().padStart(2, '0'),
+      value.year.toString().padStart(4, '0'),
+    ].join('/');
   }
 
   formatBytes(values: readonly number[]): string {

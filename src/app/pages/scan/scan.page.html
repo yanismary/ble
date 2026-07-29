@@ -358,13 +358,17 @@
                     ></ng-container>
                     @if (read.status === 'success' && read.decoded?.valid; as valid) {
                       @if (valid && read.decoded?.value; as value) {
-                        <dl class="identification-details">
+                        <dl class="identification-details product-read-details">
                           <dt>{{ productReadText.historicalFad }}</dt>
-                          <dd>{{ formatHistoricalDate(value.historicalFadDate) }} — {{ productReadText.rawDate }} : {{ formatBytes(value.historicalFadDate.raw) }}</dd>
+                          <dd>
+                            {{ productReadText.rawDate }} :
+                            <code>{{ formatBytes(value.historicalFadDate.raw) }}</code>
+                            — {{ productReadText.historicalFadMeaning }}
+                          </dd>
                           <dt>{{ productReadText.firstCommissioning }}</dt>
-                          <dd>{{ formatHistoricalDate(value.firstCommissioningDate) }} — {{ productReadText.rawDate }} : {{ formatBytes(value.firstCommissioningDate.raw) }}</dd>
+                          <dd>{{ formatHistoricalDate(value.firstCommissioningDate) }}</dd>
                           <dt>{{ productReadText.lastMaintenance }}</dt>
-                          <dd>{{ formatHistoricalDate(value.lastMaintenanceDate) }} — {{ productReadText.rawDate }} : {{ formatBytes(value.lastMaintenanceDate.raw) }}</dd>
+                          <dd>{{ formatHistoricalDate(value.lastMaintenanceDate) }}</dd>
                           <dt>{{ productReadText.totalCycles }}</dt>
                           <dd>{{ value.totalCycles }}</dd>
                           <dt>{{ productReadText.cyclesSinceMaintenance }}</dt>

@@ -89,6 +89,16 @@
   overflow-wrap: anywhere;
 }
 
+.product-read-panel .product-read-details {
+  grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
+}
+
+@media (max-width: 480px) {
+  .product-read-panel .product-read-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .switch-state-list {
   display: flex;
   flex-wrap: wrap;

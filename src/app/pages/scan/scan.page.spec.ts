@@ -22,6 +22,10 @@ import {
   BleReadType,
   BleTypedReadResult,
 } from '../../core/services/ble-read.service';
+import {
+  BleDatesAndCycles,
+  decodeBleDatesAndCycles,
+} from '../../core/services/ble-read-decoders';
 import { ScanPage } from './scan.page';
 
 class FakeBleService {
@@ -1304,14 +1308,112 @@ describe('ScanPage', () => {
 
   it('should display historical date sentinels without creating a date', () => {
     expect(component.formatHistoricalDate({
-      year: 0xff,
-      month: 0xff,
-      day: 0xff,
+      rawYear: 0xff,
+      rawMonth: 0xff,
+      rawDay: 0xff,
+      rawHour: null,
+      year: null,
+      month: null,
+      day: null,
       hour: null,
       status: 'not-initialized',
+      invalidReason: null,
       raw: [0xff, 0xff, 0xff],
     })).toBe(component.productReadText.notInitialized);
   });
+
+  it('should format normalized historical dates like Phase 1', () => {
+    expect(component.formatHistoricalDate({
+      rawYear: 19,
+      rawMonth: 7,
+      rawDay: 27,
+      rawHour: 0,
+      year: 2019,
+      month: 8,
+      day: 27,
+      hour: 0,
+      status: 'present',
+      invalidReason: null,
+      raw: [19, 7, 27, 0],
+    })).toBe('27/08/2019');
+  });
+
+  it('should display a zero historical date as not initialized', () => {
+    const formatted = component.formatHistoricalDate({
+      rawYear: 0,
+      rawMonth: 0,
+      rawDay: 0,
+      rawHour: 0,
+      year: null,
+      month: null,
+      day: null,
+      hour: null,
+      status: 'invalid',
+      invalidReason: 'zero-date',
+      raw: [0, 0, 0, 0],
+    });
+
+    expect(formatted).toBe(component.productReadText.notInitialized);
+    expect(formatted).not.toBe('0/0/0');
+  });
+
+  it('should display a nonzero invalid date as a technical error', () => {
+    expect(component.formatHistoricalDate({
+      rawYear: 21,
+      rawMonth: 1,
+      rawDay: 29,
+      rawHour: 0,
+      year: null,
+      month: null,
+      day: null,
+      hour: null,
+      status: 'invalid',
+      invalidReason: 'invalid-calendar-date',
+      raw: [21, 1, 29, 0],
+    })).toBe(component.productReadText.invalidDate);
+  });
+
+  it('should render the physical dates on the responsive diagnostic grid',
+    async () => {
+      await configureProductReadPanel('widoor');
+      const decoded = decodeBleDatesAndCycles(new Uint8Array([
+        0, 0, 0, 19, 7, 27, 0, 0, 0, 0, 0, 0, 0x67, 0xd4, 0, 0, 0,
+      ]));
+      const datesRead: BleTypedReadResult<BleDatesAndCycles> = {
+        type: 'dates-and-cycles',
+        profile: 'widoor',
+        deviceId: 'device-1',
+        serviceUuid: BLE_UUIDS.shdoService,
+        characteristicUuid: BLE_UUIDS.datesAndCyclesCharacteristic,
+        startedAt: 10,
+        completedAt: 20,
+        status: 'success',
+        decoded,
+        error: null,
+      };
+      productDataLoadService.loadProductData.and.resolveTo({
+        ...productLoadResult('success'),
+        results: { datesAndCycles: datesRead },
+      });
+
+      await component.loadProductInformation();
+      fixture.detectChanges();
+      const details = fixture.nativeElement.querySelector(
+        '.product-read-details',
+      ) as HTMLElement | null;
+      const text = details?.textContent ?? '';
+
+      expect(details).not.toBeNull();
+      expect(text).toContain('00 00 00');
+      expect(text).toContain('27/08/2019');
+      expect(text).toContain(component.productReadText.notInitialized);
+      expect(text).toContain('26580');
+      expect(text).toMatch(/Cycles depuis maintenance\s*0/);
+      expect(text).not.toContain('[object Object]');
+      expect(text).not.toContain('0/0/0');
+      expect(text).not.toContain('27/7/19');
+    },
+  );
 
   it('should distinguish Widoor professional data for presentation', () => {
     expect(component.isWidoorProfessionalParameters({
