@@ -112,6 +112,7 @@ describe('BleService', () => {
       jasmine.any(Function),
     );
     expect(service.connectedDeviceId).toBe('device-1');
+    expect(service.connectionGeneration).toBe(1);
   });
 
   it('should reject an empty deviceId', async () => {
@@ -237,7 +238,7 @@ describe('BleService', () => {
           {
             uuid: 'characteristic-1',
             properties: createCharacteristicProperties({ read: true }),
-            descriptors: [],
+            descriptors: [{ uuid: 'descriptor-1' }],
           },
         ],
       },
@@ -247,12 +248,190 @@ describe('BleService', () => {
     >;
     getServicesSpy.and.resolveTo(services);
     await service.connect('device-1');
+    const generation = service.connectionGeneration;
 
     const result = await service.discoverServices();
 
     expect(getServicesSpy).toHaveBeenCalledOnceWith('device-1');
-    expect(result).toBe(services);
+    expect(result).toEqual(services);
+    expect(result).not.toBe(services);
+    expect(result[0]).not.toBe(services[0]);
+    expect(result[0].characteristics[0]).not.toBe(
+      services[0].characteristics[0],
+    );
+    expect(result[0].characteristics[0].properties).not.toBe(
+      services[0].characteristics[0].properties,
+    );
+    expect(result[0].characteristics[0].descriptors[0]).not.toBe(
+      services[0].characteristics[0].descriptors[0],
+    );
+    expect(service.getGattCharacteristicAvailability(
+      'SERVICE-1',
+      'CHARACTERISTIC-1',
+    )).toBe('available');
+    expect(service.connectionGeneration).toBe(generation);
   });
+
+  it('should report precise GATT characteristic availability', async () => {
+    expect(service.getGattCharacteristicAvailability(
+      'service-1',
+      'characteristic-1',
+    )).toBe('services-not-discovered');
+    await service.connect('device-1');
+    const getServicesSpy = BleClient.getServices as jasmine.Spy<
+      typeof BleClient.getServices
+    >;
+    getServicesSpy.and.resolveTo([
+      {
+        uuid: 'service-1',
+        characteristics: [
+          {
+            uuid: 'characteristic-1',
+            properties: createCharacteristicProperties(),
+            descriptors: [],
+          },
+        ],
+      },
+    ]);
+    await service.discoverServices();
+
+    expect(service.getGattCharacteristicAvailability(
+      'missing-service',
+      'characteristic-1',
+    )).toBe('service-absent');
+    expect(service.getGattCharacteristicAvailability(
+      'service-1',
+      'missing-characteristic',
+    )).toBe('characteristic-absent');
+    expect(service.getGattCharacteristicAvailability(
+      'service-1',
+      'characteristic-1',
+    )).toBe('not-readable');
+  });
+
+  it('should reject stale service discovery after reconnecting the same device',
+    async () => {
+      let onDisconnect: ((deviceId: string) => void) | undefined;
+      connectSpy.and.callFake(async (_deviceId, callback) => {
+        onDisconnect = callback;
+      });
+      let releaseServices!: (services: DiscoveredBleService[]) => void;
+      const getServicesSpy = BleClient.getServices as jasmine.Spy<
+        typeof BleClient.getServices
+      >;
+      getServicesSpy.and.returnValue(
+        new Promise<DiscoveredBleService[]>((resolve) => {
+          releaseServices = resolve;
+        }),
+      );
+      await service.connect('device-1');
+
+      const discovery = service.discoverServices();
+      onDisconnect?.('device-1');
+      await service.connect('device-1');
+      releaseServices([]);
+
+      await expectAsync(discovery).toBeRejectedWithError(
+        'The BLE device disconnected during service discovery.',
+      );
+      expect(service.getGattCharacteristicAvailability(
+        'service-1',
+        'characteristic-1',
+      )).toBe('services-not-discovered');
+    },
+  );
+
+  it('should match complete normalized GATT UUIDs only', async () => {
+    const getServicesSpy = BleClient.getServices as jasmine.Spy<
+      typeof BleClient.getServices
+    >;
+    getServicesSpy.and.resolveTo([
+      {
+        uuid: 'service-10',
+        characteristics: [
+          {
+            uuid: 'characteristic-1',
+            properties: createCharacteristicProperties({ read: true }),
+            descriptors: [],
+          },
+        ],
+      },
+      {
+        uuid: ' SERVICE-1 ',
+        characteristics: [
+          {
+            uuid: 'characteristic-10',
+            properties: createCharacteristicProperties({ read: true }),
+            descriptors: [],
+          },
+          {
+            uuid: ' CHARACTERISTIC-1 ',
+            properties: createCharacteristicProperties({ read: true }),
+            descriptors: [],
+          },
+        ],
+      },
+    ]);
+    await service.connect('device-1');
+    await service.discoverServices();
+
+    expect(service.getGattCharacteristicAvailability(
+      'service-1',
+      'characteristic-1',
+    )).toBe('available');
+    expect(service.getGattCharacteristicAvailability(
+      'service-1',
+      'characteristic',
+    )).toBe('characteristic-absent');
+  });
+
+  it('should clear GATT discovery when the service is destroyed', async () => {
+    const getServicesSpy = BleClient.getServices as jasmine.Spy<
+      typeof BleClient.getServices
+    >;
+    getServicesSpy.and.resolveTo([
+      {
+        uuid: 'service-1',
+        characteristics: [],
+      },
+    ]);
+    await service.connect('device-1');
+    await service.discoverServices();
+    const generation = service.connectionGeneration;
+
+    service.ngOnDestroy();
+
+    expect(service.connectionGeneration).toBe(generation + 1);
+    expect(service.getGattCharacteristicAvailability(
+      'service-1',
+      'characteristic-1',
+    )).toBe('services-not-discovered');
+  });
+
+  it('should clear GATT discovery and advance generation on disconnection',
+    async () => {
+      const getServicesSpy = BleClient.getServices as jasmine.Spy<
+        typeof BleClient.getServices
+      >;
+      getServicesSpy.and.resolveTo([
+        {
+          uuid: 'service-1',
+          characteristics: [],
+        },
+      ]);
+      await service.connect('device-1');
+      await service.discoverServices();
+
+      await service.disconnect();
+
+      expect(service.connectionGeneration).toBe(2);
+      expect(service.getGattCharacteristicAvailability(
+        'service-1',
+        'characteristic-1',
+        'device-1',
+      )).toBe('services-not-discovered');
+    },
+  );
 
   it('should reject a characteristic read when no device is connected', async () => {
     await expectAsync(

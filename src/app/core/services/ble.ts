@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import {
   BleClient,
   BleService as DiscoveredBleService,
@@ -22,6 +22,13 @@ export interface BleNotificationEvent {
   readonly receivedAt: number;
 }
 
+export type BleGattCharacteristicAvailability =
+  | 'available'
+  | 'services-not-discovered'
+  | 'service-absent'
+  | 'characteristic-absent'
+  | 'not-readable';
+
 interface NotificationSubscription {
   readonly deviceId: string;
   readonly serviceUuid: string;
@@ -32,7 +39,7 @@ interface NotificationSubscription {
 @Injectable({
   providedIn: 'root',
 })
-export class BleService {
+export class BleService implements OnDestroy {
   private readonly disconnectionSubject = new Subject<BleDisconnectionEvent>();
   private readonly notificationSubject = new Subject<BleNotificationEvent>();
   private readonly notificationSubscriptions =
@@ -42,10 +49,13 @@ export class BleService {
   private connectionPromise: Promise<void> | null = null;
   private disconnectPromise: Promise<void> | null = null;
   private connectedDeviceIdValue: string | null = null;
+  private discoveredServicesValue: readonly DiscoveredBleService[] = [];
+  private discoveredServicesDeviceIdValue: string | null = null;
   private connectingDeviceId: string | null = null;
   private locallyDisconnectingDeviceId: string | null = null;
   private writePromise: Promise<void> | null = null;
   private notificationSequenceValue = 0;
+  private connectionGenerationValue = 0;
   private connecting = false;
   private scanning = false;
 
@@ -60,6 +70,14 @@ export class BleService {
 
   get isWriting(): boolean {
     return this.writePromise !== null;
+  }
+
+  get connectionGeneration(): number {
+    return this.connectionGenerationValue;
+  }
+
+  get disconnectingDeviceId(): string | null {
+    return this.locallyDisconnectingDeviceId;
   }
 
   get lastNotificationSequence(): number {
@@ -150,6 +168,7 @@ export class BleService {
       throw new Error('A BLE device is already connected.');
     }
 
+    this.clearDiscoveredServices();
     this.connecting = true;
     this.connectingDeviceId = normalizedDeviceId;
     const connection = this.connectToDevice(normalizedDeviceId);
@@ -190,6 +209,8 @@ export class BleService {
     try {
       await disconnection;
       this.connectedDeviceIdValue = null;
+      this.clearDiscoveredServices();
+      this.connectionGenerationValue += 1;
       this.disconnectionSubject.next({ deviceId, reason: 'local' });
     } finally {
       this.locallyDisconnectingDeviceId = null;
@@ -207,12 +228,64 @@ export class BleService {
     const targetDeviceId = deviceId === undefined
       ? this.connectedDeviceIdValue
       : deviceId.trim();
+    const connectionGeneration = this.connectionGenerationValue;
 
     if (!targetDeviceId) {
       throw new Error('A deviceId is required to discover services.');
     }
 
-    return BleClient.getServices(targetDeviceId);
+    if (targetDeviceId !== this.connectedDeviceIdValue) {
+      throw new Error('The target device is not the connected BLE device.');
+    }
+
+    const services = await BleClient.getServices(targetDeviceId);
+
+    if (
+      this.connectedDeviceIdValue !== targetDeviceId
+      || this.connectionGenerationValue !== connectionGeneration
+    ) {
+      throw new Error('The BLE device disconnected during service discovery.');
+    }
+
+    this.discoveredServicesValue = this.copyDiscoveredServices(services);
+    this.discoveredServicesDeviceIdValue = targetDeviceId;
+    return this.copyDiscoveredServices(services);
+  }
+
+  getGattCharacteristicAvailability(
+    serviceUuid: string,
+    characteristicUuid: string,
+    deviceId?: string,
+  ): BleGattCharacteristicAvailability {
+    const targetDeviceId = deviceId?.trim() ?? this.connectedDeviceIdValue;
+
+    if (
+      targetDeviceId === null
+      || this.discoveredServicesDeviceIdValue !== targetDeviceId
+    ) {
+      return 'services-not-discovered';
+    }
+
+    const normalizedServiceUuid = serviceUuid.trim().toLowerCase();
+    const normalizedCharacteristicUuid =
+      characteristicUuid.trim().toLowerCase();
+    const service = this.discoveredServicesValue.find(({ uuid }) =>
+      uuid.trim().toLowerCase() === normalizedServiceUuid,
+    );
+
+    if (service === undefined) {
+      return 'service-absent';
+    }
+
+    const characteristic = service.characteristics.find(({ uuid }) =>
+      uuid.trim().toLowerCase() === normalizedCharacteristicUuid,
+    );
+
+    if (characteristic === undefined) {
+      return 'characteristic-absent';
+    }
+
+    return characteristic.properties.read ? 'available' : 'not-readable';
   }
 
   async readCharacteristic(
@@ -385,6 +458,11 @@ export class BleService {
     return this.scanning;
   }
 
+  ngOnDestroy(): void {
+    this.clearDiscoveredServices();
+    this.connectionGenerationValue += 1;
+  }
+
   private async connectToDevice(deviceId: string): Promise<void> {
     if (this.scanning) {
       await this.stopScan();
@@ -399,6 +477,8 @@ export class BleService {
 
     if (!disconnectedDuringConnection) {
       this.connectedDeviceIdValue = deviceId;
+      this.clearDiscoveredServices();
+      this.connectionGenerationValue += 1;
     }
   }
 
@@ -417,6 +497,8 @@ export class BleService {
 
     void this.stopAllNotifications(deviceId);
     this.connectedDeviceIdValue = null;
+    this.clearDiscoveredServices();
+    this.connectionGenerationValue += 1;
     this.connectingDeviceId = null;
     this.connecting = false;
     this.disconnectionSubject.next({ deviceId, reason: 'remote' });
@@ -508,6 +590,26 @@ export class BleService {
       } catch {
         // A physical disconnection already stops native notifications.
       }
+    }));
+  }
+
+  private clearDiscoveredServices(): void {
+    this.discoveredServicesValue = [];
+    this.discoveredServicesDeviceIdValue = null;
+  }
+
+  private copyDiscoveredServices(
+    services: readonly DiscoveredBleService[],
+  ): DiscoveredBleService[] {
+    return services.map((service) => ({
+      ...service,
+      characteristics: service.characteristics.map((characteristic) => ({
+        ...characteristic,
+        properties: { ...characteristic.properties },
+        descriptors: characteristic.descriptors.map((descriptor) => ({
+          ...descriptor,
+        })),
+      })),
     }));
   }
 }
