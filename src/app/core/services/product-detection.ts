@@ -3,6 +3,10 @@ import { BleService as DiscoveredBleService } from '@capacitor-community/bluetoo
 
 import { BLE_UUIDS } from './ble-profile-catalog';
 import { ProductProfile } from './ble-profile-catalog';
+import {
+  bytesToHex,
+  readUint16BigEndian,
+} from './ble-read-decoders';
 
 export { BLE_UUIDS } from './ble-profile-catalog';
 
@@ -96,16 +100,14 @@ export class ProductDetection {
     const switchesValue = bytes.length > 6 ? bytes[6] : null;
 
     return {
-      rawHex: Array.from(bytes, (byte) =>
-        byte.toString(16).padStart(2, '0'),
-      ).join(' '),
+      rawHex: bytesToHex(bytes),
       length: bytes.length,
       state: bytes.length > 0 ? bytes[0] : null,
       currentPosition: bytes.length > 2
-        ? this.readUnsignedBigEndian16(bytes[1], bytes[2])
+        ? readUint16BigEndian(bytes, 1)
         : null,
       maximumPosition: bytes.length > 4
-        ? this.readUnsignedBigEndian16(bytes[3], bytes[4])
+        ? readUint16BigEndian(bytes, 3)
         : null,
       error: bytes.length > 5 ? bytes[5] : null,
       switches: switchesValue === null
@@ -181,9 +183,7 @@ export class ProductDetection {
     }
 
     return {
-      rawHex: Array.from(bytes, (byte) =>
-        byte.toString(16).padStart(2, '0'),
-      ).join(' '),
+      rawHex: bytesToHex(bytes),
       length: bytes.length,
       productByte,
       subtypeByte,
@@ -272,13 +272,6 @@ export class ProductDetection {
       default:
         return 'Inconnu';
     }
-  }
-
-  private readUnsignedBigEndian16(
-    mostSignificantByte: number,
-    leastSignificantByte: number,
-  ): number {
-    return (mostSignificantByte << 8) | leastSignificantByte;
   }
 
   private normalizeUuid(uuid: string): string {
