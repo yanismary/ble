@@ -67,8 +67,7 @@
   padding: 0.75rem;
 }
 
-.identification-panel h2,
-.motor-state-panel h2 {
+:is(.identification-panel, .motor-state-panel) h2 {
   margin-top: 0;
 }
 

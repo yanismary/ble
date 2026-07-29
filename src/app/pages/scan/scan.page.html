@@ -237,6 +237,261 @@
             </section>
           }
 
+          @if (showProductReadPanel) {
+            <section class="identification-panel product-read-panel" aria-live="polite">
+              <h2>{{ productReadText.title }}</h2>
+              <p>{{ productReadText.diagnosticNotice }}</p>
+              <dl class="identification-details">
+                <dt>{{ productReadText.profile }}</dt>
+                <dd>{{ productProfile }}</dd>
+                <dt>{{ productReadText.deviceId }}</dt>
+                <dd>{{ connectedDeviceId }}</dd>
+              </dl>
+              <p>{{ productReadAvailability.reason }}</p>
+              <ion-button
+                expand="block"
+                (click)="loadProductInformation()"
+                [disabled]="!productReadAvailability.enabled"
+              >
+                {{ productReadText.read }}
+              </ion-button>
+
+              @if (isProductReadLoading) {
+                <div class="connection-status" role="status">
+                  <ion-spinner name="crescent"></ion-spinner>
+                  <span>{{ productReadText.loading }}</span>
+                </div>
+                <ion-button
+                  expand="block"
+                  fill="outline"
+                  color="medium"
+                  (click)="cancelProductInformationLoad()"
+                >
+                  {{ productReadText.cancel }}
+                </ion-button>
+              }
+
+              @if (productReadResult; as load) {
+                <dl class="identification-details">
+                  <dt>{{ productReadText.globalStatus }}</dt>
+                  <dd>{{ productReadStatusLabel(load.status) }}</dd>
+                  <dt>{{ productReadText.startedAt }}</dt>
+                  <dd>{{ formatTimestamp(load.startedAt) }}</dd>
+                  <dt>{{ productReadText.completedAt }}</dt>
+                  <dd>{{ formatTimestamp(load.completedAt) }}</dd>
+                  <dt>{{ productReadText.successfulReads }}</dt>
+                  <dd>{{ productReadSummary.success }}</dd>
+                  <dt>{{ productReadText.invalidReads }}</dt>
+                  <dd>{{ productReadSummary.invalid }}</dd>
+                  <dt>{{ productReadText.unavailableReads }}</dt>
+                  <dd>{{ productReadSummary.unavailable }}</dd>
+                  <dt>{{ productReadText.failedReads }}</dt>
+                  <dd>{{ productReadSummary.failed }}</dd>
+                  <dt>{{ productReadText.partialSuccess }}</dt>
+                  <dd>{{ load.partialSuccess ? productReadText.yes : productReadText.no }}</dd>
+                </dl>
+                @if (load.status === 'partial-success') {
+                  <p>{{ productReadText.partialSuccessDetails }}</p>
+                }
+                @if (load.error) {
+                  <p class="error-message" role="alert">{{ load.error.message }}</p>
+                }
+
+                @if (load.results.version; as read) {
+                  <section class="ble-characteristic">
+                    <h3>{{ productReadText.sections.version }}</h3>
+                    <dl class="identification-details">
+                      <dt>{{ productReadText.globalStatus }}</dt>
+                      <dd>{{ productReadStatusLabel(read.status) }}</dd>
+                      <dt>{{ productReadText.serviceUuid }}</dt>
+                      <dd><code>{{ read.serviceUuid }}</code></dd>
+                      <dt>{{ productReadText.characteristicUuid }}</dt>
+                      <dd><code>{{ read.characteristicUuid }}</code></dd>
+                      <dt>{{ productReadText.startedAt }}</dt>
+                      <dd>{{ formatTimestamp(read.startedAt) }}</dd>
+                      <dt>{{ productReadText.completedAt }}</dt>
+                      <dd>{{ formatTimestamp(read.completedAt) }}</dd>
+                      @if (read.decoded; as decoded) {
+                        <dt>{{ productReadText.rawFrame }}</dt>
+                        <dd><code>{{ decoded.rawHex }}</code></dd>
+                        <dt>{{ productReadText.length }}</dt>
+                        <dd>{{ decoded.length }} {{ productReadText.bytes }}</dd>
+                        @if (!decoded.valid) {
+                          <dt>{{ productReadText.decodeErrors }}</dt>
+                          <dd>{{ decoded.errors.join(' ; ') }}</dd>
+                        }
+                      }
+                      @if (read.error) {
+                        <dt>{{ productReadText.nativeError }}</dt>
+                        <dd>{{ read.error.message }}</dd>
+                      }
+                    </dl>
+                    @if (read.status === 'success' && read.decoded?.valid; as valid) {
+                      @if (valid && read.decoded?.value; as value) {
+                        <dl class="identification-details">
+                          <dt>{{ productReadText.stackVersion }}</dt>
+                          <dd>{{ formatStackVersion(value.stack) }}</dd>
+                          <dt>{{ productReadText.bleSoftwareVersion }}</dt>
+                          <dd>{{ formatSoftwareVersion(value.bleSoftware) }}</dd>
+                          <dt>{{ productReadText.productType }}</dt>
+                          <dd>{{ value.productType }}</dd>
+                          <dt>{{ productReadText.productSubtype }}</dt>
+                          <dd>{{ value.productSubtype }}</dd>
+                          <dt>{{ productReadText.motorSoftwareVersion }}</dt>
+                          <dd>{{ formatSoftwareVersion(value.motorSoftware) }}</dd>
+                          <dt>{{ productReadText.crc }}</dt>
+                          <dd>{{ value.crc }}</dd>
+                          <dt>{{ productReadText.motorAddress }}</dt>
+                          <dd>{{ value.motorAddressHex ?? productReadText.motorAddressUnavailable }}</dd>
+                        </dl>
+                      }
+                    }
+                  </section>
+                }
+
+                @if (load.results.datesAndCycles; as read) {
+                  <section class="ble-characteristic">
+                    <h3>{{ productReadText.sections.datesAndCycles }}</h3>
+                    <ng-container
+                      [ngTemplateOutlet]="readMetadata"
+                      [ngTemplateOutletContext]="{ $implicit: read }"
+                    ></ng-container>
+                    @if (read.status === 'success' && read.decoded?.valid; as valid) {
+                      @if (valid && read.decoded?.value; as value) {
+                        <dl class="identification-details">
+                          <dt>{{ productReadText.historicalFad }}</dt>
+                          <dd>{{ formatHistoricalDate(value.historicalFadDate) }} — {{ productReadText.rawDate }} : {{ formatBytes(value.historicalFadDate.raw) }}</dd>
+                          <dt>{{ productReadText.firstCommissioning }}</dt>
+                          <dd>{{ formatHistoricalDate(value.firstCommissioningDate) }} — {{ productReadText.rawDate }} : {{ formatBytes(value.firstCommissioningDate.raw) }}</dd>
+                          <dt>{{ productReadText.lastMaintenance }}</dt>
+                          <dd>{{ formatHistoricalDate(value.lastMaintenanceDate) }} — {{ productReadText.rawDate }} : {{ formatBytes(value.lastMaintenanceDate.raw) }}</dd>
+                          <dt>{{ productReadText.totalCycles }}</dt>
+                          <dd>{{ value.totalCycles }}</dd>
+                          <dt>{{ productReadText.cyclesSinceMaintenance }}</dt>
+                          <dd>{{ value.cyclesSinceMaintenance }}</dd>
+                        </dl>
+                      }
+                    }
+                  </section>
+                }
+
+                @if (load.results.maintenance; as read) {
+                  <section class="ble-characteristic">
+                    <h3>{{ productReadText.sections.maintenance }}</h3>
+                    <ng-container
+                      [ngTemplateOutlet]="readMetadata"
+                      [ngTemplateOutletContext]="{ $implicit: read }"
+                    ></ng-container>
+                    @if (read.status === 'success' && read.decoded?.valid; as valid) {
+                      @if (valid && read.decoded?.value; as value) {
+                        <dl class="identification-details">
+                          <dt>{{ productReadText.initializationCount }}</dt><dd>{{ value.initializationCount }}</dd>
+                          <dt>{{ productReadText.cyclesSinceInitialization }}</dt><dd>{{ value.cyclesSinceInitialization }}</dd>
+                          <dt>{{ productReadText.obstacleDetectionCount }}</dt><dd>{{ value.obstacleDetectionCount }}</dd>
+                          <dt>{{ productReadText.wrongStopOpenCount }}</dt><dd>{{ value.wrongStopOpenCount }}</dd>
+                          <dt>{{ productReadText.wrongStopCloseCount }}</dt><dd>{{ value.wrongStopCloseCount }}</dd>
+                          <dt>{{ productReadText.learningCycleCount }}</dt><dd>{{ value.learningCycleCount }}</dd>
+                          <dt>{{ productReadText.encoderErrorCount }}</dt><dd>{{ value.encoderErrorCount }}</dd>
+                          <dt>{{ productReadText.motorErrorCount }}</dt><dd>{{ value.motorErrorCount }}</dd>
+                        </dl>
+                      }
+                    }
+                  </section>
+                }
+
+                @if (load.results.userParameters; as read) {
+                  <section class="ble-characteristic">
+                    <h3>{{ productReadText.sections.userParameters }}</h3>
+                    <ng-container
+                      [ngTemplateOutlet]="readMetadata"
+                      [ngTemplateOutletContext]="{ $implicit: read }"
+                    ></ng-container>
+                    @if (read.status === 'success' && read.decoded?.valid; as valid) {
+                      @if (valid && read.decoded?.value; as value) {
+                        <dl class="identification-details">
+                          <dt>{{ productReadText.lockModeRaw }}</dt><dd>{{ value.lockModeRaw }}</dd>
+                          <dt>{{ productReadText.lockMode }}</dt><dd>{{ value.lockMode }}</dd>
+                          <dt>{{ productReadText.openSpeed }}</dt><dd>{{ value.openSpeed }}</dd>
+                          <dt>{{ productReadText.closeSpeed }}</dt><dd>{{ value.closeSpeed }}</dd>
+                          <dt>{{ productReadText.shortOpenTime }}</dt><dd>{{ value.shortOpenTime }}</dd>
+                          <dt>{{ productReadText.longOpenTime }}</dt><dd>{{ value.longOpenTime }}</dd>
+                          <dt>{{ productReadText.peripheralBytes }}</dt>
+                          <dd>{{ formatPeripheralBytes(value.peripheralByte1, value.peripheralByte2) }}</dd>
+                          <dt>{{ productReadText.peripheralFlags }}</dt>
+                          <dd>{{ formatPeripheralFlags(value.peripheralFlags) }}</dd>
+                        </dl>
+                      }
+                    }
+                  </section>
+                }
+
+                @if (load.results.professionalParameters; as read) {
+                  <section class="ble-characteristic">
+                    <h3>{{ productReadText.sections.professionalParameters }}</h3>
+                    <p>{{ productReadText.diagnosticNotice }}</p>
+                    <ng-container
+                      [ngTemplateOutlet]="readMetadata"
+                      [ngTemplateOutletContext]="{ $implicit: read }"
+                    ></ng-container>
+                    @if (read.status === 'success' && read.decoded?.valid; as valid) {
+                      @if (valid && read.decoded?.value; as value) {
+                        <dl class="identification-details">
+                          <dt>{{ productReadText.weightRange }}</dt><dd>{{ value.weightRangeLower }}–{{ value.weightRangeUpper }}</dd>
+                          @if (isWidoorProfessionalParameters(value)) {
+                            <dt>{{ productReadText.breakForceAtOpen }}</dt><dd>{{ value.breakForceAtOpen }}</dd>
+                            <dt>{{ productReadText.nearOpenProportional }}</dt><dd>{{ value.nearOpenProportional }}</dd>
+                            <dt>{{ productReadText.nearCloseProportional }}</dt><dd>{{ value.nearCloseProportional }}</dd>
+                          } @else {
+                            <dt>{{ productReadText.exactWeight }}</dt><dd>{{ value.exactWeight }}</dd>
+                            <dt>{{ productReadText.brakingOpenPower }}</dt><dd>{{ value.brakingOpenPower }}</dd>
+                            <dt>{{ productReadText.obstacleSensitivity }}</dt><dd>{{ value.obstacleSensitivity }}</dd>
+                          }
+                          <dt>{{ productReadText.nearOpenSpeed }}</dt><dd>{{ value.nearOpenSpeed }}</dd>
+                          <dt>{{ productReadText.nearCloseSpeed }}</dt><dd>{{ value.nearCloseSpeed }}</dd>
+                          <dt>{{ productReadText.nearOpenTorque }}</dt><dd>{{ value.nearOpenTorque }}</dd>
+                          <dt>{{ productReadText.nearCloseTorque }}</dt><dd>{{ value.nearCloseTorque }}</dd>
+                          <dt>{{ productReadText.nearOpenIntegral }}</dt><dd>{{ value.nearOpenIntegral }}</dd>
+                          <dt>{{ productReadText.nearCloseIntegral }}</dt><dd>{{ value.nearCloseIntegral }}</dd>
+                          <dt>{{ productReadText.peripheralBytes }}</dt>
+                          <dd>{{ formatPeripheralBytes(value.peripheralByte1, value.peripheralByte2) }}</dd>
+                        </dl>
+                      }
+                    }
+                  </section>
+                }
+              }
+            </section>
+          }
+
+          <ng-template #readMetadata let-read>
+            <dl class="identification-details">
+              <dt>{{ productReadText.globalStatus }}</dt>
+              <dd>{{ productReadStatusLabel(read.status) }}</dd>
+              <dt>{{ productReadText.serviceUuid }}</dt>
+              <dd><code>{{ read.serviceUuid }}</code></dd>
+              <dt>{{ productReadText.characteristicUuid }}</dt>
+              <dd><code>{{ read.characteristicUuid }}</code></dd>
+              <dt>{{ productReadText.startedAt }}</dt>
+              <dd>{{ formatTimestamp(read.startedAt) }}</dd>
+              <dt>{{ productReadText.completedAt }}</dt>
+              <dd>{{ formatTimestamp(read.completedAt) }}</dd>
+              @if (read.decoded; as decoded) {
+                <dt>{{ productReadText.rawFrame }}</dt>
+                <dd><code>{{ decoded.rawHex }}</code></dd>
+                <dt>{{ productReadText.length }}</dt>
+                <dd>{{ decoded.length }} {{ productReadText.bytes }}</dd>
+                @if (!decoded.valid) {
+                  <dt>{{ productReadText.decodeErrors }}</dt>
+                  <dd>{{ decoded.errors.join(' ; ') }}</dd>
+                }
+              }
+              @if (read.error) {
+                <dt>{{ productReadText.nativeError }}</dt>
+                <dd>{{ read.error.message }}</dd>
+              }
+            </dl>
+          </ng-template>
+
           @if (showMotorTestPanel) {
             <section
               class="identification-panel motor-test-panel"

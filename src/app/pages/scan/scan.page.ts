@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, NgZone, OnDestroy, inject } from '@angular/core';
 import {
   BleService as DiscoveredBleService,
@@ -37,7 +38,22 @@ import {
 import {
   MotorCommandService,
 } from '../../core/services/motor-command.service';
+import {
+  KnownProductProfile,
+  ProductDataLoadResult,
+  ProductDataLoadService,
+  ProductDataLoadStatus,
+} from '../../core/services/product-data-load.service';
+import {
+  BleProfessionalParameters,
+  BleSoftwareVersion,
+  BleStackVersion,
+  HistoricalBleDate,
+  UserPeripheralFlags,
+} from '../../core/services/ble-read-decoders';
+import { BleReadStatus } from '../../core/services/ble-read.service';
 import { SCAN_MOTOR_TEST_TEXT } from './scan-motor-test.text';
+import { SCAN_PRODUCT_READ_TEXT } from './scan-product-read.text';
 
 interface ScannedDevice {
   deviceId: string;
@@ -56,6 +72,18 @@ type MotorTestStatus =
 interface MotorCommandAvailability {
   readonly enabled: boolean;
   readonly reason: string;
+}
+
+interface ProductReadAvailability {
+  readonly enabled: boolean;
+  readonly reason: string;
+}
+
+interface ProductReadSummary {
+  readonly success: number;
+  readonly invalid: number;
+  readonly unavailable: number;
+  readonly failed: number;
 }
 
 interface MotorStateSource {
@@ -88,6 +116,7 @@ const MOTOR_DIAGNOSTIC_HISTORY_LIMIT = 20;
     IonSpinner,
     IonTitle,
     IonToolbar,
+    NgTemplateOutlet,
   ],
 })
 export class ScanPage implements OnDestroy {
@@ -96,6 +125,7 @@ export class ScanPage implements OnDestroy {
   private readonly motorCommandService = inject(MotorCommandService);
   private readonly ngZone = inject(NgZone);
   private readonly productDetection = inject(ProductDetection);
+  private readonly productDataLoadService = inject(ProductDataLoadService);
   private readonly disconnectionSubscription: Subscription;
   private scanTimeout: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
@@ -103,6 +133,9 @@ export class ScanPage implements OnDestroy {
   private connectionGeneration = 0;
   private motorCommandInProgress = false;
   private motorConfirmationAlertOpen = false;
+  private productReadCycle = 0;
+  private productReadInProgress = false;
+  private connectedBleGeneration: number | null = null;
 
   devices: ScannedDevice[] = [];
   connectedDeviceId: string | null = null;
@@ -125,6 +158,9 @@ export class ScanPage implements OnDestroy {
   motorTestResult: MotorCommandConfirmation | null = null;
   motorTestStatus: MotorTestStatus = 'idle';
   readonly motorTestText = SCAN_MOTOR_TEST_TEXT;
+  readonly productReadText = SCAN_PRODUCT_READ_TEXT;
+  productReadResult: ProductDataLoadResult | null = null;
+  productReadStatus: 'idle' | 'loading' | ProductDataLoadStatus = 'idle';
   productProfile: ProductProfile = 'unknown';
   readingIdentification = false;
   scanning = false;
@@ -156,6 +192,66 @@ export class ScanPage implements OnDestroy {
       this.services.length > 0 &&
       this.identification !== null &&
       this.isKnownProductProfile(this.productProfile);
+  }
+
+  get showProductReadPanel(): boolean {
+    return this.connectedDeviceId !== null &&
+      this.bleService.connectedDeviceId === this.connectedDeviceId &&
+      this.connectedBleGeneration === this.bleService.connectionGeneration &&
+      !this.scanning &&
+      !this.discoveringServices &&
+      !this.readingIdentification &&
+      this.services.length > 0 &&
+      this.identification !== null &&
+      this.isKnownProductProfile(this.productProfile);
+  }
+
+  get productReadAvailability(): ProductReadAvailability {
+    if (this.connectedDeviceId === null ||
+        this.bleService.connectedDeviceId !== this.connectedDeviceId) {
+      return this.productReadUnavailable(
+        this.productReadText.disconnected,
+      );
+    }
+    if (this.connectedBleGeneration !==
+        this.bleService.connectionGeneration) {
+      return this.productReadUnavailable(this.productReadText.staleContext);
+    }
+    if (this.scanning) {
+      return this.productReadUnavailable(this.productReadText.scanInProgress);
+    }
+    if (!this.showProductReadPanel) {
+      return this.productReadUnavailable(
+        this.productReadText.detectionInProgress,
+      );
+    }
+    if (this.productReadInProgress ||
+        this.productDataLoadService.isLoading ||
+        this.bleService.isWriting ||
+        this.motorCommandInProgress) {
+      return this.productReadUnavailable(
+        this.productReadText.operationInProgress,
+      );
+    }
+    return { enabled: true, reason: this.productReadText.ready };
+  }
+
+  get productReadSummary(): ProductReadSummary {
+    const values = Object.values(this.productReadResult?.results ?? {});
+    return {
+      success: values.filter(({ status }) => status === 'success').length,
+      invalid: values.filter(
+        ({ status }) => status === 'invalid-frame',
+      ).length,
+      unavailable: values.filter(
+        ({ status }) => status === 'unavailable',
+      ).length,
+      failed: values.filter(({ status }) => status === 'failed').length,
+    };
+  }
+
+  get isProductReadLoading(): boolean {
+    return this.productReadInProgress;
   }
 
   get motorCommandAvailability(): MotorCommandAvailability {
@@ -306,6 +402,7 @@ export class ScanPage implements OnDestroy {
     this.connectionError = null;
     this.discoveryError = null;
     this.connectionGeneration += 1;
+    this.resetProductRead(true);
     this.resetMotorTest();
     this.clearMotorState();
     this.clearIdentification();
@@ -316,6 +413,7 @@ export class ScanPage implements OnDestroy {
       await this.stopScan();
       await this.bleService.connect(device.deviceId);
       this.connectedDeviceId = this.bleService.connectedDeviceId;
+      this.connectedBleGeneration = this.bleService.connectionGeneration;
       this.connecting = false;
       await this.loadServices(device.deviceId);
     } catch (error: unknown) {
@@ -403,9 +501,57 @@ export class ScanPage implements OnDestroy {
     this.motorTestStatus = 'idle';
   }
 
+  async loadProductInformation(): Promise<void> {
+    if (!this.productReadAvailability.enabled ||
+        this.productReadInProgress ||
+        this.connectedDeviceId === null ||
+        !this.isKnownProductProfile(this.productProfile)) {
+      return;
+    }
+
+    const deviceId = this.connectedDeviceId;
+    const profile = this.productProfile;
+    const nativeGeneration = this.bleService.connectionGeneration;
+    const cycle = ++this.productReadCycle;
+    this.productReadInProgress = true;
+    this.productReadStatus = 'loading';
+    this.productReadResult = null;
+
+    try {
+      const result = await this.productDataLoadService.loadProductData(
+        profile,
+        deviceId,
+      );
+      if (!this.isCurrentProductRead(
+        cycle,
+        deviceId,
+        nativeGeneration,
+        profile,
+      )) {
+        return;
+      }
+      this.productReadResult = result;
+      this.productReadStatus = result.status;
+    } finally {
+      if (cycle === this.productReadCycle) {
+        this.productReadInProgress = false;
+        if (this.productReadStatus === 'loading') {
+          this.productReadStatus = 'idle';
+        }
+      }
+    }
+  }
+
+  cancelProductInformationLoad(): void {
+    if (this.productReadInProgress) {
+      this.productDataLoadService.cancelCurrentLoad();
+    }
+  }
+
   ngOnDestroy(): void {
     const connectedDeviceId = this.connectedDeviceId;
     this.destroyed = true;
+    this.resetProductRead(true);
     this.scanning = false;
     this.clearScanTimeout();
     this.disconnectionSubscription.unsubscribe();
@@ -422,7 +568,9 @@ export class ScanPage implements OnDestroy {
 
     const commandWasActive = this.motorCommandInProgress;
     this.connectionGeneration += 1;
+    this.resetProductRead(true);
     this.connectedDeviceId = null;
+    this.connectedBleGeneration = null;
     this.connecting = false;
     this.discoveringServices = false;
     this.discoveryError = null;
@@ -754,7 +902,92 @@ export class ScanPage implements OnDestroy {
     this.subscribingMotorState = false;
   }
 
-  private isKnownProductProfile(profile: ProductProfile): boolean {
+  formatTimestamp(value: number): string {
+    return new Date(value).toLocaleTimeString();
+  }
+
+  formatStackVersion(value: BleStackVersion): string {
+    return `${value.major}.${value.minor}.${value.patch}.${value.build}`;
+  }
+
+  formatSoftwareVersion(value: BleSoftwareVersion): string {
+    return `${value.major}.${value.minor}.${value.patch}.` +
+      `${value.specification}`;
+  }
+
+  formatHistoricalDate(value: HistoricalBleDate): string {
+    if (value.status === 'not-initialized') {
+      return this.productReadText.notInitialized;
+    }
+    const hour = value.hour === null
+      ? ''
+      : ` ${value.hour} ${this.productReadText.hourSuffix}`;
+    return `${value.day}/${value.month}/${value.year}${hour}`;
+  }
+
+  formatBytes(values: readonly number[]): string {
+    return values.map((value) =>
+      value.toString(16).padStart(2, '0'),
+    ).join(' ');
+  }
+
+  formatPeripheralBytes(first: number, second: number): string {
+    return this.formatBytes([first, second]);
+  }
+
+  formatPeripheralFlags(value: UserPeripheralFlags): string {
+    const labels = this.productReadText.peripheralFlagLabels;
+    return `${labels.dynamicLight}=${value.dynamicLight}, ` +
+      `${labels.staticLight}=${value.staticLight}, ` +
+      `${labels.light1}=${value.light1}, ` +
+      `${labels.light2}=${value.light2}, ` +
+      `${labels.rgbIndicator}=${value.rgbIndicator}`;
+  }
+
+  productReadStatusLabel(
+    status: ProductDataLoadStatus | BleReadStatus,
+  ): string {
+    return this.productReadText.status[status];
+  }
+
+  isWidoorProfessionalParameters(
+    value: BleProfessionalParameters,
+  ): value is Extract<BleProfessionalParameters, { profile: 'widoor' }> {
+    return value.profile === 'widoor';
+  }
+
+  private resetProductRead(cancelActive: boolean): void {
+    if (cancelActive && this.productDataLoadService.isLoading) {
+      this.productDataLoadService.cancelCurrentLoad();
+    }
+    this.productReadCycle += 1;
+    this.productReadInProgress = false;
+    this.productReadResult = null;
+    this.productReadStatus = 'idle';
+  }
+
+  private isCurrentProductRead(
+    cycle: number,
+    deviceId: string,
+    nativeGeneration: number,
+    profile: ProductProfile,
+  ): boolean {
+    return !this.destroyed &&
+      cycle === this.productReadCycle &&
+      this.connectedDeviceId === deviceId &&
+      this.bleService.connectedDeviceId === deviceId &&
+      this.connectedBleGeneration === nativeGeneration &&
+      this.bleService.connectionGeneration === nativeGeneration &&
+      this.productProfile === profile;
+  }
+
+  private productReadUnavailable(reason: string): ProductReadAvailability {
+    return { enabled: false, reason };
+  }
+
+  private isKnownProductProfile(
+    profile: ProductProfile,
+  ): profile is KnownProductProfile {
     return profile !== 'unknown' && profile !== 'ambiguous';
   }
 

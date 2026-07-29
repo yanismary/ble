@@ -12,6 +12,16 @@ import {
 } from '../../core/services/ble';
 import { BLE_UUIDS } from '../../core/services/product-detection';
 import { MotorCommandService } from '../../core/services/motor-command.service';
+import {
+  ProductDataLoadResult,
+  ProductDataLoadService,
+  ProductDataLoadStatus,
+} from '../../core/services/product-data-load.service';
+import {
+  BleReadStatus,
+  BleReadType,
+  BleTypedReadResult,
+} from '../../core/services/ble-read.service';
 import { ScanPage } from './scan.page';
 
 class FakeBleService {
@@ -21,6 +31,7 @@ class FakeBleService {
   private scanCallback: ((result: ScanResult) => void) | null = null;
   private notificationCallback: ((value: DataView) => void) | null = null;
   isWriting = false;
+  connectionGeneration = 0;
   servicesResult: DiscoveredBleService[] = [];
   readResult: DataView = new DataView(new ArrayBuffer(0));
 
@@ -55,6 +66,7 @@ class FakeBleService {
   async connect(deviceId: string): Promise<void> {
     this.scanning = false;
     this.connectedDeviceIdValue = deviceId;
+    this.connectionGeneration += 1;
   }
 
   async disconnect(): Promise<void> {
@@ -96,6 +108,7 @@ class FakeBleService {
 
   emitRemoteDisconnection(deviceId: string): void {
     this.connectedDeviceIdValue = null;
+    this.connectionGeneration += 1;
     this.disconnectionSubject.next({ deviceId, reason: 'remote' });
   }
 
@@ -108,6 +121,38 @@ class FakeBleService {
   }
 }
 
+class FakeProductDataLoadService {
+  isLoading = false;
+  readonly loadProductData = jasmine.createSpy('loadProductData').and.callFake(
+    async (
+      profile: ProductDataLoadResult['profile'],
+      deviceId?: string,
+    ): Promise<ProductDataLoadResult> => ({
+      profile,
+      deviceId: deviceId ?? null,
+      connectionGeneration: 1,
+      startedAt: 10,
+      completedAt: 20,
+      status: 'success',
+      executedOrder: [
+        'version',
+        'datesAndCycles',
+        'maintenance',
+        'userParameters',
+        'professionalParameters',
+      ],
+      results: {},
+      notRequested: [],
+      unavailable: [],
+      partialSuccess: false,
+      error: null,
+    }),
+  );
+  readonly cancelCurrentLoad = jasmine.createSpy(
+    'cancelCurrentLoad',
+  ).and.returnValue(true);
+}
+
 describe('ScanPage', () => {
   let component: ScanPage;
   let fixture: ComponentFixture<ScanPage>;
@@ -115,9 +160,11 @@ describe('ScanPage', () => {
   let alertCreate: jasmine.Spy;
   let alertOptions: TestAlertOptions[];
   let sendMotorCommandWithConfirmation: jasmine.Spy;
+  let productDataLoadService: FakeProductDataLoadService;
 
   beforeEach(async () => {
     bleService = new FakeBleService();
+    productDataLoadService = new FakeProductDataLoadService();
     alertOptions = [];
     alertCreate = jasmine.createSpy('create').and.callFake(
       async (options: TestAlertOptions) => {
@@ -144,6 +191,10 @@ describe('ScanPage', () => {
         {
           provide: MotorCommandService,
           useValue: { sendMotorCommandWithConfirmation },
+        },
+        {
+          provide: ProductDataLoadService,
+          useValue: productDataLoadService,
         },
       ],
     }).compileComponents();
@@ -1066,6 +1117,221 @@ describe('ScanPage', () => {
     );
   });
 
+  it('should never load product data automatically', async () => {
+    await configureProductReadPanel('widoor');
+    expect(productDataLoadService.loadProductData).not.toHaveBeenCalled();
+  });
+
+  it('should show product reads only for known profiles', async () => {
+    await configureProductReadPanel('widoor');
+    for (const profile of [
+      'widoor', 'moventiv-60', 'moventiv-80', 'garline',
+    ] as const) {
+      component.productProfile = profile;
+      expect(component.showProductReadPanel).withContext(profile).toBeTrue();
+    }
+    component.productProfile = 'unknown';
+    expect(component.showProductReadPanel).toBeFalse();
+    component.productProfile = 'ambiguous';
+    expect(component.showProductReadPanel).toBeFalse();
+  });
+
+  it('should hide product reads during scan, discovery or detection',
+    async () => {
+      await configureProductReadPanel('widoor');
+      component.scanning = true;
+      expect(component.showProductReadPanel).toBeFalse();
+      component.scanning = false;
+      component.discoveringServices = true;
+      expect(component.showProductReadPanel).toBeFalse();
+      component.discoveringServices = false;
+      component.readingIdentification = true;
+      expect(component.showProductReadPanel).toBeFalse();
+    },
+  );
+
+  it('should manually request all default reads with profile and device',
+    async () => {
+      await configureProductReadPanel('garline');
+      await component.loadProductInformation();
+      expect(productDataLoadService.loadProductData)
+        .toHaveBeenCalledOnceWith('garline', 'device-1');
+      expect(component.productReadStatus).toBe('success');
+      expect(component.isProductReadLoading).toBeFalse();
+    },
+  );
+
+  it('should reject a second click while a product load is active',
+    async () => {
+      await configureProductReadPanel('widoor');
+      let resolveLoad!: (result: ProductDataLoadResult) => void;
+      productDataLoadService.loadProductData.and.returnValue(
+        new Promise((resolve) => {
+          resolveLoad = resolve;
+        }),
+      );
+      const firstLoad = component.loadProductInformation();
+      await component.loadProductInformation();
+      expect(productDataLoadService.loadProductData).toHaveBeenCalledTimes(1);
+      resolveLoad(productLoadResult('success'));
+      await firstLoad;
+      expect(component.isProductReadLoading).toBeFalse();
+    },
+  );
+
+  it('should cancel without disconnecting or sending a motor command',
+    async () => {
+      await configureProductReadPanel('widoor');
+      productDataLoadService.loadProductData.and.returnValue(
+        new Promise(() => undefined),
+      );
+      const disconnectSpy = spyOn(bleService, 'disconnect');
+      void component.loadProductInformation();
+      component.cancelProductInformationLoad();
+      expect(productDataLoadService.cancelCurrentLoad)
+        .toHaveBeenCalledTimes(1);
+      expect(disconnectSpy).not.toHaveBeenCalled();
+      expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should cancel and ignore a late result after disconnection', async () => {
+    await configureProductReadPanel('widoor');
+    let resolveLoad!: (result: ProductDataLoadResult) => void;
+    productDataLoadService.loadProductData.and.returnValue(
+      new Promise((resolve) => {
+        resolveLoad = resolve;
+      }),
+    );
+    const load = component.loadProductInformation();
+    productDataLoadService.isLoading = true;
+    bleService.emitRemoteDisconnection('device-1');
+    resolveLoad(productLoadResult('success'));
+    await load;
+    expect(productDataLoadService.cancelCurrentLoad).toHaveBeenCalled();
+    expect(component.productReadResult).toBeNull();
+    expect(component.productReadStatus).toBe('idle');
+    expect(component.showProductReadPanel).toBeFalse();
+  });
+
+  it('should ignore a late result after a generation change', async () => {
+    await configureProductReadPanel('widoor');
+    let resolveLoad!: (result: ProductDataLoadResult) => void;
+    productDataLoadService.loadProductData.and.returnValue(
+      new Promise((resolve) => {
+        resolveLoad = resolve;
+      }),
+    );
+    const load = component.loadProductInformation();
+    bleService.connectionGeneration += 1;
+    resolveLoad(productLoadResult('success'));
+    await load;
+    expect(component.productReadResult).toBeNull();
+    expect(component.isProductReadLoading).toBeFalse();
+    expect(component.productReadStatus).toBe('idle');
+  });
+
+  it('should ignore a late result after the detected profile changes',
+    async () => {
+      await configureProductReadPanel('widoor');
+      let resolveLoad!: (result: ProductDataLoadResult) => void;
+      productDataLoadService.loadProductData.and.returnValue(
+        new Promise((resolve) => {
+          resolveLoad = resolve;
+        }),
+      );
+      const load = component.loadProductInformation();
+      component.productProfile = 'garline';
+      resolveLoad(productLoadResult('success'));
+      await load;
+      expect(component.productReadResult).toBeNull();
+      expect(component.productReadStatus).toBe('idle');
+    },
+  );
+
+  it('should preserve partial status and count individual results',
+    async () => {
+      await configureProductReadPanel('moventiv-60');
+      productDataLoadService.loadProductData.and.resolveTo({
+        ...productLoadResult('partial-success'),
+        partialSuccess: true,
+        results: {
+          version: typedReadResult('version', 'success'),
+          datesAndCycles: typedReadResult(
+            'dates-and-cycles',
+            'invalid-frame',
+          ),
+          maintenance: typedReadResult('maintenance', 'unavailable'),
+          userParameters: typedReadResult('user-parameters', 'failed'),
+        },
+      });
+      await component.loadProductInformation();
+      expect(component.productReadSummary).toEqual({
+        success: 1,
+        invalid: 1,
+        unavailable: 1,
+        failed: 1,
+      });
+      expect(component.productReadStatus).toBe('partial-success');
+    },
+  );
+
+  it('should disable product reads during a native write', async () => {
+    await configureProductReadPanel('widoor');
+    bleService.isWriting = true;
+    expect(component.productReadAvailability.enabled).toBeFalse();
+    expect(productDataLoadService.loadProductData).not.toHaveBeenCalled();
+  });
+
+  it('should preserve every terminal product load status', async () => {
+    await configureProductReadPanel('widoor');
+    for (const status of [
+      'success',
+      'partial-success',
+      'failed',
+      'disconnected',
+      'stale',
+      'cancelled',
+    ] as const) {
+      productDataLoadService.loadProductData.and.resolveTo(
+        productLoadResult(status),
+      );
+      await component.loadProductInformation();
+      expect(component.productReadStatus).withContext(status).toBe(status);
+      expect(component.isProductReadLoading).withContext(status).toBeFalse();
+    }
+  });
+
+  it('should display historical date sentinels without creating a date', () => {
+    expect(component.formatHistoricalDate({
+      year: 0xff,
+      month: 0xff,
+      day: 0xff,
+      hour: null,
+      status: 'not-initialized',
+      raw: [0xff, 0xff, 0xff],
+    })).toBe(component.productReadText.notInitialized);
+  });
+
+  it('should distinguish Widoor professional data for presentation', () => {
+    expect(component.isWidoorProfessionalParameters({
+      profile: 'widoor',
+      weightRangeLower: 1,
+      weightRangeUpper: 2,
+      breakForceAtOpen: 3,
+      nearOpenSpeed: 4,
+      nearCloseSpeed: 5,
+      nearOpenTorque: 6,
+      nearCloseTorque: 7,
+      nearOpenProportional: 8,
+      nearCloseProportional: 9,
+      nearOpenIntegral: 10,
+      nearCloseIntegral: 11,
+      peripheralByte1: 12,
+      peripheralByte2: 13,
+    })).toBeTrue();
+  });
+
   function configureMotorTest(
     profile:
       | 'widoor'
@@ -1110,7 +1376,69 @@ describe('ScanPage', () => {
     alertOptions[0].buttons[1].handler?.();
     await settlePromises();
   }
+
+  async function configureProductReadPanel(
+    profile: 'widoor' | 'moventiv-60' | 'moventiv-80' | 'garline',
+  ): Promise<void> {
+    bleService.servicesResult = profile === 'widoor'
+      ? createWidoorIdentificationServices()
+      : createIdentificationServices();
+    bleService.readResult = createVersionWord(
+      profile === 'widoor' ? 1 : 0,
+      profile === 'moventiv-80' ? 2 : profile === 'garline' ? 3 : 1,
+    );
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Produit'));
+    component.selectDevice(component.devices[0]);
+    await component.connectSelectedDevice();
+    component.productProfile = profile;
+  }
 });
+
+function productLoadResult(
+  status: ProductDataLoadStatus,
+): ProductDataLoadResult {
+  return {
+    profile: 'widoor',
+    deviceId: 'device-1',
+    connectionGeneration: 1,
+    startedAt: 10,
+    completedAt: 20,
+    status,
+    executedOrder: [
+      'version',
+      'datesAndCycles',
+      'maintenance',
+      'userParameters',
+      'professionalParameters',
+    ],
+    results: {},
+    notRequested: [],
+    unavailable: [],
+    partialSuccess: status === 'partial-success',
+    error: null,
+  };
+}
+
+function typedReadResult(
+  type: BleReadType,
+  status: BleReadStatus,
+): BleTypedReadResult<never> {
+  return {
+    type,
+    profile: 'widoor',
+    deviceId: 'device-1',
+    serviceUuid: BLE_UUIDS.shdoService,
+    characteristicUuid: BLE_UUIDS.versionCharacteristic,
+    startedAt: 10,
+    completedAt: 20,
+    status,
+    decoded: null,
+    error: status === 'failed'
+      ? { code: 'native-read-failed', message: 'native failure' }
+      : null,
+  };
+}
 
 interface TestAlertOptions {
   readonly message: string;
