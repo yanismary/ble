@@ -13,6 +13,43 @@ import {
 } from './product-detection';
 
 export const DEFAULT_MOTOR_CONFIRMATION_TIMEOUT_MS = 5_000;
+// Observed on a physical Widoor when opening starts.
+export const WIDOOR_OPENING_STARTED_STATE = 0x21;
+
+export type PositionConfirmationProfile =
+  | 'moventiv-60'
+  | 'moventiv-80'
+  | 'garline';
+
+export type MotorCommandConfirmationStrategy =
+  | {
+      readonly kind: 'widoor-opening-state';
+      readonly expectedState: typeof WIDOOR_OPENING_STARTED_STATE;
+    }
+  | {
+      readonly kind: 'position-increase';
+    };
+
+export function getMotorCommandConfirmationStrategy(
+  profile: ProductProfile,
+  command: MotorCommand,
+): MotorCommandConfirmationStrategy | null {
+  if (command !== 'OPEN') {
+    return null;
+  }
+  if (profile === 'widoor') {
+    return {
+      kind: 'widoor-opening-state',
+      expectedState: WIDOOR_OPENING_STARTED_STATE,
+    };
+  }
+  if (profile === 'moventiv-60' ||
+      profile === 'moventiv-80' ||
+      profile === 'garline') {
+    return { kind: 'position-increase' };
+  }
+  return null;
+}
 
 export type MotorCommandConfirmationStatus =
   | 'pending'
@@ -31,14 +68,33 @@ export interface MotorCommandConfirmation {
   readonly failureReason: string | null;
 }
 
-export interface MotorCommandConfirmationRequest {
-  readonly profile: ProductProfile;
+interface MotorCommandConfirmationRequestBase {
   readonly command: MotorCommand;
-  readonly baselinePosition: number;
-  readonly baselineMaximumPosition?: number;
   readonly deviceId?: string;
   readonly timeoutMs?: number;
 }
+
+export interface WidoorMotorCommandConfirmationRequest
+  extends MotorCommandConfirmationRequestBase {
+  readonly profile: 'widoor';
+}
+
+export interface PositionMotorCommandConfirmationRequest
+  extends MotorCommandConfirmationRequestBase {
+  readonly profile: PositionConfirmationProfile;
+  readonly baselinePosition: number;
+  readonly baselineMaximumPosition: number;
+}
+
+export interface ForbiddenMotorCommandConfirmationRequest
+  extends MotorCommandConfirmationRequestBase {
+  readonly profile: 'unknown' | 'ambiguous';
+}
+
+export type MotorCommandConfirmationRequest =
+  | WidoorMotorCommandConfirmationRequest
+  | PositionMotorCommandConfirmationRequest
+  | ForbiddenMotorCommandConfirmationRequest;
 
 @Injectable({
   providedIn: 'root',
@@ -153,6 +209,10 @@ export class MotorCommandConfirmationService {
       }
       const frame = this.compatibleOpenNotification(
         request,
+        getMotorCommandConfirmationStrategy(
+          request.profile,
+          request.command,
+        ),
         event,
         deviceId,
         configuration.primaryServiceUuid,
@@ -215,12 +275,21 @@ export class MotorCommandConfirmationService {
   private validateRequest(
     request: MotorCommandConfirmationRequest,
   ): string | null {
-    if (!Number.isFinite(request.baselinePosition) ||
-        request.baselinePosition < 0) {
-      return 'A valid baseline motor position is required.';
+    const strategy = getMotorCommandConfirmationStrategy(
+      request.profile,
+      request.command,
+    );
+    if (strategy === null) {
+      return `No confirmation strategy exists for profile "${request.profile}".`;
     }
-    if (request.baselineMaximumPosition !== undefined) {
-      if (!Number.isFinite(request.baselineMaximumPosition) ||
+    if (strategy.kind === 'position-increase') {
+      if (!('baselinePosition' in request) ||
+          !Number.isFinite(request.baselinePosition) ||
+          request.baselinePosition < 0) {
+        return 'A valid baseline motor position is required.';
+      }
+      if (!('baselineMaximumPosition' in request) ||
+          !Number.isFinite(request.baselineMaximumPosition) ||
           request.baselineMaximumPosition <= 0) {
         return 'A valid maximum motor position is required.';
       }
@@ -237,12 +306,14 @@ export class MotorCommandConfirmationService {
 
   private compatibleOpenNotification(
     request: MotorCommandConfirmationRequest,
+    strategy: MotorCommandConfirmationStrategy | null,
     event: BleNotificationEvent,
     deviceId: string,
     serviceUuid: string,
     characteristicUuid: string,
   ): MotorStateFrame | null {
-    if (request.command !== 'OPEN' ||
+    if (strategy === null ||
+        request.command !== 'OPEN' ||
         event.deviceId !== deviceId ||
         event.serviceUuid.toLowerCase() !== serviceUuid ||
         event.characteristicUuid.toLowerCase() !== characteristicUuid) {
@@ -250,6 +321,10 @@ export class MotorCommandConfirmationService {
     }
 
     const frame = this.productDetection.interpretMotorState(event.value);
+    if (strategy.kind === 'widoor-opening-state') {
+      return frame.state === strategy.expectedState ? frame : null;
+    }
+
     const position = frame.currentPosition;
     const maximum = frame.maximumPosition;
     if (position === null ||
@@ -261,7 +336,8 @@ export class MotorCommandConfirmationService {
     }
 
     // Until physical validation, OPEN is confirmed only by a position increase.
-    return position > request.baselinePosition ? frame : null;
+    return 'baselinePosition' in request &&
+      position > request.baselinePosition ? frame : null;
   }
 
   private result(

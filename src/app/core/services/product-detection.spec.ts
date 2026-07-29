@@ -42,6 +42,21 @@ describe('ProductDetection', () => {
     });
   });
 
+  it('should preserve zero positions in the observed Widoor frame', () => {
+    const result = service.interpretMotorState(
+      dataView([0x01, 0, 0, 0, 0, 0, 0x08]),
+    );
+
+    expect(result.rawHex).toBe('01 00 00 00 00 00 08');
+    expect(result.state).toBe(1);
+    expect(result.currentPosition).toBe(0);
+    expect(result.maximumPosition).toBe(0);
+    expect(result.error).toBe(0);
+    expect(result.switches?.raw).toBe(0x08);
+    expect(result.switches?.ble).toBeTrue();
+    expect(result.switches?.direction).toBeFalse();
+  });
+
   it('should interpret a short motor state frame without unsafe access', () => {
     const result = service.interpretMotorState(dataView([7, 0x01]));
 

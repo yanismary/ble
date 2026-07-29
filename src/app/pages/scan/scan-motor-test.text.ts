@@ -25,8 +25,21 @@ export const SCAN_MOTOR_TEST_TEXT = {
   disconnected: 'Périphérique déconnecté',
   scanning: 'Scan en cours',
   detectionInProgress: 'Détection du profil en cours',
+  waitingMotorStateSubscription:
+    'Abonnement à l’état moteur indisponible',
+  unknownDeviceName: 'Périphérique sans nom',
+  widoorNoPosition:
+    'Ce Widoor ne fournit pas de position moteur exploitable.',
+  widoorExpectedConfirmation:
+    'La confirmation attendue est l’état moteur de début d’ouverture.',
+  confirmationMode: 'Mode de confirmation',
   awaiting: 'Commande envoyée, attente du mouvement…',
   confirmed: 'Début d’ouverture confirmé',
+  widoorConfirmed: 'Début d’ouverture confirmé par l’état moteur',
+  rawState: 'État moteur brut',
+  widoorTimeout:
+    'Commande écrite, mais aucun état de début d’ouverture compatible ' +
+    'n’a été reçu dans le délai.',
   timeout:
     'Commande écrite, mais aucune augmentation de position n’a été ' +
     'confirmée dans le délai.',
@@ -37,4 +50,17 @@ export const SCAN_MOTOR_TEST_TEXT = {
   reset: 'Effacer le résultat',
   newPosition: 'Nouvelle position',
   confirmationDuration: 'Délai de confirmation',
+  diagnosticTitle: 'Diagnostic technique des notifications',
+  diagnosticNotice:
+    'Historique temporaire en mémoire, limité aux 20 dernières notifications.',
+  diagnosticSequence: 'Séquence',
+  diagnosticTime: 'Heure',
+  diagnosticFrame: 'Trame',
+  diagnosticState: 'État brut',
+  diagnosticCurrentPosition: 'Position courante',
+  diagnosticMaximumPosition: 'Position maximale',
+  diagnosticError: 'Erreur',
+  diagnosticSwitches: 'Contacteurs bruts',
+  diagnosticPositionDelta: 'Variation de position',
+  diagnosticUnavailable: 'Absente',
 } as const;

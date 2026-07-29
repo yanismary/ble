@@ -32,6 +32,7 @@ import {
 import { ProductProfile } from '../../core/services/ble-profile-catalog';
 import {
   MotorCommandConfirmation,
+  PositionConfirmationProfile,
 } from '../../core/services/motor-command-confirmation';
 import {
   MotorCommandService,
@@ -62,6 +63,15 @@ interface MotorStateSource {
   readonly serviceUuid: string;
   readonly characteristicUuid: string;
 }
+
+interface MotorNotificationDiagnostic {
+  readonly sequence: number;
+  readonly receivedAt: string;
+  readonly frame: MotorStateFrame;
+  readonly positionDelta: number | null;
+}
+
+const MOTOR_DIAGNOSTIC_HISTORY_LIMIT = 20;
 
 @Component({
   selector: 'app-scan',
@@ -107,6 +117,8 @@ export class ScanPage implements OnDestroy {
   lastMotorStateReceivedAt: string | null = null;
   motorNotificationCount = 0;
   motorNotificationError: string | null = null;
+  motorNotificationHistory: MotorNotificationDiagnostic[] = [];
+  motorStateNotificationsActive = false;
   motorState: MotorStateFrame | null = null;
   motorStateSource: MotorStateSource | null = null;
   motorTestFailureReason: string | null = null;
@@ -160,10 +172,22 @@ export class ScanPage implements OnDestroy {
     if (!this.showMotorTestPanel) {
       return this.unavailable(this.motorTestText.detectionInProgress);
     }
+    if (!this.motorStateNotificationsActive ||
+        !this.hasMotorStateNotificationTarget()) {
+      return this.unavailable(
+        this.motorTestText.waitingMotorStateSubscription,
+      );
+    }
     if (this.motorCommandInProgress ||
         this.motorConfirmationAlertOpen ||
         this.bleService.isWriting) {
       return this.unavailable(this.motorTestText.commandInProgress);
+    }
+    if (this.productProfile === 'widoor') {
+      return {
+        enabled: true,
+        reason: this.motorTestText.ready,
+      };
     }
     if (this.motorState === null || !this.hasCurrentMotorStateSource()) {
       return this.unavailable(this.motorTestText.waitingFirstState);
@@ -195,6 +219,10 @@ export class ScanPage implements OnDestroy {
       result.sentAt > 0
       ? result.confirmedAt - result.sentAt
       : null;
+  }
+
+  get isWidoorProfile(): boolean {
+    return this.productProfile === 'widoor';
   }
 
   async startScan(): Promise<void> {
@@ -309,13 +337,27 @@ export class ScanPage implements OnDestroy {
     const deviceId = this.connectedDeviceId;
     const connectionGeneration = this.connectionGeneration;
     const state = this.motorState;
-    if (deviceId === null ||
-        state === null ||
-        state.currentPosition === null ||
-        state.maximumPosition === null) {
+    if (deviceId === null) {
       return;
     }
 
+    const deviceName = this.selectedDevice?.name ??
+      this.motorTestText.unknownDeviceName;
+    const details = this.productProfile === 'widoor'
+      ? [
+          this.motorTestText.widoorNoPosition,
+          this.motorTestText.widoorExpectedConfirmation,
+        ]
+      : state?.currentPosition !== null &&
+        state?.currentPosition !== undefined &&
+        state.maximumPosition !== null
+        ? [
+            `${this.motorTestText.currentPosition} : ` +
+              `${state.currentPosition}`,
+            `${this.motorTestText.maximumPosition} : ` +
+              `${state.maximumPosition}`,
+          ]
+        : [];
     this.motorConfirmationAlertOpen = true;
     try {
       const alert = await this.alertController.create({
@@ -323,8 +365,9 @@ export class ScanPage implements OnDestroy {
         message: [
           `${this.motorTestText.confirmMessage}`,
           `${this.motorTestText.profile} : ${this.productProfile}`,
-          `${this.motorTestText.currentPosition} : ${state.currentPosition}`,
-          `${this.motorTestText.maximumPosition} : ${state.maximumPosition}`,
+          `${this.motorTestText.deviceName} : ` +
+            `${this.escapeAlertText(deviceName)}`,
+          ...details,
         ].join('<br>'),
         buttons: [
           {
@@ -410,10 +453,7 @@ export class ScanPage implements OnDestroy {
     if (!availability.enabled ||
         deviceId === null ||
         deviceId !== expectedDeviceId ||
-        !this.isKnownProductProfile(this.productProfile) ||
-        state === null ||
-        state.currentPosition === null ||
-        state.maximumPosition === null) {
+        !this.isKnownProductProfile(this.productProfile)) {
       this.motorTestStatus = 'failed';
       this.motorTestFailureReason = deviceId !== expectedDeviceId
         ? this.motorTestText.deviceChanged
@@ -422,8 +462,6 @@ export class ScanPage implements OnDestroy {
     }
 
     const profile = this.productProfile;
-    const baselinePosition = state.currentPosition;
-    const baselineMaximumPosition = state.maximumPosition;
     this.motorCommandInProgress = true;
     this.motorTestStatus = 'awaiting-confirmation';
     this.motorTestFailureReason = null;
@@ -431,14 +469,29 @@ export class ScanPage implements OnDestroy {
 
     try {
       const result =
-        await this.motorCommandService.sendMotorCommandWithConfirmation(
-          profile,
-          'OPEN',
-          baselinePosition,
-          deviceId,
-          undefined,
-          baselineMaximumPosition,
-        );
+        profile === 'widoor'
+          ? await this.motorCommandService.sendMotorCommandWithConfirmation({
+              profile,
+              command: 'OPEN',
+              deviceId,
+            })
+          : this.isPositionConfirmationProfile(profile) &&
+            state !== null &&
+            state.currentPosition !== null &&
+            state.maximumPosition !== null
+            ? await this.motorCommandService.sendMotorCommandWithConfirmation({
+                profile,
+                command: 'OPEN',
+                baselinePosition: state.currentPosition,
+                baselineMaximumPosition: state.maximumPosition,
+                deviceId,
+              })
+            : null;
+      if (result === null) {
+        this.motorTestStatus = 'failed';
+        this.motorTestFailureReason = this.motorTestText.invalidPosition;
+        return;
+      }
       if (expectedConnectionGeneration !== this.connectionGeneration ||
           this.connectedDeviceId !== deviceId) {
         return;
@@ -581,6 +634,7 @@ export class ScanPage implements OnDestroy {
     }
 
     this.subscribingMotorState = true;
+    this.motorStateNotificationsActive = false;
     this.motorNotificationError = null;
 
     try {
@@ -590,21 +644,38 @@ export class ScanPage implements OnDestroy {
         (value: DataView) => {
           this.ngZone.run(() => {
             if (!this.destroyed && this.connectedDeviceId === deviceId) {
-              this.motorState =
-                this.productDetection.interpretMotorState(value);
+              const frame = this.productDetection.interpretMotorState(value);
+              const previousFrame =
+                this.motorNotificationHistory[
+                  this.motorNotificationHistory.length - 1
+                ]?.frame ?? null;
+              const positionDelta = frame.currentPosition !== null &&
+                previousFrame?.currentPosition !== null &&
+                previousFrame?.currentPosition !== undefined
+                ? frame.currentPosition - previousFrame.currentPosition
+                : null;
+              const receivedAt = new Date().toLocaleTimeString();
+              const sequence = this.motorNotificationCount + 1;
+              this.motorState = frame;
               this.motorStateSource = {
                 deviceId,
                 serviceUuid: BLE_UUIDS.shdoService,
                 characteristicUuid: BLE_UUIDS.motorStateCharacteristic,
               };
-              this.motorNotificationCount += 1;
-              this.lastMotorStateReceivedAt =
-                new Date().toLocaleTimeString();
+              this.motorNotificationCount = sequence;
+              this.lastMotorStateReceivedAt = receivedAt;
+              this.motorNotificationHistory = [
+                ...this.motorNotificationHistory,
+                { sequence, receivedAt, frame, positionDelta },
+              ].slice(-MOTOR_DIAGNOSTIC_HISTORY_LIMIT);
             }
           });
         },
         deviceId,
       );
+      if (!this.destroyed && this.connectedDeviceId === deviceId) {
+        this.motorStateNotificationsActive = true;
+      }
     } catch (error: unknown) {
       if (!this.destroyed && this.connectedDeviceId === deviceId) {
         const details = error instanceof Error ? error.message : String(error);
@@ -675,14 +746,24 @@ export class ScanPage implements OnDestroy {
   private clearMotorState(): void {
     this.lastMotorStateReceivedAt = null;
     this.motorNotificationCount = 0;
+    this.motorNotificationHistory = [];
     this.motorNotificationError = null;
     this.motorState = null;
     this.motorStateSource = null;
+    this.motorStateNotificationsActive = false;
     this.subscribingMotorState = false;
   }
 
   private isKnownProductProfile(profile: ProductProfile): boolean {
     return profile !== 'unknown' && profile !== 'ambiguous';
+  }
+
+  private isPositionConfirmationProfile(
+    profile: ProductProfile,
+  ): profile is PositionConfirmationProfile {
+    return profile === 'moventiv-60' ||
+      profile === 'moventiv-80' ||
+      profile === 'garline';
   }
 
   private hasCurrentMotorStateSource(): boolean {
@@ -692,6 +773,28 @@ export class ScanPage implements OnDestroy {
       this.normalizeUuid(source.serviceUuid) === BLE_UUIDS.shdoService &&
       this.normalizeUuid(source.characteristicUuid) ===
         BLE_UUIDS.motorStateCharacteristic;
+  }
+
+  private hasMotorStateNotificationTarget(): boolean {
+    return this.services.some(
+      ({ uuid, characteristics }) =>
+        this.normalizeUuid(uuid) === BLE_UUIDS.shdoService &&
+        characteristics.some(
+          ({ uuid: characteristicUuid, properties }) =>
+            this.normalizeUuid(characteristicUuid) ===
+              BLE_UUIDS.motorStateCharacteristic &&
+            properties.notify,
+        ),
+    );
+  }
+
+  private escapeAlertText(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   private unavailable(reason: string): MotorCommandAvailability {

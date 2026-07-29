@@ -8,8 +8,11 @@ import {
 } from './ble';
 import { BLE_UUIDS } from './ble-profile-catalog';
 import {
+  getMotorCommandConfirmationStrategy,
   MotorCommandConfirmation,
+  MotorCommandConfirmationRequest,
   MotorCommandConfirmationService,
+  WIDOOR_OPENING_STARTED_STATE,
 } from './motor-command-confirmation';
 
 describe('MotorCommandConfirmationService', () => {
@@ -114,6 +117,179 @@ describe('MotorCommandConfirmationService', () => {
 
       expect(result?.status).toBe('timeout');
     }),
+  );
+
+  it('should select the confirmation strategy by profile', () => {
+    expect(getMotorCommandConfirmationStrategy('widoor', 'OPEN')).toEqual({
+      kind: 'widoor-opening-state',
+      expectedState: WIDOOR_OPENING_STARTED_STATE,
+    });
+    for (const profile of [
+      'moventiv-60',
+      'moventiv-80',
+      'garline',
+    ] as const) {
+      expect(getMotorCommandConfirmationStrategy(profile, 'OPEN')).toEqual({
+        kind: 'position-increase',
+      });
+    }
+    expect(getMotorCommandConfirmationStrategy('unknown', 'OPEN')).toBeNull();
+    expect(getMotorCommandConfirmationStrategy('ambiguous', 'OPEN')).toBeNull();
+  });
+
+  [0x20, 0x30, 0x31].forEach((ignoredState) => {
+    it(`should ignore Widoor state 0x${ignoredState.toString(16)}`,
+      fakeAsync(() => {
+      let result: MotorCommandConfirmation | undefined;
+      void service.executeWithMotorCommandConfirmation(
+        request({ profile: 'widoor', timeoutMs: 0 }),
+        async () => notifications.next(notification(
+          11,
+          1_000,
+          0,
+          0,
+          ignoredState,
+        )),
+      ).then((value) => result = value);
+
+      tick();
+      expect(result?.status).toBe('timeout');
+      }),
+    );
+  });
+
+  it('should confirm Widoor from opening state 0x21', async () => {
+    const confirmation = service.executeWithMotorCommandConfirmation(
+      request({ profile: 'widoor' }),
+      async () => notifications.next(notification(
+        11,
+        1_001,
+        0,
+        0,
+        WIDOOR_OPENING_STARTED_STATE,
+      )),
+    );
+    const result = await confirmation;
+    expect(result.status).toBe('confirmed');
+    expect(result.notification?.state).toBe(WIDOOR_OPENING_STARTED_STATE);
+  });
+
+  it('should ignore an old Widoor 0x21 notification', fakeAsync(() => {
+    let result: MotorCommandConfirmation | undefined;
+    void service.executeWithMotorCommandConfirmation(
+      request({ profile: 'widoor', timeoutMs: 10 }),
+      async () => notifications.next(notification(
+        10,
+        1_000,
+        0,
+        0,
+        WIDOOR_OPENING_STARTED_STATE,
+      )),
+    ).then((value) => result = value);
+
+    tick(10);
+    expect(result?.status).toBe('timeout');
+  }));
+
+  it('should buffer Widoor 0x21 during write but reject it on write failure',
+    async () => {
+      const confirmed = await service.executeWithMotorCommandConfirmation(
+        request({ profile: 'widoor' }),
+        async () => notifications.next(notification(
+          11,
+          1_000,
+          0,
+          0,
+          WIDOOR_OPENING_STARTED_STATE,
+        )),
+      );
+      expect(confirmed.status).toBe('confirmed');
+
+      fakeBleService.lastNotificationSequence = 11;
+      const failed = await service.executeWithMotorCommandConfirmation(
+        request({ profile: 'widoor' }),
+        async () => {
+          notifications.next(notification(
+            12,
+            1_001,
+            0,
+            0,
+            WIDOOR_OPENING_STARTED_STATE,
+          ));
+          throw new Error('Native write failed');
+        },
+      );
+      expect(failed.status).toBe('failed');
+      expect(failed.notification).toBeNull();
+    },
+  );
+
+  it('should not let state 0x21 bypass Moventiv position confirmation',
+    fakeAsync(() => {
+      let result: MotorCommandConfirmation | undefined;
+      void execute(async () => {
+        notifications.next(notification(
+          11,
+          1_000,
+          100,
+          500,
+          WIDOOR_OPENING_STARTED_STATE,
+        ));
+      }).then((value) => result = value);
+
+      tick(10);
+      expect(result?.status).toBe('timeout');
+    }),
+  );
+
+  (['moventiv-60', 'moventiv-80', 'garline'] as const).forEach((profile) => {
+    it(`should keep position confirmation for ${profile}`, async () => {
+      const result = await service.executeWithMotorCommandConfirmation(
+        request({
+          profile,
+        }),
+        async () => notifications.next(notification(
+          11,
+          1_000,
+          101,
+          500,
+          0x20,
+        )),
+      );
+
+      expect(result.status).toBe('confirmed');
+      expect(result.notification?.currentPosition).toBe(101);
+    });
+  });
+
+  (['moventiv-60', 'moventiv-80', 'garline'] as const).forEach((profile) => {
+    it(`should reject a zero maximum for ${profile}`, async () => {
+      const write = jasmine.createSpy('write').and.resolveTo();
+      const result = await service.executeWithMotorCommandConfirmation(
+        request({
+          profile,
+          baselineMaximumPosition: 0,
+        }),
+        write,
+      );
+
+      expect(result.status).toBe('failed');
+      expect(write).not.toHaveBeenCalled();
+    });
+  });
+
+  it('should resolve Widoor as disconnected while awaiting state 0x21',
+    async () => {
+      const confirmation = service.executeWithMotorCommandConfirmation(
+        request({ profile: 'widoor' }),
+        async () => undefined,
+      );
+      await Promise.resolve();
+
+      disconnections.next({ deviceId: 'device-1', reason: 'remote' });
+
+      expect((await confirmation).status).toBe('disconnected');
+    },
   );
 
   it('should cancel observation immediately after a write error', async () => {
@@ -254,17 +430,33 @@ describe('MotorCommandConfirmationService', () => {
 });
 
 function request(overrides: Partial<{
-  profile: 'widoor' | 'unknown' | 'ambiguous';
+  profile:
+    | 'widoor'
+    | 'moventiv-60'
+    | 'moventiv-80'
+    | 'garline'
+    | 'unknown'
+    | 'ambiguous';
   baselinePosition: number;
   baselineMaximumPosition: number;
-}> = {}) {
-  return {
-    profile: overrides.profile ?? 'widoor',
+  timeoutMs: number;
+}> = {}): MotorCommandConfirmationRequest {
+  const profile = overrides.profile ?? 'moventiv-60';
+  const base = {
     command: 'OPEN' as const,
-    baselinePosition: overrides.baselinePosition ?? 100,
-    baselineMaximumPosition: overrides.baselineMaximumPosition,
     deviceId: 'device-1',
-    timeoutMs: 10,
+    timeoutMs: overrides.timeoutMs ?? 10,
+  };
+  if (profile === 'widoor' ||
+      profile === 'unknown' ||
+      profile === 'ambiguous') {
+    return { ...base, profile };
+  }
+  return {
+    ...base,
+    profile,
+    baselinePosition: overrides.baselinePosition ?? 100,
+    baselineMaximumPosition: overrides.baselineMaximumPosition ?? 500,
   };
 }
 
@@ -273,6 +465,7 @@ function notification(
   receivedAt: number,
   position: number,
   maximum: number,
+  state = 3,
 ): BleNotificationEvent {
   return {
     deviceId: 'device-1',
@@ -281,7 +474,7 @@ function notification(
     sequence,
     receivedAt,
     value: frame([
-      3,
+      state,
       position >> 8,
       position & 0xff,
       maximum >> 8,

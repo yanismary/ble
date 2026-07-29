@@ -493,7 +493,7 @@ describe('ScanPage', () => {
   });
 
   it('should centralize the OPEN availability conditions', () => {
-    configureMotorTest('widoor');
+    configureMotorTest('garline');
     component.motorState = null;
     expect(component.motorCommandAvailability.reason).toBe(
       component.motorTestText.waitingFirstState,
@@ -519,7 +519,7 @@ describe('ScanPage', () => {
   });
 
   it('should reject an invalid numeric motor position', () => {
-    configureMotorTest('widoor');
+    configureMotorTest('garline');
     component.motorState = motorState(Number.NaN, 500);
 
     expect(component.motorCommandAvailability.enabled).toBeFalse();
@@ -529,7 +529,7 @@ describe('ScanPage', () => {
   });
 
   it('should only accept motor state from the current expected BLE target', () => {
-    configureMotorTest('widoor');
+    configureMotorTest('garline');
     component.motorStateSource = {
       deviceId: 'device-2',
       serviceUuid: BLE_UUIDS.shdoService,
@@ -567,8 +567,12 @@ describe('ScanPage', () => {
 
       expect(alertCreate).toHaveBeenCalledTimes(1);
       expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
-      expect(alertOptions[0].message).toContain('100');
-      expect(alertOptions[0].message).toContain('500');
+      expect(alertOptions[0].message).toContain('Moteur banc');
+      expect(alertOptions[0].message).toContain(
+        component.motorTestText.widoorNoPosition,
+      );
+      expect(alertOptions[0].message).not.toContain('Position actuelle');
+      expect(alertOptions[0].message).not.toContain('Position maximale');
     },
   );
 
@@ -587,39 +591,37 @@ describe('ScanPage', () => {
     alertOptions[0].buttons[1].handler?.();
     await settlePromises();
 
-    expect(sendMotorCommandWithConfirmation).toHaveBeenCalledOnceWith(
-      'garline',
-      'OPEN',
-      100,
-      'device-1',
-      undefined,
-      500,
-    );
+    expect(sendMotorCommandWithConfirmation).toHaveBeenCalledOnceWith({
+      profile: 'garline',
+      command: 'OPEN',
+      baselinePosition: 100,
+      baselineMaximumPosition: 500,
+      deviceId: 'device-1',
+    });
   });
 
   it('should use the latest valid motor state when the alert is confirmed',
     async () => {
-      configureMotorTest('widoor');
+      configureMotorTest('garline');
       await component.requestOpenMotorTest();
       component.motorState = motorState(150, 600);
 
       alertOptions[0].buttons[1].handler?.();
       await settlePromises();
 
-      expect(sendMotorCommandWithConfirmation).toHaveBeenCalledOnceWith(
-        'widoor',
-        'OPEN',
-        150,
-        'device-1',
-        undefined,
-        600,
-      );
+    expect(sendMotorCommandWithConfirmation).toHaveBeenCalledOnceWith({
+      profile: 'garline',
+      command: 'OPEN',
+      baselinePosition: 150,
+      baselineMaximumPosition: 600,
+      deviceId: 'device-1',
+    });
     },
   );
 
   it('should not send if the latest state reaches maximum in the alert',
     async () => {
-      configureMotorTest('widoor');
+      configureMotorTest('garline');
       await component.requestOpenMotorTest();
       component.motorState = motorState(500, 500);
 
@@ -629,6 +631,37 @@ describe('ScanPage', () => {
       expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
     },
   );
+
+  it('should enable Widoor OPEN without an initial notification', () => {
+    configureMotorTest('widoor');
+    component.motorState = null;
+    component.motorStateSource = null;
+
+    expect(component.motorCommandAvailability.enabled).toBeTrue();
+  });
+
+  it('should enable Widoor OPEN with observed zero positions', () => {
+    configureMotorTest('widoor');
+    component.motorState = motorState(0, 0, 0x20);
+
+    expect(component.motorCommandAvailability.enabled).toBeTrue();
+  });
+
+  it('should send Widoor OPEN without a position baseline', async () => {
+    configureMotorTest('widoor');
+    component.motorState = null;
+    component.motorStateSource = null;
+
+    await component.requestOpenMotorTest();
+    alertOptions[0].buttons[1].handler?.();
+    await settlePromises();
+
+    expect(sendMotorCommandWithConfirmation).toHaveBeenCalledOnceWith({
+      profile: 'widoor',
+      command: 'OPEN',
+      deviceId: 'device-1',
+    });
+  });
 
   it('should prevent two alerts and two command validations', async () => {
     configureMotorTest('widoor');
@@ -666,7 +699,7 @@ describe('ScanPage', () => {
     { status: 'confirmed', expected: 'Début d’ouverture confirmé' },
     {
       status: 'timeout',
-      expected: 'aucune augmentation de position',
+      expected: 'aucun état de début d’ouverture compatible',
     },
     {
       status: 'disconnected',
@@ -688,6 +721,24 @@ describe('ScanPage', () => {
       expect(fixture.nativeElement.querySelector('ion-spinner')).toBeNull();
     });
   });
+
+  it('should display the raw Widoor confirmation state instead of a position',
+    async () => {
+      configureMotorTest('widoor');
+      sendMotorCommandWithConfirmation.and.resolveTo(
+        motorCommandResult('confirmed'),
+      );
+
+      await confirmOpen();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('0x21');
+      expect(fixture.nativeElement.textContent).toContain('(33)');
+      expect(fixture.nativeElement.textContent).not.toContain(
+        component.motorTestText.newPosition,
+      );
+    },
+  );
 
   it('should preserve the native failure reason and release local state',
     async () => {
@@ -920,6 +971,60 @@ describe('ScanPage', () => {
     expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
   });
 
+  it('should preserve identical zero-position notifications in diagnostics',
+    async () => {
+      bleService.servicesResult = createWidoorIdentificationServices();
+      bleService.readResult = createVersionWord(1, 0);
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Firma#CHA'));
+      component.selectDevice(component.devices[0]);
+      await component.connectSelectedDevice();
+      const observedFrame = createMotorStateFrame(
+        [0x01, 0, 0, 0, 0, 0, 0x08],
+      );
+
+      bleService.emitNotification(observedFrame);
+      bleService.emitNotification(observedFrame);
+
+      expect(component.motorNotificationHistory.length).toBe(2);
+      expect(component.motorNotificationHistory.map(({ sequence }) => sequence))
+        .toEqual([1, 2]);
+      expect(component.motorNotificationHistory[0].frame.rawHex)
+        .toBe('01 00 00 00 00 00 08');
+      expect(component.motorNotificationHistory[1].positionDelta).toBe(0);
+      expect(component.motorCommandAvailability.enabled).toBeTrue();
+      expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should retain only the latest twenty diagnostics in sequence order',
+    async () => {
+      bleService.servicesResult = createIdentificationServices();
+      bleService.readResult = createVersionWord(0, 1);
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Produit'));
+      component.selectDevice(component.devices[0]);
+      await component.connectSelectedDevice();
+
+      for (let sequence = 1; sequence <= 21; sequence += 1) {
+        bleService.emitNotification(createMotorStateFrame([
+          1,
+          0,
+          sequence,
+          0,
+          100,
+          0,
+          0x08,
+        ]));
+      }
+
+      expect(component.motorNotificationHistory.length).toBe(20);
+      expect(component.motorNotificationHistory[0].sequence).toBe(2);
+      expect(component.motorNotificationHistory[19].sequence).toBe(21);
+      expect(component.motorNotificationHistory[19].positionDelta).toBe(1);
+    },
+  );
+
   it('should clear motor state after a remote disconnection', async () => {
     bleService.servicesResult = createIdentificationServices();
     bleService.readResult = createVersionWord(0, 1);
@@ -934,6 +1039,7 @@ describe('ScanPage', () => {
 
     expect(component.motorState).toBeNull();
     expect(component.motorNotificationCount).toBe(0);
+    expect(component.motorNotificationHistory).toEqual([]);
     expect(component.lastMotorStateReceivedAt).toBeNull();
   });
 
@@ -993,6 +1099,7 @@ describe('ScanPage', () => {
       characteristicUuid: BLE_UUIDS.motorStateCharacteristic,
     };
     component.services = createIdentificationServices();
+    component.motorStateNotificationsActive = true;
     component.discoveringServices = false;
     component.readingIdentification = false;
     component.scanning = false;
@@ -1016,11 +1123,12 @@ interface TestAlertOptions {
 function motorState(
   currentPosition: number | null,
   maximumPosition: number | null,
+  state: number | null = null,
 ) {
   return {
     rawHex: '',
     length: 7,
-    state: null,
+    state,
     currentPosition,
     maximumPosition,
     error: null,
@@ -1037,7 +1145,9 @@ function motorCommandResult(
     profile: 'widoor' as const,
     sentAt: 100,
     confirmedAt: status === 'confirmed' ? 150 : null,
-    notification: status === 'confirmed' ? motorState(120, 500) : null,
+    notification: status === 'confirmed'
+      ? motorState(120, 500, 0x21)
+      : null,
     failureReason: status === 'failed' ? 'Failed' : null,
   };
 }
@@ -1152,8 +1262,10 @@ function createVersionWord(productByte: number, subtypeByte: number): DataView {
   ]).buffer);
 }
 
-function createMotorStateFrame(): DataView {
+function createMotorStateFrame(
+  bytes: readonly number[] = [3, 0x01, 0x02, 0x03, 0x04, 5, 0x1d],
+): DataView {
   return new DataView(
-    Uint8Array.from([3, 0x01, 0x02, 0x03, 0x04, 5, 0x1d]).buffer,
+    Uint8Array.from(bytes).buffer,
   );
 }

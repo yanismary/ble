@@ -176,6 +176,64 @@
               } @else if (!subscribingMotorState && !motorNotificationError) {
                 <p>Aucune notification d’état moteur reçue.</p>
               }
+
+              @if (motorNotificationHistory.length > 0) {
+                <section class="identification-panel" aria-live="polite">
+                  <h2>{{ motorTestText.diagnosticTitle }}</h2>
+                  <p>{{ motorTestText.diagnosticNotice }}</p>
+                  <ol>
+                    @for (entry of motorNotificationHistory;
+                          track entry.sequence) {
+                      <li>
+                        <dl class="identification-details">
+                          <dt>{{ motorTestText.diagnosticSequence }}</dt>
+                          <dd>{{ entry.sequence }}</dd>
+                          <dt>{{ motorTestText.diagnosticTime }}</dt>
+                          <dd>{{ entry.receivedAt }}</dd>
+                          <dt>{{ motorTestText.diagnosticFrame }}</dt>
+                          <dd><code>{{ entry.frame.rawHex }}</code></dd>
+                          <dt>{{ motorTestText.diagnosticState }}</dt>
+                          <dd>
+                            {{ entry.frame.state ??
+                               motorTestText.diagnosticUnavailable }}
+                          </dd>
+                          <dt>
+                            {{ motorTestText.diagnosticCurrentPosition }}
+                          </dt>
+                          <dd>
+                            {{ entry.frame.currentPosition ??
+                               motorTestText.diagnosticUnavailable }}
+                          </dd>
+                          <dt>
+                            {{ motorTestText.diagnosticMaximumPosition }}
+                          </dt>
+                          <dd>
+                            {{ entry.frame.maximumPosition ??
+                               motorTestText.diagnosticUnavailable }}
+                          </dd>
+                          <dt>{{ motorTestText.diagnosticError }}</dt>
+                          <dd>
+                            {{ entry.frame.error ??
+                               motorTestText.diagnosticUnavailable }}
+                          </dd>
+                          <dt>{{ motorTestText.diagnosticSwitches }}</dt>
+                          <dd>
+                            {{ entry.frame.switches?.raw ??
+                               motorTestText.diagnosticUnavailable }}
+                          </dd>
+                          <dt>
+                            {{ motorTestText.diagnosticPositionDelta }}
+                          </dt>
+                          <dd>
+                            {{ entry.positionDelta ??
+                               motorTestText.diagnosticUnavailable }}
+                          </dd>
+                        </dl>
+                      </li>
+                    }
+                  </ol>
+                </section>
+              }
             </section>
           }
 
@@ -196,10 +254,15 @@
                 <dd>{{ device.name }}</dd>
                 <dt>{{ motorTestText.deviceId }}</dt>
                 <dd>{{ connectedDeviceId }}</dd>
-                <dt>{{ motorTestText.currentPosition }}</dt>
-                <dd>{{ motorState?.currentPosition ?? '—' }}</dd>
-                <dt>{{ motorTestText.maximumPosition }}</dt>
-                <dd>{{ motorState?.maximumPosition ?? '—' }}</dd>
+                @if (isWidoorProfile) {
+                  <dt>{{ motorTestText.confirmationMode }}</dt>
+                  <dd>{{ motorTestText.widoorNoPosition }}</dd>
+                } @else {
+                  <dt>{{ motorTestText.currentPosition }}</dt>
+                  <dd>{{ motorState?.currentPosition ?? '—' }}</dd>
+                  <dt>{{ motorTestText.maximumPosition }}</dt>
+                  <dd>{{ motorState?.maximumPosition ?? '—' }}</dd>
+                }
                 <dt>{{ motorTestText.availability }}</dt>
                 <dd>{{ motorCommandAvailability.reason }}</dd>
               </dl>
@@ -220,11 +283,21 @@
                 </div>
               } @else if (motorTestStatus === 'confirmed') {
                 <div class="connected-status" role="status">
-                  <p>{{ motorTestText.confirmed }}</p>
-                  <p>
-                    {{ motorTestText.newPosition }} :
-                    {{ motorTestResult?.notification?.currentPosition }}
-                  </p>
+                  @if (motorTestResult?.profile === 'widoor') {
+                    <p>{{ motorTestText.widoorConfirmed }}</p>
+                    <p>
+                      {{ motorTestText.rawState }} :
+                      0x{{ motorTestResult?.notification?.state
+                            ?.toString(16) }}
+                      ({{ motorTestResult?.notification?.state }})
+                    </p>
+                  } @else {
+                    <p>{{ motorTestText.confirmed }}</p>
+                    <p>
+                      {{ motorTestText.newPosition }} :
+                      {{ motorTestResult?.notification?.currentPosition }}
+                    </p>
+                  }
                   @if (motorConfirmationDurationMs !== null) {
                     <p>
                       {{ motorTestText.confirmationDuration }} :
@@ -234,7 +307,9 @@
                 </div>
               } @else if (motorTestStatus === 'timeout') {
                 <p role="status">
-                  {{ motorTestText.timeout }}
+                  {{ motorTestResult?.profile === 'widoor'
+                    ? motorTestText.widoorTimeout
+                    : motorTestText.timeout }}
                 </p>
               } @else if (motorTestStatus === 'disconnected') {
                 <p class="error-message" role="alert">

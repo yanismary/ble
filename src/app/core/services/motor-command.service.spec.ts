@@ -21,10 +21,11 @@ describe('MotorCommandService', () => {
       .and.resolveTo();
     executeWithConfirmation = jasmine.createSpy('executeWithConfirmation')
       .and.callFake(async (
-        request: { baselinePosition: number },
+        request: { baselinePosition?: number },
         write: () => Promise<void>,
       ) => {
-        if (!Number.isFinite(request.baselinePosition)) {
+        if (request.baselinePosition !== undefined &&
+            !Number.isFinite(request.baselinePosition)) {
           return confirmationResult('failed', 'Invalid baseline');
         }
         try {
@@ -100,13 +101,12 @@ describe('MotorCommandService', () => {
   });
 
   it('should install confirmation observation around the write', async () => {
-    const result = await service.sendMotorCommandWithConfirmation(
-      'widoor',
-      'OPEN',
-      120,
-      'device-1',
-      250,
-    );
+    const result = await service.sendMotorCommandWithConfirmation({
+      profile: 'widoor',
+      command: 'OPEN',
+      deviceId: 'device-1',
+      timeoutMs: 250,
+    });
 
     expect(writeCharacteristic).toHaveBeenCalledTimes(1);
     expect(executeWithConfirmation).toHaveBeenCalledTimes(1);
@@ -117,7 +117,6 @@ describe('MotorCommandService', () => {
       .toEqual(jasmine.objectContaining({
         profile: 'widoor',
         command: 'OPEN',
-        baselinePosition: 120,
         deviceId: 'device-1',
         timeoutMs: 250,
       }));
@@ -129,11 +128,10 @@ describe('MotorCommandService', () => {
   it('should report a write error as failed without waiting', async () => {
     writeCharacteristic.and.rejectWith(new Error('Native write failed'));
 
-    const result = await service.sendMotorCommandWithConfirmation(
-      'widoor',
-      'OPEN',
-      120,
-    );
+    const result = await service.sendMotorCommandWithConfirmation({
+      profile: 'widoor',
+      command: 'OPEN',
+    });
 
     expect(result.status).toBe('failed');
     expect(result.failureReason).toBe('Native write failed');
@@ -141,11 +139,12 @@ describe('MotorCommandService', () => {
   });
 
   it('should reject an invalid baseline before writing', async () => {
-    const result = await service.sendMotorCommandWithConfirmation(
-      'widoor',
-      'OPEN',
-      Number.NaN,
-    );
+    const result = await service.sendMotorCommandWithConfirmation({
+      profile: 'moventiv-60',
+      command: 'OPEN',
+      baselinePosition: Number.NaN,
+      baselineMaximumPosition: 500,
+    });
 
     expect(result.status).toBe('failed');
     expect(result.failureReason).toContain('baseline');
@@ -157,17 +156,15 @@ describe('MotorCommandService', () => {
     writeCharacteristic.and.returnValue(new Promise<void>(
       (resolve) => resolveWrite = resolve,
     ));
-    const first = service.sendMotorCommandWithConfirmation(
-      'widoor',
-      'OPEN',
-      100,
-    );
+    const first = service.sendMotorCommandWithConfirmation({
+      profile: 'widoor',
+      command: 'OPEN',
+    });
 
-    const second = await service.sendMotorCommandWithConfirmation(
-      'widoor',
-      'OPEN',
-      100,
-    );
+    const second = await service.sendMotorCommandWithConfirmation({
+      profile: 'widoor',
+      command: 'OPEN',
+    });
 
     expect(second.status).toBe('failed');
     expect(second.failureReason).toContain('already in progress');
@@ -190,18 +187,16 @@ describe('MotorCommandService', () => {
           (resolve) => resolveConfirmation = resolve,
         );
       });
-      const first = service.sendMotorCommandWithConfirmation(
-        'widoor',
-        'OPEN',
-        100,
-      );
+      const first = service.sendMotorCommandWithConfirmation({
+        profile: 'widoor',
+        command: 'OPEN',
+      });
       await Promise.resolve();
 
-      const second = await service.sendMotorCommandWithConfirmation(
-        'widoor',
-        'OPEN',
-        100,
-      );
+      const second = await service.sendMotorCommandWithConfirmation({
+        profile: 'widoor',
+        command: 'OPEN',
+      });
 
       expect(second.status).toBe('failed');
       expect(writeCharacteristic).toHaveBeenCalledTimes(1);
@@ -219,11 +214,10 @@ describe('MotorCommandService', () => {
     ] as const) {
       executeWithConfirmation.and.resolveTo(confirmationResult(status));
 
-      expect((await service.sendMotorCommandWithConfirmation(
-        'widoor',
-        'OPEN',
-        100,
-      )).status).toBe(status);
+      expect((await service.sendMotorCommandWithConfirmation({
+        profile: 'widoor',
+        command: 'OPEN',
+      })).status).toBe(status);
     }
     expect(executeWithConfirmation).toHaveBeenCalledTimes(4);
   });

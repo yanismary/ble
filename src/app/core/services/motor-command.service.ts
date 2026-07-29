@@ -9,6 +9,7 @@ import {
 import { encodeMotorCommand } from './motor-command';
 import {
   MotorCommandConfirmation,
+  MotorCommandConfirmationRequest,
   MotorCommandConfirmationService,
 } from './motor-command-confirmation';
 
@@ -43,18 +44,13 @@ export class MotorCommandService {
   }
 
   async sendMotorCommandWithConfirmation(
-    profile: ProductProfile,
-    command: MotorCommand,
-    baselinePosition: number,
-    deviceId?: string,
-    timeoutMs?: number,
-    baselineMaximumPosition?: number,
+    request: MotorCommandConfirmationRequest,
   ): Promise<MotorCommandConfirmation> {
     if (this.confirmedCommandInProgress) {
       return {
         status: 'failed',
-        command,
-        profile,
+        command: request.command,
+        profile: request.profile,
         sentAt: 0,
         confirmedAt: null,
         notification: null,
@@ -66,14 +62,14 @@ export class MotorCommandService {
     this.confirmedCommandInProgress = true;
     try {
       return await this.confirmationService
-        .executeWithMotorCommandConfirmation({
-          profile,
-          command,
-          baselinePosition,
-          baselineMaximumPosition,
-          deviceId,
-          timeoutMs,
-        }, () => this.sendMotorCommand(profile, command, deviceId));
+        .executeWithMotorCommandConfirmation(
+          request,
+          () => this.sendMotorCommand(
+            request.profile,
+            request.command,
+            request.deviceId,
+          ),
+        );
     } finally {
       this.confirmedCommandInProgress = false;
     }
