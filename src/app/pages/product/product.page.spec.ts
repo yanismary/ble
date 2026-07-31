@@ -19,6 +19,7 @@ import {
 } from '../../core/services/ble-read-decoders';
 import {
   BleReadStatus,
+  BleReadError,
   BleReadType,
   BleTypedReadResult,
 } from '../../core/services/ble-read.service';
@@ -31,9 +32,13 @@ import {
 import { ProductDetection } from '../../core/services/product-detection';
 import {
   ProductPage,
+  formatProductTimestamp,
   isProductPageNavigationState,
 } from './product.page';
-import { ProductPageNavigationState } from './product-view.model';
+import {
+  ProductPageNavigationState,
+  ProductReadViewState,
+} from './product-view.model';
 
 class FakeBleService {
   private readonly disconnectionSubject =
@@ -180,9 +185,12 @@ describe('ProductPage', () => {
 
       expect(component.viewModel.partialSuccess).toBeTrue();
       expect(text).toContain(component.text.states.partialSuccess);
+      expect(text.match(/Succès partiel/g)?.length).toBe(1);
+      expect(text).not.toContain('Succès partiel — Succès partiel');
       expect(text).toContain(component.text.states.invalid);
       expect(text).toContain(component.text.states.unavailable);
-      expect(text).toContain('Native maintenance failure');
+      expect(text).toContain(component.text.errors.unknown);
+      expect(text).not.toContain('Native maintenance failure');
       expect(text).toContain('3.5.3.348');
     },
   );
@@ -197,11 +205,115 @@ describe('ProductPage', () => {
 
       expect(component.viewModel.reads.userParameters.value).toBeNull();
       expect(component.viewModel.reads.professionalParameters.value).toBeNull();
-      expect(text.match(/Non disponible/g)?.length ?? 0).toBeGreaterThan(1);
+      expect(text.match(/Non disponible sur ce firmware/g)?.length ?? 0)
+        .toBeGreaterThan(1);
+      expect(text).not.toContain('The required GATT characteristic');
       expect(text).toContain('27/08/2019');
       expect(text).toContain('Initialisations');
     },
   );
+
+  it('should keep native errors and UUIDs out of the main presentation',
+    async () => {
+      loadService.nextResult = oldWidoorLoadResult();
+
+      await component.refreshProductData();
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+      const details = element.querySelector<HTMLDetailsElement>(
+        'details.technical-details',
+      );
+
+      expect(details).not.toBeNull();
+      expect(details?.open).toBeFalse();
+      expect(details?.textContent).toContain(
+        BLE_UUIDS.userParametersCharacteristic,
+      );
+      const mainPresentation = element.cloneNode(true) as HTMLElement;
+      mainPresentation.querySelector('details.technical-details')?.remove();
+      expect(mainPresentation.textContent).not.toContain(
+        BLE_UUIDS.userParametersCharacteristic,
+      );
+      expect(element.textContent).not.toContain(
+        'The required GATT characteristic',
+      );
+    },
+  );
+
+  it('should hide raw frames in closed technical details by default',
+    async () => {
+      await component.refreshProductData();
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+      const details = element.querySelector<HTMLDetailsElement>(
+        'details.technical-details',
+      );
+
+      expect(details).not.toBeNull();
+      expect(details?.hasAttribute('open')).toBeFalse();
+      expect(details?.textContent).toContain(component.text.rawFrame);
+      const mainPresentation = element.cloneNode(true) as HTMLElement;
+      mainPresentation.querySelector('details.technical-details')?.remove();
+      expect(mainPresentation.textContent).not.toContain(
+        component.text.rawFrame,
+      );
+    },
+  );
+
+  it('should display a deterministic French refresh timestamp and room label',
+    async () => {
+      const timestamp = new Date(2026, 6, 31, 11, 47, 3).getTime();
+      loadService.nextResult = {
+        ...completeLoadResult('success'),
+        completedAt: timestamp,
+      };
+
+      await component.refreshProductData();
+      fixture.detectChanges();
+      const text = fixture.nativeElement.textContent as string;
+
+      expect(formatProductTimestamp(timestamp)).toBe('31/07/2026 11:47:03');
+      expect(text).toContain('31/07/2026 11:47:03');
+      expect(text).not.toMatch(/\b(?:AM|PM)\b/);
+      expect(text).toContain(component.text.room);
+      expect(text).not.toContain('suffixe Phase 1');
+    },
+  );
+
+  it('should format timestamps without locale-dependent output', () => {
+    expect(formatProductTimestamp(
+      new Date(2026, 0, 1, 0, 0, 0).getTime(),
+    )).toBe('01/01/2026 00:00:00');
+    expect(formatProductTimestamp(
+      new Date(2026, 11, 9, 8, 5, 4).getTime(),
+    )).toBe('09/12/2026 08:05:04');
+    expect(formatProductTimestamp(null)).toBeNull();
+    expect(formatProductTimestamp(Number.NaN)).toBeNull();
+    expect(formatProductTimestamp(Number.MAX_VALUE)).toBeNull();
+  });
+
+  it('should map known read errors without exposing native messages', () => {
+    const cases: readonly [
+      BleReadError['code'],
+      Exclude<BleReadStatus, 'success'>,
+      string,
+    ][] = [
+      ['service-absent', 'unavailable', component.text.errors.serviceAbsent],
+      ['characteristic-absent', 'unavailable',
+        component.text.errors.characteristicAbsent],
+      ['not-readable', 'unavailable', component.text.errors.notReadable],
+      ['disconnected', 'disconnected', component.text.states.disconnected],
+      ['stale', 'stale', component.text.states.stale],
+      ['invalid-frame', 'invalid-frame', component.text.states.invalid],
+      ['native-read-failed', 'failed', component.text.errors.unknown],
+    ];
+
+    for (const [code, status, expected] of cases) {
+      const state = failedViewState(code, status);
+      expect(component.readStatusLabel(state)).withContext(code).toBe(expected);
+      expect(component.readStatusLabel(state)).not.toContain('Native message');
+    }
+  });
 
   it('should cancel and clear data on disconnection while ignoring late data',
     async () => {
@@ -290,7 +402,14 @@ describe('ProductPage', () => {
     },
   );
 
-  it('should expose every global terminal label without inventing data', () => {
+  it('should expose each global state once without inventing data', () => {
+    expect(component.viewModel.loadStatus).toBeNull();
+    expect(fixture.nativeElement.querySelector('.product-summary')).toBeNull();
+
+    component.viewModel = { ...component.viewModel, loading: true };
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(component.text.loading);
+
     for (const status of [
       'success',
       'partial-success',
@@ -301,14 +420,18 @@ describe('ProductPage', () => {
     ] as const) {
       component.viewModel = {
         ...component.viewModel,
+        loading: false,
         loadStatus: status,
       };
       const label = component.globalStatusLabel;
       fixture.detectChanges();
       expect(label).withContext(status).toBeTruthy();
-      expect(fixture.nativeElement.textContent)
+      const summary = fixture.nativeElement.querySelector(
+        '.product-summary',
+      ) as HTMLElement | null;
+      expect(summary?.textContent?.trim())
         .withContext(status)
-        .toContain(label);
+        .toBe(label);
     }
   });
 
@@ -533,7 +656,8 @@ function unavailableRead<T>(
 ): BleTypedReadResult<T> {
   return readResult(type, characteristicUuid, 'unavailable', null, {
     code: 'characteristic-absent',
-    message: 'Characteristic unavailable',
+    message: `The required GATT characteristic ${characteristicUuid} ` +
+      'is absent.',
   });
 }
 
@@ -566,6 +690,26 @@ function readResult<T>(
     status,
     decoded,
     error,
+  };
+}
+
+function failedViewState(
+  code: BleReadError['code'],
+  status: Exclude<BleReadStatus, 'success'>,
+): ProductReadViewState<never> {
+  return {
+    status: status === 'invalid-frame'
+      ? 'invalid'
+      : status,
+    readStatus: status,
+    value: null,
+    result: readResult<never>(
+      'version',
+      BLE_UUIDS.versionCharacteristic,
+      status,
+      null,
+      { code, message: 'Native message' },
+    ),
   };
 }
 

@@ -25,15 +25,9 @@
         <dd>{{ formatTimestamp(viewModel.lastUpdatedAt) }}</dd>
       </dl>
 
-      @if (viewModel.globalError) {
-        <p class="product-error" role="alert">{{ viewModel.globalError }}</p>
-      }
       @if (viewModel.loadStatus) {
         <p class="product-summary" aria-live="polite">
           {{ globalStatusLabel }}
-          @if (viewModel.partialSuccess) {
-            — {{ text.states.partialSuccess }}
-          }
         </p>
       }
 
@@ -168,24 +162,92 @@
           </dl>
         }
       </article>
+
+      @if (hasTechnicalDetails) {
+        <details class="technical-details">
+          <summary>{{ text.technicalDetails }}</summary>
+          <ng-container
+            [ngTemplateOutlet]="technicalRead"
+            [ngTemplateOutletContext]="{
+              $implicit: viewModel.reads.version,
+              title: text.sections.version,
+              rows: versionTechnicalRows
+            }"
+          ></ng-container>
+          <ng-container
+            [ngTemplateOutlet]="technicalRead"
+            [ngTemplateOutletContext]="{
+              $implicit: viewModel.reads.datesAndCycles,
+              title: text.sections.dates,
+              rows: datesTechnicalRows
+            }"
+          ></ng-container>
+          <ng-container
+            [ngTemplateOutlet]="technicalRead"
+            [ngTemplateOutletContext]="{
+              $implicit: viewModel.reads.maintenance,
+              title: text.sections.maintenance,
+              rows: emptyTechnicalRows
+            }"
+          ></ng-container>
+          <ng-container
+            [ngTemplateOutlet]="technicalRead"
+            [ngTemplateOutletContext]="{
+              $implicit: viewModel.reads.userParameters,
+              title: text.sections.userSettings,
+              rows: userTechnicalRows
+            }"
+          ></ng-container>
+          <ng-container
+            [ngTemplateOutlet]="technicalRead"
+            [ngTemplateOutletContext]="{
+              $implicit: viewModel.reads.professionalParameters,
+              title: text.sections.professionalSettings,
+              rows: professionalTechnicalRows
+            }"
+          ></ng-container>
+        </details>
+      }
       </section>
     }
   </main>
 
   <ng-template #readStatus let-read>
-    <p class="read-state" [attr.data-status]="read.status">
+    <p
+      class="read-state"
+      [attr.data-status]="read.status"
+      [attr.data-tone]="readStatusTone(read)"
+    >
       {{ readStatusLabel(read) }}
     </p>
-    @if (read.result?.decoded; as decoded) {
-      <dl class="product-readonly-grid read-diagnostic">
-        <dt>{{ text.rawFrame }}</dt>
-        <dd><code>{{ decoded.rawHex }}</code></dd>
-      </dl>
+    @if (readStatusDetail(read); as detail) {
+      <p class="read-state-detail">{{ detail }}</p>
     }
-    @if (read.result?.error; as error) {
-      <p class="product-error" role="alert">
-        {{ text.readError }} : {{ error.message }}
-      </p>
+  </ng-template>
+
+  <ng-template #technicalRead let-read let-title="title" let-rows="rows">
+    @if (read.result; as result) {
+      <section class="technical-read">
+        <h4>{{ title }}</h4>
+        <dl class="product-readonly-grid">
+          @if (result.decoded; as decoded) {
+            <dt>{{ text.rawFrame }}</dt>
+            <dd><code>{{ decoded.rawHex }}</code></dd>
+          }
+          @if (result.error; as error) {
+            <dt>{{ text.serviceUuid }}</dt>
+            <dd><code>{{ result.serviceUuid }}</code></dd>
+            <dt>{{ text.characteristicUuid }}</dt>
+            <dd><code>{{ result.characteristicUuid }}</code></dd>
+            <dt>{{ text.errorCode }}</dt>
+            <dd><code>{{ error.code }}</code></dd>
+          }
+          @for (row of rows; track row.key) {
+            <dt>{{ row.label }}</dt>
+            <dd>{{ row.value }}</dd>
+          }
+        </dl>
+      </section>
     }
   </ng-template>
 </ion-content>

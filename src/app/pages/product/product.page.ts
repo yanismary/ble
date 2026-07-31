@@ -101,6 +101,7 @@ export class ProductPage implements OnDestroy {
 
   readonly config: ProductPageConfig;
   readonly text = PRODUCT_PAGE_TEXT;
+  readonly emptyTechnicalRows: readonly ProductDisplayRow[] = [];
   viewModel: ProductViewModel;
 
   constructor() {
@@ -159,6 +160,37 @@ export class ProductPage implements OnDestroy {
     return value === null ? [] : this.createProfessionalRows(value);
   }
 
+  get userTechnicalRows(): readonly ProductDisplayRow[] {
+    const value = this.viewModel.reads.userParameters.value;
+    if (value === null) {
+      return [];
+    }
+    return [
+      this.row('lock-mode-raw', this.text.user.lockModeRaw,
+        String(value.lockModeRaw)),
+      this.row('user-peripheral-byte-1', this.text.user.peripheralByte1,
+        this.formatByte(value.peripheralByte1)),
+      this.row('user-peripheral-byte-2', this.text.user.peripheralByte2,
+        this.formatByte(value.peripheralByte2)),
+    ];
+  }
+
+  get professionalTechnicalRows(): readonly ProductDisplayRow[] {
+    const value = this.viewModel.reads.professionalParameters.value;
+    if (value === null || !this.professionalFieldVisible('peripherals')) {
+      return [];
+    }
+    const peripheralLabel = value.profile === 'widoor' &&
+      !this.widoorLockSupported()
+      ? this.text.professional.peripheralsWithoutLock
+      : this.text.professional.peripherals;
+    return [this.row(
+      'professional-peripherals',
+      peripheralLabel,
+      this.formatBytes([value.peripheralByte1, value.peripheralByte2]),
+    )];
+  }
+
   get versionRows(): readonly ProductDisplayRow[] {
     const value = this.viewModel.reads.version.value;
     if (value === null) {
@@ -171,13 +203,19 @@ export class ProductPage implements OnDestroy {
         this.formatSoftwareVersion(value.bleSoftware)),
       this.row('stack-version', this.text.version.stack,
         this.formatStackVersion(value.stack)),
+      this.row('motor-address', this.text.version.motorAddress,
+        value.motorAddressHex ?? this.text.noValue),
+    ];
+  }
+
+  get versionTechnicalRows(): readonly ProductDisplayRow[] {
+    const value = this.viewModel.reads.version.value;
+    return value === null ? [] : [
       this.row('product-type', this.text.version.productType,
         String(value.productType)),
       this.row('product-subtype', this.text.version.productSubtype,
         String(value.productSubtype)),
       this.row('crc', this.text.version.crc, String(value.crc)),
-      this.row('motor-address', this.text.version.motorAddress,
-        value.motorAddressHex ?? this.text.noValue),
     ];
   }
 
@@ -187,12 +225,6 @@ export class ProductPage implements OnDestroy {
       return [];
     }
     return [
-      this.row(
-        'historical-fad',
-        this.text.historicalFad,
-        `${this.formatBytes(value.historicalFadDate.raw)} — ` +
-          this.text.historicalFadNotice,
-      ),
       this.row(
         'first-commissioning',
         this.text.dates.firstCommissioning,
@@ -214,6 +246,22 @@ export class ProductPage implements OnDestroy {
         String(value.cyclesSinceMaintenance),
       ),
     ];
+  }
+
+  get datesTechnicalRows(): readonly ProductDisplayRow[] {
+    const value = this.viewModel.reads.datesAndCycles.value;
+    return value === null ? [] : [this.row(
+      'historical-fad',
+      this.text.historicalFad,
+      `${this.formatBytes(value.historicalFadDate.raw)} — ` +
+        this.text.historicalFadNotice,
+    )];
+  }
+
+  get hasTechnicalDetails(): boolean {
+    return Object.values(this.viewModel.reads).some(
+      ({ result }) => result !== null,
+    );
   }
 
   get maintenanceRows(): readonly ProductDisplayRow[] {
@@ -372,6 +420,25 @@ export class ProductPage implements OnDestroy {
   }
 
   readStatusLabel(state: ProductReadViewState<unknown>): string {
+    const errorCode = state.result?.error?.code;
+    switch (errorCode) {
+      case 'service-absent':
+      case 'services-not-discovered':
+        return this.text.errors.serviceAbsent;
+      case 'characteristic-absent':
+        return this.text.errors.characteristicAbsent;
+      case 'not-readable':
+        return this.text.errors.notReadable;
+      case 'disconnected':
+      case 'not-connected':
+        return this.text.states.disconnected;
+      case 'stale':
+        return this.text.states.stale;
+      case 'invalid-frame':
+        return this.text.states.invalid;
+      case 'native-read-failed':
+        return this.text.errors.unknown;
+    }
     switch (state.status) {
       case 'available':
         return this.text.states.available;
@@ -390,6 +457,32 @@ export class ProductPage implements OnDestroy {
     }
   }
 
+  readStatusDetail(state: ProductReadViewState<unknown>): string | null {
+    switch (state.result?.error?.code) {
+      case 'service-absent':
+      case 'services-not-discovered':
+        return this.text.errorDetails.serviceAbsent;
+      case 'characteristic-absent':
+        return this.text.errorDetails.characteristicAbsent;
+      case 'not-readable':
+        return this.text.errorDetails.notReadable;
+      default:
+        return null;
+    }
+  }
+
+  readStatusTone(
+    state: ProductReadViewState<unknown>,
+  ): 'success' | 'neutral' | 'warning' | 'error' {
+    if (state.status === 'available') {
+      return 'success';
+    }
+    if (state.status === 'invalid') {
+      return 'warning';
+    }
+    return state.status === 'failed' ? 'error' : 'neutral';
+  }
+
   connectionStateLabel(state: ProductConnectionState): string {
     switch (state) {
       case 'connected':
@@ -404,9 +497,7 @@ export class ProductPage implements OnDestroy {
   }
 
   formatTimestamp(value: number | null): string {
-    return value === null
-      ? this.text.states.notLoaded
-      : new Date(value).toLocaleString();
+    return formatProductTimestamp(value) ?? this.text.states.notLoaded;
   }
 
   backToScan(): void {
@@ -589,11 +680,11 @@ export class ProductPage implements OnDestroy {
     const rows: ProductDisplayRow[] = [];
     if (this.userFieldVisible('lock-mode') &&
         this.config.visibleLockModes.includes(value.lockMode)) {
-      rows.push(
-        this.row('lock-mode', this.text.user.lockMode, value.lockMode),
-        this.row('lock-mode-raw', this.text.user.lockModeRaw,
-          String(value.lockModeRaw)),
-      );
+      rows.push(this.row(
+        'lock-mode',
+        this.text.user.lockMode,
+        value.lockMode,
+      ));
     }
     this.addUserScalar(rows, 'open-speed', this.text.user.openSpeed,
       value.openSpeed, ' %');
@@ -609,18 +700,6 @@ export class ProductPage implements OnDestroy {
       value.peripheralFlags.dynamicLight);
     this.addUserBoolean(rows, 'rgb', this.text.user.rgb,
       value.peripheralFlags.rgbIndicator);
-    rows.push(
-      this.row(
-        'user-peripheral-byte-1',
-        this.text.user.peripheralByte1,
-        this.formatByte(value.peripheralByte1),
-      ),
-      this.row(
-        'user-peripheral-byte-2',
-        this.text.user.peripheralByte2,
-        this.formatByte(value.peripheralByte2),
-      ),
-    );
     return rows;
   }
 
@@ -668,17 +747,6 @@ export class ProductPage implements OnDestroy {
     this.addProfessionalScalar(rows, 'near-close-integral',
       this.text.professional.nearCloseIntegral,
       String(value.nearCloseIntegral));
-    if (this.professionalFieldVisible('peripherals')) {
-      const peripheralLabel = value.profile === 'widoor' &&
-        !this.widoorLockSupported()
-        ? this.text.professional.peripheralsWithoutLock
-        : this.text.professional.peripherals;
-      rows.push(this.row(
-        'professional-peripherals',
-        peripheralLabel,
-        this.formatBytes([value.peripheralByte1, value.peripheralByte2]),
-      ));
-    }
     return rows;
   }
 
@@ -950,4 +1018,22 @@ function compareVersion(
 
 function normalizeUuid(value: string): string {
   return value.trim().toLowerCase();
+}
+
+export function formatProductTimestamp(value: number | null): string | null {
+  if (value === null || !Number.isFinite(value)) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  const twoDigits = (part: number): string =>
+    part.toString().padStart(2, '0');
+  return `${twoDigits(date.getDate())}/` +
+    `${twoDigits(date.getMonth() + 1)}/` +
+    `${date.getFullYear().toString().padStart(4, '0')} ` +
+    `${twoDigits(date.getHours())}:` +
+    `${twoDigits(date.getMinutes())}:` +
+    twoDigits(date.getSeconds());
 }

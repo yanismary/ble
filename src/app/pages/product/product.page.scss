@@ -55,13 +55,21 @@
   font-weight: 600;
 }
 
-.read-state[data-status='available'] {
+.read-state[data-tone='success'] {
   color: var(--ion-color-success);
 }
 
-.product-error {
+.read-state[data-tone='warning'] {
+  color: var(--ion-color-warning-shade);
+}
+
+.read-state[data-tone='error'] {
   color: var(--ion-color-danger);
-  overflow-wrap: anywhere;
+}
+
+.read-state-detail {
+  color: var(--ion-color-medium-shade);
+  margin-top: -0.35rem;
 }
 
 .product-summary {
@@ -71,6 +79,30 @@
 code,
 .long-value {
   overflow-wrap: anywhere;
+}
+
+.technical-details {
+  border-top: 1px solid var(--ion-color-light-shade);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.technical-details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.technical-details summary:focus-visible {
+  outline: 2px solid var(--ion-color-primary);
+  outline-offset: 0.25rem;
+}
+
+.technical-read {
+  margin-top: 1rem;
+}
+
+.technical-read h4 {
+  margin-bottom: 0.5rem;
 }
 
 @media (max-width: 480px) {
