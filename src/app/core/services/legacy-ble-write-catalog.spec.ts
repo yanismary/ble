@@ -13,6 +13,8 @@ import {
   encodeLegacyUserPeripheral,
   encodeLegacyUserScalar,
   encodeLegacyWeightRange,
+  inspectCataloguedLegacyBleWrite,
+  isCataloguedLegacyBleWrite,
   LEGACY_VALUE_SEMANTICS,
   LEGACY_WRITE_CONSTRAINTS,
 } from './legacy-ble-write-catalog';
@@ -35,10 +37,53 @@ describe('legacy BLE write catalog', () => {
     const first = encodeLegacyMotorCommand('widoor', 'OPEN');
     const second = encodeLegacyMotorCommand('widoor', 'OPEN');
     first.payload[0] = 0xff;
+    expect(bytes(first)).toEqual([0x00, 0x20, 0x00, 0x00]);
     expect(bytes(second)).toEqual([0x00, 0x20, 0x00, 0x00]);
     expect(second.hardwareValidationStatus)
       .toBe('validated-widoor-old-firmware');
     expect(second.serviceUuid).toBe(BLE_UUIDS.shdoService);
+  });
+
+  it('authenticates only intact catalog instances, not copies or rebuilds', () => {
+    const intact = encodeLegacyMotorCommand('widoor', 'OPEN');
+    const copied = { ...intact };
+    const rebuilt = JSON.parse(JSON.stringify(intact)) as unknown;
+    const fabricated = {
+      ...copied,
+      payload: Uint8Array.from([0x00, 0x20, 0x00, 0x00]),
+    };
+
+    expect(isCataloguedLegacyBleWrite(intact)).toBeTrue();
+    expect(inspectCataloguedLegacyBleWrite(intact)).toBe('authentic');
+    expect(isCataloguedLegacyBleWrite(copied)).toBeFalse();
+    expect(inspectCataloguedLegacyBleWrite(copied)).toBe('unauthenticated');
+    expect(isCataloguedLegacyBleWrite(rebuilt)).toBeFalse();
+    expect(isCataloguedLegacyBleWrite(fabricated)).toBeFalse();
+  });
+
+  it('freezes catalog metadata and returns a defensive payload copy', () => {
+    const write = encodeLegacyMotorCommand('widoor', 'OPEN');
+    const originalPayload = bytes(write);
+
+    expect(Object.isFrozen(write)).toBeTrue();
+    for (const [property, value] of [
+      ['payload', Uint8Array.from([0x00, 0x30])],
+      ['serviceUuid', 'different-service'],
+      ['characteristicUuid', 'different-characteristic'],
+      ['profile', 'garline'],
+      ['operation', 'motor-close'],
+      ['destructiveLevel', 'non-destructive-setting'],
+      ['hardwareValidationStatus', 'phase1-reference-only'],
+      ['length', 2],
+      ['payloadHex', '00 30'],
+    ] as const) {
+      expect(() => Object.defineProperty(write, property, { value })).toThrow();
+    }
+    const exposedPayload = write.payload;
+    exposedPayload[0] = 0xff;
+
+    expect(bytes(write)).toEqual(originalPayload);
+    expect(inspectCataloguedLegacyBleWrite(write)).toBe('authentic');
   });
 
   it('encodes lock modes and user scalar selectors', () => {
@@ -212,6 +257,12 @@ describe('legacy BLE write catalog', () => {
         [10, 7, 2], [10, 6, 2], [10, 5, 2],
       ]);
       expect(steps.every(({ delayAfterMs }) => delayAfterMs === 250)).toBeTrue();
+      expect(steps.every(isCataloguedLegacyBleWrite)).toBeTrue();
+      expect(Object.isFrozen(steps)).toBeTrue();
+      expect(steps.every(Object.isFrozen)).toBeTrue();
+      const firstPayload = steps[0].payload;
+      firstPayload[0] = 0xff;
+      expect(bytes(steps[0])).toEqual([1, 50]);
       expect(steps.slice(0, 3).every(({ characteristicUuid }) =>
         characteristicUuid === BLE_UUIDS.userParametersCharacteristic,
       )).toBeTrue();

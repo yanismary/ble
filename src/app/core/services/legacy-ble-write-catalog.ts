@@ -4,6 +4,8 @@ import {
 } from './ble-profile-catalog';
 import { encodeMotorCommand } from './motor-command';
 
+const LEGACY_BLE_WRITE_BRAND: unique symbol = Symbol('LegacyBleWrite');
+
 export type KnownProductProfile = Exclude<
   ProductProfile,
   'unknown' | 'ambiguous'
@@ -21,6 +23,7 @@ export type LegacyHardwareValidationStatus =
   | 'not-yet-validated';
 
 export interface LegacyBleWrite {
+  readonly [LEGACY_BLE_WRITE_BRAND]: true;
   readonly operation: string;
   readonly profile: KnownProductProfile;
   readonly serviceUuid: string;
@@ -32,6 +35,71 @@ export interface LegacyBleWrite {
   readonly requiresConfirmation: boolean;
   readonly hardwareValidationStatus: LegacyHardwareValidationStatus;
   readonly notes?: string;
+}
+
+interface LegacyBleWriteFingerprint {
+  readonly operation: string;
+  readonly profile: KnownProductProfile;
+  readonly serviceUuid: string;
+  readonly characteristicUuid: string;
+  readonly payload: Uint8Array;
+  readonly payloadHex: string;
+  readonly length: number;
+  readonly destructiveLevel: LegacyDestructiveLevel;
+  readonly requiresConfirmation: boolean;
+  readonly hardwareValidationStatus: LegacyHardwareValidationStatus;
+  readonly notes?: string;
+}
+
+const cataloguedWrites = new WeakMap<
+  LegacyBleWrite,
+  LegacyBleWriteFingerprint
+>();
+
+export type LegacyBleWriteAuthenticity =
+  | 'authentic'
+  | 'unauthenticated'
+  | 'altered';
+
+export function inspectCataloguedLegacyBleWrite(
+  value: unknown,
+): LegacyBleWriteAuthenticity {
+  if (typeof value !== 'object' || value === null) {
+    return 'unauthenticated';
+  }
+  const write = value as LegacyBleWrite;
+  const fingerprint = cataloguedWrites.get(write);
+  if (fingerprint === undefined) {
+    return 'unauthenticated';
+  }
+  const payload = write.payload;
+  const intact = Object.isFrozen(write) &&
+    write[LEGACY_BLE_WRITE_BRAND] === true &&
+    payload instanceof Uint8Array &&
+    write.operation === fingerprint.operation &&
+    write.profile === fingerprint.profile &&
+    write.serviceUuid === fingerprint.serviceUuid &&
+    write.characteristicUuid === fingerprint.characteristicUuid &&
+    write.payloadHex === fingerprint.payloadHex &&
+    write.length === fingerprint.length &&
+    write.length === payload.length &&
+    payload.length === fingerprint.payload.length &&
+    payload.every((valueAtIndex, index) =>
+      valueAtIndex === fingerprint.payload[index],
+    ) &&
+    payloadToHex(payload) === fingerprint.payloadHex &&
+    write.destructiveLevel === fingerprint.destructiveLevel &&
+    write.requiresConfirmation === fingerprint.requiresConfirmation &&
+    write.hardwareValidationStatus ===
+      fingerprint.hardwareValidationStatus &&
+    write.notes === fingerprint.notes;
+  return intact ? 'authentic' : 'altered';
+}
+
+export function isCataloguedLegacyBleWrite(
+  value: unknown,
+): value is LegacyBleWrite {
+  return inspectCataloguedLegacyBleWrite(value) === 'authentic';
 }
 
 export type LegacyMotorCommand =
@@ -530,8 +598,9 @@ export function createWidoorLegacyResetSequence(): readonly LegacyResetStep[] {
     ['professional', [0x0a, 0x06, 0x02], 'entrée 2 bouton'],
     ['professional', [0x0a, 0x05, 0x02], 'verrou désactivé'],
   ] as const;
-  return definitions.map(([target, payload, description], index) => ({
-    ...createWrite(
+  const steps = definitions.map(([target, payload, description], index) => {
+    const step: LegacyResetStep = {
+      ...createWrite(
       'widoor',
       `reset-step-${index + 1}`,
       BLE_UUIDS.widoorService,
@@ -542,11 +611,14 @@ export function createWidoorLegacyResetSequence(): readonly LegacyResetStep[] {
       'reset',
       true,
       'phase1-reference-only',
-    ),
-    index: index + 1,
-    delayAfterMs: 250,
-    description,
-  }));
+      ),
+      index: index + 1,
+      delayAfterMs: 250,
+      description,
+    };
+    return registerCataloguedWrite(step);
+  });
+  return Object.freeze(steps);
 }
 
 function userWrite(
@@ -607,20 +679,49 @@ function createWrite(
   const payload = payloadValue instanceof Uint8Array
     ? Uint8Array.from(payloadValue)
     : Uint8Array.from(payloadValue);
-  return {
+  const write: LegacyBleWrite = {
+    [LEGACY_BLE_WRITE_BRAND]: true,
     operation,
     profile,
     serviceUuid,
     characteristicUuid,
     payload,
-    payloadHex: Array.from(payload, (value) =>
-      value.toString(16).padStart(2, '0'),
-    ).join(' '),
+    payloadHex: payloadToHex(payload),
     length: payload.length,
     destructiveLevel,
     requiresConfirmation,
     hardwareValidationStatus,
   };
+  return registerCataloguedWrite(write);
+}
+
+function registerCataloguedWrite<T extends LegacyBleWrite>(write: T): T {
+  const privatePayload = Uint8Array.from(write.payload);
+  Object.defineProperty(write, 'payload', {
+    configurable: false,
+    enumerable: true,
+    get: () => Uint8Array.from(privatePayload),
+  });
+  cataloguedWrites.set(write, {
+    operation: write.operation,
+    profile: write.profile,
+    serviceUuid: write.serviceUuid,
+    characteristicUuid: write.characteristicUuid,
+    payload: privatePayload,
+    payloadHex: write.payloadHex,
+    length: write.length,
+    destructiveLevel: write.destructiveLevel,
+    requiresConfirmation: write.requiresConfirmation,
+    hardwareValidationStatus: write.hardwareValidationStatus,
+    notes: write.notes,
+  });
+  return Object.freeze(write);
+}
+
+function payloadToHex(payload: Uint8Array): string {
+  return Array.from(payload, (value) =>
+    value.toString(16).padStart(2, '0'),
+  ).join(' ');
 }
 
 function assertInRange(
