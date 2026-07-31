@@ -20,6 +20,7 @@ import {
 
 import {
   BleDisconnectionEvent,
+  BleGattCharacteristicProperties,
   BleService,
 } from '../../core/services/ble';
 import {
@@ -204,6 +205,22 @@ export class ScanPage implements OnDestroy {
       this.services.length > 0 &&
       this.identification !== null &&
       this.isKnownProductProfile(this.productProfile);
+  }
+
+  get showHistoricalGattDiagnostic(): boolean {
+    return this.showProductReadPanel && this.productProfile === 'widoor';
+  }
+
+  get historicalGattDiagnostic(): BleGattCharacteristicProperties {
+    return this.bleService.getGattCharacteristicProperties(
+      BLE_UUIDS.shdoService,
+      BLE_UUIDS.completeParametersCharacteristic,
+      this.connectedDeviceId ?? undefined,
+    );
+  }
+
+  get historicalGattRawProperties(): readonly [string, boolean][] {
+    return Object.entries(this.historicalGattDiagnostic.rawProperties);
   }
 
   get productReadAvailability(): ProductReadAvailability {
@@ -941,6 +958,14 @@ export class ScanPage implements OnDestroy {
     return values.map((value) =>
       value.toString(16).padStart(2, '0'),
     ).join(' ');
+  }
+
+  formatGattCapability(value: boolean | null): string {
+    return value === null
+      ? this.productReadText.unknown
+      : value
+        ? this.productReadText.yes
+        : this.productReadText.no;
   }
 
   formatPeripheralBytes(first: number, second: number): string {

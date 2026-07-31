@@ -29,6 +29,21 @@ export type BleGattCharacteristicAvailability =
   | 'characteristic-absent'
   | 'not-readable';
 
+export interface BleGattCharacteristicProperties {
+  readonly serviceUuid: string;
+  readonly characteristicUuid: string;
+  readonly servicePresent: boolean;
+  readonly characteristicPresent: boolean;
+  readonly propertiesAvailable: boolean;
+  readonly read: boolean | null;
+  readonly write: boolean | null;
+  readonly writeWithoutResponse: boolean | null;
+  readonly notify: boolean | null;
+  readonly indicate: boolean | null;
+  readonly descriptorUuids: readonly string[];
+  readonly rawProperties: Readonly<Record<string, boolean>>;
+}
+
 interface NotificationSubscription {
   readonly deviceId: string;
   readonly serviceUuid: string;
@@ -286,6 +301,87 @@ export class BleService implements OnDestroy {
     }
 
     return characteristic.properties.read ? 'available' : 'not-readable';
+  }
+
+  getGattCharacteristicProperties(
+    serviceUuid: string,
+    characteristicUuid: string,
+    deviceId?: string,
+  ): BleGattCharacteristicProperties {
+    const normalizedServiceUuid = serviceUuid.trim().toLowerCase();
+    const normalizedCharacteristicUuid =
+      characteristicUuid.trim().toLowerCase();
+    const targetDeviceId = deviceId?.trim() ?? this.connectedDeviceIdValue;
+    const empty = (
+      servicePresent: boolean,
+      characteristicPresent: boolean,
+    ): BleGattCharacteristicProperties => ({
+      serviceUuid: normalizedServiceUuid,
+      characteristicUuid: normalizedCharacteristicUuid,
+      servicePresent,
+      characteristicPresent,
+      propertiesAvailable: false,
+      read: null,
+      write: null,
+      writeWithoutResponse: null,
+      notify: null,
+      indicate: null,
+      descriptorUuids: [],
+      rawProperties: {},
+    });
+
+    if (
+      targetDeviceId === null
+      || this.connectedDeviceIdValue !== targetDeviceId
+      || this.discoveredServicesDeviceIdValue !== targetDeviceId
+    ) {
+      return empty(false, false);
+    }
+
+    const service = this.discoveredServicesValue.find(({ uuid }) =>
+      uuid.trim().toLowerCase() === normalizedServiceUuid,
+    );
+
+    if (service === undefined) {
+      return empty(false, false);
+    }
+
+    const characteristic = service.characteristics.find(({ uuid }) =>
+      uuid.trim().toLowerCase() === normalizedCharacteristicUuid,
+    );
+
+    if (characteristic === undefined) {
+      return empty(true, false);
+    }
+
+    const rawProperties: Record<string, boolean> = {};
+    for (const [name, value] of Object.entries(
+      characteristic.properties ?? {},
+    )) {
+      if (typeof value === 'boolean') {
+        rawProperties[name] = value;
+      }
+    }
+    const propertiesAvailable = Object.keys(rawProperties).length > 0;
+    const property = (name: string): boolean | null =>
+      propertiesAvailable && typeof rawProperties[name] === 'boolean'
+        ? rawProperties[name]
+        : null;
+
+    return {
+      serviceUuid: normalizedServiceUuid,
+      characteristicUuid: normalizedCharacteristicUuid,
+      servicePresent: true,
+      characteristicPresent: true,
+      propertiesAvailable,
+      read: property('read'),
+      write: property('write'),
+      writeWithoutResponse: property('writeWithoutResponse'),
+      notify: property('notify'),
+      indicate: property('indicate'),
+      descriptorUuids: characteristic.descriptors.map(({ uuid }) => uuid),
+      rawProperties: { ...rawProperties },
+    };
   }
 
   async readCharacteristic(

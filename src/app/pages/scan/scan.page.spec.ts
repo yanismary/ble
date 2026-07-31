@@ -8,6 +8,7 @@ import { Observable, Subject } from 'rxjs';
 
 import {
   BleDisconnectionEvent,
+  BleGattCharacteristicProperties,
   BleService,
 } from '../../core/services/ble';
 import { BLE_UUIDS } from '../../core/services/product-detection';
@@ -79,6 +80,50 @@ class FakeBleService {
 
   async discoverServices(_deviceId?: string): Promise<DiscoveredBleService[]> {
     return this.servicesResult;
+  }
+
+  getGattCharacteristicProperties(
+    serviceUuid: string,
+    characteristicUuid: string,
+    _deviceId?: string,
+  ): BleGattCharacteristicProperties {
+    const normalizedServiceUuid = serviceUuid.trim().toLowerCase();
+    const normalizedCharacteristicUuid =
+      characteristicUuid.trim().toLowerCase();
+    const service = this.servicesResult.find(({ uuid }) =>
+      uuid.trim().toLowerCase() === normalizedServiceUuid,
+    );
+    const characteristic = service?.characteristics.find(({ uuid }) =>
+      uuid.trim().toLowerCase() === normalizedCharacteristicUuid,
+    );
+    const rawProperties: Record<string, boolean> = {};
+    for (const [name, value] of Object.entries(
+      characteristic?.properties ?? {},
+    )) {
+      if (typeof value === 'boolean') {
+        rawProperties[name] = value;
+      }
+    }
+    const property = (name: string): boolean | null =>
+      typeof rawProperties[name] === 'boolean'
+        ? rawProperties[name]
+        : null;
+
+    return {
+      serviceUuid: normalizedServiceUuid,
+      characteristicUuid: normalizedCharacteristicUuid,
+      servicePresent: service !== undefined,
+      characteristicPresent: characteristic !== undefined,
+      propertiesAvailable: Object.keys(rawProperties).length > 0,
+      read: property('read'),
+      write: property('write'),
+      writeWithoutResponse: property('writeWithoutResponse'),
+      notify: property('notify'),
+      indicate: property('indicate'),
+      descriptorUuids:
+        characteristic?.descriptors.map(({ uuid }) => uuid) ?? [],
+      rawProperties,
+    };
   }
 
   async readCharacteristic(
@@ -1140,6 +1185,135 @@ describe('ScanPage', () => {
     expect(component.showProductReadPanel).toBeFalse();
   });
 
+  it('should passively display cached historical GATT properties', async () => {
+    const readSpy = spyOn(bleService, 'readCharacteristic').and.callThrough();
+    const startSpy = spyOn(bleService, 'startNotifications').and.callThrough();
+    const stopSpy = spyOn(bleService, 'stopNotifications').and.callThrough();
+    await configureProductReadPanel('widoor');
+    addHistoricalCharacteristic(bleService.servicesResult, {
+      notify: true,
+      read: true,
+      write: false,
+    }, ['descriptor-1', 'descriptor-2']);
+    const readCalls = readSpy.calls.count();
+    const startCalls = startSpy.calls.count();
+    const stopCalls = stopSpy.calls.count();
+    const loadCalls = productDataLoadService.loadProductData.calls.count();
+
+    fixture.detectChanges();
+    const text = fixture.nativeElement.querySelector(
+      '.historical-gatt-diagnostic',
+    )?.textContent ?? '';
+
+    expect(component.showHistoricalGattDiagnostic).toBeTrue();
+    expect(text).toContain(BLE_UUIDS.completeParametersCharacteristic);
+    expect(text).toContain(component.productReadText.passiveGattNotice);
+    expect(text).toContain('Descripteurs');
+    expect(text).toContain('2');
+    expect(text).toContain(component.productReadText.yes);
+    expect(text).toContain(component.productReadText.no);
+    expect(readSpy.calls.count()).toBe(readCalls);
+    expect(startSpy.calls.count()).toBe(startCalls);
+    expect(stopSpy.calls.count()).toBe(stopCalls);
+    expect(productDataLoadService.loadProductData.calls.count()).toBe(loadCalls);
+    expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+  });
+
+  it('should distinguish missing historical GATT service and characteristic',
+    async () => {
+      await configureProductReadPanel('widoor');
+      bleService.servicesResult = [];
+      expect(component.historicalGattDiagnostic).toEqual(
+        jasmine.objectContaining({
+          servicePresent: false,
+          characteristicPresent: false,
+        }),
+      );
+
+      bleService.servicesResult = createWidoorIdentificationServices();
+      expect(component.historicalGattDiagnostic).toEqual(
+        jasmine.objectContaining({
+          servicePresent: true,
+          characteristicPresent: false,
+        }),
+      );
+    },
+  );
+
+  it('should preserve every cached historical GATT capability', async () => {
+    await configureProductReadPanel('widoor');
+    for (const properties of [
+      { read: true },
+      { notify: true },
+      { read: true, notify: true },
+      { write: true },
+      { writeWithoutResponse: true },
+      { indicate: true },
+    ]) {
+      bleService.servicesResult = createWidoorIdentificationServices();
+      addHistoricalCharacteristic(bleService.servicesResult, properties);
+      const diagnostic = component.historicalGattDiagnostic;
+
+      for (const [name, enabled] of Object.entries(properties)) {
+        expect(diagnostic.rawProperties[name])
+          .withContext(name)
+          .toBe(enabled);
+      }
+    }
+  });
+
+  it('should report unknown capabilities when properties are unavailable',
+    async () => {
+      await configureProductReadPanel('widoor');
+      addHistoricalCharacteristic(bleService.servicesResult, {});
+      const diagnostic = component.historicalGattDiagnostic;
+
+      expect(diagnostic.propertiesAvailable).toBeFalse();
+      expect(component.formatGattCapability(diagnostic.read))
+        .toBe(component.productReadText.unknown);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector(
+        '.historical-gatt-diagnostic',
+      )?.textContent).toContain(component.productReadText.unknown);
+    },
+  );
+
+  it('should hide the historical GATT diagnostic after disconnection or reuse',
+    async () => {
+      await configureProductReadPanel('widoor');
+      expect(component.showHistoricalGattDiagnostic).toBeTrue();
+
+      bleService.emitRemoteDisconnection('device-1');
+      expect(component.showHistoricalGattDiagnostic).toBeFalse();
+
+      component.connectedDeviceId = 'device-1';
+      bleService.setConnectedDeviceId('device-1');
+      component.productProfile = 'widoor';
+      expect(component.showHistoricalGattDiagnostic).toBeFalse();
+    },
+  );
+
+  it('should show the historical GATT diagnostic only for known Widoor',
+    async () => {
+      for (const profile of [
+        'moventiv-60',
+        'moventiv-80',
+        'garline',
+        'unknown',
+        'ambiguous',
+      ] as const) {
+        await configureProductReadPanel('widoor');
+        component.productProfile = profile;
+        expect(component.showHistoricalGattDiagnostic)
+          .withContext(profile)
+          .toBeFalse();
+      }
+
+      await configureProductReadPanel('widoor');
+      expect(component.showHistoricalGattDiagnostic).toBeTrue();
+    },
+  );
+
   it('should hide product reads during scan, discovery or detection',
     async () => {
       await configureProductReadPanel('widoor');
@@ -1672,6 +1846,26 @@ function createWidoorIdentificationServices(): DiscoveredBleService[] {
       characteristics: [],
     },
   ];
+}
+
+function addHistoricalCharacteristic(
+  services: DiscoveredBleService[],
+  properties: Partial<
+    DiscoveredBleService['characteristics'][number]['properties']
+  >,
+  descriptorUuids: readonly string[] = [],
+): void {
+  const shdoService = services.find(({ uuid }) =>
+    uuid.toLowerCase() === BLE_UUIDS.shdoService,
+  );
+
+  shdoService?.characteristics.push({
+    uuid: BLE_UUIDS.completeParametersCharacteristic.toUpperCase(),
+    descriptors: descriptorUuids.map((uuid) => ({ uuid })),
+    properties: properties as DiscoveredBleService[
+      'characteristics'
+    ][number]['properties'],
+  });
 }
 
 function createContradictoryIdentificationServices(): DiscoveredBleService[] {

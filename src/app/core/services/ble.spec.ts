@@ -309,6 +309,148 @@ describe('BleService', () => {
     )).toBe('not-readable');
   });
 
+  it('should expose a defensive passive copy of cached GATT properties',
+    async () => {
+      const getServicesSpy = BleClient.getServices as jasmine.Spy<
+        typeof BleClient.getServices
+      >;
+      getServicesSpy.and.resolveTo([{
+        uuid: ' SERVICE-1 ',
+        characteristics: [{
+          uuid: ' CHARACTERISTIC-1 ',
+          properties: createCharacteristicProperties({
+            indicate: true,
+            notify: true,
+            read: true,
+            reliableWrite: true,
+            writeWithoutResponse: true,
+          }),
+          descriptors: [
+            { uuid: 'descriptor-1' },
+            { uuid: 'descriptor-2' },
+          ],
+        }],
+      }]);
+      await service.connect('device-1');
+      await service.discoverServices();
+
+      const result = service.getGattCharacteristicProperties(
+        'service-1',
+        'characteristic-1',
+      );
+
+      expect(result).toEqual(jasmine.objectContaining({
+        serviceUuid: 'service-1',
+        characteristicUuid: 'characteristic-1',
+        servicePresent: true,
+        characteristicPresent: true,
+        propertiesAvailable: true,
+        read: true,
+        write: false,
+        writeWithoutResponse: true,
+        notify: true,
+        indicate: true,
+        descriptorUuids: ['descriptor-1', 'descriptor-2'],
+      }));
+      expect(result.rawProperties['reliableWrite']).toBeTrue();
+
+      (result.descriptorUuids as string[]).push('mutated');
+      (result.rawProperties as Record<string, boolean>)['read'] = false;
+      const second = service.getGattCharacteristicProperties(
+        'SERVICE-1',
+        'CHARACTERISTIC-1',
+      );
+      expect(second.descriptorUuids).toEqual(['descriptor-1', 'descriptor-2']);
+      expect(second.read).toBeTrue();
+      expect(BleClient.read).not.toHaveBeenCalled();
+      expect(BleClient.write).not.toHaveBeenCalled();
+      expect(BleClient.writeWithoutResponse).not.toHaveBeenCalled();
+      expect(BleClient.startNotifications).not.toHaveBeenCalled();
+      expect(BleClient.stopNotifications).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should distinguish absent GATT members and unavailable properties',
+    async () => {
+      const getServicesSpy = BleClient.getServices as jasmine.Spy<
+        typeof BleClient.getServices
+      >;
+      getServicesSpy.and.resolveTo([{
+        uuid: 'service-1',
+        characteristics: [{
+          uuid: 'characteristic-1',
+          properties: {} as DiscoveredBleService[
+            'characteristics'
+          ][number]['properties'],
+          descriptors: [],
+        }],
+      }]);
+      await service.connect('device-1');
+      await service.discoverServices();
+
+      expect(service.getGattCharacteristicProperties(
+        'missing',
+        'characteristic-1',
+      )).toEqual(jasmine.objectContaining({
+        servicePresent: false,
+        characteristicPresent: false,
+      }));
+      expect(service.getGattCharacteristicProperties(
+        'service-1',
+        'missing',
+      )).toEqual(jasmine.objectContaining({
+        servicePresent: true,
+        characteristicPresent: false,
+      }));
+      expect(service.getGattCharacteristicProperties(
+        'service-1',
+        'characteristic-1',
+      )).toEqual(jasmine.objectContaining({
+        servicePresent: true,
+        characteristicPresent: true,
+        propertiesAvailable: false,
+        read: null,
+        notify: null,
+      }));
+    },
+  );
+
+  it('should reject an empty or stale-device GATT cache', async () => {
+    expect(service.getGattCharacteristicProperties(
+      'service-1',
+      'characteristic-1',
+    )).toEqual(jasmine.objectContaining({
+      servicePresent: false,
+      characteristicPresent: false,
+      propertiesAvailable: false,
+    }));
+
+    const getServicesSpy = BleClient.getServices as jasmine.Spy<
+      typeof BleClient.getServices
+    >;
+    getServicesSpy.and.resolveTo([{
+      uuid: 'service-1',
+      characteristics: [{
+        uuid: 'characteristic-1',
+        properties: createCharacteristicProperties({ read: true }),
+        descriptors: [],
+      }],
+    }]);
+    await service.connect('device-1');
+    await service.discoverServices();
+
+    expect(service.getGattCharacteristicProperties(
+      'service-1',
+      'characteristic-1',
+      'device-2',
+    )).toEqual(jasmine.objectContaining({
+      servicePresent: false,
+      characteristicPresent: false,
+      propertiesAvailable: false,
+      read: null,
+    }));
+  });
+
   it('should reject stale service discovery after reconnecting the same device',
     async () => {
       let onDisconnect: ((deviceId: string) => void) | undefined;

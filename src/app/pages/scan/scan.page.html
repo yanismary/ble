@@ -247,6 +247,46 @@
                 <dt>{{ productReadText.deviceId }}</dt>
                 <dd>{{ connectedDeviceId }}</dd>
               </dl>
+              @if (showHistoricalGattDiagnostic) {
+                @if (historicalGattDiagnostic; as diagnostic) {
+                  <section class="ble-characteristic historical-gatt-diagnostic">
+                    <h3>{{ productReadText.historicalGattTitle }}</h3>
+                    <p>{{ productReadText.passiveGattNotice }}</p>
+                    <dl class="identification-details">
+                      <dt>{{ productReadText.serviceUuid }}</dt>
+                      <dd><code>{{ diagnostic.serviceUuid }}</code></dd>
+                      <dt>{{ productReadText.characteristicUuid }}</dt>
+                      <dd><code>{{ diagnostic.characteristicUuid }}</code></dd>
+                      <dt>{{ productReadText.servicePresent }}</dt>
+                      <dd>{{ formatGattCapability(diagnostic.servicePresent) }}</dd>
+                      <dt>{{ productReadText.characteristicPresent }}</dt>
+                      <dd>{{ formatGattCapability(diagnostic.characteristicPresent) }}</dd>
+                      <dt>{{ productReadText.propertiesAvailable }}</dt>
+                      <dd>{{ formatGattCapability(diagnostic.propertiesAvailable) }}</dd>
+                      <dt>{{ productReadText.readable }}</dt>
+                      <dd>{{ formatGattCapability(diagnostic.read) }}</dd>
+                      <dt>{{ productReadText.writable }}</dt>
+                      <dd>{{ formatGattCapability(diagnostic.write) }}</dd>
+                      <dt>{{ productReadText.writableWithoutResponse }}</dt>
+                      <dd>{{ formatGattCapability(diagnostic.writeWithoutResponse) }}</dd>
+                      <dt>{{ productReadText.notifiable }}</dt>
+                      <dd>{{ formatGattCapability(diagnostic.notify) }}</dd>
+                      <dt>{{ productReadText.indicatable }}</dt>
+                      <dd>{{ formatGattCapability(diagnostic.indicate) }}</dd>
+                      <dt>{{ productReadText.descriptors }}</dt>
+                      <dd>{{ diagnostic.descriptorUuids.length }}</dd>
+                      @if (historicalGattRawProperties.length > 0) {
+                        <dt>{{ productReadText.rawProperties }}</dt>
+                        <dd>
+                          @for (property of historicalGattRawProperties; track property[0]) {
+                            <code>{{ property[0] }}={{ property[1] }}</code>
+                          }
+                        </dd>
+                      }
+                    </dl>
+                  </section>
+                }
+              }
               <p>{{ productReadAvailability.reason }}</p>
               <ion-button
                 expand="block"
