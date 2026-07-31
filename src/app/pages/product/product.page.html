@@ -1,0 +1,191 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>{{ config.productName }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <main class="product-page-layout">
+    <section class="product-section product-identity" aria-labelledby="identity-title">
+      <h1 id="identity-title">{{ text.sections.identity }}</h1>
+      <dl class="product-readonly-grid">
+        <dt>{{ text.productName }}</dt>
+        <dd>{{ viewModel.productName }}</dd>
+        <dt>{{ text.displayedName }}</dt>
+        <dd>{{ viewModel.displayedName || text.noValue }}</dd>
+        <dt>{{ text.room }}</dt>
+        <dd>{{ viewModel.roomSuffix ?? text.noRoom }}</dd>
+        <dt>{{ text.profile }}</dt>
+        <dd>{{ viewModel.profile }}</dd>
+        <dt>{{ text.deviceId }}</dt>
+        <dd class="long-value">{{ viewModel.deviceId || text.noValue }}</dd>
+        <dt>{{ text.connection }}</dt>
+        <dd>{{ connectionStateLabel(displayedConnectionState) }}</dd>
+        <dt>{{ text.lastRefresh }}</dt>
+        <dd>{{ formatTimestamp(viewModel.lastUpdatedAt) }}</dd>
+      </dl>
+
+      @if (viewModel.globalError) {
+        <p class="product-error" role="alert">{{ viewModel.globalError }}</p>
+      }
+      @if (viewModel.loadStatus) {
+        <p class="product-summary" aria-live="polite">
+          {{ globalStatusLabel }}
+          @if (viewModel.partialSuccess) {
+            — {{ text.states.partialSuccess }}
+          }
+        </p>
+      }
+
+      <div class="product-actions">
+        <ion-button
+          type="button"
+          (click)="refreshProductData()"
+          [disabled]="!canRefresh"
+        >
+          {{ text.refresh }}
+        </ion-button>
+        <ion-button type="button" fill="outline" color="medium" (click)="backToScan()">
+          {{ text.backToScan }}
+        </ion-button>
+      </div>
+      @if (viewModel.loading) {
+        <p class="product-loading" role="status">
+          <ion-spinner name="crescent"></ion-spinner>
+          <span>{{ text.loading }}</span>
+        </p>
+      }
+    </section>
+
+    @if (pageContextCurrent) {
+      <section class="product-section" aria-labelledby="commands-title">
+        <h2 id="commands-title">{{ text.sections.commands }}</h2>
+        <p>{{ text.commandsUnavailable }}</p>
+      </section>
+
+      <section class="product-section" aria-labelledby="settings-title">
+        <h2 id="settings-title">{{ text.sections.settings }}</h2>
+        <p>{{ text.readonlyNotice }}</p>
+
+      <article class="product-subsection">
+        <h3>{{ text.sections.userSettings }}</h3>
+        <ng-container
+          [ngTemplateOutlet]="readStatus"
+          [ngTemplateOutletContext]="{ $implicit: viewModel.reads.userParameters }"
+        ></ng-container>
+        @if (viewModel.reads.userParameters.status === 'available') {
+          <dl class="product-readonly-grid">
+            @for (row of userRows; track row.key) {
+              <dt>{{ row.label }}</dt>
+              <dd>{{ row.value }}</dd>
+            }
+          </dl>
+        }
+      </article>
+
+      <article class="product-subsection">
+        <h3>{{ text.sections.professionalSettings }}</h3>
+        <ng-container
+          [ngTemplateOutlet]="readStatus"
+          [ngTemplateOutletContext]="{
+            $implicit: viewModel.reads.professionalParameters
+          }"
+        ></ng-container>
+        @if (viewModel.reads.professionalParameters.status === 'available') {
+          <dl class="product-readonly-grid">
+            @for (row of professionalRows; track row.key) {
+              <dt>{{ row.label }}</dt>
+              <dd>{{ row.value }}</dd>
+            }
+          </dl>
+        }
+      </article>
+      </section>
+
+      <section class="product-section" aria-labelledby="information-title">
+        <h2 id="information-title">{{ text.sections.information }}</h2>
+
+      <article class="product-subsection">
+        <h3>{{ text.sections.motorState }}</h3>
+        @if (motorRows.length > 0) {
+          <dl class="product-readonly-grid">
+            @for (row of motorRows; track row.key) {
+              <dt>{{ row.label }}</dt>
+              <dd>{{ row.value }}</dd>
+            }
+          </dl>
+        } @else {
+          <p class="read-state">{{ text.noMotorState }}</p>
+        }
+      </article>
+
+      <article class="product-subsection">
+        <h3>{{ text.sections.version }}</h3>
+        <ng-container
+          [ngTemplateOutlet]="readStatus"
+          [ngTemplateOutletContext]="{ $implicit: viewModel.reads.version }"
+        ></ng-container>
+        @if (viewModel.reads.version.status === 'available') {
+          <dl class="product-readonly-grid">
+            @for (row of versionRows; track row.key) {
+              <dt>{{ row.label }}</dt>
+              <dd>{{ row.value }}</dd>
+            }
+          </dl>
+        }
+      </article>
+
+      <article class="product-subsection">
+        <h3>{{ text.sections.dates }}</h3>
+        <ng-container
+          [ngTemplateOutlet]="readStatus"
+          [ngTemplateOutletContext]="{
+            $implicit: viewModel.reads.datesAndCycles
+          }"
+        ></ng-container>
+        @if (viewModel.reads.datesAndCycles.status === 'available') {
+          <dl class="product-readonly-grid">
+            @for (row of datesRows; track row.key) {
+              <dt>{{ row.label }}</dt>
+              <dd>{{ row.value }}</dd>
+            }
+          </dl>
+        }
+      </article>
+
+      <article class="product-subsection">
+        <h3>{{ text.sections.maintenance }}</h3>
+        <ng-container
+          [ngTemplateOutlet]="readStatus"
+          [ngTemplateOutletContext]="{ $implicit: viewModel.reads.maintenance }"
+        ></ng-container>
+        @if (viewModel.reads.maintenance.status === 'available') {
+          <dl class="product-readonly-grid">
+            @for (row of maintenanceRows; track row.key) {
+              <dt>{{ row.label }}</dt>
+              <dd>{{ row.value }}</dd>
+            }
+          </dl>
+        }
+      </article>
+      </section>
+    }
+  </main>
+
+  <ng-template #readStatus let-read>
+    <p class="read-state" [attr.data-status]="read.status">
+      {{ readStatusLabel(read) }}
+    </p>
+    @if (read.result?.decoded; as decoded) {
+      <dl class="product-readonly-grid read-diagnostic">
+        <dt>{{ text.rawFrame }}</dt>
+        <dd><code>{{ decoded.rawHex }}</code></dd>
+      </dl>
+    }
+    @if (read.result?.error; as error) {
+      <p class="product-error" role="alert">
+        {{ text.readError }} : {{ error.message }}
+      </p>
+    }
+  </ng-template>
+</ion-content>

@@ -290,6 +290,14 @@
               <p>{{ productReadAvailability.reason }}</p>
               <ion-button
                 expand="block"
+                fill="outline"
+                (click)="openProductPage()"
+                [disabled]="!canOpenProductPage"
+              >
+                {{ productPageText.openProductPage }}
+              </ion-button>
+              <ion-button
+                expand="block"
                 (click)="loadProductInformation()"
                 [disabled]="!productReadAvailability.enabled"
               >

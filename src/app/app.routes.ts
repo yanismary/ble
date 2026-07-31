@@ -7,6 +7,30 @@ export const routes: Routes = [
       import('./pages/scan/scan.page').then((m) => m.ScanPage),
   },
   {
+    path: 'product/widoor',
+    data: { profile: 'widoor' },
+    loadComponent: () =>
+      import('./pages/product/product.page').then((m) => m.ProductPage),
+  },
+  {
+    path: 'product/moventiv-60',
+    data: { profile: 'moventiv-60' },
+    loadComponent: () =>
+      import('./pages/product/product.page').then((m) => m.ProductPage),
+  },
+  {
+    path: 'product/moventiv-80',
+    data: { profile: 'moventiv-80' },
+    loadComponent: () =>
+      import('./pages/product/product.page').then((m) => m.ProductPage),
+  },
+  {
+    path: 'product/garline',
+    data: { profile: 'garline' },
+    loadComponent: () =>
+      import('./pages/product/product.page').then((m) => m.ProductPage),
+  },
+  {
     path: '',
     redirectTo: 'scan',
     pathMatch: 'full',

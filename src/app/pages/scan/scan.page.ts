@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, NgZone, OnDestroy, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import {
   BleService as DiscoveredBleService,
   ScanResult,
@@ -55,6 +56,13 @@ import {
 import { BleReadStatus } from '../../core/services/ble-read.service';
 import { SCAN_MOTOR_TEST_TEXT } from './scan-motor-test.text';
 import { SCAN_PRODUCT_READ_TEXT } from './scan-product-read.text';
+import {
+  PRODUCT_PAGE_CONFIG,
+} from '../product/product-page.config';
+import { PRODUCT_PAGE_TEXT } from '../product/product-page.text';
+import {
+  ProductPageNavigationState,
+} from '../product/product-view.model';
 
 interface ScannedDevice {
   deviceId: string;
@@ -127,6 +135,7 @@ export class ScanPage implements OnDestroy {
   private readonly ngZone = inject(NgZone);
   private readonly productDetection = inject(ProductDetection);
   private readonly productDataLoadService = inject(ProductDataLoadService);
+  private readonly router = inject(Router);
   private readonly disconnectionSubscription: Subscription;
   private scanTimeout: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
@@ -160,6 +169,7 @@ export class ScanPage implements OnDestroy {
   motorTestStatus: MotorTestStatus = 'idle';
   readonly motorTestText = SCAN_MOTOR_TEST_TEXT;
   readonly productReadText = SCAN_PRODUCT_READ_TEXT;
+  readonly productPageText = PRODUCT_PAGE_TEXT;
   productReadResult: ProductDataLoadResult | null = null;
   productReadStatus: 'idle' | 'loading' | ProductDataLoadStatus = 'idle';
   productProfile: ProductProfile = 'unknown';
@@ -209,6 +219,15 @@ export class ScanPage implements OnDestroy {
 
   get showHistoricalGattDiagnostic(): boolean {
     return this.showProductReadPanel && this.productProfile === 'widoor';
+  }
+
+  get canOpenProductPage(): boolean {
+    return this.showProductReadPanel &&
+      this.identification?.detectionConfidence === 'Forte' &&
+      !this.productReadInProgress &&
+      !this.productDataLoadService.isLoading &&
+      !this.bleService.isWriting &&
+      !this.motorCommandInProgress;
   }
 
   get historicalGattDiagnostic(): BleGattCharacteristicProperties {
@@ -563,6 +582,32 @@ export class ScanPage implements OnDestroy {
     if (this.productReadInProgress) {
       this.productDataLoadService.cancelCurrentLoad();
     }
+  }
+
+  async openProductPage(): Promise<void> {
+    const profile = this.productProfile;
+    const deviceId = this.connectedDeviceId;
+    const generation = this.connectedBleGeneration;
+    if (!this.canOpenProductPage ||
+        !this.isKnownProductProfile(profile) ||
+        deviceId === null ||
+        generation === null) {
+      return;
+    }
+
+    const state: ProductPageNavigationState = {
+      profile,
+      deviceId,
+      connectionGeneration: generation,
+      displayName: this.selectedDevice?.name ??
+        PRODUCT_PAGE_CONFIG[profile].productName,
+      identificationConfidence: 'strong',
+      motorState: this.hasCurrentMotorStateSource() ? this.motorState : null,
+    };
+    await this.router.navigate(
+      [PRODUCT_PAGE_CONFIG[profile].route],
+      { state },
+    );
   }
 
   ngOnDestroy(): void {

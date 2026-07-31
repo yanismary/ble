@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import {
   BleService as DiscoveredBleService,
   ScanResult,
@@ -210,10 +211,12 @@ describe('ScanPage', () => {
   let alertOptions: TestAlertOptions[];
   let sendMotorCommandWithConfirmation: jasmine.Spy;
   let productDataLoadService: FakeProductDataLoadService;
+  let routerNavigate: jasmine.Spy;
 
   beforeEach(async () => {
     bleService = new FakeBleService();
     productDataLoadService = new FakeProductDataLoadService();
+    routerNavigate = jasmine.createSpy('navigate').and.resolveTo(true);
     alertOptions = [];
     alertCreate = jasmine.createSpy('create').and.callFake(
       async (options: TestAlertOptions) => {
@@ -244,6 +247,10 @@ describe('ScanPage', () => {
         {
           provide: ProductDataLoadService,
           useValue: productDataLoadService,
+        },
+        {
+          provide: Router,
+          useValue: { navigate: routerNavigate },
         },
       ],
     }).compileComponents();
@@ -1336,6 +1343,49 @@ describe('ScanPage', () => {
         .toHaveBeenCalledOnceWith('garline', 'device-1');
       expect(component.productReadStatus).toBe('success');
       expect(component.isProductReadLoading).toBeFalse();
+    },
+  );
+
+  it('should navigate known products with the detected connection context',
+    async () => {
+      for (const [profile, route] of [
+        ['widoor', '/product/widoor'],
+        ['moventiv-60', '/product/moventiv-60'],
+        ['moventiv-80', '/product/moventiv-80'],
+        ['garline', '/product/garline'],
+      ] as const) {
+        await configureProductReadPanel(profile);
+        await component.openProductPage();
+
+        expect(routerNavigate).toHaveBeenCalledWith(
+          [route],
+          {
+            state: jasmine.objectContaining({
+              profile,
+              deviceId: 'device-1',
+              connectionGeneration: bleService.connectionGeneration,
+              identificationConfidence: 'strong',
+            }),
+          },
+        );
+      }
+      expect(productDataLoadService.loadProductData).not.toHaveBeenCalled();
+      expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should refuse product navigation for an unknown or stale profile',
+    async () => {
+      await configureProductReadPanel('widoor');
+      component.productProfile = 'unknown';
+      await component.openProductPage();
+      component.productProfile = 'ambiguous';
+      await component.openProductPage();
+      bleService.connectionGeneration += 1;
+      component.productProfile = 'widoor';
+      await component.openProductPage();
+
+      expect(routerNavigate).not.toHaveBeenCalled();
     },
   );
 
