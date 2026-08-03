@@ -109,6 +109,13 @@ export type LegacyMotorCommand =
   | 'CLOSE'
   | 'LEARNING';
 
+export type LegacyMotorOperation =
+  | 'motor-open'
+  | 'motor-open-short-timed'
+  | 'motor-open-long-timed'
+  | 'motor-close'
+  | 'motor-learning';
+
 export type LegacyLockMode = 'none' | 'locked-open' | 'locked-closed';
 export type LegacyFeatureState = 'enabled' | 'disabled';
 export type LegacyInputMode = 'button' | 'radar';
@@ -304,10 +311,17 @@ export function encodeLegacyMotorCommand(
     ? encodeMotorCommand(profile, 'OPEN')
     : Uint8Array.from(payloads[command]);
   const learning = command === 'LEARNING';
+  const operations: Record<LegacyMotorCommand, LegacyMotorOperation> = {
+    OPEN: 'motor-open',
+    OPEN_SHORT_TIMED: 'motor-open-short-timed',
+    OPEN_LONG_TIMED: 'motor-open-long-timed',
+    CLOSE: 'motor-close',
+    LEARNING: 'motor-learning',
+  };
 
   return createWrite(
     profile,
-    `motor-${command.toLowerCase()}`,
+    operations[command],
     BLE_UUIDS.shdoService,
     BLE_UUIDS.motorCommandCharacteristic,
     payload,

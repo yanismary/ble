@@ -18,7 +18,10 @@ export const WIDOOR_OPENING_STARTED_STATE = 0x21;
 // Phase 1 reference: Widoor reports this state when closing starts.
 export const WIDOOR_CLOSING_STARTED_STATE = 0x31;
 
-export type ConfirmedMotorCommand = MotorCommand | 'CLOSE';
+export type ConfirmedMotorCommand = MotorCommand |
+  'OPEN_SHORT_TIMED' |
+  'OPEN_LONG_TIMED' |
+  'CLOSE';
 
 export type PositionConfirmationProfile =
   | 'moventiv-60'
@@ -43,7 +46,9 @@ export function getMotorCommandConfirmationStrategy(
   command: ConfirmedMotorCommand,
 ): MotorCommandConfirmationStrategy | null {
   if (profile === 'widoor') {
-    if (command === 'OPEN') {
+    if (command === 'OPEN' ||
+        command === 'OPEN_SHORT_TIMED' ||
+        command === 'OPEN_LONG_TIMED') {
       return {
         kind: 'widoor-opening-state',
         expectedState: WIDOOR_OPENING_STARTED_STATE,

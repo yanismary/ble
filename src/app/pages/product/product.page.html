@@ -57,12 +57,16 @@
         @if (showWidoorOpenCommand) {
           <div class="product-actions widoor-command-grid">
             @for (command of widoorCommands; track command.config.operation) {
-              <div class="widoor-command-item">
+              <div
+                class="widoor-command-item"
+                [class.widoor-command-item-timed]="command.config.isTimedCommand"
+              >
                 @if (command.config.enabled) {
                   <ion-button
                     class="widoor-command"
                     [class.widoor-open-command]="command.config.operation === 'motor-open'"
                     [class.widoor-close-command]="command.config.operation === 'motor-close'"
+                    [class.widoor-timed-command]="command.config.isTimedCommand"
                     type="button"
                     (click)="requestWidoorCommand(command.config)"
                     [disabled]="!canExecuteWidoorCommand(command.config)"
@@ -98,7 +102,44 @@
               }
               <span>{{ displayedOpenCommandMessage }}</span>
             </p>
+            @if (openCommandState.secondaryMessage) {
+              <p class="command-secondary-message">
+                {{ openCommandState.secondaryMessage }}
+              </p>
+            }
           }
+          <details class="technical-details command-history">
+            <summary>{{ text.commandHistory.title }}</summary>
+            @if (commandHistory.length === 0) {
+              <p>{{ text.commandHistory.empty }}</p>
+            } @else {
+              <ol>
+                @for (entry of commandHistory; track $index) {
+                  <li>
+                    <strong>{{ entry.time }} — {{ entry.label }}</strong>
+                    <div>{{ commandHistoryStatusLabel(entry) }}</div>
+                    <div>
+                      <small>
+                        {{ text.commandHistory.confirmation }} :
+                        {{ commandHistoryConfirmationLabel(entry) }}
+                        @if (entry.durationMs !== null) {
+                          · {{ text.commandHistory.duration }} :
+                          {{ entry.durationMs }} ms
+                        }
+                        @if (entry.isTimedCommand) {
+                          · {{ text.commandHistory.timedCycle }} :
+                          {{ commandHistoryTimedCycleLabel(entry) }}
+                        }
+                        @if (entry.technicalErrorCode) {
+                          · Code : {{ entry.technicalErrorCode }}
+                        }
+                      </small>
+                    </div>
+                  </li>
+                }
+              </ol>
+            }
+          </details>
         } @else {
           <p>{{ text.commandsUnavailable }}</p>
         }

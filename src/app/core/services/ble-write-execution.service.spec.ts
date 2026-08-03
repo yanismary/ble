@@ -422,6 +422,58 @@ describe('BleWriteExecutionService', () => {
       expect(ble.writeCharacteristic).not.toHaveBeenCalled();
     });
 
+  it('allows each timed opening only with its exact physical validation',
+    async () => {
+      for (const testCase of [
+        {
+          command: 'OPEN_SHORT_TIMED',
+          operation: 'motor-open-short-timed',
+        },
+        {
+          command: 'OPEN_LONG_TIMED',
+          operation: 'motor-open-long-timed',
+        },
+      ] as const) {
+        const request = timedRequest(testCase.command, testCase.operation);
+
+        const result = await service.execute(request);
+
+        expect(result.status).toBe('success');
+        expect(result.confirmationStatus).toBe('confirmed');
+        expect(result.movementStartConfirmed).toBeTrue();
+        expect(result.timedCycleValidationStatus)
+          .toBe('pending-physical-validation');
+        expect(result.policyOverrideUsed).toBeTrue();
+        expect(sendCataloguedWidoorMotorCommandWithConfirmation)
+          .toHaveBeenCalledWith(jasmine.objectContaining({
+            write: request.write,
+            command: testCase.command,
+          }));
+      }
+      expect(sendCataloguedWidoorMotorCommandWithConfirmation)
+        .toHaveBeenCalledTimes(2);
+      expect(ble.writeCharacteristic).not.toHaveBeenCalled();
+    });
+
+  it('does not let one timed operation authorize the other', async () => {
+    const request = timedRequest(
+      'OPEN_SHORT_TIMED',
+      'motor-open-short-timed',
+    );
+    request.policy = {
+      allowPhysicalValidationAttempt: {
+        operation: 'motor-open-long-timed',
+        profile: 'widoor',
+      },
+    };
+
+    const result = await service.execute(request);
+
+    expect(result.status).toBe('blocked-by-policy');
+    expect(sendCataloguedWidoorMotorCommandWithConfirmation)
+      .not.toHaveBeenCalled();
+  });
+
   it('always blocks learning and reset without native calls', async () => {
     const learning = requestFor(
       encodeLegacyMotorCommand('widoor', 'LEARNING'),
@@ -630,6 +682,31 @@ describe('BleWriteExecutionService', () => {
     request.policy = {
       allowPhysicalValidationAttempt: {
         operation: 'motor-close',
+        profile: 'widoor',
+      },
+    };
+    return request;
+  }
+
+  function timedRequest(
+    command: 'OPEN_SHORT_TIMED' | 'OPEN_LONG_TIMED',
+    operation: 'motor-open-short-timed' | 'motor-open-long-timed',
+  ): MutableRequest {
+    const request = requestFor(
+      encodeLegacyMotorCommand('widoor', command),
+    );
+    request.authorization = {
+      ...request.authorization!,
+      motorMovementConfirmed: true,
+    };
+    request.confirmationPolicy = {
+      kind: 'widoor-timed-opening-state',
+      command,
+      timeoutMs: 250,
+    };
+    request.policy = {
+      allowPhysicalValidationAttempt: {
+        operation,
         profile: 'widoor',
       },
     };

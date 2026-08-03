@@ -21,16 +21,26 @@ import {
 
 describe('legacy BLE write catalog', () => {
   it('encodes every historical motor command exactly', () => {
-    expect(bytes(encodeLegacyMotorCommand('widoor', 'OPEN')))
+    const open = encodeLegacyMotorCommand('widoor', 'OPEN');
+    const shortTimed = encodeLegacyMotorCommand(
+      'widoor', 'OPEN_SHORT_TIMED',
+    );
+    const longTimed = encodeLegacyMotorCommand(
+      'moventiv-60', 'OPEN_LONG_TIMED',
+    );
+    expect(bytes(open))
       .toEqual([0x00, 0x20, 0x00, 0x00]);
-    expect(bytes(encodeLegacyMotorCommand('widoor', 'OPEN_SHORT_TIMED')))
+    expect(bytes(shortTimed))
       .toEqual([0x00, 0x21, 0x00, 0x00]);
-    expect(bytes(encodeLegacyMotorCommand('moventiv-60', 'OPEN_LONG_TIMED')))
+    expect(bytes(longTimed))
       .toEqual([0x00, 0x22]);
     expect(bytes(encodeLegacyMotorCommand('moventiv-80', 'CLOSE')))
       .toEqual([0x00, 0x30]);
     expect(bytes(encodeLegacyMotorCommand('garline', 'LEARNING')))
       .toEqual([0x00, 0x12]);
+    expect(open.operation).toBe('motor-open');
+    expect(shortTimed.operation).toBe('motor-open-short-timed');
+    expect(longTimed.operation).toBe('motor-open-long-timed');
   });
 
   it('preserves OPEN validation metadata and independent payloads', () => {

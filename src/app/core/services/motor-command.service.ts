@@ -14,12 +14,14 @@ import {
 } from './motor-command-confirmation';
 import {
   LegacyBleWrite,
+  LegacyMotorCommand,
   inspectCataloguedLegacyBleWrite,
 } from './legacy-ble-write-catalog';
 
 export interface CataloguedWidoorMotorConfirmationRequest {
   readonly write: LegacyBleWrite;
-  readonly command: 'OPEN' | 'CLOSE';
+  readonly command: Extract<LegacyMotorCommand,
+    'OPEN' | 'OPEN_SHORT_TIMED' | 'OPEN_LONG_TIMED' | 'CLOSE'>;
   readonly deviceId: string;
   readonly timeoutMs?: number;
 }
@@ -82,9 +84,13 @@ export class MotorCommandService {
   async sendCataloguedWidoorMotorCommandWithConfirmation(
     request: CataloguedWidoorMotorConfirmationRequest,
   ): Promise<MotorCommandConfirmation> {
-    const expectedOperation = request.command === 'OPEN'
-      ? 'motor-open'
-      : 'motor-close';
+    const expectedOperations = {
+      OPEN: 'motor-open',
+      OPEN_SHORT_TIMED: 'motor-open-short-timed',
+      OPEN_LONG_TIMED: 'motor-open-long-timed',
+      CLOSE: 'motor-close',
+    } as const;
+    const expectedOperation = expectedOperations[request.command];
     if (inspectCataloguedLegacyBleWrite(request.write) !== 'authentic' ||
         request.write.profile !== 'widoor' ||
         request.write.operation !== expectedOperation ||

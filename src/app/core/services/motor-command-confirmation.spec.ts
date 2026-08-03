@@ -216,6 +216,52 @@ describe('MotorCommandConfirmationService', () => {
     },
   );
 
+  it('should confirm both timed Widoor openings only from a new 0x21',
+    async () => {
+      for (const command of [
+        'OPEN_SHORT_TIMED',
+        'OPEN_LONG_TIMED',
+      ] as const) {
+        const result = await service.executeWithMotorCommandConfirmation(
+          request({ profile: 'widoor', command }),
+          async () => notifications.next(notification(
+            11,
+            1_001,
+            0,
+            0,
+            WIDOOR_OPENING_STARTED_STATE,
+          )),
+        );
+
+        expect(result.status).toBe('confirmed');
+        expect(result.command).toBe(command);
+        expect(result.notification?.state).toBe(0x21);
+      }
+    },
+  );
+
+  it('should ignore old and non-opening states for a timed opening',
+    fakeAsync(() => {
+      let result: MotorCommandConfirmation | undefined;
+      void service.executeWithMotorCommandConfirmation(
+        request({
+          profile: 'widoor',
+          command: 'OPEN_SHORT_TIMED',
+          timeoutMs: 10,
+        }),
+        async () => {
+          notifications.next(notification(10, 1_000, 0, 0, 0x21));
+          notifications.next(notification(11, 1_001, 0, 0, 0x20));
+          notifications.next(notification(12, 1_002, 0, 0, 0x31));
+          notifications.next(notification(13, 1_003, 0, 0, 0x30));
+        },
+      ).then((value) => result = value);
+
+      tick(10);
+      expect(result?.status).toBe('timeout');
+    }),
+  );
+
   it('should ignore old 0x31 and stop-after-close state 0x30 for CLOSE',
     fakeAsync(() => {
       let result: MotorCommandConfirmation | undefined;
@@ -482,7 +528,7 @@ function request(overrides: Partial<{
   baselinePosition: number;
   baselineMaximumPosition: number;
   timeoutMs: number;
-  command: 'OPEN' | 'CLOSE';
+  command: 'OPEN' | 'OPEN_SHORT_TIMED' | 'OPEN_LONG_TIMED' | 'CLOSE';
 }> = {}): MotorCommandConfirmationRequest {
   const profile = overrides.profile ?? 'moventiv-60';
   const base = {

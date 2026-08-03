@@ -29,6 +29,17 @@ export type LegacyBleWriteConfirmationStatus =
   | 'not-validated'
   | 'timeout';
 
+export type TimedCycleValidationStatus =
+  | 'not-observed'
+  | 'pending-physical-validation'
+  | 'validated'
+  | 'failed';
+
+export type WidoorPhysicalValidationOperation =
+  | 'motor-close'
+  | 'motor-open-short-timed'
+  | 'motor-open-long-timed';
+
 export interface LegacyBleWriteAuthorization {
   readonly confirmedByUser: boolean;
   readonly confirmedAt: number;
@@ -59,12 +70,17 @@ export type LegacyBleWriteConfirmationPolicy =
   | {
       readonly kind: 'widoor-close-state';
       readonly timeoutMs?: number;
+    }
+  | {
+      readonly kind: 'widoor-timed-opening-state';
+      readonly command: 'OPEN_SHORT_TIMED' | 'OPEN_LONG_TIMED';
+      readonly timeoutMs?: number;
     };
 
 export interface LegacyBleWriteExecutionPolicy {
   readonly allowPhase1ReferenceOnly?: true;
   readonly allowPhysicalValidationAttempt?: {
-    readonly operation: 'motor-close';
+    readonly operation: WidoorPhysicalValidationOperation;
     readonly profile: 'widoor';
   };
 }
@@ -104,6 +120,9 @@ export interface LegacyBleWriteExecutionResult {
   readonly connectionGeneration: number;
   readonly nativeWriteCompleted: boolean;
   readonly confirmationStatus: LegacyBleWriteConfirmationStatus;
+  readonly confirmedMotorStateRaw: number | null;
+  readonly movementStartConfirmed: boolean;
+  readonly timedCycleValidationStatus: TimedCycleValidationStatus;
   readonly error: LegacyBleWriteExecutionError | null;
 }
 
@@ -251,7 +270,7 @@ export class BleWriteExecutionService implements OnDestroy {
     // Authorization is consumed at the last synchronous boundary before the
     // native write (or a Widoor motor-state confirmation flow) begins.
     this.consumeAuthorization(request.authorization);
-    if (isWidoorOpen(write) || isWidoorClose(write)) {
+    if (isControlledWidoorMotorWrite(write)) {
       return this.executeWidoorMotorCommand(request, startedAt, context);
     }
     return this.executeGattWrite(request, startedAt, context);
@@ -477,6 +496,20 @@ export class BleWriteExecutionService implements OnDestroy {
           'Widoor CLOSE requires its operation-scoped physical validation.',
         );
       }
+    } else if (isWidoorTimedOpen(write)) {
+      const expectedCommand = write.operation === 'motor-open-short-timed'
+        ? 'OPEN_SHORT_TIMED'
+        : 'OPEN_LONG_TIMED';
+      if (request.confirmationPolicy.kind !==
+          'widoor-timed-opening-state' ||
+          request.confirmationPolicy.command !== expectedCommand ||
+          !this.isPhysicalValidationAttempt(request)) {
+        return this.result(
+          request, startedAt, 'invalid-request', false, 'unavailable',
+          overrideUsed, 'widoor-timed-validation-required',
+          'Timed Widoor OPEN requires its operation-scoped validation.',
+        );
+      }
     } else if (request.confirmationPolicy.kind !== 'gatt-only') {
       return this.result(
         request, startedAt, 'invalid-request', false, 'unavailable',
@@ -541,11 +574,19 @@ export class BleWriteExecutionService implements OnDestroy {
             deviceId: request.deviceId,
             timeoutMs: policy.timeoutMs,
           })
-        : (() => {
-            throw new Error(
-              'The Widoor motor confirmation policy was not validated.',
-            );
-          })();
+        : policy.kind === 'widoor-timed-opening-state'
+          ? await this.motorCommandService
+            .sendCataloguedWidoorMotorCommandWithConfirmation({
+              write: request.write,
+              command: policy.command,
+              deviceId: request.deviceId,
+              timeoutMs: policy.timeoutMs,
+            })
+          : (() => {
+              throw new Error(
+                'The Widoor motor confirmation policy was not validated.',
+              );
+            })();
     const nativeWriteCompleted =
       confirmation.status === 'confirmed' || confirmation.status === 'timeout';
     const contextFailure = this.contextFailure(
@@ -561,6 +602,8 @@ export class BleWriteExecutionService implements OnDestroy {
       case 'confirmed':
         return this.result(
           request, startedAt, 'success', true, 'confirmed', overrideUsed,
+          undefined, undefined, undefined,
+          confirmation.notification?.state ?? null,
         );
       case 'timeout':
         return this.result(
@@ -658,8 +701,9 @@ export class BleWriteExecutionService implements OnDestroy {
     request: LegacyBleWriteRequest,
   ): boolean {
     const attempt = request.policy?.allowPhysicalValidationAttempt;
-    return isWidoorClose(request.write) &&
-      attempt?.operation === 'motor-close' &&
+    return (isWidoorClose(request.write) ||
+        isWidoorTimedOpen(request.write)) &&
+      attempt?.operation === request.write.operation &&
       attempt.profile === 'widoor';
   }
 
@@ -673,6 +717,7 @@ export class BleWriteExecutionService implements OnDestroy {
     errorCode?: string,
     errorMessageValue?: string,
     nativeCause?: unknown,
+    confirmedMotorStateRaw: number | null = null,
   ): LegacyBleWriteExecutionResult {
     const write = isCataloguedLegacyBleWrite(request.write)
       ? request.write
@@ -694,6 +739,13 @@ export class BleWriteExecutionService implements OnDestroy {
       connectionGeneration: request.connectionGeneration,
       nativeWriteCompleted,
       confirmationStatus,
+      confirmedMotorStateRaw,
+      movementStartConfirmed: confirmationStatus === 'confirmed',
+      timedCycleValidationStatus: timedCycleStatus(
+        write,
+        status,
+        confirmationStatus,
+      ),
       error: errorCode === undefined
         ? null
         : {
@@ -722,6 +774,35 @@ function isWidoorClose(write: LegacyBleWrite): boolean {
   return write.profile === 'widoor' &&
     write.operation === 'motor-close' &&
     write.hardwareValidationStatus === 'phase1-reference-only';
+}
+
+function isWidoorTimedOpen(write: LegacyBleWrite): boolean {
+  return write.profile === 'widoor' &&
+    (write.operation === 'motor-open-short-timed' ||
+      write.operation === 'motor-open-long-timed') &&
+    write.hardwareValidationStatus === 'phase1-reference-only';
+}
+
+function isControlledWidoorMotorWrite(write: LegacyBleWrite): boolean {
+  return isWidoorOpen(write) || isWidoorClose(write) ||
+    isWidoorTimedOpen(write);
+}
+
+function timedCycleStatus(
+  write: LegacyBleWrite | null,
+  status: LegacyBleWriteExecutionStatus,
+  confirmationStatus: LegacyBleWriteConfirmationStatus,
+): TimedCycleValidationStatus {
+  if (write === null || !isWidoorTimedOpen(write)) {
+    return 'not-observed';
+  }
+  if (confirmationStatus === 'confirmed') {
+    return 'pending-physical-validation';
+  }
+  if (status === 'timeout') {
+    return 'not-observed';
+  }
+  return 'failed';
 }
 
 function isTargetCompatible(write: LegacyBleWrite): boolean {

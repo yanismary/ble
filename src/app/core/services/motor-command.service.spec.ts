@@ -158,6 +158,31 @@ describe('MotorCommandService', () => {
     },
   );
 
+  it('should confirm both catalogued timed commands around their exact write',
+    async () => {
+      for (const testCase of [
+        { command: 'OPEN_SHORT_TIMED', payload: [0x00, 0x21, 0, 0] },
+        { command: 'OPEN_LONG_TIMED', payload: [0x00, 0x22] },
+      ] as const) {
+        const write = encodeLegacyMotorCommand('widoor', testCase.command);
+        const result = await service
+          .sendCataloguedWidoorMotorCommandWithConfirmation({
+            write,
+            command: testCase.command,
+            deviceId: 'device-1',
+          });
+
+        expect(result.status).toBe('confirmed');
+        expect(executeWithConfirmation.calls.mostRecent().args[0])
+          .toEqual(jasmine.objectContaining({ command: testCase.command }));
+        expect(Array.from(
+          writeCharacteristic.calls.mostRecent().args[2] as Uint8Array,
+        )).toEqual(testCase.payload);
+      }
+      expect(writeCharacteristic).toHaveBeenCalledTimes(2);
+    },
+  );
+
   it('should reject a fabricated CLOSE before observing or writing',
     async () => {
       const authentic = encodeLegacyMotorCommand('widoor', 'CLOSE');
@@ -302,6 +327,52 @@ describe('MotorCommandService', () => {
       executeWithConfirmation.calls.reset();
     }
   });
+
+  it('should share the same lock with both timed opening commands',
+    async () => {
+      const shortWrite = encodeLegacyMotorCommand(
+        'widoor', 'OPEN_SHORT_TIMED',
+      );
+      let resolveConfirmation!: (
+        value: ReturnType<typeof confirmationResult>,
+      ) => void;
+      executeWithConfirmation.and.callFake(async (
+        _request: unknown,
+        write: () => Promise<void>,
+      ) => {
+        await write();
+        return new Promise<ReturnType<typeof confirmationResult>>(
+          (resolve) => resolveConfirmation = resolve,
+        );
+      });
+      const first = service
+        .sendCataloguedWidoorMotorCommandWithConfirmation({
+          write: shortWrite,
+          command: 'OPEN_SHORT_TIMED',
+          deviceId: 'device-1',
+        });
+      await Promise.resolve();
+
+      const blocked = await service
+        .sendCataloguedWidoorMotorCommandWithConfirmation({
+          write: encodeLegacyMotorCommand('widoor', 'OPEN_LONG_TIMED'),
+          command: 'OPEN_LONG_TIMED',
+          deviceId: 'device-1',
+        });
+
+      expect(blocked.status).toBe('failed');
+      expect(blocked.failureReason).toContain('already in progress');
+      expect(writeCharacteristic).toHaveBeenCalledTimes(1);
+      resolveConfirmation(confirmationResult('timeout'));
+      await first;
+
+      executeWithConfirmation.and.resolveTo(confirmationResult('confirmed'));
+      expect((await service.sendMotorCommandWithConfirmation({
+        profile: 'widoor',
+        command: 'OPEN',
+      })).status).toBe('confirmed');
+    },
+  );
 
   it('should release the business lock after every terminal result', async () => {
     for (const status of [

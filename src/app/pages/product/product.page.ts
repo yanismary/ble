@@ -23,8 +23,6 @@ import {
   BleService,
 } from '../../core/services/ble';
 import { BLE_UUIDS } from '../../core/services/ble-profile-catalog';
-import { encodeLegacyMotorCommand } from
-  '../../core/services/legacy-ble-write-catalog';
 import { LegacyBleWrite } from
   '../../core/services/legacy-ble-write-catalog';
 import {
@@ -61,11 +59,13 @@ import {
 import { PRODUCT_PAGE_TEXT } from './product-page.text';
 import {
   ProductOpenCommandState,
+  ProductCommandHistoryEntry,
   ProductOpenCommandStatus,
   ProductMotorCommandOperation,
   WIDOOR_COMMAND_UI_CONFIGS,
   WidoorCommandUiConfig,
   createWidoorCommandAuthorization,
+  formatCommandHistoryTime,
   initialProductOpenCommandState,
 } from './product-open-command';
 import {
@@ -124,7 +124,7 @@ export class ProductPage implements OnDestroy {
   private readonly widoorCommandWrites = new Map(
     WIDOOR_COMMAND_UI_CONFIGS.map((config) => [
       config.command,
-      encodeLegacyMotorCommand('widoor', config.command),
+      config.catalogFactory(),
     ]),
   );
 
@@ -145,6 +145,7 @@ export class ProductPage implements OnDestroy {
   readonly emptyTechnicalRows: readonly ProductDisplayRow[] = [];
   viewModel: ProductViewModel;
   openCommandState = initialProductOpenCommandState();
+  private commandHistoryEntries: readonly ProductCommandHistoryEntry[] = [];
 
   constructor() {
     const routeProfile = this.route.snapshot.data['profile'];
@@ -231,6 +232,16 @@ export class ProductPage implements OnDestroy {
       this.openCommandState.status === 'executing';
   }
 
+  get commandHistory(): readonly ProductCommandHistoryEntry[] {
+    if (this.context !== null &&
+        (this.bleService.connectedDeviceId !== this.context.deviceId ||
+          this.bleService.connectionGeneration !==
+            this.context.connectionGeneration)) {
+      this.commandHistoryEntries = [];
+    }
+    return this.commandHistoryEntries;
+  }
+
   get displayedOpenCommandStatus(): ProductOpenCommandStatus {
     if (this.showWidoorOpenCommand && !this.pageContextCurrent) {
       return this.bleService.connectedDeviceId === null
@@ -261,6 +272,43 @@ export class ProductPage implements OnDestroy {
         return 'error';
       default:
         return 'neutral';
+    }
+  }
+
+  commandHistoryStatusLabel(entry: ProductCommandHistoryEntry): string {
+    const statuses = this.text.commandHistory.statuses;
+    switch (entry.status) {
+      case 'confirmed': return statuses.confirmed;
+      case 'timeout': return statuses.timeout;
+      case 'failed': return statuses.failed;
+      case 'disconnected': return statuses.disconnected;
+      case 'stale': return statuses.stale;
+      case 'unavailable': return statuses.unavailable;
+      case 'cancelled': return statuses.cancelled;
+      default: return entry.status;
+    }
+  }
+
+  commandHistoryConfirmationLabel(entry: ProductCommandHistoryEntry): string {
+    const confirmations = this.text.commandHistory.confirmations;
+    switch (entry.confirmationStatus) {
+      case 'confirmed': return confirmations.confirmed;
+      case 'timeout': return confirmations.timeout;
+      case 'unavailable': return confirmations.unavailable;
+      case 'not-required': return confirmations.notRequired;
+      case 'not-validated': return confirmations.notValidated;
+      case null: return confirmations.none;
+    }
+  }
+
+  commandHistoryTimedCycleLabel(entry: ProductCommandHistoryEntry): string {
+    const cycles = this.text.commandHistory.timedCycles;
+    switch (entry.timedCycleValidationStatus) {
+      case 'not-observed': return cycles.notObserved;
+      case 'pending-physical-validation':
+        return cycles.pendingPhysicalValidation;
+      case 'validated': return cycles.validated;
+      case 'failed': return cycles.failed;
     }
   }
 
@@ -637,8 +685,7 @@ export class ProductPage implements OnDestroy {
     if (!this.canExecuteWidoorCommand(config) ||
         this.context === null ||
         config.confirmationPolicy === null ||
-        (config.operation !== 'motor-open' &&
-          config.operation !== 'motor-close')) {
+        config.operation === 'motor-learning') {
       return;
     }
     const operation: ProductMotorCommandOperation = config.operation;
@@ -646,12 +693,15 @@ export class ProductPage implements OnDestroy {
     if (write === undefined) {
       return;
     }
-    const commandText = this.text.widoorCommands[config.textKey];
     const cycle = ++this.commandCycle;
     const context = this.context;
     const requestedAt = Date.now();
     this.openCommandState = Object.freeze({
-      ...initialProductOpenCommandState(operation),
+      ...initialProductOpenCommandState(
+        operation,
+        config.label,
+        config.expectedMotorStateRaw,
+      ),
       status: 'awaiting-confirmation',
       startedAt: requestedAt,
       message: this.text.openCommand.awaitingConfirmation,
@@ -659,11 +709,11 @@ export class ProductPage implements OnDestroy {
 
     try {
       const alert = await this.alertController.create({
-        header: commandText.confirmTitle,
-        message: commandText.confirmMessage,
+        header: config.confirmationTitle,
+        message: config.confirmationMessage,
         buttons: [
           { text: this.text.openCommand.cancel, role: 'cancel' },
-          { text: commandText.confirmAction, role: 'confirm' },
+          { text: config.confirmationButtonLabel, role: 'confirm' },
         ],
       });
       if (!this.isCurrentCommandCycle(cycle)) {
@@ -676,12 +726,17 @@ export class ProductPage implements OnDestroy {
       }
       if (dismissal.role !== 'confirm') {
         this.openCommandState = Object.freeze({
-          ...initialProductOpenCommandState(operation),
+          ...initialProductOpenCommandState(
+            operation,
+            config.label,
+            config.expectedMotorStateRaw,
+          ),
           status: 'cancelled',
           startedAt: requestedAt,
           completedAt: Date.now(),
           message: this.text.openCommand.cancelled,
         });
+        this.addCommandHistory(this.openCommandState);
         return;
       }
 
@@ -690,7 +745,7 @@ export class ProductPage implements OnDestroy {
         this.setOpenCommandContextFailure(
           contextStatus,
           requestedAt,
-          operation,
+          config,
         );
         return;
       }
@@ -708,7 +763,11 @@ export class ProductPage implements OnDestroy {
         validatedAt: confirmedAt,
       });
       this.openCommandState = Object.freeze({
-        ...initialProductOpenCommandState(operation),
+        ...initialProductOpenCommandState(
+          operation,
+          config.label,
+          config.expectedMotorStateRaw,
+        ),
         status: 'executing',
         startedAt: confirmedAt,
         message: this.text.openCommand.executing,
@@ -724,9 +783,9 @@ export class ProductPage implements OnDestroy {
         authorization,
         attemptId,
         confirmationPolicy: config.confirmationPolicy,
-        ...(config.executionPolicy === undefined
+        ...(config.physicalValidationPolicy === undefined
           ? {}
-          : { policy: config.executionPolicy }),
+          : { policy: config.physicalValidationPolicy }),
       });
       if (!this.isCurrentCommandCycle(cycle)) {
         return;
@@ -739,7 +798,7 @@ export class ProductPage implements OnDestroy {
         this.setOpenCommandContextFailure(
           terminalContextStatus,
           result.startedAt,
-          operation,
+          config,
           result.nativeWriteCompleted,
         );
         return;
@@ -748,13 +807,18 @@ export class ProductPage implements OnDestroy {
     } catch {
       if (this.isCurrentCommandCycle(cycle)) {
         this.openCommandState = Object.freeze({
-          ...initialProductOpenCommandState(operation),
+          ...initialProductOpenCommandState(
+            operation,
+            config.label,
+            config.expectedMotorStateRaw,
+          ),
           status: 'failed',
           startedAt: requestedAt,
           completedAt: Date.now(),
           message: this.text.openCommand.failed,
           technicalErrorCode: 'open-command-ui-failed',
         });
+        this.addCommandHistory(this.openCommandState);
       }
     }
   }
@@ -902,11 +966,16 @@ export class ProductPage implements OnDestroy {
     this.commandCycle += 1;
     const operation = this.openCommandState.operation;
     this.openCommandState = Object.freeze({
-      ...initialProductOpenCommandState(operation),
+      ...initialProductOpenCommandState(
+        operation,
+        this.openCommandState.label,
+        this.openCommandState.expectedMotorStateRaw,
+      ),
       status: 'disconnected',
       completedAt: Date.now(),
       message: this.text.openCommand.disconnected,
     });
+    this.commandHistoryEntries = [];
     this.invalidateContext('disconnected');
   }
 
@@ -987,7 +1056,7 @@ export class ProductPage implements OnDestroy {
   private setOpenCommandContextFailure(
     status: 'disconnected' | 'stale' | 'unavailable',
     startedAt: number,
-    operation: ProductMotorCommandOperation,
+    config: WidoorCommandUiConfig,
     nativeWriteCompleted = false,
   ): void {
     const message = status === 'disconnected'
@@ -996,13 +1065,22 @@ export class ProductPage implements OnDestroy {
         ? this.text.openCommand.stale
         : this.text.openCommand.unavailable;
     this.openCommandState = Object.freeze({
-      ...initialProductOpenCommandState(operation),
+      ...initialProductOpenCommandState(
+        config.operation as ProductMotorCommandOperation,
+        config.label,
+        config.expectedMotorStateRaw,
+      ),
       status,
       startedAt,
       completedAt: Date.now(),
       nativeWriteCompleted,
       message,
     });
+    if (status === 'stale' || status === 'disconnected') {
+      this.commandHistoryEntries = [];
+    } else {
+      this.addCommandHistory(this.openCommandState);
+    }
   }
 
   private applyOpenCommandResult(
@@ -1010,22 +1088,21 @@ export class ProductPage implements OnDestroy {
     attemptId: string,
     config: WidoorCommandUiConfig,
   ): void {
-    const commandText = this.text.widoorCommands[config.textKey];
     let status: ProductOpenCommandStatus;
     let message: string;
     switch (result.status) {
       case 'success':
         if (result.confirmationStatus === 'confirmed') {
           status = 'confirmed';
-          message = commandText.confirmed;
+          message = config.confirmationSuccessMessage;
         } else {
           status = 'timeout';
-          message = commandText.notConfirmed;
+          message = config.unconfirmedMessage;
         }
         break;
       case 'timeout':
         status = 'timeout';
-        message = commandText.notConfirmed;
+        message = config.unconfirmedMessage;
         break;
       case 'unavailable':
         status = 'unavailable';
@@ -1051,6 +1128,7 @@ export class ProductPage implements OnDestroy {
     }
     this.openCommandState = Object.freeze({
       operation: config.operation as ProductMotorCommandOperation,
+      label: config.label,
       status,
       startedAt: result.startedAt,
       completedAt: result.completedAt,
@@ -1059,7 +1137,20 @@ export class ProductPage implements OnDestroy {
       message,
       technicalErrorCode: result.error?.code ?? null,
       attemptId,
+      expectedMotorStateRaw: config.expectedMotorStateRaw,
+      receivedMotorStateRaw: result.confirmedMotorStateRaw,
+      movementStartConfirmed: result.movementStartConfirmed,
+      timedCycleValidationStatus: result.timedCycleValidationStatus,
+      secondaryMessage: config.isTimedCommand &&
+        result.movementStartConfirmed
+        ? this.text.widoorCommands.timedCyclePending
+        : null,
     });
+    if (status === 'stale' || status === 'disconnected') {
+      this.commandHistoryEntries = [];
+    } else {
+      this.addCommandHistory(this.openCommandState);
+    }
   }
 
   private nextCommandIdentifier(kind: 'attempt' | 'confirmation'): string {
@@ -1072,6 +1163,33 @@ export class ProductPage implements OnDestroy {
   private resetOpenCommandState(): void {
     this.commandCycle += 1;
     this.openCommandState = initialProductOpenCommandState();
+    this.commandHistoryEntries = [];
+  }
+
+  private addCommandHistory(state: ProductOpenCommandState): void {
+    if (state.status === 'idle' ||
+        state.status === 'awaiting-confirmation' ||
+        state.status === 'executing' ||
+        state.completedAt === null) {
+      return;
+    }
+    const durationMs = state.startedAt === null
+      ? null
+      : Math.max(0, state.completedAt - state.startedAt);
+    this.commandHistoryEntries = Object.freeze([
+      Object.freeze({
+        time: formatCommandHistoryTime(state.completedAt),
+        label: state.label,
+        status: state.status,
+        confirmationStatus: state.confirmationStatus,
+        durationMs,
+        timedCycleValidationStatus: state.timedCycleValidationStatus,
+        isTimedCommand: state.operation === 'motor-open-short-timed' ||
+          state.operation === 'motor-open-long-timed',
+        technicalErrorCode: state.technicalErrorCode,
+      }),
+      ...this.commandHistoryEntries,
+    ].slice(0, 5));
   }
 
   private createUserRows(

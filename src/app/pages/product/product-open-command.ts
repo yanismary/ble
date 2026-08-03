@@ -2,6 +2,8 @@ import {
   LegacyBleWrite,
   LegacyHardwareValidationStatus,
   LegacyMotorCommand,
+  LegacyMotorOperation,
+  encodeLegacyMotorCommand,
   isCataloguedLegacyBleWrite,
 } from '../../core/services/legacy-ble-write-catalog';
 import {
@@ -9,17 +11,20 @@ import {
   LegacyBleWriteConfirmationPolicy,
   LegacyBleWriteConfirmationStatus,
   LegacyBleWriteExecutionPolicy,
+  TimedCycleValidationStatus,
 } from '../../core/services/ble-write-execution.service';
 import {
   WIDOOR_CLOSING_STARTED_STATE,
   WIDOOR_OPENING_STARTED_STATE,
 } from '../../core/services/motor-command-confirmation';
+import { PRODUCT_PAGE_TEXT } from './product-page.text';
 
 export const WIDOOR_COMMAND_AUTHORIZATION_TTL_MS = 15_000;
 export const WIDOOR_OPEN_AUTHORIZATION_TTL_MS =
   WIDOOR_COMMAND_AUTHORIZATION_TTL_MS;
 
-export type ProductMotorCommandOperation = 'motor-open' | 'motor-close';
+export type ProductMotorCommandOperation = Exclude<LegacyMotorOperation,
+  'motor-learning'>;
 
 export type ProductOpenCommandStatus =
   | 'idle'
@@ -35,6 +40,7 @@ export type ProductOpenCommandStatus =
 
 export interface ProductOpenCommandState {
   readonly operation: ProductMotorCommandOperation;
+  readonly label: string;
   readonly status: ProductOpenCommandStatus;
   readonly startedAt: number | null;
   readonly completedAt: number | null;
@@ -43,6 +49,22 @@ export interface ProductOpenCommandState {
   readonly message: string | null;
   readonly technicalErrorCode: string | null;
   readonly attemptId: string | null;
+  readonly expectedMotorStateRaw: number | null;
+  readonly receivedMotorStateRaw: number | null;
+  readonly movementStartConfirmed: boolean;
+  readonly timedCycleValidationStatus: TimedCycleValidationStatus;
+  readonly secondaryMessage: string | null;
+}
+
+export interface ProductCommandHistoryEntry {
+  readonly time: string;
+  readonly label: string;
+  readonly status: ProductOpenCommandStatus;
+  readonly confirmationStatus: LegacyBleWriteConfirmationStatus | null;
+  readonly durationMs: number | null;
+  readonly timedCycleValidationStatus: TimedCycleValidationStatus;
+  readonly isTimedCommand: boolean;
+  readonly technicalErrorCode: string | null;
 }
 
 export type WidoorCommandTextKey =
@@ -54,14 +76,22 @@ export type WidoorCommandTextKey =
 
 export interface WidoorCommandUiConfig {
   readonly command: LegacyMotorCommand;
-  readonly operation: string;
+  readonly operation: LegacyMotorOperation;
   readonly textKey: WidoorCommandTextKey;
+  readonly label: string;
+  readonly confirmationTitle: string;
+  readonly confirmationMessage: string;
+  readonly confirmationButtonLabel: string;
+  readonly confirmationSuccessMessage: string;
+  readonly unconfirmedMessage: string;
+  readonly catalogFactory: () => LegacyBleWrite;
   readonly enabled: boolean;
-  readonly expectedMotorState: number | null;
+  readonly expectedMotorStateRaw: number | null;
   readonly confirmationPolicy: LegacyBleWriteConfirmationPolicy | null;
-  readonly executionPolicy: LegacyBleWriteExecutionPolicy | undefined;
+  readonly physicalValidationPolicy: LegacyBleWriteExecutionPolicy | undefined;
   readonly hardwareValidationStatus: LegacyHardwareValidationStatus;
   readonly disabledReason: 'physical-validation' | 'protected' | null;
+  readonly isTimedCommand: boolean;
 }
 
 export const WIDOOR_COMMAND_UI_CONFIGS: readonly WidoorCommandUiConfig[] =
@@ -70,49 +100,83 @@ export const WIDOOR_COMMAND_UI_CONFIGS: readonly WidoorCommandUiConfig[] =
       command: 'OPEN',
       operation: 'motor-open',
       textKey: 'open',
+      catalogFactory: () => encodeLegacyMotorCommand('widoor', 'OPEN'),
       enabled: true,
-      expectedMotorState: WIDOOR_OPENING_STARTED_STATE,
+      expectedMotorStateRaw: WIDOOR_OPENING_STARTED_STATE,
       confirmationPolicy: { kind: 'widoor-open-state' },
       hardwareValidationStatus: 'validated-widoor-old-firmware',
+      isTimedCommand: false,
     }),
     commandConfig({
       command: 'CLOSE',
       operation: 'motor-close',
       textKey: 'close',
+      catalogFactory: () => encodeLegacyMotorCommand('widoor', 'CLOSE'),
       enabled: true,
-      expectedMotorState: WIDOOR_CLOSING_STARTED_STATE,
+      expectedMotorStateRaw: WIDOOR_CLOSING_STARTED_STATE,
       confirmationPolicy: { kind: 'widoor-close-state' },
-      executionPolicy: {
+      physicalValidationPolicy: {
         allowPhysicalValidationAttempt: {
           operation: 'motor-close',
           profile: 'widoor',
         },
       },
       hardwareValidationStatus: 'phase1-reference-only',
+      isTimedCommand: false,
     }),
     commandConfig({
       command: 'OPEN_SHORT_TIMED',
-      operation: 'motor-open_short_timed',
+      operation: 'motor-open-short-timed',
       textKey: 'openShortTimed',
-      enabled: false,
+      catalogFactory: () => encodeLegacyMotorCommand(
+        'widoor', 'OPEN_SHORT_TIMED',
+      ),
+      enabled: true,
+      expectedMotorStateRaw: WIDOOR_OPENING_STARTED_STATE,
+      confirmationPolicy: {
+        kind: 'widoor-timed-opening-state',
+        command: 'OPEN_SHORT_TIMED',
+      },
+      physicalValidationPolicy: {
+        allowPhysicalValidationAttempt: {
+          operation: 'motor-open-short-timed',
+          profile: 'widoor',
+        },
+      },
       hardwareValidationStatus: 'phase1-reference-only',
-      disabledReason: 'physical-validation',
+      isTimedCommand: true,
     }),
     commandConfig({
       command: 'OPEN_LONG_TIMED',
-      operation: 'motor-open_long_timed',
+      operation: 'motor-open-long-timed',
       textKey: 'openLongTimed',
-      enabled: false,
+      catalogFactory: () => encodeLegacyMotorCommand(
+        'widoor', 'OPEN_LONG_TIMED',
+      ),
+      enabled: true,
+      expectedMotorStateRaw: WIDOOR_OPENING_STARTED_STATE,
+      confirmationPolicy: {
+        kind: 'widoor-timed-opening-state',
+        command: 'OPEN_LONG_TIMED',
+      },
+      physicalValidationPolicy: {
+        allowPhysicalValidationAttempt: {
+          operation: 'motor-open-long-timed',
+          profile: 'widoor',
+        },
+      },
       hardwareValidationStatus: 'phase1-reference-only',
-      disabledReason: 'physical-validation',
+      isTimedCommand: true,
     }),
     commandConfig({
       command: 'LEARNING',
       operation: 'motor-learning',
       textKey: 'learning',
+      catalogFactory: () => encodeLegacyMotorCommand('widoor', 'LEARNING'),
       enabled: false,
       hardwareValidationStatus: 'phase1-reference-only',
       disabledReason: 'protected',
+      isTimedCommand: false,
     }),
   ]);
 
@@ -134,13 +198,17 @@ export function createWidoorCommandAuthorization(
   const expiresAt = input.confirmedAt + WIDOOR_COMMAND_AUTHORIZATION_TTL_MS;
   const validOpen = input.write.operation === 'motor-open' &&
     input.write.hardwareValidationStatus === 'validated-widoor-old-firmware';
-  const validClose = input.write.operation === 'motor-close' &&
+  const validPhysicalValidation = (
+    input.write.operation === 'motor-close' ||
+    input.write.operation === 'motor-open-short-timed' ||
+    input.write.operation === 'motor-open-long-timed'
+  ) &&
     input.write.hardwareValidationStatus === 'phase1-reference-only';
   if (!isCataloguedLegacyBleWrite(input.write) ||
       input.write.profile !== 'widoor' ||
       input.write.destructiveLevel !== 'motor-movement' ||
-      (!validOpen && !validClose)) {
-    throw new Error('A catalogued Widoor OPEN or CLOSE write is required.');
+      (!validOpen && !validPhysicalValidation)) {
+    throw new Error('A controlled catalogued Widoor motor write is required.');
   }
   if (!input.deviceId.trim() ||
       !input.attemptId.trim() ||
@@ -179,9 +247,12 @@ export function createWidoorOpenAuthorization(
 
 export function initialProductOpenCommandState(
   operation: ProductMotorCommandOperation = 'motor-open',
+  label = '',
+  expectedMotorStateRaw: number | null = null,
 ): ProductOpenCommandState {
   return Object.freeze({
     operation,
+    label,
     status: 'idle',
     startedAt: null,
     completedAt: null,
@@ -190,14 +261,36 @@ export function initialProductOpenCommandState(
     message: null,
     technicalErrorCode: null,
     attemptId: null,
+    expectedMotorStateRaw,
+    receivedMotorStateRaw: null,
+    movementStartConfirmed: false,
+    timedCycleValidationStatus: 'not-observed',
+    secondaryMessage: null,
   });
+}
+
+export function formatCommandHistoryTime(timestamp: number): string {
+  if (!Number.isFinite(timestamp)) {
+    return '--:--:--';
+  }
+  const value = new Date(timestamp);
+  if (Number.isNaN(value.getTime())) {
+    return '--:--:--';
+  }
+  return [value.getHours(), value.getMinutes(), value.getSeconds()]
+    .map((part) => String(part).padStart(2, '0'))
+    .join(':');
 }
 
 function commandConfig(
   value: Omit<WidoorCommandUiConfig,
-    'confirmationPolicy' | 'executionPolicy' | 'expectedMotorState' |
+    'confirmationPolicy' | 'physicalValidationPolicy' |
+    'expectedMotorStateRaw' | 'label' | 'confirmationTitle' |
+    'confirmationMessage' | 'confirmationButtonLabel' |
+    'confirmationSuccessMessage' | 'unconfirmedMessage' |
     'disabledReason'> & Partial<Pick<WidoorCommandUiConfig,
-    'confirmationPolicy' | 'executionPolicy' | 'expectedMotorState' |
+    'confirmationPolicy' | 'physicalValidationPolicy' |
+    'expectedMotorStateRaw' |
     'disabledReason'>>,
 ): WidoorCommandUiConfig {
   const confirmationPolicy: LegacyBleWriteConfirmationPolicy | null =
@@ -205,20 +298,28 @@ function commandConfig(
       ? null
       : Object.freeze({ ...value.confirmationPolicy }) as
         LegacyBleWriteConfirmationPolicy;
+  const text = PRODUCT_PAGE_TEXT.widoorCommands[value.textKey];
   const config: WidoorCommandUiConfig = {
     ...value,
-    expectedMotorState: value.expectedMotorState ?? null,
+    label: text.label,
+    confirmationTitle: text.confirmTitle,
+    confirmationMessage: text.confirmMessage,
+    confirmationButtonLabel: text.confirmAction,
+    confirmationSuccessMessage: text.confirmed,
+    unconfirmedMessage: text.notConfirmed,
+    expectedMotorStateRaw: value.expectedMotorStateRaw ?? null,
     confirmationPolicy,
-    executionPolicy: value.executionPolicy === undefined
+    physicalValidationPolicy: value.physicalValidationPolicy === undefined
       ? undefined
       : Object.freeze({
-          ...value.executionPolicy,
-          ...(value.executionPolicy.allowPhysicalValidationAttempt ===
+          ...value.physicalValidationPolicy,
+          ...(value.physicalValidationPolicy.allowPhysicalValidationAttempt ===
             undefined
             ? {}
             : {
                 allowPhysicalValidationAttempt: Object.freeze({
-                  ...value.executionPolicy.allowPhysicalValidationAttempt,
+                  ...value.physicalValidationPolicy
+                    .allowPhysicalValidationAttempt,
                 }),
               }),
         }),

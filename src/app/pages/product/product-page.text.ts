@@ -22,7 +22,9 @@ export const PRODUCT_PAGE_TEXT = {
     warning:
       'Un mouvement réel du moteur sera déclenché après confirmation.',
     physicalValidationRequired: 'Validation physique requise',
-    protected: 'Fonction protégée — prochain lot',
+    protected: 'Fonction protégée — validation dédiée requise',
+    timedCyclePending:
+      'Le cycle temporisé complet reste à valider physiquement.',
     open: {
       label: 'Ouvrir',
       confirmTitle: 'Ouvrir la porte ?',
@@ -45,19 +47,27 @@ export const PRODUCT_PAGE_TEXT = {
     },
     openShortTimed: {
       label: 'Ouverture temporisée courte',
-      confirmTitle: '',
-      confirmMessage: '',
-      confirmAction: '',
-      confirmed: '',
-      notConfirmed: '',
+      confirmTitle: 'Lancer l’ouverture temporisée courte ?',
+      confirmMessage:
+        'Cette action déclenche un mouvement réel du moteur. Vérifiez que ' +
+        'la zone est dégagée et que l’arrêt physique est accessible. Le ' +
+        'démarrage du mouvement sera contrôlé, mais le cycle temporisé ' +
+        'complet devra être validé séparément.',
+      confirmAction: 'Lancer',
+      confirmed: 'Début d’ouverture temporisée courte confirmé',
+      notConfirmed: 'Commande envoyée, mais démarrage non confirmé',
     },
     openLongTimed: {
       label: 'Ouverture temporisée longue',
-      confirmTitle: '',
-      confirmMessage: '',
-      confirmAction: '',
-      confirmed: '',
-      notConfirmed: '',
+      confirmTitle: 'Lancer l’ouverture temporisée longue ?',
+      confirmMessage:
+        'Cette action déclenche un mouvement réel du moteur. Vérifiez que ' +
+        'la zone est dégagée et que l’arrêt physique est accessible. Le ' +
+        'démarrage du mouvement sera contrôlé, mais le cycle temporisé ' +
+        'complet devra être validé séparément.',
+      confirmAction: 'Lancer',
+      confirmed: 'Début d’ouverture temporisée longue confirmé',
+      notConfirmed: 'Commande envoyée, mais démarrage non confirmé',
     },
     learning: {
       label: 'Apprentissage',
@@ -66,6 +76,36 @@ export const PRODUCT_PAGE_TEXT = {
       confirmAction: '',
       confirmed: '',
       notConfirmed: '',
+    },
+  },
+  commandHistory: {
+    title: 'Historique des commandes',
+    empty: 'Aucune commande terminée pendant cette session.',
+    duration: 'Délai',
+    confirmation: 'Confirmation moteur',
+    timedCycle: 'Cycle temporisé',
+    statuses: {
+      confirmed: 'Confirmée',
+      timeout: 'Non confirmée',
+      failed: 'Échec',
+      disconnected: 'Déconnectée',
+      stale: 'Obsolète',
+      unavailable: 'Indisponible',
+      cancelled: 'Annulée',
+    },
+    confirmations: {
+      confirmed: 'Confirmée',
+      timeout: 'Non confirmée',
+      unavailable: 'Indisponible',
+      notRequired: 'Non requise',
+      notValidated: 'Non validée',
+      none: 'Aucune',
+    },
+    timedCycles: {
+      notObserved: 'Non observé',
+      pendingPhysicalValidation: 'Validation physique en attente',
+      validated: 'Validé',
+      failed: 'Échec',
     },
   },
   sections: {

@@ -42,6 +42,7 @@ import {
   formatProductTimestamp,
   isProductPageNavigationState,
 } from './product.page';
+import { WIDOOR_COMMAND_UI_CONFIGS } from './product-open-command';
 import {
   ProductPageNavigationState,
   ProductReadViewState,
@@ -416,17 +417,18 @@ describe('ProductPage', () => {
       expect(component.openCommandState.status).toBe('stale');
       expect(component.openCommandState.message)
         .toBe(component.text.openCommand.stale);
+      expect(component.commandHistory).toEqual([]);
     },
   );
 
-  it('should keep timed and learning commands visible but non-interactive',
+  it('should activate timed commands while keeping learning non-interactive',
     async () => {
       const element = fixture.nativeElement as HTMLElement;
       const disabled = Array.from(element.querySelectorAll<HTMLIonButtonElement>(
         'ion-button.widoor-command-disabled',
       ));
 
-      expect(disabled.length).toBe(3);
+      expect(disabled.length).toBe(1);
       expect(disabled.every((button) => button.disabled)).toBeTrue();
       expect(element.textContent).toContain(
         component.text.widoorCommands.openShortTimed.label,
@@ -437,6 +439,9 @@ describe('ProductPage', () => {
       expect(element.textContent).toContain(
         component.text.widoorCommands.learning.label,
       );
+      expect(element.querySelectorAll(
+        'ion-button.widoor-timed-command',
+      ).length).toBe(2);
       expect(element.textContent).not.toContain('RAZ');
       for (const command of component.widoorCommands.filter(
         (item) => !item.config.enabled,
@@ -445,6 +450,196 @@ describe('ProductPage', () => {
       }
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(alertCreate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should execute short timed opening once with its exact limited scope',
+    async () => {
+      alertRole = 'confirm';
+      const config = WIDOOR_COMMAND_UI_CONFIGS[2];
+      writeExecutionService.nextResult = openExecutionResult(
+        'success',
+        'confirmed',
+        null,
+        'motor-open-short-timed',
+      );
+
+      await component.requestWidoorCommand(config);
+      fixture.detectChanges();
+
+      expect(alertOptions[0]['header']).toBe(
+        component.text.widoorCommands.openShortTimed.confirmTitle,
+      );
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      const request = writeExecutionService.execute.calls.mostRecent()
+        .args[0] as LegacyBleWriteRequest;
+      expect(request.write.payloadHex).toBe('00 21 00 00');
+      expect(request.write.operation).toBe('motor-open-short-timed');
+      expect(request.confirmationPolicy).toEqual({
+        kind: 'widoor-timed-opening-state',
+        command: 'OPEN_SHORT_TIMED',
+      });
+      expect(request.policy?.allowPhysicalValidationAttempt).toEqual({
+        operation: 'motor-open-short-timed',
+        profile: 'widoor',
+      });
+      expect(request.policy?.allowPhase1ReferenceOnly).toBeUndefined();
+      expect(component.openCommandState.movementStartConfirmed).toBeTrue();
+      expect(component.openCommandState.timedCycleValidationStatus)
+        .toBe('pending-physical-validation');
+      expect(component.openCommandState.message).toBe(
+        component.text.widoorCommands.openShortTimed.confirmed,
+      );
+      expect(component.openCommandState.secondaryMessage).toBe(
+        component.text.widoorCommands.timedCyclePending,
+      );
+      expect(component.commandHistory[0]).toEqual(jasmine.objectContaining({
+        label: component.text.widoorCommands.openShortTimed.label,
+        status: 'confirmed',
+        confirmationStatus: 'confirmed',
+        isTimedCommand: true,
+        timedCycleValidationStatus: 'pending-physical-validation',
+      }));
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should execute long timed opening with payload 00 22', async () => {
+    alertRole = 'confirm';
+    const config = WIDOOR_COMMAND_UI_CONFIGS[3];
+    writeExecutionService.nextResult = openExecutionResult(
+      'success',
+      'confirmed',
+      null,
+      'motor-open-long-timed',
+    );
+
+    await component.requestWidoorCommand(config);
+
+    const request = writeExecutionService.execute.calls.mostRecent()
+      .args[0] as LegacyBleWriteRequest;
+    expect(request.write.payloadHex).toBe('00 22');
+    expect(request.confirmationPolicy).toEqual({
+      kind: 'widoor-timed-opening-state',
+      command: 'OPEN_LONG_TIMED',
+    });
+    expect(request.policy?.allowPhysicalValidationAttempt?.operation)
+      .toBe('motor-open-long-timed');
+    expect(component.openCommandState.message).toBe(
+      component.text.widoorCommands.openLongTimed.confirmed,
+    );
+    expect(component.openCommandState.timedCycleValidationStatus)
+      .not.toBe('validated');
+  });
+
+  it('should map timed timeout, failure, disconnection and stale results',
+    async () => {
+      alertRole = 'confirm';
+      const config = WIDOOR_COMMAND_UI_CONFIGS[2];
+      const cases = [
+        ['timeout', 'timeout', 'timeout'],
+        ['failed', 'unavailable', 'failed'],
+        ['disconnected', 'unavailable', 'disconnected'],
+        ['stale', 'unavailable', 'stale'],
+      ] as const;
+
+      for (const [resultStatus, confirmation, expectedStatus] of cases) {
+        writeExecutionService.nextResult = openExecutionResult(
+          resultStatus,
+          confirmation,
+          resultStatus === 'timeout' ? 'confirmation-timeout' : 'test-error',
+          'motor-open-short-timed',
+        );
+        await component.requestWidoorCommand(config);
+        expect(component.openCommandState.status).toBe(expectedStatus);
+        expect(component.openCommandState.movementStartConfirmed).toBeFalse();
+        expect(component.openCommandState.timedCycleValidationStatus)
+          .not.toBe('validated');
+        expect(component.openCommandState.message).not.toContain('Native');
+      }
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should cancel a timed opening without authorization or execution',
+    async () => {
+      alertRole = 'backdrop';
+
+      await component.requestWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[2]);
+
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(component.openCommandState.status).toBe('cancelled');
+      expect(component.commandHistory.length).toBe(1);
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should block another motor command while a timed alert is pending',
+    async () => {
+      let dismissAlert!: () => void;
+      alertCreate.and.callFake(async (options: Record<string, unknown>) => {
+        alertOptions.push(options);
+        return {
+          present: async () => undefined,
+          onDidDismiss: () => new Promise<{ role: string }>((resolve) => {
+            dismissAlert = () => resolve({ role: 'cancel' });
+          }),
+        };
+      });
+
+      const first = component.requestWidoorCommand(
+        WIDOOR_COMMAND_UI_CONFIGS[2],
+      );
+      await Promise.resolve();
+      await component.requestWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[3]);
+
+      expect(alertCreate).toHaveBeenCalledTimes(1);
+      expect(component.commandHistory).toEqual([]);
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      dismissAlert();
+      await first;
+    },
+  );
+
+  it('should retain only five terminal commands and clear history on disconnect',
+    async () => {
+      alertRole = 'confirm';
+      for (let index = 0; index < 6; index += 1) {
+        const config = WIDOOR_COMMAND_UI_CONFIGS[index % 2];
+        writeExecutionService.nextResult = openExecutionResult(
+          'success',
+          'confirmed',
+          null,
+          config.operation,
+        );
+        await component.requestWidoorCommand(config);
+      }
+      fixture.detectChanges();
+
+      expect(component.commandHistory.length).toBe(5);
+      expect(component.commandHistory[0].label).toBe(
+        component.text.widoorCommands.close.label,
+      );
+      const details = fixture.nativeElement.querySelector(
+        'details.command-history',
+      ) as HTMLDetailsElement;
+      expect(details.open).toBeFalse();
+      expect(details.textContent).not.toContain('Native OPEN error');
+
+      bleService.disconnect();
+      expect(component.commandHistory).toEqual([]);
+    },
+  );
+
+  it('should clear command history on a new connection generation',
+    async () => {
+      alertRole = 'confirm';
+      await component.requestWidoorOpen();
+      expect(component.commandHistory.length).toBe(1);
+
+      bleService.connectionGeneration += 1;
+
+      expect(component.commandHistory).toEqual([]);
     },
   );
 
@@ -738,7 +933,7 @@ describe('ProductPage', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
       const details = element.querySelector<HTMLDetailsElement>(
-        'details.technical-details',
+        'details.technical-details:not(.command-history)',
       );
 
       expect(details).not.toBeNull();
@@ -747,7 +942,9 @@ describe('ProductPage', () => {
         BLE_UUIDS.userParametersCharacteristic,
       );
       const mainPresentation = element.cloneNode(true) as HTMLElement;
-      mainPresentation.querySelector('details.technical-details')?.remove();
+      mainPresentation.querySelectorAll('details').forEach(
+        (item) => item.remove(),
+      );
       expect(mainPresentation.textContent).not.toContain(
         BLE_UUIDS.userParametersCharacteristic,
       );
@@ -763,14 +960,16 @@ describe('ProductPage', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
       const details = element.querySelector<HTMLDetailsElement>(
-        'details.technical-details',
+        'details.technical-details:not(.command-history)',
       );
 
       expect(details).not.toBeNull();
       expect(details?.hasAttribute('open')).toBeFalse();
       expect(details?.textContent).toContain(component.text.rawFrame);
       const mainPresentation = element.cloneNode(true) as HTMLElement;
-      mainPresentation.querySelector('details.technical-details')?.remove();
+      mainPresentation.querySelectorAll('details').forEach(
+        (item) => item.remove(),
+      );
       expect(mainPresentation.textContent).not.toContain(
         component.text.rawFrame,
       );
@@ -1147,6 +1346,16 @@ function openExecutionResult(
   operation = 'motor-open',
 ): LegacyBleWriteExecutionResult {
   const nativeWriteCompleted = status === 'success' || status === 'timeout';
+  const timed = operation === 'motor-open-short-timed' ||
+    operation === 'motor-open-long-timed';
+  const confirmed = confirmationStatus === 'confirmed';
+  const payloadHex = operation === 'motor-close'
+    ? '00 30'
+    : operation === 'motor-open-short-timed'
+      ? '00 21 00 00'
+      : operation === 'motor-open-long-timed'
+        ? '00 22'
+        : '00 20 00 00';
   return {
     status,
     operation,
@@ -1154,18 +1363,29 @@ function openExecutionResult(
     deviceId: 'device-1',
     serviceUuid: BLE_UUIDS.shdoService,
     characteristicUuid: BLE_UUIDS.motorCommandCharacteristic,
-    payloadHex: operation === 'motor-close' ? '00 30' : '00 20 00 00',
-    length: operation === 'motor-close' ? 2 : 4,
+    payloadHex,
+    length: payloadHex.split(' ').length,
     destructiveLevel: 'motor-movement',
-    hardwareValidationStatus: operation === 'motor-close'
-      ? 'phase1-reference-only'
-      : 'validated-widoor-old-firmware',
-    policyOverrideUsed: operation === 'motor-close',
+    hardwareValidationStatus: operation === 'motor-open'
+      ? 'validated-widoor-old-firmware'
+      : 'phase1-reference-only',
+    policyOverrideUsed: operation !== 'motor-open',
     startedAt: 100,
     completedAt: 200,
     connectionGeneration: 4,
     nativeWriteCompleted,
     confirmationStatus,
+    confirmedMotorStateRaw: confirmed
+      ? operation === 'motor-close' ? 0x31 : 0x21
+      : null,
+    movementStartConfirmed: confirmed,
+    timedCycleValidationStatus: timed
+      ? confirmed
+        ? 'pending-physical-validation'
+        : status === 'timeout'
+          ? 'not-observed'
+          : 'failed'
+      : 'not-observed',
     error: errorCode === null
       ? null
       : { code: errorCode, message: 'Native OPEN error' },

@@ -44,14 +44,20 @@
   margin-top: 1rem;
 }
 
-.product-loading {
+.product-loading,
+.command-state {
   align-items: center;
   display: flex;
   gap: 0.5rem;
 }
 
-.command-warning {
+.command-warning,
+.command-state,
+.read-state-detail {
   color: var(--ion-color-medium-shade);
+}
+
+.command-warning {
   margin-bottom: 0;
 }
 
@@ -60,23 +66,31 @@
   min-width: 0;
 }
 
-.command-state {
-  align-items: center;
-  color: var(--ion-color-medium-shade);
-  display: flex;
-  font-weight: 600;
-  gap: 0.5rem;
+.widoor-command-item-timed {
+  flex-basis: 100%;
 }
 
-.command-state[data-tone='success'] {
+.widoor-command {
+  width: 100%;
+  white-space: normal;
+}
+
+.command-state {
+  font-weight: 600;
+}
+
+.command-state[data-tone='success'],
+.read-state[data-tone='success'] {
   color: var(--ion-color-success);
 }
 
-.command-state[data-tone='warning'] {
+.command-state[data-tone='warning'],
+.read-state[data-tone='warning'] {
   color: var(--ion-color-warning-shade);
 }
 
-.command-state[data-tone='error'] {
+.command-state[data-tone='error'],
+.read-state[data-tone='error'] {
   color: var(--ion-color-danger);
 }
 
@@ -85,20 +99,7 @@
   font-weight: 600;
 }
 
-.read-state[data-tone='success'] {
-  color: var(--ion-color-success);
-}
-
-.read-state[data-tone='warning'] {
-  color: var(--ion-color-warning-shade);
-}
-
-.read-state[data-tone='error'] {
-  color: var(--ion-color-danger);
-}
-
 .read-state-detail {
-  color: var(--ion-color-medium-shade);
   margin-top: -0.35rem;
 }
 
