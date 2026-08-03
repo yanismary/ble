@@ -55,6 +55,11 @@
   margin-bottom: 0;
 }
 
+.widoor-command-item {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
 .command-state {
   align-items: center;
   color: var(--ion-color-medium-shade);

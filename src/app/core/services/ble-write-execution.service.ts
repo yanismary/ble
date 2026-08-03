@@ -55,10 +55,18 @@ export type LegacyBleWriteConfirmationPolicy =
   | {
       readonly kind: 'widoor-open-state';
       readonly timeoutMs?: number;
+    }
+  | {
+      readonly kind: 'widoor-close-state';
+      readonly timeoutMs?: number;
     };
 
 export interface LegacyBleWriteExecutionPolicy {
   readonly allowPhase1ReferenceOnly?: true;
+  readonly allowPhysicalValidationAttempt?: {
+    readonly operation: 'motor-close';
+    readonly profile: 'widoor';
+  };
 }
 
 export interface LegacyBleWriteRequest {
@@ -241,10 +249,10 @@ export class BleWriteExecutionService implements OnDestroy {
       return authorizationFailure;
     }
     // Authorization is consumed at the last synchronous boundary before the
-    // native write (or the existing Widoor OPEN confirmation flow) begins.
+    // native write (or a Widoor motor-state confirmation flow) begins.
     this.consumeAuthorization(request.authorization);
-    if (isWidoorOpen(write)) {
-      return this.executeWidoorOpen(request, startedAt, context);
+    if (isWidoorOpen(write) || isWidoorClose(write)) {
+      return this.executeWidoorMotorCommand(request, startedAt, context);
     }
     return this.executeGattWrite(request, startedAt, context);
   }
@@ -441,7 +449,8 @@ export class BleWriteExecutionService implements OnDestroy {
     }
     const overrideUsed =
       write.hardwareValidationStatus === 'phase1-reference-only' &&
-      request.policy?.allowPhase1ReferenceOnly === true;
+      (request.policy?.allowPhase1ReferenceOnly === true ||
+        this.isPhysicalValidationAttempt(request));
     if (write.hardwareValidationStatus === 'phase1-reference-only' &&
         !overrideUsed) {
       return this.result(
@@ -459,11 +468,20 @@ export class BleWriteExecutionService implements OnDestroy {
           'Widoor OPEN must use the existing motor-state confirmation.',
         );
       }
+    } else if (isWidoorClose(write)) {
+      if (request.confirmationPolicy.kind !== 'widoor-close-state' ||
+          !this.isPhysicalValidationAttempt(request)) {
+        return this.result(
+          request, startedAt, 'invalid-request', false, 'unavailable',
+          overrideUsed, 'widoor-close-validation-required',
+          'Widoor CLOSE requires its operation-scoped physical validation.',
+        );
+      }
     } else if (request.confirmationPolicy.kind !== 'gatt-only') {
       return this.result(
         request, startedAt, 'invalid-request', false, 'unavailable',
         overrideUsed, 'invalid-confirmation-policy',
-        'Only Widoor OPEN supports motor-state confirmation.',
+        'Only controlled Widoor motor commands support state confirmation.',
       );
     }
     return null;
@@ -501,22 +519,33 @@ export class BleWriteExecutionService implements OnDestroy {
       );
   }
 
-  private async executeWidoorOpen(
+  private async executeWidoorMotorCommand(
     request: LegacyBleWriteRequest,
     startedAt: number,
     context: ExecutionContext,
   ): Promise<LegacyBleWriteExecutionResult> {
     const policy = request.confirmationPolicy;
-    if (policy.kind !== 'widoor-open-state') {
-      throw new Error('Widoor OPEN confirmation policy was not validated.');
-    }
-    const confirmation =
-      await this.motorCommandService.sendMotorCommandWithConfirmation({
-        profile: 'widoor',
-        command: 'OPEN',
-        deviceId: request.deviceId,
-        timeoutMs: policy.timeoutMs,
-      });
+    const overrideUsed = this.overrideUsed(request);
+    const confirmation = policy.kind === 'widoor-open-state'
+      ? await this.motorCommandService.sendMotorCommandWithConfirmation({
+          profile: 'widoor',
+          command: 'OPEN',
+          deviceId: request.deviceId,
+          timeoutMs: policy.timeoutMs,
+        })
+      : policy.kind === 'widoor-close-state'
+        ? await this.motorCommandService
+          .sendCataloguedWidoorMotorCommandWithConfirmation({
+            write: request.write,
+            command: 'CLOSE',
+            deviceId: request.deviceId,
+            timeoutMs: policy.timeoutMs,
+          })
+        : (() => {
+            throw new Error(
+              'The Widoor motor confirmation policy was not validated.',
+            );
+          })();
     const nativeWriteCompleted =
       confirmation.status === 'confirmed' || confirmation.status === 'timeout';
     const contextFailure = this.contextFailure(
@@ -531,30 +560,30 @@ export class BleWriteExecutionService implements OnDestroy {
     switch (confirmation.status) {
       case 'confirmed':
         return this.result(
-          request, startedAt, 'success', true, 'confirmed', false,
+          request, startedAt, 'success', true, 'confirmed', overrideUsed,
         );
       case 'timeout':
         return this.result(
-          request, startedAt, 'timeout', true, 'timeout', false,
+          request, startedAt, 'timeout', true, 'timeout', overrideUsed,
           'confirmation-timeout',
           confirmation.failureReason ??
-            'No compatible Widoor opening state was received in time.',
+            'No compatible Widoor motor state was received in time.',
         );
       case 'disconnected':
         return this.result(
-          request, startedAt, 'disconnected', false, 'unavailable', false,
+          request, startedAt, 'disconnected', false, 'unavailable', overrideUsed,
           'device-disconnected',
           confirmation.failureReason ?? 'The BLE device disconnected.',
         );
       case 'failed':
         return this.result(
-          request, startedAt, 'failed', false, 'unavailable', false,
+          request, startedAt, 'failed', false, 'unavailable', overrideUsed,
           'motor-command-failed',
           confirmation.failureReason ?? 'The motor command failed.',
         );
       case 'pending':
         return this.result(
-          request, startedAt, 'failed', false, 'unavailable', false,
+          request, startedAt, 'failed', false, 'unavailable', overrideUsed,
           'non-terminal-confirmation',
           'The motor command returned a non-terminal confirmation.',
         );
@@ -621,7 +650,17 @@ export class BleWriteExecutionService implements OnDestroy {
   private overrideUsed(request: LegacyBleWriteRequest): boolean {
     return request.write?.hardwareValidationStatus ===
       'phase1-reference-only' &&
-      request.policy?.allowPhase1ReferenceOnly === true;
+      (request.policy?.allowPhase1ReferenceOnly === true ||
+        this.isPhysicalValidationAttempt(request));
+  }
+
+  private isPhysicalValidationAttempt(
+    request: LegacyBleWriteRequest,
+  ): boolean {
+    const attempt = request.policy?.allowPhysicalValidationAttempt;
+    return isWidoorClose(request.write) &&
+      attempt?.operation === 'motor-close' &&
+      attempt.profile === 'widoor';
   }
 
   private result(
@@ -679,6 +718,12 @@ function isWidoorOpen(write: LegacyBleWrite): boolean {
     write.hardwareValidationStatus === 'validated-widoor-old-firmware';
 }
 
+function isWidoorClose(write: LegacyBleWrite): boolean {
+  return write.profile === 'widoor' &&
+    write.operation === 'motor-close' &&
+    write.hardwareValidationStatus === 'phase1-reference-only';
+}
+
 function isTargetCompatible(write: LegacyBleWrite): boolean {
   if (write.characteristicUuid === BLE_UUIDS.motorCommandCharacteristic ||
       write.characteristicUuid === BLE_UUIDS.datesAndCyclesCharacteristic) {
@@ -715,6 +760,17 @@ function snapshotRequest(
     confirmationPolicy: Object.freeze({ ...request.confirmationPolicy }),
     ...(request.policy === undefined
       ? {}
-      : { policy: Object.freeze({ ...request.policy }) }),
+      : {
+          policy: Object.freeze({
+            ...request.policy,
+            ...(request.policy.allowPhysicalValidationAttempt === undefined
+              ? {}
+              : {
+                  allowPhysicalValidationAttempt: Object.freeze({
+                    ...request.policy.allowPhysicalValidationAttempt,
+                  }),
+                }),
+          }),
+        }),
   });
 }

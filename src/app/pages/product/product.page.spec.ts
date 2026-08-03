@@ -177,11 +177,10 @@ describe('ProductPage', () => {
       const element = fixture.nativeElement as HTMLElement;
       expect(element.querySelector('ion-range')).toBeNull();
       expect(element.querySelector('ion-toggle')).toBeNull();
-      expect(element.textContent).not.toContain('Fermer');
     },
   );
 
-  it('should expose only Widoor OPEN without executing it automatically',
+  it('should expose Widoor commands without executing automatically',
     () => {
       const element = fixture.nativeElement as HTMLElement;
       const openButton = element.querySelector<HTMLIonButtonElement>(
@@ -190,9 +189,12 @@ describe('ProductPage', () => {
 
       expect(openButton).not.toBeNull();
       expect(openButton?.disabled).toBeFalse();
-      expect(element.textContent).toContain(component.text.openCommand.open);
-      expect(element.textContent).not.toContain('Fermer');
-      expect(element.textContent).not.toContain('Apprentissage');
+      expect(element.textContent).toContain(
+        component.text.widoorCommands.open.label,
+      );
+      expect(element.querySelector('ion-button.widoor-close-command'))
+        .not.toBeNull();
+      expect(element.textContent).toContain('Apprentissage');
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(alertCreate).not.toHaveBeenCalled();
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
@@ -206,9 +208,9 @@ describe('ProductPage', () => {
 
       expect(alertCreate).toHaveBeenCalledTimes(1);
       expect(alertOptions[0]['header'])
-        .toBe(component.text.openCommand.confirmTitle);
+        .toBe(component.text.widoorCommands.open.confirmTitle);
       expect(alertOptions[0]['message'])
-        .toBe(component.text.openCommand.confirmMessage);
+        .toBe(component.text.widoorCommands.open.confirmMessage);
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(component.openCommandState.status).toBe('cancelled');
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
@@ -264,6 +266,188 @@ describe('ProductPage', () => {
     },
   );
 
+  it('should cancel CLOSE confirmation without creating authorization',
+    async () => {
+      await component.requestWidoorClose();
+
+      expect(alertOptions[0]['header'])
+        .toBe(component.text.widoorCommands.close.confirmTitle);
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(component.openCommandState.status).toBe('cancelled');
+    },
+  );
+
+  it('should treat CLOSE backdrop dismissal as cancellation', async () => {
+    alertRole = 'backdrop';
+
+    await component.requestWidoorClose();
+
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    expect(component.openCommandState.status).toBe('cancelled');
+    expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+  });
+
+  it('should execute catalogued Widoor CLOSE once with a limited policy',
+    async () => {
+      alertRole = 'confirm';
+      writeExecutionService.nextResult = openExecutionResult(
+        'success',
+        'confirmed',
+        null,
+        'motor-close',
+      );
+
+      await component.requestWidoorClose();
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      const request = writeExecutionService.execute.calls.mostRecent()
+        .args[0] as LegacyBleWriteRequest;
+      expect(request.write.operation).toBe('motor-close');
+      expect(request.write.payloadHex).toBe('00 30');
+      expect(Array.from(request.write.payload)).toEqual([0x00, 0x30]);
+      expect(request.confirmationPolicy).toEqual({
+        kind: 'widoor-close-state',
+      });
+      expect(request.policy).toEqual({
+        allowPhysicalValidationAttempt: {
+          operation: 'motor-close',
+          profile: 'widoor',
+        },
+      });
+      expect(request.policy?.allowPhase1ReferenceOnly).toBeUndefined();
+      expect(request.authorization).toEqual(jasmine.objectContaining({
+        operation: 'motor-close',
+        profile: 'widoor',
+        payloadHex: '00 30',
+        motorMovementConfirmed: true,
+      }));
+      expect(component.openCommandState.status).toBe('confirmed');
+      expect(component.openCommandState.message)
+        .toBe(component.text.widoorCommands.close.confirmed);
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should map CLOSE timeout without claiming a confirmed movement',
+    async () => {
+      alertRole = 'confirm';
+      writeExecutionService.nextResult = openExecutionResult(
+        'timeout',
+        'timeout',
+        'confirmation-timeout',
+        'motor-close',
+      );
+
+      await component.requestWidoorClose();
+
+      expect(component.openCommandState.status).toBe('timeout');
+      expect(component.openCommandState.nativeWriteCompleted).toBeTrue();
+      expect(component.openCommandState.confirmationStatus).toBe('timeout');
+      expect(component.openCommandState.message)
+        .toBe(component.text.widoorCommands.close.notConfirmed);
+    },
+  );
+
+  it('should map every terminal CLOSE result without native text',
+    async () => {
+      alertRole = 'confirm';
+      const cases: readonly [
+        LegacyBleWriteExecutionResult,
+        string,
+        string,
+      ][] = [
+        [openExecutionResult('failed', 'unavailable', null, 'motor-close'),
+          'failed', component.text.openCommand.failed],
+        [openExecutionResult(
+          'unavailable', 'unavailable', null, 'motor-close',
+        ), 'unavailable', component.text.openCommand.unavailable],
+        [openExecutionResult(
+          'disconnected', 'unavailable', null, 'motor-close',
+        ), 'disconnected', component.text.openCommand.disconnected],
+        [openExecutionResult(
+          'stale', 'unavailable', null, 'motor-close',
+        ), 'stale', component.text.openCommand.stale],
+        [openExecutionResult(
+          'unavailable', 'unavailable', 'write-in-progress', 'motor-close',
+        ), 'unavailable', component.text.openCommand.alreadyInProgress],
+        [openExecutionResult(
+          'success', 'not-validated', null, 'motor-close',
+        ), 'timeout', component.text.widoorCommands.close.notConfirmed],
+      ];
+
+      for (const [result, expectedStatus, expectedMessage] of cases) {
+        writeExecutionService.nextResult = result;
+        await component.requestWidoorClose();
+        expect(component.openCommandState.status).toBe(expectedStatus);
+        expect(component.openCommandState.message).toBe(expectedMessage);
+        expect(component.openCommandState.message).not.toContain(
+          'Native CLOSE error',
+        );
+      }
+      expect(component.openCommandState.nativeWriteCompleted).toBeTrue();
+      expect(component.openCommandState.confirmationStatus)
+        .toBe('not-validated');
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should ignore a late CLOSE result after same-device reconnection',
+    async () => {
+      alertRole = 'confirm';
+      let resolveExecution!: (result: LegacyBleWriteExecutionResult) => void;
+      writeExecutionService.execute.and.returnValue(new Promise((resolve) => {
+        resolveExecution = resolve;
+      }));
+      const pending = component.requestWidoorClose();
+      await waitForCondition(() =>
+        writeExecutionService.execute.calls.count() === 1,
+      );
+
+      bleService.connectionGeneration += 1;
+      resolveExecution(openExecutionResult(
+        'success',
+        'confirmed',
+        null,
+        'motor-close',
+      ));
+      await pending;
+
+      expect(component.displayedOpenCommandStatus).toBe('stale');
+      expect(component.openCommandState.status).toBe('stale');
+      expect(component.openCommandState.message)
+        .toBe(component.text.openCommand.stale);
+    },
+  );
+
+  it('should keep timed and learning commands visible but non-interactive',
+    async () => {
+      const element = fixture.nativeElement as HTMLElement;
+      const disabled = Array.from(element.querySelectorAll<HTMLIonButtonElement>(
+        'ion-button.widoor-command-disabled',
+      ));
+
+      expect(disabled.length).toBe(3);
+      expect(disabled.every((button) => button.disabled)).toBeTrue();
+      expect(element.textContent).toContain(
+        component.text.widoorCommands.openShortTimed.label,
+      );
+      expect(element.textContent).toContain(
+        component.text.widoorCommands.openLongTimed.label,
+      );
+      expect(element.textContent).toContain(
+        component.text.widoorCommands.learning.label,
+      );
+      expect(element.textContent).not.toContain('RAZ');
+      for (const command of component.widoorCommands.filter(
+        (item) => !item.config.enabled,
+      )) {
+        await component.requestWidoorCommand(command.config);
+      }
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(alertCreate).not.toHaveBeenCalled();
+    },
+  );
+
   it('should reject rapid duplicate confirmation flows', async () => {
     let dismissAlert!: () => void;
     alertCreate.and.callFake(async (options: Record<string, unknown>) => {
@@ -287,6 +471,29 @@ describe('ProductPage', () => {
     await first;
   });
 
+  it('should reject rapid duplicate CLOSE confirmation flows', async () => {
+    let dismissAlert!: () => void;
+    alertCreate.and.callFake(async (options: Record<string, unknown>) => {
+      alertOptions.push(options);
+      return {
+        present: async () => undefined,
+        onDidDismiss: () => new Promise<{ role: string }>((resolve) => {
+          dismissAlert = () => resolve({ role: 'cancel' });
+        }),
+      };
+    });
+
+    const first = component.requestWidoorClose();
+    await Promise.resolve();
+    const second = component.requestWidoorClose();
+    await second;
+
+    expect(alertCreate).toHaveBeenCalledTimes(1);
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    dismissAlert();
+    await first;
+  });
+
   it('should map every guarded OPEN execution result without native text',
     async () => {
       alertRole = 'confirm';
@@ -296,9 +503,9 @@ describe('ProductPage', () => {
         string,
       ][] = [
         [openExecutionResult('success', 'confirmed'), 'confirmed',
-          component.text.openCommand.confirmed],
+          component.text.widoorCommands.open.confirmed],
         [openExecutionResult('timeout', 'timeout'), 'timeout',
-          component.text.openCommand.notConfirmed],
+          component.text.widoorCommands.open.notConfirmed],
         [openExecutionResult('failed', 'unavailable'), 'failed',
           component.text.openCommand.failed],
         [openExecutionResult('unavailable', 'unavailable'), 'unavailable',
@@ -311,7 +518,7 @@ describe('ProductPage', () => {
           'unavailable', 'unavailable', 'write-in-progress',
         ), 'unavailable', component.text.openCommand.alreadyInProgress],
         [openExecutionResult('success', 'not-validated'), 'timeout',
-          component.text.openCommand.notConfirmed],
+          component.text.widoorCommands.open.notConfirmed],
       ];
 
       for (const [result, expectedStatus, expectedMessage] of cases) {
@@ -937,20 +1144,23 @@ function openExecutionResult(
   status: LegacyBleWriteExecutionResult['status'],
   confirmationStatus: LegacyBleWriteExecutionResult['confirmationStatus'],
   errorCode: string | null = status === 'success' ? null : 'open-test-error',
+  operation = 'motor-open',
 ): LegacyBleWriteExecutionResult {
   const nativeWriteCompleted = status === 'success' || status === 'timeout';
   return {
     status,
-    operation: 'motor-open',
+    operation,
     profile: 'widoor',
     deviceId: 'device-1',
     serviceUuid: BLE_UUIDS.shdoService,
     characteristicUuid: BLE_UUIDS.motorCommandCharacteristic,
-    payloadHex: '00 20 00 00',
-    length: 4,
+    payloadHex: operation === 'motor-close' ? '00 30' : '00 20 00 00',
+    length: operation === 'motor-close' ? 2 : 4,
     destructiveLevel: 'motor-movement',
-    hardwareValidationStatus: 'validated-widoor-old-firmware',
-    policyOverrideUsed: false,
+    hardwareValidationStatus: operation === 'motor-close'
+      ? 'phase1-reference-only'
+      : 'validated-widoor-old-firmware',
+    policyOverrideUsed: operation === 'motor-close',
     startedAt: 100,
     completedAt: 200,
     connectionGeneration: 4,

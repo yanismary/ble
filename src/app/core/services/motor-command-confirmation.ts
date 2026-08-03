@@ -15,6 +15,10 @@ import {
 export const DEFAULT_MOTOR_CONFIRMATION_TIMEOUT_MS = 5_000;
 // Observed on a physical Widoor when opening starts.
 export const WIDOOR_OPENING_STARTED_STATE = 0x21;
+// Phase 1 reference: Widoor reports this state when closing starts.
+export const WIDOOR_CLOSING_STARTED_STATE = 0x31;
+
+export type ConfirmedMotorCommand = MotorCommand | 'CLOSE';
 
 export type PositionConfirmationProfile =
   | 'moventiv-60'
@@ -27,25 +31,36 @@ export type MotorCommandConfirmationStrategy =
       readonly expectedState: typeof WIDOOR_OPENING_STARTED_STATE;
     }
   | {
+      readonly kind: 'widoor-closing-state';
+      readonly expectedState: typeof WIDOOR_CLOSING_STARTED_STATE;
+    }
+  | {
       readonly kind: 'position-increase';
     };
 
 export function getMotorCommandConfirmationStrategy(
   profile: ProductProfile,
-  command: MotorCommand,
+  command: ConfirmedMotorCommand,
 ): MotorCommandConfirmationStrategy | null {
-  if (command !== 'OPEN') {
+  if (profile === 'widoor') {
+    if (command === 'OPEN') {
+      return {
+        kind: 'widoor-opening-state',
+        expectedState: WIDOOR_OPENING_STARTED_STATE,
+      };
+    }
+    if (command === 'CLOSE') {
+      return {
+        kind: 'widoor-closing-state',
+        expectedState: WIDOOR_CLOSING_STARTED_STATE,
+      };
+    }
     return null;
   }
-  if (profile === 'widoor') {
-    return {
-      kind: 'widoor-opening-state',
-      expectedState: WIDOOR_OPENING_STARTED_STATE,
-    };
-  }
-  if (profile === 'moventiv-60' ||
+  if (command === 'OPEN' &&
+      (profile === 'moventiv-60' ||
       profile === 'moventiv-80' ||
-      profile === 'garline') {
+      profile === 'garline')) {
     return { kind: 'position-increase' };
   }
   return null;
@@ -60,7 +75,7 @@ export type MotorCommandConfirmationStatus =
 
 export interface MotorCommandConfirmation {
   readonly status: MotorCommandConfirmationStatus;
-  readonly command: MotorCommand;
+  readonly command: ConfirmedMotorCommand;
   readonly profile: ProductProfile;
   readonly sentAt: number;
   readonly confirmedAt: number | null;
@@ -69,7 +84,7 @@ export interface MotorCommandConfirmation {
 }
 
 interface MotorCommandConfirmationRequestBase {
-  readonly command: MotorCommand;
+  readonly command: ConfirmedMotorCommand;
   readonly deviceId?: string;
   readonly timeoutMs?: number;
 }
@@ -82,6 +97,7 @@ export interface WidoorMotorCommandConfirmationRequest
 export interface PositionMotorCommandConfirmationRequest
   extends MotorCommandConfirmationRequestBase {
   readonly profile: PositionConfirmationProfile;
+  readonly command: 'OPEN';
   readonly baselinePosition: number;
   readonly baselineMaximumPosition: number;
 }
@@ -207,7 +223,7 @@ export class MotorCommandConfirmationService {
       if (!armed || event.sequence <= minimumSequence) {
         return;
       }
-      const frame = this.compatibleOpenNotification(
+      const frame = this.compatibleMotorNotification(
         request,
         getMotorCommandConfirmationStrategy(
           request.profile,
@@ -304,7 +320,7 @@ export class MotorCommandConfirmationService {
       : null;
   }
 
-  private compatibleOpenNotification(
+  private compatibleMotorNotification(
     request: MotorCommandConfirmationRequest,
     strategy: MotorCommandConfirmationStrategy | null,
     event: BleNotificationEvent,
@@ -313,7 +329,6 @@ export class MotorCommandConfirmationService {
     characteristicUuid: string,
   ): MotorStateFrame | null {
     if (strategy === null ||
-        request.command !== 'OPEN' ||
         event.deviceId !== deviceId ||
         event.serviceUuid.toLowerCase() !== serviceUuid ||
         event.characteristicUuid.toLowerCase() !== characteristicUuid) {
@@ -321,7 +336,8 @@ export class MotorCommandConfirmationService {
     }
 
     const frame = this.productDetection.interpretMotorState(event.value);
-    if (strategy.kind === 'widoor-opening-state') {
+    if (strategy.kind === 'widoor-opening-state' ||
+        strategy.kind === 'widoor-closing-state') {
       return frame.state === strategy.expectedState ? frame : null;
     }
 

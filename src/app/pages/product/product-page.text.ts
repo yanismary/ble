@@ -8,23 +8,65 @@ export const PRODUCT_PAGE_TEXT = {
   commandsUnavailable:
     'Les commandes seront disponibles dans un prochain lot.',
   openCommand: {
-    open: 'Ouvrir',
-    confirmTitle: 'Ouvrir la porte ?',
-    confirmMessage:
-      'Cette action déclenche un mouvement réel du moteur. Vérifiez que la ' +
-      'zone est dégagée et que l’arrêt physique est accessible.',
     cancel: 'Annuler',
-    warning: 'Un mouvement réel du moteur sera déclenché après confirmation.',
     awaitingConfirmation: 'Confirmation requise',
     executing: 'Commande en cours…',
-    confirmed: 'Ouverture confirmée',
-    notConfirmed: 'Commande envoyée, mais mouvement non confirmé',
     unavailable: 'Commande indisponible',
     disconnected: 'Périphérique déconnecté',
     stale: 'Résultat obsolète',
     failed: 'Échec de la commande',
     alreadyInProgress: 'Une commande est déjà en cours',
     cancelled: 'Commande annulée',
+  },
+  widoorCommands: {
+    warning:
+      'Un mouvement réel du moteur sera déclenché après confirmation.',
+    physicalValidationRequired: 'Validation physique requise',
+    protected: 'Fonction protégée — prochain lot',
+    open: {
+      label: 'Ouvrir',
+      confirmTitle: 'Ouvrir la porte ?',
+      confirmMessage:
+        'Cette action déclenche un mouvement réel du moteur. Vérifiez que ' +
+        'la zone est dégagée et que l’arrêt physique est accessible.',
+      confirmAction: 'Ouvrir',
+      confirmed: 'Ouverture confirmée',
+      notConfirmed: 'Commande envoyée, mais ouverture non confirmée',
+    },
+    close: {
+      label: 'Fermer',
+      confirmTitle: 'Fermer la porte ?',
+      confirmMessage:
+        'Cette action déclenche un mouvement réel du moteur. Vérifiez que ' +
+        'la zone est dégagée et que l’arrêt physique est accessible.',
+      confirmAction: 'Fermer',
+      confirmed: 'Fermeture confirmée',
+      notConfirmed: 'Commande envoyée, mais fermeture non confirmée',
+    },
+    openShortTimed: {
+      label: 'Ouverture temporisée courte',
+      confirmTitle: '',
+      confirmMessage: '',
+      confirmAction: '',
+      confirmed: '',
+      notConfirmed: '',
+    },
+    openLongTimed: {
+      label: 'Ouverture temporisée longue',
+      confirmTitle: '',
+      confirmMessage: '',
+      confirmAction: '',
+      confirmed: '',
+      notConfirmed: '',
+    },
+    learning: {
+      label: 'Apprentissage',
+      confirmTitle: '',
+      confirmMessage: '',
+      confirmAction: '',
+      confirmed: '',
+      notConfirmed: '',
+    },
   },
   sections: {
     commands: 'Commandes',

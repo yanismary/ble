@@ -7,6 +7,7 @@ import {
   ProductProfile,
 } from './ble-profile-catalog';
 import { MotorCommandService } from './motor-command.service';
+import { encodeLegacyMotorCommand } from './legacy-ble-write-catalog';
 import {
   MotorCommandConfirmationService,
 } from './motor-command-confirmation';
@@ -125,6 +126,54 @@ describe('MotorCommandService', () => {
     expect(result.status).toBe('confirmed');
   });
 
+  it('should confirm catalogued Widoor CLOSE around its exact write',
+    async () => {
+      const write = encodeLegacyMotorCommand('widoor', 'CLOSE');
+
+      const result = await service
+        .sendCataloguedWidoorMotorCommandWithConfirmation({
+          write,
+          command: 'CLOSE',
+          deviceId: 'device-1',
+          timeoutMs: 250,
+        });
+
+      expect(result.status).toBe('confirmed');
+      expect(executeWithConfirmation).toHaveBeenCalledTimes(1);
+      expect(executeWithConfirmation.calls.mostRecent().args[0]).toEqual({
+        profile: 'widoor',
+        command: 'CLOSE',
+        deviceId: 'device-1',
+        timeoutMs: 250,
+      });
+      expect(writeCharacteristic).toHaveBeenCalledOnceWith(
+        write.serviceUuid,
+        write.characteristicUuid,
+        jasmine.any(Uint8Array),
+        'device-1',
+      );
+      expect(Array.from(
+        writeCharacteristic.calls.mostRecent().args[2] as Uint8Array,
+      )).toEqual([0x00, 0x30]);
+    },
+  );
+
+  it('should reject a fabricated CLOSE before observing or writing',
+    async () => {
+      const authentic = encodeLegacyMotorCommand('widoor', 'CLOSE');
+      const result = await service
+        .sendCataloguedWidoorMotorCommandWithConfirmation({
+          write: { ...authentic },
+          command: 'CLOSE',
+          deviceId: 'device-1',
+        });
+
+      expect(result.status).toBe('failed');
+      expect(executeWithConfirmation).not.toHaveBeenCalled();
+      expect(writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
   it('should report a write error as failed without waiting', async () => {
     writeCharacteristic.and.rejectWith(new Error('Native write failed'));
 
@@ -204,6 +253,55 @@ describe('MotorCommandService', () => {
       await first;
     },
   );
+
+  it('should share one business lock across OPEN and CLOSE', async () => {
+    const closeWrite = encodeLegacyMotorCommand('widoor', 'CLOSE');
+    for (const firstCommand of ['OPEN', 'CLOSE'] as const) {
+      let resolveConfirmation!: (
+        value: ReturnType<typeof confirmationResult>,
+      ) => void;
+      executeWithConfirmation.and.callFake(async (
+        _request: unknown,
+        write: () => Promise<void>,
+      ) => {
+        await write();
+        return new Promise<ReturnType<typeof confirmationResult>>(
+          (resolve) => resolveConfirmation = resolve,
+        );
+      });
+      const first = firstCommand === 'OPEN'
+        ? service.sendMotorCommandWithConfirmation({
+            profile: 'widoor',
+            command: 'OPEN',
+          })
+        : service.sendCataloguedWidoorMotorCommandWithConfirmation({
+            write: closeWrite,
+            command: 'CLOSE',
+            deviceId: 'device-1',
+          });
+      await Promise.resolve();
+
+      const second = firstCommand === 'OPEN'
+        ? await service.sendCataloguedWidoorMotorCommandWithConfirmation({
+            write: closeWrite,
+            command: 'CLOSE',
+            deviceId: 'device-1',
+          })
+        : await service.sendMotorCommandWithConfirmation({
+            profile: 'widoor',
+            command: 'OPEN',
+          });
+
+      expect(second.status).toBe('failed');
+      expect(second.failureReason).toContain('already in progress');
+      expect(writeCharacteristic).toHaveBeenCalledTimes(1);
+      expect(executeWithConfirmation).toHaveBeenCalledTimes(1);
+      resolveConfirmation(confirmationResult('timeout'));
+      await first;
+      writeCharacteristic.calls.reset();
+      executeWithConfirmation.calls.reset();
+    }
+  });
 
   it('should release the business lock after every terminal result', async () => {
     for (const status of [

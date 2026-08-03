@@ -12,6 +12,17 @@ import {
   MotorCommandConfirmationRequest,
   MotorCommandConfirmationService,
 } from './motor-command-confirmation';
+import {
+  LegacyBleWrite,
+  inspectCataloguedLegacyBleWrite,
+} from './legacy-ble-write-catalog';
+
+export interface CataloguedWidoorMotorConfirmationRequest {
+  readonly write: LegacyBleWrite;
+  readonly command: 'OPEN' | 'CLOSE';
+  readonly deviceId: string;
+  readonly timeoutMs?: number;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -46,6 +57,69 @@ export class MotorCommandService {
   async sendMotorCommandWithConfirmation(
     request: MotorCommandConfirmationRequest,
   ): Promise<MotorCommandConfirmation> {
+    if (request.command !== 'OPEN') {
+      return {
+        status: 'failed',
+        command: request.command,
+        profile: request.profile,
+        sentAt: 0,
+        confirmedAt: null,
+        notification: null,
+        failureReason: 'Use a catalogued write for this motor command.',
+      };
+    }
+    const command = request.command;
+    return this.executeConfirmedCommand(
+      request,
+      () => this.sendMotorCommand(
+        request.profile,
+        command,
+        request.deviceId,
+      ),
+    );
+  }
+
+  async sendCataloguedWidoorMotorCommandWithConfirmation(
+    request: CataloguedWidoorMotorConfirmationRequest,
+  ): Promise<MotorCommandConfirmation> {
+    const expectedOperation = request.command === 'OPEN'
+      ? 'motor-open'
+      : 'motor-close';
+    if (inspectCataloguedLegacyBleWrite(request.write) !== 'authentic' ||
+        request.write.profile !== 'widoor' ||
+        request.write.operation !== expectedOperation ||
+        request.write.destructiveLevel !== 'motor-movement') {
+      return {
+        status: 'failed',
+        command: request.command,
+        profile: 'widoor',
+        sentAt: 0,
+        confirmedAt: null,
+        notification: null,
+        failureReason: 'An authentic catalogued Widoor motor write is required.',
+      };
+    }
+    const payload = Uint8Array.from(request.write.payload);
+    return this.executeConfirmedCommand(
+      {
+        profile: 'widoor',
+        command: request.command,
+        deviceId: request.deviceId,
+        timeoutMs: request.timeoutMs,
+      },
+      () => this.bleService.writeCharacteristic(
+        request.write.serviceUuid,
+        request.write.characteristicUuid,
+        payload,
+        request.deviceId,
+      ),
+    );
+  }
+
+  private async executeConfirmedCommand(
+    request: MotorCommandConfirmationRequest,
+    write: () => Promise<void>,
+  ): Promise<MotorCommandConfirmation> {
     if (this.confirmedCommandInProgress) {
       return {
         status: 'failed',
@@ -64,11 +138,7 @@ export class MotorCommandService {
       return await this.confirmationService
         .executeWithMotorCommandConfirmation(
           request,
-          () => this.sendMotorCommand(
-            request.profile,
-            request.command,
-            request.deviceId,
-          ),
+          write,
         );
     } finally {
       this.confirmedCommandInProgress = false;

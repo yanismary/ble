@@ -25,6 +25,8 @@ import {
 import { BLE_UUIDS } from '../../core/services/ble-profile-catalog';
 import { encodeLegacyMotorCommand } from
   '../../core/services/legacy-ble-write-catalog';
+import { LegacyBleWrite } from
+  '../../core/services/legacy-ble-write-catalog';
 import {
   BleWriteExecutionService,
   LegacyBleWriteExecutionResult,
@@ -60,7 +62,10 @@ import { PRODUCT_PAGE_TEXT } from './product-page.text';
 import {
   ProductOpenCommandState,
   ProductOpenCommandStatus,
-  createWidoorOpenAuthorization,
+  ProductMotorCommandOperation,
+  WIDOOR_COMMAND_UI_CONFIGS,
+  WidoorCommandUiConfig,
+  createWidoorCommandAuthorization,
   initialProductOpenCommandState,
 } from './product-open-command';
 import {
@@ -116,11 +121,27 @@ export class ProductPage implements OnDestroy {
   private commandCycle = 0;
   private commandIdentifierSequence = 0;
   private destroyed = false;
-  private readonly widoorOpenWrite =
-    encodeLegacyMotorCommand('widoor', 'OPEN');
+  private readonly widoorCommandWrites = new Map(
+    WIDOOR_COMMAND_UI_CONFIGS.map((config) => [
+      config.command,
+      encodeLegacyMotorCommand('widoor', config.command),
+    ]),
+  );
 
   readonly config: ProductPageConfig;
   readonly text = PRODUCT_PAGE_TEXT;
+  readonly widoorCommands = Object.freeze(
+    WIDOOR_COMMAND_UI_CONFIGS.map((config) =>
+    Object.freeze({
+      config,
+      text: PRODUCT_PAGE_TEXT.widoorCommands[config.textKey],
+      disabledReason: config.disabledReason === 'physical-validation'
+        ? PRODUCT_PAGE_TEXT.widoorCommands.physicalValidationRequired
+        : config.disabledReason === 'protected'
+          ? PRODUCT_PAGE_TEXT.widoorCommands.protected
+          : null,
+    })),
+  );
   readonly emptyTechnicalRows: readonly ProductDisplayRow[] = [];
   viewModel: ProductViewModel;
   openCommandState = initialProductOpenCommandState();
@@ -170,7 +191,17 @@ export class ProductPage implements OnDestroy {
   }
 
   get canOpenWidoor(): boolean {
-    if (!this.showWidoorOpenCommand ||
+    return this.canExecuteWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[0]);
+  }
+
+  get canCloseWidoor(): boolean {
+    return this.canExecuteWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[1]);
+  }
+
+  canExecuteWidoorCommand(config: WidoorCommandUiConfig): boolean {
+    if (!WIDOOR_COMMAND_UI_CONFIGS.includes(config) ||
+        !config.enabled ||
+        !this.showWidoorOpenCommand ||
         !this.isCurrentContext() ||
         this.viewModel.loading ||
         this.productDataLoadService.isLoading ||
@@ -180,9 +211,13 @@ export class ProductPage implements OnDestroy {
         this.commandInProgress) {
       return false;
     }
+    const write = this.widoorCommandWrites.get(config.command);
+    if (write === undefined) {
+      return false;
+    }
     const properties = this.bleService.getGattCharacteristicProperties(
-      this.widoorOpenWrite.serviceUuid,
-      this.widoorOpenWrite.characteristicUuid,
+      write.serviceUuid,
+      write.characteristicUuid,
       this.context?.deviceId,
     );
     return properties.servicePresent &&
@@ -591,14 +626,32 @@ export class ProductPage implements OnDestroy {
   }
 
   async requestWidoorOpen(): Promise<void> {
-    if (!this.canOpenWidoor || this.context === null) {
+    return this.requestWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[0]);
+  }
+
+  async requestWidoorClose(): Promise<void> {
+    return this.requestWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[1]);
+  }
+
+  async requestWidoorCommand(config: WidoorCommandUiConfig): Promise<void> {
+    if (!this.canExecuteWidoorCommand(config) ||
+        this.context === null ||
+        config.confirmationPolicy === null ||
+        (config.operation !== 'motor-open' &&
+          config.operation !== 'motor-close')) {
       return;
     }
+    const operation: ProductMotorCommandOperation = config.operation;
+    const write = this.widoorCommandWrites.get(config.command);
+    if (write === undefined) {
+      return;
+    }
+    const commandText = this.text.widoorCommands[config.textKey];
     const cycle = ++this.commandCycle;
     const context = this.context;
     const requestedAt = Date.now();
     this.openCommandState = Object.freeze({
-      ...initialProductOpenCommandState(),
+      ...initialProductOpenCommandState(operation),
       status: 'awaiting-confirmation',
       startedAt: requestedAt,
       message: this.text.openCommand.awaitingConfirmation,
@@ -606,11 +659,11 @@ export class ProductPage implements OnDestroy {
 
     try {
       const alert = await this.alertController.create({
-        header: this.text.openCommand.confirmTitle,
-        message: this.text.openCommand.confirmMessage,
+        header: commandText.confirmTitle,
+        message: commandText.confirmMessage,
         buttons: [
           { text: this.text.openCommand.cancel, role: 'cancel' },
-          { text: this.text.openCommand.open, role: 'confirm' },
+          { text: commandText.confirmAction, role: 'confirm' },
         ],
       });
       if (!this.isCurrentCommandCycle(cycle)) {
@@ -623,7 +676,7 @@ export class ProductPage implements OnDestroy {
       }
       if (dismissal.role !== 'confirm') {
         this.openCommandState = Object.freeze({
-          ...initialProductOpenCommandState(),
+          ...initialProductOpenCommandState(operation),
           status: 'cancelled',
           startedAt: requestedAt,
           completedAt: Date.now(),
@@ -632,17 +685,21 @@ export class ProductPage implements OnDestroy {
         return;
       }
 
-      const contextStatus = this.openCommandContextStatus(context);
+      const contextStatus = this.openCommandContextStatus(context, write);
       if (contextStatus !== null) {
-        this.setOpenCommandContextFailure(contextStatus, requestedAt);
+        this.setOpenCommandContextFailure(
+          contextStatus,
+          requestedAt,
+          operation,
+        );
         return;
       }
 
       const attemptId = this.nextCommandIdentifier('attempt');
       const confirmationId = this.nextCommandIdentifier('confirmation');
       const confirmedAt = Date.now();
-      const authorization = createWidoorOpenAuthorization({
-        write: this.widoorOpenWrite,
+      const authorization = createWidoorCommandAuthorization({
+        write,
         deviceId: context.deviceId,
         connectionGeneration: context.connectionGeneration,
         attemptId,
@@ -651,7 +708,7 @@ export class ProductPage implements OnDestroy {
         validatedAt: confirmedAt,
       });
       this.openCommandState = Object.freeze({
-        ...initialProductOpenCommandState(),
+        ...initialProductOpenCommandState(operation),
         status: 'executing',
         startedAt: confirmedAt,
         message: this.text.openCommand.executing,
@@ -659,32 +716,39 @@ export class ProductPage implements OnDestroy {
       });
 
       const result = await this.bleWriteExecutionService.execute({
-        write: this.widoorOpenWrite,
+        write,
         deviceId: context.deviceId,
         profile: 'widoor',
         connectionGeneration: context.connectionGeneration,
         identification: { profile: 'widoor', confidence: 'strong' },
         authorization,
         attemptId,
-        confirmationPolicy: { kind: 'widoor-open-state' },
+        confirmationPolicy: config.confirmationPolicy,
+        ...(config.executionPolicy === undefined
+          ? {}
+          : { policy: config.executionPolicy }),
       });
       if (!this.isCurrentCommandCycle(cycle)) {
         return;
       }
-      const terminalContextStatus = this.openCommandContextStatus(context);
+      const terminalContextStatus = this.openCommandContextStatus(
+        context,
+        write,
+      );
       if (terminalContextStatus !== null) {
         this.setOpenCommandContextFailure(
           terminalContextStatus,
           result.startedAt,
+          operation,
           result.nativeWriteCompleted,
         );
         return;
       }
-      this.applyOpenCommandResult(result, attemptId);
+      this.applyOpenCommandResult(result, attemptId, config);
     } catch {
       if (this.isCurrentCommandCycle(cycle)) {
         this.openCommandState = Object.freeze({
-          ...initialProductOpenCommandState(),
+          ...initialProductOpenCommandState(operation),
           status: 'failed',
           startedAt: requestedAt,
           completedAt: Date.now(),
@@ -836,8 +900,9 @@ export class ProductPage implements OnDestroy {
       return;
     }
     this.commandCycle += 1;
+    const operation = this.openCommandState.operation;
     this.openCommandState = Object.freeze({
-      ...initialProductOpenCommandState(),
+      ...initialProductOpenCommandState(operation),
       status: 'disconnected',
       completedAt: Date.now(),
       message: this.text.openCommand.disconnected,
@@ -884,6 +949,7 @@ export class ProductPage implements OnDestroy {
 
   private openCommandContextStatus(
     context: ProductPageNavigationState,
+    write: LegacyBleWrite,
   ): 'disconnected' | 'stale' | 'unavailable' | null {
     if (this.destroyed || this.context !== context ||
         context.profile !== 'widoor' || this.config.profile !== 'widoor') {
@@ -906,8 +972,8 @@ export class ProductPage implements OnDestroy {
       return 'unavailable';
     }
     const properties = this.bleService.getGattCharacteristicProperties(
-      this.widoorOpenWrite.serviceUuid,
-      this.widoorOpenWrite.characteristicUuid,
+      write.serviceUuid,
+      write.characteristicUuid,
       context.deviceId,
     );
     return properties.servicePresent &&
@@ -921,6 +987,7 @@ export class ProductPage implements OnDestroy {
   private setOpenCommandContextFailure(
     status: 'disconnected' | 'stale' | 'unavailable',
     startedAt: number,
+    operation: ProductMotorCommandOperation,
     nativeWriteCompleted = false,
   ): void {
     const message = status === 'disconnected'
@@ -929,7 +996,7 @@ export class ProductPage implements OnDestroy {
         ? this.text.openCommand.stale
         : this.text.openCommand.unavailable;
     this.openCommandState = Object.freeze({
-      ...initialProductOpenCommandState(),
+      ...initialProductOpenCommandState(operation),
       status,
       startedAt,
       completedAt: Date.now(),
@@ -941,22 +1008,24 @@ export class ProductPage implements OnDestroy {
   private applyOpenCommandResult(
     result: LegacyBleWriteExecutionResult,
     attemptId: string,
+    config: WidoorCommandUiConfig,
   ): void {
+    const commandText = this.text.widoorCommands[config.textKey];
     let status: ProductOpenCommandStatus;
     let message: string;
     switch (result.status) {
       case 'success':
         if (result.confirmationStatus === 'confirmed') {
           status = 'confirmed';
-          message = this.text.openCommand.confirmed;
+          message = commandText.confirmed;
         } else {
           status = 'timeout';
-          message = this.text.openCommand.notConfirmed;
+          message = commandText.notConfirmed;
         }
         break;
       case 'timeout':
         status = 'timeout';
-        message = this.text.openCommand.notConfirmed;
+        message = commandText.notConfirmed;
         break;
       case 'unavailable':
         status = 'unavailable';
@@ -981,7 +1050,7 @@ export class ProductPage implements OnDestroy {
         break;
     }
     this.openCommandState = Object.freeze({
-      operation: 'motor-open',
+      operation: config.operation as ProductMotorCommandOperation,
       status,
       startedAt: result.startedAt,
       completedAt: result.completedAt,

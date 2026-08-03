@@ -12,6 +12,7 @@ import {
   MotorCommandConfirmation,
   MotorCommandConfirmationRequest,
   MotorCommandConfirmationService,
+  WIDOOR_CLOSING_STARTED_STATE,
   WIDOOR_OPENING_STARTED_STATE,
 } from './motor-command-confirmation';
 
@@ -124,6 +125,10 @@ describe('MotorCommandConfirmationService', () => {
       kind: 'widoor-opening-state',
       expectedState: WIDOOR_OPENING_STARTED_STATE,
     });
+    expect(getMotorCommandConfirmationStrategy('widoor', 'CLOSE')).toEqual({
+      kind: 'widoor-closing-state',
+      expectedState: WIDOOR_CLOSING_STARTED_STATE,
+    });
     for (const profile of [
       'moventiv-60',
       'moventiv-80',
@@ -190,6 +195,43 @@ describe('MotorCommandConfirmationService', () => {
     tick(10);
     expect(result?.status).toBe('timeout');
   }));
+
+  it('should confirm Widoor CLOSE only from a new closing state 0x31',
+    async () => {
+      const confirmation = service.executeWithMotorCommandConfirmation(
+        request({ profile: 'widoor', command: 'CLOSE' }),
+        async () => notifications.next(notification(
+          11,
+          1_001,
+          0,
+          0,
+          WIDOOR_CLOSING_STARTED_STATE,
+        )),
+      );
+
+      const result = await confirmation;
+      expect(result.status).toBe('confirmed');
+      expect(result.command).toBe('CLOSE');
+      expect(result.notification?.state).toBe(WIDOOR_CLOSING_STARTED_STATE);
+    },
+  );
+
+  it('should ignore old 0x31 and stop-after-close state 0x30 for CLOSE',
+    fakeAsync(() => {
+      let result: MotorCommandConfirmation | undefined;
+      void service.executeWithMotorCommandConfirmation(
+        request({ profile: 'widoor', command: 'CLOSE', timeoutMs: 10 }),
+        async () => {
+          notifications.next(notification(10, 1_000, 0, 0, 0x31));
+          notifications.next(notification(11, 1_001, 0, 0, 0x30));
+          notifications.next(notification(12, 1_002, 0, 0, 0x21));
+        },
+      ).then((value) => result = value);
+
+      tick(10);
+      expect(result?.status).toBe('timeout');
+    }),
+  );
 
   it('should buffer Widoor 0x21 during write but reject it on write failure',
     async () => {
@@ -440,10 +482,11 @@ function request(overrides: Partial<{
   baselinePosition: number;
   baselineMaximumPosition: number;
   timeoutMs: number;
+  command: 'OPEN' | 'CLOSE';
 }> = {}): MotorCommandConfirmationRequest {
   const profile = overrides.profile ?? 'moventiv-60';
   const base = {
-    command: 'OPEN' as const,
+    command: overrides.command ?? 'OPEN',
     deviceId: 'device-1',
     timeoutMs: overrides.timeoutMs ?? 10,
   };
@@ -454,6 +497,7 @@ function request(overrides: Partial<{
   }
   return {
     ...base,
+    command: 'OPEN',
     profile,
     baselinePosition: overrides.baselinePosition ?? 100,
     baselineMaximumPosition: overrides.baselineMaximumPosition ?? 500,

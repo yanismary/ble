@@ -25,6 +25,7 @@ describe('BleWriteExecutionService', () => {
     writeWithoutResponse: jasmine.Spy;
   };
   let sendMotorCommandWithConfirmation: jasmine.Spy;
+  let sendCataloguedWidoorMotorCommandWithConfirmation: jasmine.Spy;
   let authorizationSequence: number;
 
   beforeEach(() => {
@@ -44,13 +45,19 @@ describe('BleWriteExecutionService', () => {
     sendMotorCommandWithConfirmation =
       jasmine.createSpy('sendMotorCommandWithConfirmation')
         .and.resolveTo(motorConfirmation('confirmed'));
+    sendCataloguedWidoorMotorCommandWithConfirmation = jasmine.createSpy(
+      'sendCataloguedWidoorMotorCommandWithConfirmation',
+    ).and.resolveTo(motorConfirmation('confirmed'));
     TestBed.configureTestingModule({
       providers: [
         BleWriteExecutionService,
         { provide: BleService, useValue: ble },
         {
           provide: MotorCommandService,
-          useValue: { sendMotorCommandWithConfirmation },
+          useValue: {
+            sendMotorCommandWithConfirmation,
+            sendCataloguedWidoorMotorCommandWithConfirmation,
+          },
         },
       ],
     });
@@ -359,7 +366,7 @@ describe('BleWriteExecutionService', () => {
       expect(ble.writeCharacteristic).not.toHaveBeenCalled();
     });
 
-  it('allows CLOSE only with reinforced authorization and internal override',
+  it('allows CLOSE only with its operation-scoped physical validation',
     async () => {
       const request = closeRequest();
 
@@ -367,10 +374,52 @@ describe('BleWriteExecutionService', () => {
 
       expect(result.status).toBe('success');
       expect(result.policyOverrideUsed).toBeTrue();
-      expect(result.confirmationStatus).toBe('not-validated');
-      expect(Array.from(
-        ble.writeCharacteristic.calls.mostRecent().args[2] as Uint8Array,
-      )).toEqual([0x00, 0x30]);
+      expect(result.confirmationStatus).toBe('confirmed');
+      expect(sendCataloguedWidoorMotorCommandWithConfirmation)
+        .toHaveBeenCalledOnceWith({
+          write: request.write,
+          command: 'CLOSE',
+          deviceId: 'device-1',
+          timeoutMs: 250,
+        });
+      expect(ble.writeCharacteristic).not.toHaveBeenCalled();
+    });
+
+  it('does not let the generic Phase 1 override enable CLOSE', async () => {
+    const request = closeRequest();
+    request.policy = { allowPhase1ReferenceOnly: true };
+
+    const result = await service.execute(request);
+
+    expect(result.status).toBe('invalid-request');
+    expect(result.error?.code).toBe('widoor-close-validation-required');
+    expect(sendCataloguedWidoorMotorCommandWithConfirmation)
+      .not.toHaveBeenCalled();
+    });
+
+  it('does not extend the CLOSE validation policy to timed commands',
+    async () => {
+      const request = requestFor(
+        encodeLegacyMotorCommand('widoor', 'OPEN_SHORT_TIMED'),
+      );
+      request.authorization = {
+        ...request.authorization!,
+        motorMovementConfirmed: true,
+      };
+      request.policy = {
+        allowPhysicalValidationAttempt: {
+          operation: 'motor-close',
+          profile: 'widoor',
+        },
+      };
+
+      const result = await service.execute(request);
+
+      expect(result.status).toBe('blocked-by-policy');
+      expect(result.error?.code).toBe('phase1-reference-blocked');
+      expect(sendCataloguedWidoorMotorCommandWithConfirmation)
+        .not.toHaveBeenCalled();
+      expect(ble.writeCharacteristic).not.toHaveBeenCalled();
     });
 
   it('always blocks learning and reset without native calls', async () => {
@@ -574,7 +623,16 @@ describe('BleWriteExecutionService', () => {
       ...request.authorization!,
       motorMovementConfirmed: true,
     };
-    request.policy = { allowPhase1ReferenceOnly: true };
+    request.confirmationPolicy = {
+      kind: 'widoor-close-state',
+      timeoutMs: 250,
+    };
+    request.policy = {
+      allowPhysicalValidationAttempt: {
+        operation: 'motor-close',
+        profile: 'widoor',
+      },
+    };
     return request;
   }
 

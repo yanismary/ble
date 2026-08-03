@@ -55,15 +55,36 @@
       <section class="product-section" aria-labelledby="commands-title">
         <h2 id="commands-title">{{ text.sections.commands }}</h2>
         @if (showWidoorOpenCommand) {
-          <ion-button
-            class="widoor-open-command"
-            type="button"
-            (click)="requestWidoorOpen()"
-            [disabled]="!canOpenWidoor"
-          >
-            {{ text.openCommand.open }}
-          </ion-button>
-          <p class="command-warning">{{ text.openCommand.warning }}</p>
+          <div class="product-actions widoor-command-grid">
+            @for (command of widoorCommands; track command.config.operation) {
+              <div class="widoor-command-item">
+                @if (command.config.enabled) {
+                  <ion-button
+                    class="widoor-command"
+                    [class.widoor-open-command]="command.config.operation === 'motor-open'"
+                    [class.widoor-close-command]="command.config.operation === 'motor-close'"
+                    type="button"
+                    (click)="requestWidoorCommand(command.config)"
+                    [disabled]="!canExecuteWidoorCommand(command.config)"
+                  >
+                    {{ command.text.label }}
+                  </ion-button>
+                } @else {
+                  <ion-button
+                    class="widoor-command widoor-command-disabled"
+                    type="button"
+                    disabled
+                  >
+                    {{ command.text.label }}
+                  </ion-button>
+                }
+                @if (command.disabledReason) {
+                  <p><small>{{ command.disabledReason }}</small></p>
+                }
+              </div>
+            }
+          </div>
+          <p class="command-warning">{{ text.widoorCommands.warning }}</p>
           @if (displayedOpenCommandStatus !== 'idle') {
             <p
               class="command-state"
