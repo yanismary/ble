@@ -50,6 +50,31 @@
   gap: 0.5rem;
 }
 
+.command-warning {
+  color: var(--ion-color-medium-shade);
+  margin-bottom: 0;
+}
+
+.command-state {
+  align-items: center;
+  color: var(--ion-color-medium-shade);
+  display: flex;
+  font-weight: 600;
+  gap: 0.5rem;
+}
+
+.command-state[data-tone='success'] {
+  color: var(--ion-color-success);
+}
+
+.command-state[data-tone='warning'] {
+  color: var(--ion-color-warning-shade);
+}
+
+.command-state[data-tone='error'] {
+  color: var(--ion-color-danger);
+}
+
 .read-state {
   color: var(--ion-color-medium-shade);
   font-weight: 600;

@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
+  AlertController,
   IonButton,
   IonContent,
   IonHeader,
@@ -22,6 +23,12 @@ import {
   BleService,
 } from '../../core/services/ble';
 import { BLE_UUIDS } from '../../core/services/ble-profile-catalog';
+import { encodeLegacyMotorCommand } from
+  '../../core/services/legacy-ble-write-catalog';
+import {
+  BleWriteExecutionService,
+  LegacyBleWriteExecutionResult,
+} from '../../core/services/ble-write-execution.service';
 import {
   BleProfessionalParameters,
   BleSoftwareVersion,
@@ -50,6 +57,12 @@ import {
   isKnownProductProfile,
 } from './product-page.config';
 import { PRODUCT_PAGE_TEXT } from './product-page.text';
+import {
+  ProductOpenCommandState,
+  ProductOpenCommandStatus,
+  createWidoorOpenAuthorization,
+  initialProductOpenCommandState,
+} from './product-open-command';
 import {
   ProductConnectionState,
   ProductDisplayRow,
@@ -88,7 +101,10 @@ const ROOM_SUFFIXES = [
   ],
 })
 export class ProductPage implements OnDestroy {
+  private readonly alertController = inject(AlertController);
   private readonly bleService = inject(BleService);
+  private readonly bleWriteExecutionService =
+    inject(BleWriteExecutionService);
   private readonly ngZone = inject(NgZone);
   private readonly productDataLoadService = inject(ProductDataLoadService);
   private readonly productDetection = inject(ProductDetection);
@@ -97,12 +113,17 @@ export class ProductPage implements OnDestroy {
   private readonly subscriptions = new Subscription();
   private readonly context: ProductPageNavigationState | null;
   private loadCycle = 0;
+  private commandCycle = 0;
+  private commandIdentifierSequence = 0;
   private destroyed = false;
+  private readonly widoorOpenWrite =
+    encodeLegacyMotorCommand('widoor', 'OPEN');
 
   readonly config: ProductPageConfig;
   readonly text = PRODUCT_PAGE_TEXT;
   readonly emptyTechnicalRows: readonly ProductDisplayRow[] = [];
   viewModel: ProductViewModel;
+  openCommandState = initialProductOpenCommandState();
 
   constructor() {
     const routeProfile = this.route.snapshot.data['profile'];
@@ -137,6 +158,75 @@ export class ProductPage implements OnDestroy {
       !this.viewModel.loading &&
       !this.productDataLoadService.isLoading &&
       !this.bleService.isWriting;
+  }
+
+  get hasProductNavigationContext(): boolean {
+    return this.context !== null;
+  }
+
+  get showWidoorOpenCommand(): boolean {
+    return this.context?.profile === 'widoor' &&
+      this.config.profile === 'widoor';
+  }
+
+  get canOpenWidoor(): boolean {
+    if (!this.showWidoorOpenCommand ||
+        !this.isCurrentContext() ||
+        this.viewModel.loading ||
+        this.productDataLoadService.isLoading ||
+        this.bleService.isWriting ||
+        this.bleService.disconnectingDeviceId !== null ||
+        this.bleWriteExecutionService.isExecuting ||
+        this.commandInProgress) {
+      return false;
+    }
+    const properties = this.bleService.getGattCharacteristicProperties(
+      this.widoorOpenWrite.serviceUuid,
+      this.widoorOpenWrite.characteristicUuid,
+      this.context?.deviceId,
+    );
+    return properties.servicePresent &&
+      properties.characteristicPresent &&
+      properties.propertiesAvailable &&
+      properties.write === true;
+  }
+
+  get commandInProgress(): boolean {
+    return this.openCommandState.status === 'awaiting-confirmation' ||
+      this.openCommandState.status === 'executing';
+  }
+
+  get displayedOpenCommandStatus(): ProductOpenCommandStatus {
+    if (this.showWidoorOpenCommand && !this.pageContextCurrent) {
+      return this.bleService.connectedDeviceId === null
+        ? 'disconnected'
+        : 'stale';
+    }
+    return this.openCommandState.status;
+  }
+
+  get displayedOpenCommandMessage(): string | null {
+    switch (this.displayedOpenCommandStatus) {
+      case 'disconnected':
+        return this.text.openCommand.disconnected;
+      case 'stale':
+        return this.text.openCommand.stale;
+      default:
+        return this.openCommandState.message;
+    }
+  }
+
+  get openCommandTone(): 'success' | 'neutral' | 'warning' | 'error' {
+    switch (this.displayedOpenCommandStatus) {
+      case 'confirmed':
+        return 'success';
+      case 'timeout':
+        return 'warning';
+      case 'failed':
+        return 'error';
+      default:
+        return 'neutral';
+    }
   }
 
   get pageContextCurrent(): boolean {
@@ -500,13 +590,120 @@ export class ProductPage implements OnDestroy {
     return formatProductTimestamp(value) ?? this.text.states.notLoaded;
   }
 
+  async requestWidoorOpen(): Promise<void> {
+    if (!this.canOpenWidoor || this.context === null) {
+      return;
+    }
+    const cycle = ++this.commandCycle;
+    const context = this.context;
+    const requestedAt = Date.now();
+    this.openCommandState = Object.freeze({
+      ...initialProductOpenCommandState(),
+      status: 'awaiting-confirmation',
+      startedAt: requestedAt,
+      message: this.text.openCommand.awaitingConfirmation,
+    });
+
+    try {
+      const alert = await this.alertController.create({
+        header: this.text.openCommand.confirmTitle,
+        message: this.text.openCommand.confirmMessage,
+        buttons: [
+          { text: this.text.openCommand.cancel, role: 'cancel' },
+          { text: this.text.openCommand.open, role: 'confirm' },
+        ],
+      });
+      if (!this.isCurrentCommandCycle(cycle)) {
+        return;
+      }
+      await alert.present();
+      const dismissal = await alert.onDidDismiss();
+      if (!this.isCurrentCommandCycle(cycle)) {
+        return;
+      }
+      if (dismissal.role !== 'confirm') {
+        this.openCommandState = Object.freeze({
+          ...initialProductOpenCommandState(),
+          status: 'cancelled',
+          startedAt: requestedAt,
+          completedAt: Date.now(),
+          message: this.text.openCommand.cancelled,
+        });
+        return;
+      }
+
+      const contextStatus = this.openCommandContextStatus(context);
+      if (contextStatus !== null) {
+        this.setOpenCommandContextFailure(contextStatus, requestedAt);
+        return;
+      }
+
+      const attemptId = this.nextCommandIdentifier('attempt');
+      const confirmationId = this.nextCommandIdentifier('confirmation');
+      const confirmedAt = Date.now();
+      const authorization = createWidoorOpenAuthorization({
+        write: this.widoorOpenWrite,
+        deviceId: context.deviceId,
+        connectionGeneration: context.connectionGeneration,
+        attemptId,
+        confirmationId,
+        confirmedAt,
+        validatedAt: confirmedAt,
+      });
+      this.openCommandState = Object.freeze({
+        ...initialProductOpenCommandState(),
+        status: 'executing',
+        startedAt: confirmedAt,
+        message: this.text.openCommand.executing,
+        attemptId,
+      });
+
+      const result = await this.bleWriteExecutionService.execute({
+        write: this.widoorOpenWrite,
+        deviceId: context.deviceId,
+        profile: 'widoor',
+        connectionGeneration: context.connectionGeneration,
+        identification: { profile: 'widoor', confidence: 'strong' },
+        authorization,
+        attemptId,
+        confirmationPolicy: { kind: 'widoor-open-state' },
+      });
+      if (!this.isCurrentCommandCycle(cycle)) {
+        return;
+      }
+      const terminalContextStatus = this.openCommandContextStatus(context);
+      if (terminalContextStatus !== null) {
+        this.setOpenCommandContextFailure(
+          terminalContextStatus,
+          result.startedAt,
+          result.nativeWriteCompleted,
+        );
+        return;
+      }
+      this.applyOpenCommandResult(result, attemptId);
+    } catch {
+      if (this.isCurrentCommandCycle(cycle)) {
+        this.openCommandState = Object.freeze({
+          ...initialProductOpenCommandState(),
+          status: 'failed',
+          startedAt: requestedAt,
+          completedAt: Date.now(),
+          message: this.text.openCommand.failed,
+          technicalErrorCode: 'open-command-ui-failed',
+        });
+      }
+    }
+  }
+
   backToScan(): void {
+    this.resetOpenCommandState();
     void this.router.navigate(['/scan']);
   }
 
   ngOnDestroy(): void {
     this.destroyed = true;
     this.loadCycle += 1;
+    this.resetOpenCommandState();
     if (this.viewModel.loading) {
       this.productDataLoadService.cancelCurrentLoad();
     }
@@ -638,6 +835,13 @@ export class ProductPage implements OnDestroy {
     if (this.context === null || event.deviceId !== this.context.deviceId) {
       return;
     }
+    this.commandCycle += 1;
+    this.openCommandState = Object.freeze({
+      ...initialProductOpenCommandState(),
+      status: 'disconnected',
+      completedAt: Date.now(),
+      message: this.text.openCommand.disconnected,
+    });
     this.invalidateContext('disconnected');
   }
 
@@ -672,6 +876,133 @@ export class ProductPage implements OnDestroy {
       lastUpdatedAt: null,
       globalError: this.connectionStateLabel(state),
     };
+  }
+
+  private isCurrentCommandCycle(cycle: number): boolean {
+    return !this.destroyed && cycle === this.commandCycle;
+  }
+
+  private openCommandContextStatus(
+    context: ProductPageNavigationState,
+  ): 'disconnected' | 'stale' | 'unavailable' | null {
+    if (this.destroyed || this.context !== context ||
+        context.profile !== 'widoor' || this.config.profile !== 'widoor') {
+      return 'stale';
+    }
+    if (this.bleService.connectedDeviceId === null ||
+        this.bleService.disconnectingDeviceId === context.deviceId ||
+        this.viewModel.connectionState === 'disconnected') {
+      return 'disconnected';
+    }
+    if (this.bleService.connectedDeviceId !== context.deviceId ||
+        this.bleService.connectionGeneration !==
+          context.connectionGeneration ||
+        this.viewModel.connectionState !== 'connected') {
+      return 'stale';
+    }
+    if (this.viewModel.loading ||
+        this.productDataLoadService.isLoading ||
+        this.bleService.isWriting) {
+      return 'unavailable';
+    }
+    const properties = this.bleService.getGattCharacteristicProperties(
+      this.widoorOpenWrite.serviceUuid,
+      this.widoorOpenWrite.characteristicUuid,
+      context.deviceId,
+    );
+    return properties.servicePresent &&
+      properties.characteristicPresent &&
+      properties.propertiesAvailable &&
+      properties.write === true
+      ? null
+      : 'unavailable';
+  }
+
+  private setOpenCommandContextFailure(
+    status: 'disconnected' | 'stale' | 'unavailable',
+    startedAt: number,
+    nativeWriteCompleted = false,
+  ): void {
+    const message = status === 'disconnected'
+      ? this.text.openCommand.disconnected
+      : status === 'stale'
+        ? this.text.openCommand.stale
+        : this.text.openCommand.unavailable;
+    this.openCommandState = Object.freeze({
+      ...initialProductOpenCommandState(),
+      status,
+      startedAt,
+      completedAt: Date.now(),
+      nativeWriteCompleted,
+      message,
+    });
+  }
+
+  private applyOpenCommandResult(
+    result: LegacyBleWriteExecutionResult,
+    attemptId: string,
+  ): void {
+    let status: ProductOpenCommandStatus;
+    let message: string;
+    switch (result.status) {
+      case 'success':
+        if (result.confirmationStatus === 'confirmed') {
+          status = 'confirmed';
+          message = this.text.openCommand.confirmed;
+        } else {
+          status = 'timeout';
+          message = this.text.openCommand.notConfirmed;
+        }
+        break;
+      case 'timeout':
+        status = 'timeout';
+        message = this.text.openCommand.notConfirmed;
+        break;
+      case 'unavailable':
+        status = 'unavailable';
+        message = result.error?.code === 'write-in-progress' ||
+          result.error?.code === 'native-write-in-progress'
+          ? this.text.openCommand.alreadyInProgress
+          : this.text.openCommand.unavailable;
+        break;
+      case 'disconnected':
+        status = 'disconnected';
+        message = this.text.openCommand.disconnected;
+        break;
+      case 'stale':
+        status = 'stale';
+        message = this.text.openCommand.stale;
+        break;
+      case 'failed':
+      case 'blocked-by-policy':
+      case 'invalid-request':
+        status = 'failed';
+        message = this.text.openCommand.failed;
+        break;
+    }
+    this.openCommandState = Object.freeze({
+      operation: 'motor-open',
+      status,
+      startedAt: result.startedAt,
+      completedAt: result.completedAt,
+      confirmationStatus: result.confirmationStatus,
+      nativeWriteCompleted: result.nativeWriteCompleted,
+      message,
+      technicalErrorCode: result.error?.code ?? null,
+      attemptId,
+    });
+  }
+
+  private nextCommandIdentifier(kind: 'attempt' | 'confirmation'): string {
+    this.commandIdentifierSequence += 1;
+    const randomId = globalThis.crypto?.randomUUID?.();
+    return `${kind}-${randomId ??
+      `${Date.now()}-${this.commandIdentifierSequence}`}`;
+  }
+
+  private resetOpenCommandState(): void {
+    this.commandCycle += 1;
+    this.openCommandState = initialProductOpenCommandState();
   }
 
   private createUserRows(

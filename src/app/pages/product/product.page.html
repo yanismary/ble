@@ -51,12 +51,40 @@
       }
     </section>
 
-    @if (pageContextCurrent) {
+    @if (hasProductNavigationContext) {
       <section class="product-section" aria-labelledby="commands-title">
         <h2 id="commands-title">{{ text.sections.commands }}</h2>
-        <p>{{ text.commandsUnavailable }}</p>
+        @if (showWidoorOpenCommand) {
+          <ion-button
+            class="widoor-open-command"
+            type="button"
+            (click)="requestWidoorOpen()"
+            [disabled]="!canOpenWidoor"
+          >
+            {{ text.openCommand.open }}
+          </ion-button>
+          <p class="command-warning">{{ text.openCommand.warning }}</p>
+          @if (displayedOpenCommandStatus !== 'idle') {
+            <p
+              class="command-state"
+              role="status"
+              aria-live="polite"
+              [attr.data-status]="displayedOpenCommandStatus"
+              [attr.data-tone]="openCommandTone"
+            >
+              @if (displayedOpenCommandStatus === 'executing') {
+                <ion-spinner name="crescent"></ion-spinner>
+              }
+              <span>{{ displayedOpenCommandMessage }}</span>
+            </p>
+          }
+        } @else {
+          <p>{{ text.commandsUnavailable }}</p>
+        }
       </section>
+    }
 
+    @if (pageContextCurrent) {
       <section class="product-section" aria-labelledby="settings-title">
         <h2 id="settings-title">{{ text.sections.settings }}</h2>
         <p>{{ text.readonlyNotice }}</p>

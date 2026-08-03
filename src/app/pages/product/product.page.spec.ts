@@ -1,9 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AlertController } from '@ionic/angular/standalone';
 import { Observable, Subject } from 'rxjs';
 
 import {
   BleDisconnectionEvent,
+  BleGattCharacteristicProperties,
   BleNotificationEvent,
   BleService,
 } from '../../core/services/ble';
@@ -31,6 +33,11 @@ import {
 } from '../../core/services/product-data-load.service';
 import { ProductDetection } from '../../core/services/product-detection';
 import {
+  BleWriteExecutionService,
+  LegacyBleWriteExecutionResult,
+  LegacyBleWriteRequest,
+} from '../../core/services/ble-write-execution.service';
+import {
   ProductPage,
   formatProductTimestamp,
   isProductPageNavigationState,
@@ -46,8 +53,12 @@ class FakeBleService {
   private readonly notificationSubject = new Subject<BleNotificationEvent>();
   connectedDeviceId: string | null = 'device-1';
   connectionGeneration = 4;
+  disconnectingDeviceId: string | null = null;
   isWriting = false;
   readonly writeCharacteristic = jasmine.createSpy('writeCharacteristic');
+  readonly getGattCharacteristicProperties = jasmine.createSpy(
+    'getGattCharacteristicProperties',
+  ).and.returnValue(writableGattProperties());
 
   readonly disconnections$: Observable<BleDisconnectionEvent> =
     this.disconnectionSubject.asObservable();
@@ -76,6 +87,13 @@ class FakeBleService {
   }
 }
 
+class FakeBleWriteExecutionService {
+  isExecuting = false;
+  nextResult = openExecutionResult('success', 'confirmed');
+  readonly execute = jasmine.createSpy('execute')
+    .and.callFake(async (_request: LegacyBleWriteRequest) => this.nextResult);
+}
+
 class FakeProductDataLoadService {
   isLoading = false;
   nextResult = completeLoadResult('success');
@@ -90,12 +108,28 @@ describe('ProductPage', () => {
   let fixture: ComponentFixture<ProductPage>;
   let bleService: FakeBleService;
   let loadService: FakeProductDataLoadService;
+  let writeExecutionService: FakeBleWriteExecutionService;
+  let alertRole: string | undefined;
+  let alertCreate: jasmine.Spy;
+  let alertOptions: Record<string, unknown>[];
   let routerNavigate: jasmine.Spy;
   let routerNavigationState: ProductPageNavigationState;
 
   beforeEach(async () => {
     bleService = new FakeBleService();
     loadService = new FakeProductDataLoadService();
+    writeExecutionService = new FakeBleWriteExecutionService();
+    alertRole = 'cancel';
+    alertOptions = [];
+    alertCreate = jasmine.createSpy('create').and.callFake(
+      async (options: Record<string, unknown>) => {
+        alertOptions.push(options);
+        return {
+          present: async () => undefined,
+          onDidDismiss: async () => ({ role: alertRole }),
+        };
+      },
+    );
     routerNavigate = jasmine.createSpy('navigate').and.resolveTo(true);
     routerNavigationState = navigationState('widoor');
 
@@ -103,6 +137,11 @@ describe('ProductPage', () => {
       imports: [ProductPage],
       providers: [
         { provide: BleService, useValue: bleService },
+        { provide: AlertController, useValue: { create: alertCreate } },
+        {
+          provide: BleWriteExecutionService,
+          useValue: writeExecutionService,
+        },
         { provide: ProductDataLoadService, useValue: loadService },
         { provide: ProductDetection, useClass: ProductDetection },
         {
@@ -138,10 +177,281 @@ describe('ProductPage', () => {
       const element = fixture.nativeElement as HTMLElement;
       expect(element.querySelector('ion-range')).toBeNull();
       expect(element.querySelector('ion-toggle')).toBeNull();
-      expect(element.textContent).not.toContain('Ouvrir');
       expect(element.textContent).not.toContain('Fermer');
     },
   );
+
+  it('should expose only Widoor OPEN without executing it automatically',
+    () => {
+      const element = fixture.nativeElement as HTMLElement;
+      const openButton = element.querySelector<HTMLIonButtonElement>(
+        'ion-button.widoor-open-command',
+      );
+
+      expect(openButton).not.toBeNull();
+      expect(openButton?.disabled).toBeFalse();
+      expect(element.textContent).toContain(component.text.openCommand.open);
+      expect(element.textContent).not.toContain('Fermer');
+      expect(element.textContent).not.toContain('Apprentissage');
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(alertCreate).not.toHaveBeenCalled();
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should cancel user confirmation without creating an execution request',
+    async () => {
+      await component.requestWidoorOpen();
+      fixture.detectChanges();
+
+      expect(alertCreate).toHaveBeenCalledTimes(1);
+      expect(alertOptions[0]['header'])
+        .toBe(component.text.openCommand.confirmTitle);
+      expect(alertOptions[0]['message'])
+        .toBe(component.text.openCommand.confirmMessage);
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(component.openCommandState.status).toBe('cancelled');
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should treat Android back or backdrop dismissal as cancellation',
+    async () => {
+      alertRole = 'backdrop';
+
+      await component.requestWidoorOpen();
+
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(component.openCommandState.status).toBe('cancelled');
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should execute catalogued Widoor OPEN once with scoped authorization',
+    async () => {
+      alertRole = 'confirm';
+
+      await component.requestWidoorOpen();
+      fixture.detectChanges();
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      const request = writeExecutionService.execute.calls.mostRecent()
+        .args[0] as LegacyBleWriteRequest;
+      expect(request.write.operation).toBe('motor-open');
+      expect(request.write.payloadHex).toBe('00 20 00 00');
+      expect(Array.from(request.write.payload)).toEqual([0x00, 0x20, 0, 0]);
+      expect(request.profile).toBe('widoor');
+      expect(request.deviceId).toBe('device-1');
+      expect(request.connectionGeneration).toBe(4);
+      expect(request.identification).toEqual({
+        profile: 'widoor',
+        confidence: 'strong',
+      });
+      expect(request.confirmationPolicy).toEqual({
+        kind: 'widoor-open-state',
+      });
+      expect(request.policy).toBeUndefined();
+      expect(request.authorization?.confirmedByUser).toBeTrue();
+      expect(request.authorization?.motorMovementConfirmed).toBeTrue();
+      expect(request.authorization?.attemptId).toBe(request.attemptId);
+      expect(request.authorization?.operation).toBe(request.write.operation);
+      expect(request.authorization?.payloadHex).toBe(request.write.payloadHex);
+      expect((request.authorization?.expiresAt ?? 0) -
+        (request.authorization?.confirmedAt ?? 0)).toBe(15_000);
+      expect(component.openCommandState.status).toBe('confirmed');
+      expect(component.openCommandState.confirmationStatus).toBe('confirmed');
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should reject rapid duplicate confirmation flows', async () => {
+    let dismissAlert!: () => void;
+    alertCreate.and.callFake(async (options: Record<string, unknown>) => {
+      alertOptions.push(options);
+      return {
+        present: async () => undefined,
+        onDidDismiss: () => new Promise<{ role: string }>((resolve) => {
+          dismissAlert = () => resolve({ role: 'cancel' });
+        }),
+      };
+    });
+
+    const first = component.requestWidoorOpen();
+    await Promise.resolve();
+    const second = component.requestWidoorOpen();
+    await second;
+
+    expect(alertCreate).toHaveBeenCalledTimes(1);
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    dismissAlert();
+    await first;
+  });
+
+  it('should map every guarded OPEN execution result without native text',
+    async () => {
+      alertRole = 'confirm';
+      const cases: readonly [
+        LegacyBleWriteExecutionResult,
+        string,
+        string,
+      ][] = [
+        [openExecutionResult('success', 'confirmed'), 'confirmed',
+          component.text.openCommand.confirmed],
+        [openExecutionResult('timeout', 'timeout'), 'timeout',
+          component.text.openCommand.notConfirmed],
+        [openExecutionResult('failed', 'unavailable'), 'failed',
+          component.text.openCommand.failed],
+        [openExecutionResult('unavailable', 'unavailable'), 'unavailable',
+          component.text.openCommand.unavailable],
+        [openExecutionResult('disconnected', 'unavailable'), 'disconnected',
+          component.text.openCommand.disconnected],
+        [openExecutionResult('stale', 'unavailable'), 'stale',
+          component.text.openCommand.stale],
+        [openExecutionResult(
+          'unavailable', 'unavailable', 'write-in-progress',
+        ), 'unavailable', component.text.openCommand.alreadyInProgress],
+        [openExecutionResult('success', 'not-validated'), 'timeout',
+          component.text.openCommand.notConfirmed],
+      ];
+
+      for (const [result, expectedStatus, expectedMessage] of cases) {
+        writeExecutionService.nextResult = result;
+        await component.requestWidoorOpen();
+        expect(component.openCommandState.status).toBe(expectedStatus);
+        expect(component.openCommandState.message).toBe(expectedMessage);
+        expect(component.openCommandState.message).not.toContain(
+          'Native OPEN error',
+        );
+      }
+      expect(component.openCommandState.nativeWriteCompleted).toBeTrue();
+      expect(component.openCommandState.confirmationStatus)
+        .toBe('not-validated');
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should disable OPEN when cached GATT write is unavailable', async () => {
+    bleService.getGattCharacteristicProperties.and.returnValue(
+      writableGattProperties({ write: false }),
+    );
+    fixture.detectChanges();
+
+    const openButton = fixture.nativeElement.querySelector(
+      'ion-button.widoor-open-command',
+    ) as HTMLIonButtonElement | null;
+    expect(openButton?.disabled).toBeTrue();
+    await component.requestWidoorOpen();
+    expect(alertCreate).not.toHaveBeenCalled();
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+  });
+
+  it('should ignore confirmation after disconnection', async () => {
+    let confirmAlert!: () => void;
+    alertCreate.and.callFake(async (options: Record<string, unknown>) => {
+      alertOptions.push(options);
+      return {
+        present: async () => undefined,
+        onDidDismiss: () => new Promise<{ role: string }>((resolve) => {
+          confirmAlert = () => resolve({ role: 'confirm' });
+        }),
+      };
+    });
+    const pending = component.requestWidoorOpen();
+    await waitForCondition(() => confirmAlert !== undefined);
+
+    bleService.disconnect();
+    confirmAlert();
+    await pending;
+
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    expect(component.displayedOpenCommandStatus).toBe('disconnected');
+  });
+
+  it('should reject a late result after same-device reconnection', async () => {
+    alertRole = 'confirm';
+    let resolveExecution!: (result: LegacyBleWriteExecutionResult) => void;
+    writeExecutionService.execute.and.returnValue(new Promise((resolve) => {
+      resolveExecution = resolve;
+    }));
+    const pending = component.requestWidoorOpen();
+    await waitForCondition(() =>
+      writeExecutionService.execute.calls.count() === 1,
+    );
+
+    fixture.detectChanges();
+    expect(component.openCommandState.status).toBe('executing');
+    expect((fixture.nativeElement.querySelector(
+      'ion-button.widoor-open-command',
+    ) as HTMLIonButtonElement | null)?.disabled).toBeTrue();
+
+    bleService.connectionGeneration += 1;
+    resolveExecution(openExecutionResult('success', 'confirmed'));
+    await pending;
+
+    expect(component.displayedOpenCommandStatus).toBe('stale');
+    expect(component.displayedOpenCommandMessage)
+      .toBe(component.text.openCommand.stale);
+  });
+
+  it('should reject a late result after connection to another device',
+    async () => {
+      alertRole = 'confirm';
+      let resolveExecution!: (result: LegacyBleWriteExecutionResult) => void;
+      writeExecutionService.execute.and.returnValue(new Promise((resolve) => {
+        resolveExecution = resolve;
+      }));
+      const pending = component.requestWidoorOpen();
+      await waitForCondition(() =>
+        writeExecutionService.execute.calls.count() === 1,
+      );
+
+      bleService.connectedDeviceId = 'device-2';
+      bleService.connectionGeneration += 1;
+      resolveExecution(openExecutionResult('success', 'confirmed'));
+      await pending;
+
+      expect(component.displayedOpenCommandStatus).toBe('stale');
+      expect(component.openCommandState.status).toBe('stale');
+    },
+  );
+
+  it('should invalidate an active command on disconnection', async () => {
+    alertRole = 'confirm';
+    let resolveExecution!: (result: LegacyBleWriteExecutionResult) => void;
+    writeExecutionService.execute.and.returnValue(new Promise((resolve) => {
+      resolveExecution = resolve;
+    }));
+    const pending = component.requestWidoorOpen();
+    await waitForCondition(() =>
+      writeExecutionService.execute.calls.count() === 1,
+    );
+
+    bleService.disconnect();
+    resolveExecution(openExecutionResult('success', 'confirmed'));
+    await pending;
+
+    expect(component.displayedOpenCommandStatus).toBe('disconnected');
+    expect(component.openCommandState.status).toBe('disconnected');
+  });
+
+  it('should ignore a late result after page destruction', async () => {
+    alertRole = 'confirm';
+    let resolveExecution!: (result: LegacyBleWriteExecutionResult) => void;
+    writeExecutionService.execute.and.returnValue(new Promise((resolve) => {
+      resolveExecution = resolve;
+    }));
+    const pending = component.requestWidoorOpen();
+    await waitForCondition(() =>
+      writeExecutionService.execute.calls.count() === 1,
+    );
+
+    fixture.destroy();
+    resolveExecution(openExecutionResult('success', 'confirmed'));
+    await pending;
+
+    expect(component.openCommandState.status).toBe('idle');
+    expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+  });
 
   it('should reject a second refresh while the first load is pending',
     async () => {
@@ -335,6 +645,9 @@ describe('ProductPage', () => {
       expect(fixture.nativeElement.querySelector(
         '[aria-labelledby="settings-title"]',
       )).toBeNull();
+      expect((fixture.nativeElement.querySelector(
+        'ion-button.widoor-open-command',
+      ) as HTMLIonButtonElement | null)?.disabled).toBeTrue();
     },
   );
 
@@ -372,6 +685,9 @@ describe('ProductPage', () => {
       expect(fixture.nativeElement.querySelector(
         '[aria-labelledby="information-title"]',
       )).toBeNull();
+      expect((fixture.nativeElement.querySelector(
+        'ion-button.widoor-open-command',
+      ) as HTMLIonButtonElement | null)?.disabled).toBeTrue();
     },
   );
 
@@ -459,8 +775,66 @@ describe('ProductPage', () => {
       ...navigationState('widoor'),
       motorState: {},
     })).toBeFalse();
+    expect(isProductPageNavigationState({
+      ...navigationState('widoor'),
+      identificationConfidence: 'weak',
+    })).toBeFalse();
     expect(isProductPageNavigationState(navigationState('widoor'))).toBeTrue();
   });
+});
+
+describe('ProductPage commands for other profiles', () => {
+  for (const profile of [
+    'moventiv-60',
+    'moventiv-80',
+    'garline',
+  ] as const) {
+    it(`should keep ${profile} commands non-interactive`, async () => {
+      const bleService = new FakeBleService();
+      const writeExecutionService = new FakeBleWriteExecutionService();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          {
+            provide: AlertController,
+            useValue: { create: jasmine.createSpy('create') },
+          },
+          { provide: BleWriteExecutionService, useValue: writeExecutionService },
+          {
+            provide: ProductDataLoadService,
+            useValue: new FakeProductDataLoadService(),
+          },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState(profile) },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(ProductPage);
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(element.querySelector('ion-button.widoor-open-command'))
+        .toBeNull();
+      expect(element.textContent).toContain(
+        fixture.componentInstance.text.commandsUnavailable,
+      );
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+      fixture.destroy();
+    });
+  }
 });
 
 describe('ProductPage direct navigation', () => {
@@ -474,6 +848,16 @@ describe('ProductPage direct navigation', () => {
         imports: [ProductPage],
         providers: [
           { provide: BleService, useValue: bleService },
+          {
+            provide: AlertController,
+            useValue: {
+              create: jasmine.createSpy('create'),
+            },
+          },
+          {
+            provide: BleWriteExecutionService,
+            useValue: new FakeBleWriteExecutionService(),
+          },
           { provide: ProductDataLoadService, useValue: loadService },
           { provide: ProductDetection, useClass: ProductDetection },
           {
@@ -516,6 +900,65 @@ function navigationState(
     displayName: 'Porte#CHA',
     identificationConfidence: 'strong',
     motorState: null,
+  };
+}
+
+async function waitForCondition(predicate: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (predicate()) {
+      return;
+    }
+    await Promise.resolve();
+  }
+  throw new Error('The asynchronous test condition was not reached.');
+}
+
+function writableGattProperties(
+  overrides: Partial<BleGattCharacteristicProperties> = {},
+): BleGattCharacteristicProperties {
+  return {
+    serviceUuid: BLE_UUIDS.shdoService,
+    characteristicUuid: BLE_UUIDS.motorCommandCharacteristic,
+    servicePresent: true,
+    characteristicPresent: true,
+    propertiesAvailable: true,
+    read: false,
+    write: true,
+    writeWithoutResponse: false,
+    notify: false,
+    indicate: false,
+    descriptorUuids: [],
+    rawProperties: { write: true },
+    ...overrides,
+  };
+}
+
+function openExecutionResult(
+  status: LegacyBleWriteExecutionResult['status'],
+  confirmationStatus: LegacyBleWriteExecutionResult['confirmationStatus'],
+  errorCode: string | null = status === 'success' ? null : 'open-test-error',
+): LegacyBleWriteExecutionResult {
+  const nativeWriteCompleted = status === 'success' || status === 'timeout';
+  return {
+    status,
+    operation: 'motor-open',
+    profile: 'widoor',
+    deviceId: 'device-1',
+    serviceUuid: BLE_UUIDS.shdoService,
+    characteristicUuid: BLE_UUIDS.motorCommandCharacteristic,
+    payloadHex: '00 20 00 00',
+    length: 4,
+    destructiveLevel: 'motor-movement',
+    hardwareValidationStatus: 'validated-widoor-old-firmware',
+    policyOverrideUsed: false,
+    startedAt: 100,
+    completedAt: 200,
+    connectionGeneration: 4,
+    nativeWriteCompleted,
+    confirmationStatus,
+    error: errorCode === null
+      ? null
+      : { code: errorCode, message: 'Native OPEN error' },
   };
 }
 

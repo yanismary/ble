@@ -7,6 +7,25 @@ export const PRODUCT_PAGE_TEXT = {
   readonlyNotice: 'Réglages affichés en lecture seule.',
   commandsUnavailable:
     'Les commandes seront disponibles dans un prochain lot.',
+  openCommand: {
+    open: 'Ouvrir',
+    confirmTitle: 'Ouvrir la porte ?',
+    confirmMessage:
+      'Cette action déclenche un mouvement réel du moteur. Vérifiez que la ' +
+      'zone est dégagée et que l’arrêt physique est accessible.',
+    cancel: 'Annuler',
+    warning: 'Un mouvement réel du moteur sera déclenché après confirmation.',
+    awaitingConfirmation: 'Confirmation requise',
+    executing: 'Commande en cours…',
+    confirmed: 'Ouverture confirmée',
+    notConfirmed: 'Commande envoyée, mais mouvement non confirmé',
+    unavailable: 'Commande indisponible',
+    disconnected: 'Périphérique déconnecté',
+    stale: 'Résultat obsolète',
+    failed: 'Échec de la commande',
+    alreadyInProgress: 'Une commande est déjà en cours',
+    cancelled: 'Commande annulée',
+  },
   sections: {
     commands: 'Commandes',
     settings: 'Réglages',
