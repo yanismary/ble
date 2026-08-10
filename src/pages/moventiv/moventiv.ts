@@ -1423,47 +1423,47 @@ export class MoventivPage implements OnInit, OnDestroy {
           }
           this.ngZone.run(() => {
             this.rval_mlpc_proParam_weightRangeBot = dataStringB[D_MLPC_PROPARAM_WR_01_HOF];
+            this.rval_mlpc_proParam_weightRangeUp = dataStringB[D_MLPC_PROPARAM_WR_00_HOF];
             this.logger.debug(this.TAG, 'rval_mlpc_proParam_weightRangeBot' + this.rval_mlpc_proParam_weightRangeBot);
 
             //JDU V1.3.0 #App-09 : associe plage de poids à la valeur de la selection (pour preselection)
-            if (this.rval_mlpc_proParam_weightRangeBot == 10)
+            if (this.rval_mlpc_proParam_weightRangeBot == 10 && this.rval_mlpc_proParam_weightRangeUp == 20)
             {
               this.userRangeWeight = 1;
             }
-            else if (this.rval_mlpc_proParam_weightRangeBot == 20)
+            else if (this.rval_mlpc_proParam_weightRangeBot == 20 && this.rval_mlpc_proParam_weightRangeUp == 30)
             {
               this.userRangeWeight = 2;
             }
-            else if (this.rval_mlpc_proParam_weightRangeBot == 30)
+            else if (this.rval_mlpc_proParam_weightRangeBot == 30 && this.rval_mlpc_proParam_weightRangeUp == 40)
             {
               this.userRangeWeight = 3;
             }
-            else if (this.rval_mlpc_proParam_weightRangeBot == 40)
+            else if (this.rval_mlpc_proParam_weightRangeBot == 40 && this.rval_mlpc_proParam_weightRangeUp == 50)
             {
               this.userRangeWeight = 4;
             }
-            else if (this.rval_mlpc_proParam_weightRangeBot == 50)
+            else if (this.rval_mlpc_proParam_weightRangeBot == 50 && this.rval_mlpc_proParam_weightRangeUp == 60)
             {
               this.userRangeWeight = 5;
             }
-            else if (this.rval_mlpc_proParam_weightRangeBot == 60)
+            else if (this.rval_mlpc_proParam_weightRangeBot == 60 && this.rval_mlpc_proParam_weightRangeUp == 80)
             {
               this.userRangeWeight = 6;
             }
-            else if (this.rval_mlpc_proParam_weightRangeBot == 80)
+            else if (this.rval_mlpc_proParam_weightRangeBot == 80 && this.rval_mlpc_proParam_weightRangeUp == 100)
             {
               this.userRangeWeight = 7;
             }
-            else if (this.rval_mlpc_proParam_weightRangeBot == 100)
+            else if (this.rval_mlpc_proParam_weightRangeBot == 100 && this.rval_mlpc_proParam_weightRangeUp == 120)
             {
               this.userRangeWeight = 8;
             }
-            else if (this.rval_mlpc_proParam_weightRangeBot == 120)
+            else if (this.rval_mlpc_proParam_weightRangeBot == 120 && this.rval_mlpc_proParam_weightRangeUp == 140)
             {
               this.userRangeWeight = 9;
             }
 
-            this.rval_mlpc_proParam_weightRangeUp = dataStringB[D_MLPC_PROPARAM_WR_00_HOF];
             this.rval_mlpc_proParam_exactWeight = dataStringB[D_MLPC_PROPARAM_EW_HOF];
             this.rval_mlpc_proParam_nearOpenSpeed = dataStringB[D_MLPC_PROPARAM_NOS_HOF];
             this.logger.debug(this.TAG, 'rval_mlpc_proParam_nearOpenSpeed' + this.rval_mlpc_proParam_nearOpenSpeed)
