@@ -4,7 +4,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.4.2'
+        classpath 'com.android.tools.build:gradle:8.10.0'
         classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.7.10'
         classpath 'com.google.gms:google-services:4.4.2'
     }
@@ -24,6 +24,15 @@ allprojects {
     }
 }
 
+subprojects { subproject ->
+    subproject.plugins.withId('com.android.library') {
+        if (subproject.name == 'capacitor-cordova-android-plugins') {
+            subproject.android {
+                namespace "capacitor.android.plugins"
+            }
+        }
+    }
+}
 task clean(type: Delete) {
     delete rootProject.buildDir
 }

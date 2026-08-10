@@ -1,0 +1,12 @@
+diff --git a/node_modules/@capacitor-community/bluetooth-le/android/build.gradle b/node_modules/@capacitor-community/bluetooth-le/android/build.gradle
+index fe8508f..af58c6b 100644
+--- a/node_modules/@capacitor-community/bluetooth-le/android/build.gradle
++++ b/node_modules/@capacitor-community/bluetooth-le/android/build.gradle
+@@ -23,6 +23,7 @@ apply plugin: 'com.android.library'
+ apply plugin: 'kotlin-android'
+ 
+ android {
++    namespace "com.capacitorjs.community.plugins.bluetoothle"
+     compileSdkVersion project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 30
+     defaultConfig {
+         minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 21

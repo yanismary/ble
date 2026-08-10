@@ -1,3 +1,15 @@
+diff --git a/node_modules/@capacitor/android/capacitor/build.gradle b/node_modules/@capacitor/android/capacitor/build.gradle
+index 5825521..19b370f 100644
+--- a/node_modules/@capacitor/android/capacitor/build.gradle
++++ b/node_modules/@capacitor/android/capacitor/build.gradle
+@@ -26,6 +26,7 @@ tasks.withType(Javadoc).all { enabled = false }
+ apply plugin: 'com.android.library'
+ 
+ android {
++    namespace "com.getcapacitor.android"
+     compileSdkVersion project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 30
+     defaultConfig {
+         minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 21
 diff --git a/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java b/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java
 index b6c5c14..e20902d 100644
 --- a/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java
