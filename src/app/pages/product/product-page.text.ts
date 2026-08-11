@@ -7,6 +7,19 @@ export const PRODUCT_PAGE_TEXT = {
   readonlyNotice: 'Réglages affichés en lecture seule.',
   commandsUnavailable:
     'Les commandes seront disponibles dans un prochain lot.',
+  lockModeControls: {
+    title: 'Condamnation',
+    executing: 'Envoi du mode de condamnation…',
+    sent: 'Mode de condamnation envoyé. Lecture de contrôle en cours.',
+    failed: 'Échec de l’envoi du mode de condamnation.',
+    unavailable: 'Commande de condamnation indisponible',
+    lockedOpen: {
+      label: 'Maintien ouvert',
+    },
+    lockedClosed: {
+      label: 'Verrouillage fermé',
+    },
+  },
   openCommand: {
     cancel: 'Annuler',
     awaitingConfirmation: 'Confirmation requise',

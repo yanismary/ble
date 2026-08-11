@@ -90,6 +90,34 @@
             }
           </div>
           <p class="command-warning">{{ text.widoorCommands.warning }}</p>
+          @if (showLockModeControls) {
+            <div class="lock-mode-controls">
+              <h3>{{ text.lockModeControls.title }}</h3>
+              @for (lockControl of lockModeControls; track lockControl.config.mode) {
+                <ion-toggle
+                  class="lock-mode-toggle"
+                  [checked]="isLockModeActive(lockControl.config)"
+                  [disabled]="!canToggleLockMode(lockControl.config)"
+                  (ionChange)="requestLockModeChange(lockControl.config, $event)"
+                >
+                  {{ lockControl.text.label }}
+                </ion-toggle>
+              }
+              @if (lockModeWriteState.message) {
+                <p
+                  class="command-state"
+                  role="status"
+                  aria-live="polite"
+                  [attr.data-tone]="lockModeWriteState.status === 'failed' ? 'error' : 'neutral'"
+                >
+                  @if (lockModeWriteState.status === 'executing') {
+                    <ion-spinner name="crescent"></ion-spinner>
+                  }
+                  <span>{{ lockModeWriteState.message }}</span>
+                </p>
+              }
+            </div>
+          }
           @if (displayedOpenCommandStatus !== 'idle') {
             <p
               class="command-state"

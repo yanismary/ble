@@ -46,6 +46,8 @@ import {
   MOTOR_COMMAND_UI_CONFIGS,
   WIDOOR_COMMAND_UI_CONFIGS,
 } from './product-open-command';
+import { PRODUCT_PAGE_CONFIG } from './product-page.config';
+import { productLockModeConfigsFor } from './product-lock-mode';
 import {
   ProductPageNavigationState,
   ProductReadViewState,
@@ -174,13 +176,15 @@ describe('ProductPage', () => {
       expect(loadService.loadProductData).not.toHaveBeenCalled();
 
       await component.refreshProductData();
+      fixture.detectChanges();
 
       expect(loadService.loadProductData)
         .toHaveBeenCalledOnceWith('widoor', 'device-1');
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
       const element = fixture.nativeElement as HTMLElement;
       expect(element.querySelector('ion-range')).toBeNull();
-      expect(element.querySelector('ion-toggle')).toBeNull();
+      expect(element.querySelector('ion-toggle.lock-mode-toggle'))
+        .not.toBeNull();
     },
   );
 
@@ -202,6 +206,170 @@ describe('ProductPage', () => {
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(alertCreate).not.toHaveBeenCalled();
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should expose lock controls from the decoded Widoor lock mode',
+    async () => {
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithLockMode('locked-open'),
+      );
+
+      await component.refreshProductData();
+      fixture.detectChanges();
+
+      const element = fixture.nativeElement as HTMLElement;
+      expect(component.showLockModeControls).toBeTrue();
+      expect(component.isLockModeActive(component.lockModeControls[0].config))
+        .toBeTrue();
+      expect(element.textContent).toContain(
+        component.text.lockModeControls.lockedOpen.label,
+      );
+      expect(element.textContent).toContain(
+        component.text.lockModeControls.lockedClosed.label,
+      );
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should write Widoor supported lock-mode transitions through the executor',
+    async () => {
+      const openControl = component.lockModeControls[0].config;
+      const closeControl = component.lockModeControls[1].config;
+      for (const transition of [
+        {
+          current: 'none',
+          control: openControl,
+          checked: true,
+          payloadHex: '00 01',
+          payload: [0x00, 0x01],
+        },
+        {
+          current: 'none',
+          control: closeControl,
+          checked: true,
+          payloadHex: '00 02',
+          payload: [0x00, 0x02],
+        },
+        {
+          current: 'locked-open',
+          control: openControl,
+          checked: false,
+          payloadHex: '00 00',
+          payload: [0x00, 0x00],
+        },
+        {
+          current: 'locked-closed',
+          control: closeControl,
+          checked: false,
+          payloadHex: '00 00',
+          payload: [0x00, 0x00],
+        },
+      ] as const) {
+        loadService.nextResult = completeLoadResult(
+          'success',
+          'widoor',
+          userValueWithLockMode(transition.current),
+        );
+        writeExecutionService.nextResult = lockModeExecutionResult(
+          'widoor',
+          transition.payloadHex,
+        );
+        writeExecutionService.execute.calls.reset();
+        await component.refreshProductData();
+
+        await component.requestLockModeChange(
+          transition.control,
+          transition.checked,
+        );
+
+        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        const request = writeExecutionService.execute.calls.mostRecent()
+          .args[0] as LegacyBleWriteRequest;
+        expect(request.profile).toBe('widoor');
+        expect(request.write.operation).toBe('lock-mode');
+        expect(request.write.serviceUuid).toBe(BLE_UUIDS.widoorService);
+        expect(request.write.characteristicUuid)
+          .toBe(BLE_UUIDS.userParametersCharacteristic);
+        expect(request.write.payloadHex).toBe(transition.payloadHex);
+        expect(Array.from(request.write.payload)).toEqual(transition.payload);
+        expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
+        expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+        expect(request.authorization).toEqual(jasmine.objectContaining({
+          profile: 'widoor',
+          operation: 'lock-mode',
+          payloadHex: transition.payloadHex,
+        }));
+        expect(request.authorization?.motorMovementConfirmed).toBeUndefined();
+        expect(component.lockModeWriteState.status).toBe('sent');
+      }
+    },
+  );
+
+  it('should reject direct switches between active Widoor lock modes',
+    async () => {
+      const openControl = component.lockModeControls[0].config;
+      const closeControl = component.lockModeControls[1].config;
+      for (const transition of [
+        { current: 'locked-open', target: closeControl },
+        { current: 'locked-closed', target: openControl },
+      ] as const) {
+        loadService.nextResult = completeLoadResult(
+          'success',
+          'widoor',
+          userValueWithLockMode(transition.current),
+        );
+        writeExecutionService.execute.calls.reset();
+        await component.refreshProductData();
+
+        await component.requestLockModeChange(transition.target, true);
+
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      }
+    },
+  );
+
+  it('should block all Widoor motor commands while locked and restore at none',
+    async () => {
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithLockMode('locked-closed'),
+      );
+      alertRole = 'confirm';
+      await component.refreshProductData();
+
+      expect(component.isLockModeActive(component.lockModeControls[1].config))
+        .toBeTrue();
+      expect(component.canToggleLockMode(component.lockModeControls[0].config))
+        .toBeFalse();
+      expect(component.canToggleLockMode(component.lockModeControls[1].config))
+        .toBeTrue();
+      for (const command of WIDOOR_COMMAND_UI_CONFIGS.filter((config) =>
+        config.enabled,
+      )) {
+        expect(component.canExecuteProductCommand(command)).toBeFalse();
+      }
+
+      await component.requestProductCommand(WIDOOR_COMMAND_UI_CONFIGS[0]);
+
+      expect(alertCreate).not.toHaveBeenCalled();
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithLockMode('none'),
+      );
+      await component.refreshProductData();
+
+      for (const command of WIDOOR_COMMAND_UI_CONFIGS.filter((config) =>
+        config.enabled,
+      )) {
+        expect(component.canExecuteProductCommand(command)).toBeTrue();
+      }
     },
   );
 
@@ -1466,6 +1634,79 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
   );
 });
 
+describe('ProductPage lock-mode controls for profile variants', () => {
+  it('should expose Garline lock-open only and reject lock-closed',
+    async () => {
+      const bleService = new FakeBleService();
+      const loadService = new FakeProductDataLoadService();
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'garline',
+        userValueWithLockMode('none'),
+      );
+      const writeExecutionService = new FakeBleWriteExecutionService();
+      const alertCreate = jasmine.createSpy('create').and.resolveTo({
+        present: async () => undefined,
+        onDidDismiss: async () => ({ role: 'confirm' }),
+      });
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          { provide: AlertController, useValue: { create: alertCreate } },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          { provide: ProductDataLoadService, useValue: loadService },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile: 'garline' } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState('garline') },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      await component.refreshProductData();
+      fixture.detectChanges();
+
+      expect(component.lockModeControls.map((control) =>
+        control.config.mode,
+      )).toEqual(['locked-open']);
+      expect(component.showLockModeControls).toBeTrue();
+      expect(fixture.nativeElement.textContent).toContain(
+        component.text.lockModeControls.lockedOpen.label,
+      );
+      expect(fixture.nativeElement.textContent).not.toContain(
+        component.text.lockModeControls.lockedClosed.label,
+      );
+
+      const unsupportedLockClosed = productLockModeConfigsFor(
+        PRODUCT_PAGE_CONFIG['moventiv-60'],
+      )[1];
+      await component.requestLockModeChange(unsupportedLockClosed, true);
+
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(alertCreate).not.toHaveBeenCalled();
+    },
+  );
+});
+
 function navigationState(
   profile: KnownProductProfile,
 ): ProductPageNavigationState {
@@ -1562,11 +1803,43 @@ function openExecutionResult(
   };
 }
 
+function lockModeExecutionResult(
+  profile: KnownProductProfile,
+  payloadHex: '00 00' | '00 01' | '00 02',
+): LegacyBleWriteExecutionResult {
+  return {
+    status: 'success',
+    operation: 'lock-mode',
+    profile,
+    deviceId: 'device-1',
+    serviceUuid: profile === 'widoor'
+      ? BLE_UUIDS.widoorService
+      : BLE_UUIDS.moventivGarlineService,
+    characteristicUuid: BLE_UUIDS.userParametersCharacteristic,
+    payloadHex,
+    length: 2,
+    destructiveLevel: 'non-destructive-setting',
+    hardwareValidationStatus: 'phase1-reference-only',
+    policyOverrideUsed: true,
+    startedAt: 100,
+    completedAt: 200,
+    connectionGeneration: 4,
+    nativeWriteCompleted: true,
+    confirmationStatus: 'not-required',
+    confirmedMotorStateRaw: null,
+    movementStartConfirmed: false,
+    timedCycleValidationStatus: 'not-observed',
+    error: null,
+  };
+}
+
 function completeLoadResult(
   status: ProductDataLoadStatus,
+  profile: KnownProductProfile = 'widoor',
+  userParameters: BleUserParameters = userValue(),
 ): ProductDataLoadResult {
   return {
-    profile: 'widoor',
+    profile,
     deviceId: 'device-1',
     connectionGeneration: 4,
     startedAt: 10,
@@ -1598,7 +1871,7 @@ function completeLoadResult(
       userParameters: successRead(
         'user-parameters',
         BLE_UUIDS.userParametersCharacteristic,
-        userValue(),
+        userParameters,
       ),
       professionalParameters: successRead(
         'professional-parameters',
@@ -1838,6 +2111,22 @@ function userValue(): BleUserParameters {
       light2: false,
       rgbIndicator: false,
     },
+  };
+}
+
+function userValueWithLockMode(
+  lockMode: BleUserParameters['lockMode'],
+): BleUserParameters {
+  const raw: Record<BleUserParameters['lockMode'], number> = {
+    none: 0,
+    'locked-open': 1,
+    'locked-closed': 2,
+    unknown: 9,
+  };
+  return {
+    ...userValue(),
+    lockMode,
+    lockModeRaw: raw[lockMode],
   };
 }
 

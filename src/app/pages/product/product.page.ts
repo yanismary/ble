@@ -13,6 +13,7 @@ import {
   IonHeader,
   IonSpinner,
   IonTitle,
+  IonToggle,
   IonToolbar,
 } from '@ionic/angular/standalone';
 import { Subscription } from 'rxjs';
@@ -23,7 +24,10 @@ import {
   BleService,
 } from '../../core/services/ble';
 import { BLE_UUIDS } from '../../core/services/ble-profile-catalog';
-import { LegacyBleWrite } from
+import {
+  LegacyBleWrite,
+  LegacyLockMode,
+} from
   '../../core/services/legacy-ble-write-catalog';
 import {
   BleWriteExecutionService,
@@ -57,6 +61,11 @@ import {
   isKnownProductProfile,
 } from './product-page.config';
 import { PRODUCT_PAGE_TEXT } from './product-page.text';
+import {
+  ProductLockModeUiConfig,
+  createProductLockModeAuthorization,
+  productLockModeConfigsFor,
+} from './product-lock-mode';
 import {
   ProductOpenCommandState,
   ProductCommandHistoryEntry,
@@ -102,6 +111,7 @@ const ROOM_SUFFIXES = [
     IonHeader,
     IonSpinner,
     IonTitle,
+    IonToggle,
     IonToolbar,
     NgTemplateOutlet,
   ],
@@ -123,6 +133,7 @@ export class ProductPage implements OnDestroy {
   private commandIdentifierSequence = 0;
   private destroyed = false;
   private readonly productCommandWrites: Map<string, LegacyBleWrite>;
+  private readonly lockModeWrites: Map<LegacyLockMode, LegacyBleWrite>;
 
   readonly config: ProductPageConfig;
   readonly text = PRODUCT_PAGE_TEXT;
@@ -134,9 +145,19 @@ export class ProductPage implements OnDestroy {
     readonly disabledReason: string | null;
   }[];
   readonly widoorCommands: typeof this.productCommands;
+  readonly lockModeControls: readonly {
+    readonly config: ProductLockModeUiConfig;
+    readonly text: typeof PRODUCT_PAGE_TEXT.lockModeControls[
+      ProductLockModeUiConfig['textKey']
+    ];
+  }[];
   readonly emptyTechnicalRows: readonly ProductDisplayRow[] = [];
   viewModel: ProductViewModel;
   openCommandState = initialProductOpenCommandState();
+  lockModeWriteState: {
+    readonly status: 'idle' | 'executing' | 'sent' | 'failed';
+    readonly message: string | null;
+  } = Object.freeze({ status: 'idle', message: null });
   private commandHistoryEntries: readonly ProductCommandHistoryEntry[] = [];
 
   constructor() {
@@ -164,6 +185,25 @@ export class ProductPage implements OnDestroy {
         config.catalogFactory(),
       ]),
     );
+    this.lockModeControls = Object.freeze(
+      productLockModeConfigsFor(this.config).map((config) =>
+        Object.freeze({
+          config,
+          text: PRODUCT_PAGE_TEXT.lockModeControls[config.textKey],
+        }),
+      ),
+    );
+    const firstLockModeConfig = this.lockModeControls[0]?.config;
+    this.lockModeWrites = new Map(
+      firstLockModeConfig === undefined
+        ? []
+        : [
+          ['none', firstLockModeConfig.catalogFactory('none')],
+          ...this.lockModeControls.map(({ config }) =>
+            [config.mode, config.catalogFactory(config.mode)] as const,
+          ),
+        ],
+    );
     this.context = this.resolveNavigationContext(routeProfile);
     this.viewModel = this.createInitialViewModel(
       profile,
@@ -190,7 +230,8 @@ export class ProductPage implements OnDestroy {
     return this.isCurrentContext() &&
       !this.viewModel.loading &&
       !this.productDataLoadService.isLoading &&
-      !this.bleService.isWriting;
+      !this.bleService.isWriting &&
+      this.lockModeWriteState.status !== 'executing';
   }
 
   get hasProductNavigationContext(): boolean {
@@ -205,6 +246,13 @@ export class ProductPage implements OnDestroy {
   get showProductMotorCommands(): boolean {
     return this.context?.profile === this.config.profile &&
       this.productCommands.length > 0;
+  }
+
+  get showLockModeControls(): boolean {
+    return this.pageContextCurrent &&
+      this.userFieldVisible('lock-mode') &&
+      this.lockModeControls.length > 0 &&
+      this.viewModel.reads.userParameters.status === 'available';
   }
 
   get canOpenWidoor(): boolean {
@@ -230,6 +278,8 @@ export class ProductPage implements OnDestroy {
         this.bleService.isWriting ||
         this.bleService.disconnectingDeviceId !== null ||
         this.bleWriteExecutionService.isExecuting ||
+        this.lockModeWriteState.status === 'executing' ||
+        this.motorCommandsBlockedByLockMode() ||
         this.commandInProgress) {
       return false;
     }
@@ -706,6 +756,49 @@ export class ProductPage implements OnDestroy {
     return this.requestProductCommand(config);
   }
 
+  isLockModeActive(config: ProductLockModeUiConfig): boolean {
+    return this.currentLockMode() === config.mode;
+  }
+
+  canToggleLockMode(config: ProductLockModeUiConfig): boolean {
+    if (!this.lockModeControls.some((control) =>
+          control.config === config,
+        ) ||
+        config.profile !== this.config.profile ||
+        !this.showLockModeControls ||
+        !this.isCurrentContext() ||
+        this.viewModel.loading ||
+        this.productDataLoadService.isLoading ||
+        this.bleService.isWriting ||
+        this.bleService.disconnectingDeviceId !== null ||
+        this.bleWriteExecutionService.isExecuting ||
+        this.lockModeWriteState.status === 'executing' ||
+        this.commandInProgress) {
+      return false;
+    }
+    const currentMode = this.currentLockMode();
+    if (currentMode === null || currentMode === 'unknown') {
+      return false;
+    }
+    if (currentMode !== 'none' && currentMode !== config.mode) {
+      return false;
+    }
+    const nextMode = currentMode === config.mode ? 'none' : config.mode;
+    const write = this.lockModeWrites.get(nextMode);
+    if (write === undefined) {
+      return false;
+    }
+    const properties = this.bleService.getGattCharacteristicProperties(
+      write.serviceUuid,
+      write.characteristicUuid,
+      this.context?.deviceId,
+    );
+    return properties.servicePresent &&
+      properties.characteristicPresent &&
+      properties.propertiesAvailable &&
+      properties.write === true;
+  }
+
   async requestProductCommand(config: WidoorCommandUiConfig): Promise<void> {
     if (!this.canExecuteProductCommand(config) ||
         this.context === null ||
@@ -765,7 +858,7 @@ export class ProductPage implements OnDestroy {
         return;
       }
 
-      const contextStatus = this.openCommandContextStatus(context, write);
+      const contextStatus = this.writeContextStatus(context, write);
       if (contextStatus !== null) {
         this.setOpenCommandContextFailure(
           contextStatus,
@@ -815,7 +908,7 @@ export class ProductPage implements OnDestroy {
       if (!this.isCurrentCommandCycle(cycle)) {
         return;
       }
-      const terminalContextStatus = this.openCommandContextStatus(
+      const terminalContextStatus = this.writeContextStatus(
         context,
         write,
       );
@@ -846,6 +939,88 @@ export class ProductPage implements OnDestroy {
         this.addCommandHistory(this.openCommandState);
       }
     }
+  }
+
+  async requestLockModeChange(
+    config: ProductLockModeUiConfig,
+    eventOrChecked: CustomEvent<{ readonly checked: boolean }> | boolean,
+  ): Promise<void> {
+    const checked = typeof eventOrChecked === 'boolean'
+      ? eventOrChecked
+      : eventOrChecked.detail.checked;
+    const currentMode = this.currentLockMode();
+    const nextMode = checked ? config.mode : 'none';
+    if (currentMode === nextMode ||
+        currentMode === null ||
+        currentMode === 'unknown' ||
+        (checked && currentMode !== 'none') ||
+        (!checked && currentMode !== config.mode) ||
+        !this.canToggleLockMode(config) ||
+        this.context === null) {
+      return;
+    }
+    const write = this.lockModeWrites.get(nextMode);
+    if (write === undefined) {
+      return;
+    }
+
+    const context = this.context;
+    const contextStatus = this.writeContextStatus(context, write);
+    if (contextStatus !== null) {
+      this.lockModeWriteState = Object.freeze({
+        status: 'failed',
+        message: this.lockModeFailureMessage(contextStatus),
+      });
+      return;
+    }
+
+    const attemptId = this.nextCommandIdentifier('attempt');
+    const confirmedAt = Date.now();
+    const authorization = createProductLockModeAuthorization({
+      write,
+      deviceId: context.deviceId,
+      connectionGeneration: context.connectionGeneration,
+      attemptId,
+      confirmationId: this.nextCommandIdentifier('confirmation'),
+      confirmedAt,
+    });
+    this.lockModeWriteState = Object.freeze({
+      status: 'executing',
+      message: this.text.lockModeControls.executing,
+    });
+
+    const result = await this.bleWriteExecutionService.execute({
+      write,
+      deviceId: context.deviceId,
+      profile: config.profile,
+      connectionGeneration: context.connectionGeneration,
+      identification: { profile: config.profile, confidence: 'strong' },
+      authorization,
+      attemptId,
+      confirmationPolicy: config.confirmationPolicy,
+      policy: config.policy,
+    });
+    if (!this.isCurrentContext() || this.context !== context) {
+      this.lockModeWriteState = Object.freeze({
+        status: 'failed',
+        message: this.text.openCommand.stale,
+      });
+      return;
+    }
+    if (result.status === 'success') {
+      this.lockModeWriteState = Object.freeze({
+        status: 'sent',
+        message: this.text.lockModeControls.sent,
+      });
+      if (this.canRefresh) {
+        await this.refreshProductData();
+      }
+      return;
+    }
+    this.lockModeWriteState = Object.freeze({
+      status: 'failed',
+      message: this.text.lockModeControls.failed,
+    });
   }
 
   backToScan(): void {
@@ -1041,7 +1216,7 @@ export class ProductPage implements OnDestroy {
     return !this.destroyed && cycle === this.commandCycle;
   }
 
-  private openCommandContextStatus(
+  private writeContextStatus(
     context: ProductPageNavigationState,
     write: LegacyBleWrite,
   ): 'disconnected' | 'stale' | 'unavailable' | null {
@@ -1077,6 +1252,28 @@ export class ProductPage implements OnDestroy {
       properties.write === true
       ? null
       : 'unavailable';
+  }
+
+  private currentLockMode(): LegacyLockMode | 'unknown' | null {
+    return this.viewModel.reads.userParameters.value?.lockMode ?? null;
+  }
+
+  private motorCommandsBlockedByLockMode(): boolean {
+    const lockMode = this.currentLockMode();
+    return lockMode === 'locked-open' || lockMode === 'locked-closed';
+  }
+
+  private lockModeFailureMessage(
+    status: 'disconnected' | 'stale' | 'unavailable',
+  ): string {
+    switch (status) {
+      case 'disconnected':
+        return this.text.openCommand.disconnected;
+      case 'stale':
+        return this.text.openCommand.stale;
+      case 'unavailable':
+        return this.text.lockModeControls.unavailable;
+    }
   }
 
   private setOpenCommandContextFailure(
