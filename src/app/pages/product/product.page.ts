@@ -92,6 +92,13 @@ import {
   productWeightRangeConfigsFor,
 } from './product-weight-range';
 import {
+  ProductProfessionalScalarField,
+  ProductProfessionalScalarUiConfig,
+  createProductProfessionalScalarAuthorization,
+  isValidProductProfessionalScalarValue,
+  productProfessionalScalarConfigsFor,
+} from './product-professional-scalar';
+import {
   ProductOpenCommandState,
   ProductCommandHistoryEntry,
   ProductOpenCommandStatus,
@@ -167,6 +174,14 @@ export class ProductPage implements OnDestroy {
   private readonly userTimingWrites: Map<ProductUserTimingField, LegacyBleWrite>;
   private readonly userTimingDrafts = new Map<ProductUserTimingField, number>();
   private weightRangeDraft: ProductWeightRange | null = null;
+  private readonly professionalScalarWrites: Map<
+    ProductProfessionalScalarField,
+    LegacyBleWrite
+  >;
+  private readonly professionalScalarDrafts = new Map<
+    ProductProfessionalScalarField,
+    number
+  >();
 
   readonly config: ProductPageConfig;
   readonly text = PRODUCT_PAGE_TEXT;
@@ -199,6 +214,12 @@ export class ProductPage implements OnDestroy {
   readonly weightRangeControls: readonly {
     readonly config: ProductWeightRangeUiConfig;
   }[];
+  readonly professionalScalarControls: readonly {
+    readonly config: ProductProfessionalScalarUiConfig;
+    readonly text: typeof PRODUCT_PAGE_TEXT.professional[
+      ProductProfessionalScalarUiConfig['textKey']
+    ];
+  }[];
   readonly emptyTechnicalRows: readonly ProductDisplayRow[] = [];
   viewModel: ProductViewModel;
   openCommandState = initialProductOpenCommandState();
@@ -220,6 +241,11 @@ export class ProductPage implements OnDestroy {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', message: null });
+  professionalScalarWriteState: {
+    readonly status: 'idle' | 'executing' | 'sent' | 'failed';
+    readonly field: ProductProfessionalScalarField | null;
+    readonly message: string | null;
+  } = Object.freeze({ status: 'idle', field: null, message: null });
   private commandHistoryEntries: readonly ProductCommandHistoryEntry[] = [];
   readonly compareWeightRangeOptions = (
     first: ProductWeightRange | null,
@@ -303,6 +329,20 @@ export class ProductPage implements OnDestroy {
         Object.freeze({ config }),
       ),
     );
+    this.professionalScalarControls = Object.freeze(
+      productProfessionalScalarConfigsFor(this.config).map((config) =>
+        Object.freeze({
+          config,
+          text: PRODUCT_PAGE_TEXT.professional[config.textKey],
+        }),
+      ),
+    );
+    this.professionalScalarWrites = new Map(
+      this.professionalScalarControls.map(({ config }) => [
+        config.field,
+        config.catalogFactory(config.range.min),
+      ]),
+    );
     this.context = this.resolveNavigationContext(routeProfile);
     this.viewModel = this.createInitialViewModel(
       profile,
@@ -333,7 +373,8 @@ export class ProductPage implements OnDestroy {
       this.lockModeWriteState.status !== 'executing' &&
       this.userSpeedWriteState.status !== 'executing' &&
       this.userTimingWriteState.status !== 'executing' &&
-      this.weightRangeWriteState.status !== 'executing';
+      this.weightRangeWriteState.status !== 'executing' &&
+      this.professionalScalarWriteState.status !== 'executing';
   }
 
   get hasProductNavigationContext(): boolean {
@@ -375,6 +416,12 @@ export class ProductPage implements OnDestroy {
       this.viewModel.reads.professionalParameters.status === 'available';
   }
 
+  get showProfessionalScalarControls(): boolean {
+    return this.pageContextCurrent &&
+      this.professionalScalarControls.length > 0 &&
+      this.viewModel.reads.professionalParameters.status === 'available';
+  }
+
   get canOpenWidoor(): boolean {
     return this.canExecuteWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[0]);
   }
@@ -402,6 +449,7 @@ export class ProductPage implements OnDestroy {
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalScalarWriteState.status === 'executing' ||
         this.motorCommandsBlockedByLockMode() ||
         this.commandInProgress) {
       return false;
@@ -932,6 +980,7 @@ export class ProductPage implements OnDestroy {
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalScalarWriteState.status === 'executing' ||
         this.commandInProgress) {
       return false;
     }
@@ -1010,6 +1059,7 @@ export class ProductPage implements OnDestroy {
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalScalarWriteState.status === 'executing' ||
         this.commandInProgress) {
       return false;
     }
@@ -1087,6 +1137,7 @@ export class ProductPage implements OnDestroy {
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalScalarWriteState.status === 'executing' ||
         this.commandInProgress) {
       return false;
     }
@@ -1103,6 +1154,97 @@ export class ProductPage implements OnDestroy {
       return false;
     }
     const write = config.catalogFactory(draftValue);
+    const properties = this.bleService.getGattCharacteristicProperties(
+      write.serviceUuid,
+      write.characteristicUuid,
+      this.context?.deviceId,
+    );
+    return properties.servicePresent &&
+      properties.characteristicPresent &&
+      properties.propertiesAvailable &&
+      properties.write === true;
+  }
+
+  currentProfessionalScalarValue(
+    config: ProductProfessionalScalarUiConfig,
+  ): number | null {
+    const value = this.viewModel.reads.professionalParameters.value;
+    if (value === null || value.profile !== config.profile) {
+      return null;
+    }
+    switch (config.field) {
+      case 'break-force-at-open':
+        return value.profile === 'widoor' ? value.breakForceAtOpen : null;
+      case 'braking-open-power':
+        return value.profile === 'widoor' ? null : value.brakingOpenPower;
+      case 'obstacle-sensitivity':
+        return value.profile === 'widoor' ? null : value.obstacleSensitivity;
+    }
+  }
+
+  professionalScalarDraftValue(
+    config: ProductProfessionalScalarUiConfig,
+  ): number {
+    return this.professionalScalarDrafts.get(config.field) ??
+      this.currentProfessionalScalarValue(config) ??
+      config.range.min;
+  }
+
+  setProfessionalScalarDraftValue(
+    config: ProductProfessionalScalarUiConfig,
+    eventOrValue: Event | number,
+  ): void {
+    if (!this.isProfessionalScalarControl(config)) {
+      return;
+    }
+    const value = typeof eventOrValue === 'number'
+      ? eventOrValue
+      : rangeEventNumber(eventOrValue);
+    if (value === null ||
+        !isValidProductProfessionalScalarValue(config, value)) {
+      return;
+    }
+    this.professionalScalarDrafts.set(config.field, value);
+    if (this.professionalScalarWriteState.field === config.field &&
+        this.professionalScalarWriteState.status !== 'executing') {
+      this.professionalScalarWriteState = Object.freeze({
+        status: 'idle',
+        field: null,
+        message: null,
+      });
+    }
+  }
+
+  canApplyProfessionalScalar(
+    config: ProductProfessionalScalarUiConfig,
+  ): boolean {
+    if (!this.isProfessionalScalarControl(config) ||
+        !this.showProfessionalScalarControls ||
+        !this.isCurrentContext() ||
+        this.viewModel.loading ||
+        this.productDataLoadService.isLoading ||
+        this.bleService.isWriting ||
+        this.bleService.disconnectingDeviceId !== null ||
+        this.bleWriteExecutionService.isExecuting ||
+        this.lockModeWriteState.status === 'executing' ||
+        this.userSpeedWriteState.status === 'executing' ||
+        this.userTimingWriteState.status === 'executing' ||
+        this.weightRangeWriteState.status === 'executing' ||
+        this.professionalScalarWriteState.status === 'executing' ||
+        this.commandInProgress) {
+      return false;
+    }
+    const currentValue = this.currentProfessionalScalarValue(config);
+    const draftValue = this.professionalScalarDraftValue(config);
+    if (currentValue === null ||
+        draftValue === currentValue ||
+        !isValidProductProfessionalScalarValue(config, draftValue)) {
+      return false;
+    }
+    const write = this.professionalScalarWrites.get(config.field);
+    if (write === undefined) {
+      return false;
+    }
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
       write.characteristicUuid,
@@ -1134,6 +1276,7 @@ export class ProductPage implements OnDestroy {
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalScalarWriteState.status === 'executing' ||
         this.commandInProgress) {
       return false;
     }
@@ -1524,6 +1667,81 @@ export class ProductPage implements OnDestroy {
     });
   }
 
+  async requestProfessionalScalarChange(
+    config: ProductProfessionalScalarUiConfig,
+  ): Promise<void> {
+    if (!this.canApplyProfessionalScalar(config) || this.context === null) {
+      return;
+    }
+    const draftValue = this.professionalScalarDraftValue(config);
+    if (!isValidProductProfessionalScalarValue(config, draftValue)) {
+      return;
+    }
+    const write = config.catalogFactory(draftValue);
+    const context = this.context;
+    const contextStatus = this.writeContextStatus(context, write);
+    if (contextStatus !== null) {
+      this.professionalScalarWriteState = Object.freeze({
+        status: 'failed',
+        field: config.field,
+        message: this.professionalScalarFailureMessage(contextStatus),
+      });
+      return;
+    }
+
+    const attemptId = this.nextCommandIdentifier('attempt');
+    const confirmedAt = Date.now();
+    const authorization = createProductProfessionalScalarAuthorization({
+      write,
+      deviceId: context.deviceId,
+      connectionGeneration: context.connectionGeneration,
+      attemptId,
+      confirmationId: this.nextCommandIdentifier('confirmation'),
+      confirmedAt,
+    });
+    this.professionalScalarWriteState = Object.freeze({
+      status: 'executing',
+      field: config.field,
+      message: this.text.professionalScalarControls.executing,
+    });
+
+    const result = await this.bleWriteExecutionService.execute({
+      write,
+      deviceId: context.deviceId,
+      profile: config.profile,
+      connectionGeneration: context.connectionGeneration,
+      identification: { profile: config.profile, confidence: 'strong' },
+      authorization,
+      attemptId,
+      confirmationPolicy: config.confirmationPolicy,
+      policy: config.policy,
+    });
+    if (!this.isCurrentContext() || this.context !== context) {
+      this.professionalScalarWriteState = Object.freeze({
+        status: 'failed',
+        field: config.field,
+        message: this.text.openCommand.stale,
+      });
+      return;
+    }
+    if (result.status === 'success') {
+      this.professionalScalarWriteState = Object.freeze({
+        status: 'sent',
+        field: config.field,
+        message: this.text.professionalScalarControls.sent,
+      });
+      if (this.canRefresh) {
+        await this.refreshProductData();
+      }
+      return;
+    }
+    this.professionalScalarWriteState = Object.freeze({
+      status: 'failed',
+      field: config.field,
+      message: this.text.professionalScalarControls.failed,
+    });
+  }
+
   async requestLockModeChange(
     config: ProductLockModeUiConfig,
     eventOrChecked: CustomEvent<{ readonly checked: boolean }> | boolean,
@@ -1621,6 +1839,7 @@ export class ProductPage implements OnDestroy {
     this.resetUserSpeedEditing();
     this.resetUserTimingEditing();
     this.resetWeightRangeEditing();
+    this.resetProfessionalScalarEditing();
     this.subscriptions.unsubscribe();
   }
 
@@ -1746,6 +1965,7 @@ export class ProductPage implements OnDestroy {
     this.userSpeedDrafts.clear();
     this.userTimingDrafts.clear();
     this.weightRangeDraft = null;
+    this.professionalScalarDrafts.clear();
   }
 
   private handleDisconnection(event: BleDisconnectionEvent): void {
@@ -1791,6 +2011,7 @@ export class ProductPage implements OnDestroy {
     this.resetUserSpeedEditing();
     this.resetUserTimingEditing();
     this.resetWeightRangeEditing();
+    this.resetProfessionalScalarEditing();
     this.viewModel = {
       ...this.viewModel,
       connectionState: state,
@@ -1853,6 +2074,24 @@ export class ProductPage implements OnDestroy {
     return this.weightRangeControls.find((control) =>
       isSameProductWeightRange(control.config.range, range),
     );
+  }
+
+  private resetProfessionalScalarEditing(): void {
+    this.professionalScalarDrafts.clear();
+    this.professionalScalarWriteState = Object.freeze({
+      status: 'idle',
+      field: null,
+      message: null,
+    });
+  }
+
+  private isProfessionalScalarControl(
+    config: ProductProfessionalScalarUiConfig,
+  ): boolean {
+    return config.profile === this.config.profile &&
+      this.professionalScalarControls.some((control) =>
+        control.config === config,
+      );
   }
 
   private isCurrentCommandCycle(cycle: number): boolean {
@@ -1955,6 +2194,19 @@ export class ProductPage implements OnDestroy {
         return this.text.openCommand.stale;
       case 'unavailable':
         return this.text.weightRangeControls.unavailable;
+    }
+  }
+
+  private professionalScalarFailureMessage(
+    status: 'disconnected' | 'stale' | 'unavailable',
+  ): string {
+    switch (status) {
+      case 'disconnected':
+        return this.text.openCommand.disconnected;
+      case 'stale':
+        return this.text.openCommand.stale;
+      case 'unavailable':
+        return this.text.professionalScalarControls.unavailable;
     }
   }
 

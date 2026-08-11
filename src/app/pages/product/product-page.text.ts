@@ -47,6 +47,15 @@ export const PRODUCT_PAGE_TEXT = {
     failed: 'Échec de l’envoi de la plage de poids.',
     unavailable: 'Commande de plage de poids indisponible',
   },
+  professionalScalarControls: {
+    apply: 'Appliquer',
+    current: 'Valeur lue :',
+    draft: 'Valeur à appliquer :',
+    executing: 'Envoi du paramètre professionnel…',
+    sent: 'Paramètre professionnel envoyé. Lecture de contrôle en cours.',
+    failed: 'Échec de l’envoi du paramètre professionnel.',
+    unavailable: 'Commande de paramètre professionnel indisponible',
+  },
   openCommand: {
     cancel: 'Annuler',
     awaitingConfirmation: 'Confirmation requise',

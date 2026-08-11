@@ -50,6 +50,8 @@ import { PRODUCT_PAGE_CONFIG } from './product-page.config';
 import { productLockModeConfigsFor } from './product-lock-mode';
 import { productUserSpeedConfigsFor } from './product-user-speed';
 import { productUserTimingConfigsFor } from './product-user-timing';
+import { productProfessionalScalarConfigsFor } from
+  './product-professional-scalar';
 import {
   ProductPageNavigationState,
   ProductReadViewState,
@@ -2697,6 +2699,326 @@ describe('ProductPage weight-range controls for profile variants', () => {
   );
 });
 
+describe('ProductPage professional scalar controls for force and obstacle',
+  () => {
+    async function createProfessionalScalarPage(
+      profile: KnownProductProfile,
+      professionalParameters: BleProfessionalParameters,
+      result: LegacyBleWriteExecutionResult =
+        professionalScalarExecutionResult(
+          profile,
+          profile === 'widoor'
+            ? 'break-force-at-open'
+            : 'obstacle-sensitivity',
+          profile === 'widoor' ? '01 05' : '07 03',
+        ),
+    ): Promise<{
+      readonly component: ProductPage;
+      readonly fixture: ComponentFixture<ProductPage>;
+      readonly bleService: FakeBleService;
+      readonly loadService: FakeProductDataLoadService;
+      readonly writeExecutionService: FakeBleWriteExecutionService;
+    }> {
+      const bleService = new FakeBleService();
+      const loadService = new FakeProductDataLoadService();
+      loadService.nextResult = completeLoadResult(
+        'success',
+        profile,
+        userValue(),
+        professionalParameters,
+      );
+      const writeExecutionService = new FakeBleWriteExecutionService();
+      writeExecutionService.nextResult = result;
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          {
+            provide: AlertController,
+            useValue: {
+              create: jasmine.createSpy('create').and.resolveTo({
+                present: async () => undefined,
+                onDidDismiss: async () => ({ role: 'confirm' }),
+              }),
+            },
+          },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          { provide: ProductDataLoadService, useValue: loadService },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState(profile) },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+      await component.refreshProductData();
+      fixture.detectChanges();
+
+      return {
+        component,
+        fixture,
+        bleService,
+        loadService,
+        writeExecutionService,
+      };
+    }
+
+    for (const scenario of [
+      {
+        profile: 'widoor',
+        current: professionalValue('widoor', 0, 0, {
+          breakForceAtOpen: 5,
+        }),
+        field: 'break-force-at-open',
+        controls: ['break-force-at-open'],
+        accepted: 10,
+        invalid: 11,
+        range: { min: 1, max: 10 },
+        unit: null,
+        payloadHex: '01 0a',
+        serviceUuid: BLE_UUIDS.widoorService,
+      },
+      {
+        profile: 'moventiv-80',
+        current: professionalValue('moventiv-80', 50, 60, {
+          brakingOpenPower: 40,
+          obstacleSensitivity: 2,
+        }),
+        field: 'braking-open-power',
+        controls: ['braking-open-power', 'obstacle-sensitivity'],
+        accepted: 50,
+        invalid: 101,
+        range: { min: 1, max: 100 },
+        unit: '%',
+        payloadHex: '06 32',
+        serviceUuid: BLE_UUIDS.moventivGarlineService,
+      },
+      {
+        profile: 'garline',
+        current: professionalValue('garline', 80, 100, {
+          obstacleSensitivity: 2,
+        }),
+        field: 'obstacle-sensitivity',
+        controls: ['obstacle-sensitivity'],
+        accepted: 5,
+        invalid: 6,
+        range: { min: 1, max: 5 },
+        unit: null,
+        payloadHex: '07 05',
+        serviceUuid: BLE_UUIDS.moventivGarlineService,
+      },
+    ] as const) {
+      it(`should apply ${scenario.profile} ${scenario.field}`,
+        async () => {
+          const {
+            component,
+            writeExecutionService,
+          } = await createProfessionalScalarPage(
+            scenario.profile,
+            scenario.current,
+            professionalScalarExecutionResult(
+              scenario.profile,
+              scenario.field,
+              scenario.payloadHex,
+            ),
+          );
+          const control = component.professionalScalarControls.find(
+            (candidate) => candidate.config.field === scenario.field,
+          )?.config;
+
+          expect(component.professionalScalarControls.map((candidate) =>
+            candidate.config.field,
+          )).toEqual(scenario.controls);
+          expect(control).toBeDefined();
+          expect(control?.range).toEqual(scenario.range);
+          expect(control?.unit).toBe(scenario.unit);
+          expect(component.currentProfessionalScalarValue(control!))
+            .toBe(scenario.field === 'break-force-at-open'
+              ? 5
+              : scenario.field === 'braking-open-power'
+                ? 40
+                : 2);
+
+          component.setProfessionalScalarDraftValue(control!, scenario.invalid);
+          await component.requestProfessionalScalarChange(control!);
+          expect(writeExecutionService.execute).not.toHaveBeenCalled();
+
+          component.setProfessionalScalarDraftValue(
+            control!,
+            scenario.accepted,
+          );
+          expect(component.professionalScalarDraftValue(control!))
+            .toBe(scenario.accepted);
+          expect(component.canApplyProfessionalScalar(control!)).toBeTrue();
+          expect(writeExecutionService.execute).not.toHaveBeenCalled();
+
+          await component.requestProfessionalScalarChange(control!);
+
+          expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+          const request = writeExecutionService.execute.calls.mostRecent()
+            .args[0] as LegacyBleWriteRequest;
+          expect(request.profile).toBe(scenario.profile);
+          expect(request.write.operation).toBe(scenario.field);
+          expect(request.write.serviceUuid).toBe(scenario.serviceUuid);
+          expect(request.write.characteristicUuid)
+            .toBe(BLE_UUIDS.professionalParametersCharacteristic);
+          expect(request.write.payloadHex).toBe(scenario.payloadHex);
+          expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
+          expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+        },
+      );
+    }
+
+    it('should leave the BLE value unchanged when a professional write fails',
+      async () => {
+        const {
+          component,
+          writeExecutionService,
+        } = await createProfessionalScalarPage(
+          'garline',
+          professionalValue('garline', 80, 100, {
+            obstacleSensitivity: 2,
+          }),
+          professionalScalarExecutionResult(
+            'garline',
+            'obstacle-sensitivity',
+            '07 03',
+            'failed',
+          ),
+        );
+        const control = component.professionalScalarControls[0].config;
+
+        component.setProfessionalScalarDraftValue(control, 3);
+        await component.requestProfessionalScalarChange(control);
+
+        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        expect(component.currentProfessionalScalarValue(control)).toBe(2);
+        expect(component.professionalScalarDraftValue(control)).toBe(3);
+        expect(component.professionalScalarWriteState.status).toBe('failed');
+      },
+    );
+
+    it('should reset professional scalar drafts after a BLE reload',
+      async () => {
+        const {
+          component,
+          loadService,
+        } = await createProfessionalScalarPage(
+          'widoor',
+          professionalValue('widoor', 0, 0, { breakForceAtOpen: 5 }),
+        );
+        const control = component.professionalScalarControls[0].config;
+
+        component.setProfessionalScalarDraftValue(control, 8);
+        expect(component.professionalScalarDraftValue(control)).toBe(8);
+
+        loadService.nextResult = completeLoadResult(
+          'success',
+          'widoor',
+          userValue(),
+          professionalValue('widoor', 0, 0, { breakForceAtOpen: 2 }),
+        );
+        await component.refreshProductData();
+
+        expect(component.currentProfessionalScalarValue(control)).toBe(2);
+        expect(component.professionalScalarDraftValue(control)).toBe(2);
+      },
+    );
+
+    it('should reset professional scalar editing on disconnection',
+      async () => {
+        const {
+          component,
+          bleService,
+        } = await createProfessionalScalarPage(
+          'moventiv-80',
+          professionalValue('moventiv-80', 50, 60, {
+            brakingOpenPower: 40,
+            obstacleSensitivity: 2,
+          }),
+        );
+        const control = component.professionalScalarControls[0].config;
+
+        component.setProfessionalScalarDraftValue(control, 50);
+        component.professionalScalarWriteState = Object.freeze({
+          status: 'failed',
+          field: control.field,
+          message: 'failed',
+        });
+
+        bleService.disconnect();
+
+        expect(component.professionalScalarDraftValue(control))
+          .toBe(control.range.min);
+        expect(component.professionalScalarWriteState).toEqual({
+          status: 'idle',
+          field: null,
+          message: null,
+        });
+        expect(component.canApplyProfessionalScalar(control)).toBeFalse();
+      },
+    );
+
+    it('should reject a professional scalar config from another profile',
+      async () => {
+        const {
+          component,
+          writeExecutionService,
+        } = await createProfessionalScalarPage(
+          'widoor',
+          professionalValue('widoor', 0, 0, { breakForceAtOpen: 5 }),
+        );
+        const garlineObstacle = productProfessionalScalarConfigsFor(
+          PRODUCT_PAGE_CONFIG.garline,
+        )[0];
+
+        component.setProfessionalScalarDraftValue(garlineObstacle, 3);
+        await component.requestProfessionalScalarChange(garlineObstacle);
+
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+        expect(component.canApplyProfessionalScalar(garlineObstacle))
+          .toBeFalse();
+      },
+    );
+
+    it('should keep previous setting groups and motor commands available',
+      async () => {
+        const {
+          component,
+        } = await createProfessionalScalarPage(
+          'widoor',
+          professionalValue('widoor', 0, 0, { breakForceAtOpen: 5 }),
+        );
+
+        expect(component.showProfessionalScalarControls).toBeTrue();
+        expect(component.showWeightRangeControls).toBeFalse();
+        expect(component.showUserSpeedControls).toBeTrue();
+        expect(component.showUserTimingControls).toBeTrue();
+        expect(component.showLockModeControls).toBeTrue();
+        expect(component.showProductMotorCommands).toBeTrue();
+      },
+    );
+  },
+);
+
 describe('ProductPage lock-mode controls for profile variants', () => {
   it('should expose Garline lock-open only and reject lock-closed',
     async () => {
@@ -2986,6 +3308,46 @@ function weightRangeExecutionResult(
     error: status === 'success'
       ? null
       : { code: 'weight-range-test-error', message: 'Weight range error' },
+  };
+}
+
+function professionalScalarExecutionResult(
+  profile: KnownProductProfile,
+  operation:
+    | 'break-force-at-open'
+    | 'braking-open-power'
+    | 'obstacle-sensitivity',
+  payloadHex: string,
+  status: LegacyBleWriteExecutionResult['status'] = 'success',
+): LegacyBleWriteExecutionResult {
+  return {
+    status,
+    operation,
+    profile,
+    deviceId: 'device-1',
+    serviceUuid: profile === 'widoor'
+      ? BLE_UUIDS.widoorService
+      : BLE_UUIDS.moventivGarlineService,
+    characteristicUuid: BLE_UUIDS.professionalParametersCharacteristic,
+    payloadHex,
+    length: 2,
+    destructiveLevel: 'non-destructive-setting',
+    hardwareValidationStatus: 'phase1-reference-only',
+    policyOverrideUsed: true,
+    startedAt: 100,
+    completedAt: 200,
+    connectionGeneration: 4,
+    nativeWriteCompleted: status === 'success',
+    confirmationStatus: status === 'success' ? 'not-required' : 'unavailable',
+    confirmedMotorStateRaw: null,
+    movementStartConfirmed: false,
+    timedCycleValidationStatus: 'not-observed',
+    error: status === 'success'
+      ? null
+      : {
+        code: 'professional-scalar-test-error',
+        message: 'Professional scalar error',
+      },
   };
 }
 
@@ -3311,18 +3673,27 @@ function userValueWithTimings(
   };
 }
 
+interface ProfessionalValueOverrides {
+  readonly breakForceAtOpen?: number;
+  readonly brakingOpenPower?: number;
+  readonly obstacleSensitivity?: number;
+  readonly nearOpenTorque?: number;
+  readonly nearCloseTorque?: number;
+}
+
 function professionalValue(
   profile: KnownProductProfile = 'widoor',
   weightRangeLower = 0,
   weightRangeUpper = 0,
+  overrides: ProfessionalValueOverrides = {},
 ): BleProfessionalParameters {
   const common = {
     weightRangeLower,
     weightRangeUpper,
     nearOpenSpeed: 70,
     nearCloseSpeed: 50,
-    nearOpenTorque: 0,
-    nearCloseTorque: 0,
+    nearOpenTorque: overrides.nearOpenTorque ?? 0,
+    nearCloseTorque: overrides.nearCloseTorque ?? 0,
     peripheralByte1: 0,
     peripheralByte2: 0,
   };
@@ -3330,7 +3701,7 @@ function professionalValue(
     return {
       ...common,
       profile,
-      breakForceAtOpen: 1,
+      breakForceAtOpen: overrides.breakForceAtOpen ?? 1,
       nearOpenProportional: 0,
       nearCloseProportional: 0,
       nearOpenIntegral: 0,
@@ -3341,8 +3712,8 @@ function professionalValue(
     ...common,
     profile,
     exactWeight: 0,
-    brakingOpenPower: 0,
-    obstacleSensitivity: 0,
+    brakingOpenPower: overrides.brakingOpenPower ?? 0,
+    obstacleSensitivity: overrides.obstacleSensitivity ?? 0,
     nearOpenIntegral: 0,
     nearCloseIntegral: 0,
   };

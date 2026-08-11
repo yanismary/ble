@@ -373,6 +373,60 @@
               }
             </div>
           }
+          @if (showProfessionalScalarControls) {
+            <div class="professional-scalar-controls">
+              @for (scalarControl of professionalScalarControls; track scalarControl.config.field) {
+                <div class="professional-scalar-control">
+                  <div class="professional-scalar-control-header">
+                    <strong>{{ scalarControl.text }}</strong>
+                    <span>
+                      {{ text.professionalScalarControls.current }}
+                      {{ currentProfessionalScalarValue(scalarControl.config) }}
+                      {{ scalarControl.config.unit ?? '' }}
+                    </span>
+                  </div>
+                  <ion-range
+                    class="professional-scalar-range"
+                    [attr.aria-label]="scalarControl.text"
+                    [min]="scalarControl.config.range.min"
+                    [max]="scalarControl.config.range.max"
+                    [step]="1"
+                    [pin]="true"
+                    [value]="professionalScalarDraftValue(scalarControl.config)"
+                    (ionChange)="setProfessionalScalarDraftValue(scalarControl.config, $event)"
+                  ></ion-range>
+                  <div class="product-actions">
+                    <span>
+                      {{ text.professionalScalarControls.draft }}
+                      {{ professionalScalarDraftValue(scalarControl.config) }}
+                      {{ scalarControl.config.unit ?? '' }}
+                    </span>
+                    <ion-button
+                      type="button"
+                      size="small"
+                      (click)="requestProfessionalScalarChange(scalarControl.config)"
+                      [disabled]="!canApplyProfessionalScalar(scalarControl.config)"
+                    >
+                      {{ text.professionalScalarControls.apply }}
+                    </ion-button>
+                  </div>
+                </div>
+              }
+              @if (professionalScalarWriteState.message) {
+                <p
+                  class="command-state"
+                  role="status"
+                  aria-live="polite"
+                  [attr.data-tone]="professionalScalarWriteState.status === 'failed' ? 'error' : 'neutral'"
+                >
+                  @if (professionalScalarWriteState.status === 'executing') {
+                    <ion-spinner name="crescent"></ion-spinner>
+                  }
+                  <span>{{ professionalScalarWriteState.message }}</span>
+                </p>
+              }
+            </div>
+          }
         }
       </article>
       </section>
