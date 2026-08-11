@@ -38,6 +38,15 @@ export const PRODUCT_PAGE_TEXT = {
     failed: 'Échec de l’envoi de la temporisation.',
     unavailable: 'Commande de temporisation indisponible',
   },
+  weightRangeControls: {
+    apply: 'Appliquer',
+    current: 'Plage lue :',
+    draft: 'Plage à appliquer :',
+    executing: 'Envoi de la plage de poids…',
+    sent: 'Plage de poids envoyée. Lecture de contrôle en cours.',
+    failed: 'Échec de l’envoi de la plage de poids.',
+    unavailable: 'Commande de plage de poids indisponible',
+  },
   openCommand: {
     cancel: 'Annuler',
     awaitingConfirmation: 'Confirmation requise',

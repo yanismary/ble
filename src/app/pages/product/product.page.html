@@ -319,6 +319,60 @@
               <dd>{{ row.value }}</dd>
             }
           </dl>
+          @if (showWeightRangeControls) {
+            <div class="weight-range-controls">
+              <div class="weight-range-control-header">
+                <strong>{{ text.professional.weightRange }}</strong>
+                <span>
+                  {{ text.weightRangeControls.current }}
+                  {{ currentWeightRangeValue()?.lower }}–{{ currentWeightRangeValue()?.upper }}
+                  kg
+                </span>
+              </div>
+              <ion-select
+                class="weight-range-select"
+                [attr.aria-label]="text.professional.weightRange"
+                interface="popover"
+                [compareWith]="compareWeightRangeOptions"
+                [value]="weightRangeDraftValue()"
+                (ionChange)="setWeightRangeDraftValue($event)"
+              >
+                @for (weightControl of weightRangeControls; track weightControl.config.label) {
+                  <ion-select-option [value]="weightControl.config.range">
+                    {{ weightControl.config.label }}
+                  </ion-select-option>
+                }
+              </ion-select>
+              <div class="product-actions">
+                <span>
+                  {{ text.weightRangeControls.draft }}
+                  {{ weightRangeDraftValue()?.lower }}–{{ weightRangeDraftValue()?.upper }}
+                  kg
+                </span>
+                <ion-button
+                  type="button"
+                  size="small"
+                  (click)="requestWeightRangeChange()"
+                  [disabled]="!canApplyWeightRange()"
+                >
+                  {{ text.weightRangeControls.apply }}
+                </ion-button>
+              </div>
+              @if (weightRangeWriteState.message) {
+                <p
+                  class="command-state"
+                  role="status"
+                  aria-live="polite"
+                  [attr.data-tone]="weightRangeWriteState.status === 'failed' ? 'error' : 'neutral'"
+                >
+                  @if (weightRangeWriteState.status === 'executing') {
+                    <ion-spinner name="crescent"></ion-spinner>
+                  }
+                  <span>{{ weightRangeWriteState.message }}</span>
+                </p>
+              }
+            </div>
+          }
         }
       </article>
       </section>

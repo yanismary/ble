@@ -57,9 +57,15 @@ describe('Product page configuration', () => {
     expect(config.userFields).toContain('long-timing');
     const professionalFields =
       config.professionalFields as readonly string[];
-    expect(professionalFields.includes('weight-range')).toBeFalse();
+    expect(professionalFields.includes('weight-range')).toBeTrue();
     expect(professionalFields.includes('peripherals')).toBeFalse();
     expect(professionalFields.includes('near-open-torque')).toBeFalse();
+    expect(config.weightRanges).toEqual([
+      { lower: 60, upper: 80 },
+      { lower: 80, upper: 100 },
+      { lower: 100, upper: 120 },
+      { lower: 120, upper: 140 },
+    ]);
     expect(config.professionalFields).toContain('obstacle-sensitivity');
     expect(config.openSpeedRange).toEqual({ min: 0, max: 100 });
     expect(config.nearOpenSpeedRange).toEqual({ min: 0, max: 100 });

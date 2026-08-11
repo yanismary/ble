@@ -1,6 +1,9 @@
 import {
   KnownProductProfile,
 } from '../../core/services/product-data-load.service';
+import {
+  LEGACY_WRITE_CONSTRAINTS,
+} from '../../core/services/legacy-ble-write-catalog';
 
 export type ProductUserField =
   | 'lock-mode'
@@ -87,18 +90,13 @@ const MOVENTIV_PRO_FIELDS: readonly ProductProfessionalField[] = [
   'peripherals',
 ];
 
-const MOVENTIV_60_WEIGHT_RANGES: readonly ProductWeightRange[] = [
-  { lower: 10, upper: 20 },
-  { lower: 20, upper: 30 },
-  { lower: 30, upper: 40 },
-  { lower: 40, upper: 50 },
-  { lower: 50, upper: 60 },
-];
-
-const MOVENTIV_80_WEIGHT_RANGES: readonly ProductWeightRange[] = [
-  ...MOVENTIV_60_WEIGHT_RANGES,
-  { lower: 60, upper: 80 },
-];
+function legacyWeightRanges(
+  profile: Exclude<KnownProductProfile, 'widoor'>,
+): readonly ProductWeightRange[] {
+  return LEGACY_WRITE_CONSTRAINTS[profile].weightRanges.map(
+    ([lower, upper]) => ({ lower, upper }),
+  );
+}
 
 const PRODUCT_PAGE_CONFIG_DEFINITIONS = {
   widoor: {
@@ -146,7 +144,7 @@ const PRODUCT_PAGE_CONFIG_DEFINITIONS = {
     route: '/product/moventiv-60',
     productName: 'MOVENTIV 60 kg',
     maximumWeightLabel: '60 kg',
-    weightRanges: MOVENTIV_60_WEIGHT_RANGES,
+    weightRanges: legacyWeightRanges('moventiv-60'),
     userFields: MOVENTIV_USER_FIELDS,
     professionalFields: MOVENTIV_PRO_FIELDS,
     visibleLockModes: [
@@ -167,7 +165,7 @@ const PRODUCT_PAGE_CONFIG_DEFINITIONS = {
     route: '/product/moventiv-80',
     productName: 'MOVENTIV 80 kg',
     maximumWeightLabel: '80 kg',
-    weightRanges: MOVENTIV_80_WEIGHT_RANGES,
+    weightRanges: legacyWeightRanges('moventiv-80'),
     userFields: MOVENTIV_USER_FIELDS,
     professionalFields: MOVENTIV_PRO_FIELDS,
     visibleLockModes: [
@@ -188,7 +186,7 @@ const PRODUCT_PAGE_CONFIG_DEFINITIONS = {
     route: '/product/garline',
     productName: 'GARLINE',
     maximumWeightLabel: null,
-    weightRanges: [],
+    weightRanges: legacyWeightRanges('garline'),
     userFields: [
       'lock-mode',
       'open-speed',
@@ -200,6 +198,7 @@ const PRODUCT_PAGE_CONFIG_DEFINITIONS = {
       'rgb',
     ],
     professionalFields: [
+      'weight-range',
       'near-open-speed',
       'near-close-speed',
       'obstacle-sensitivity',

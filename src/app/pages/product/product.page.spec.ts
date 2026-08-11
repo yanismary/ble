@@ -2370,6 +2370,333 @@ describe('ProductPage timing controls for profile variants', () => {
   );
 });
 
+describe('ProductPage weight-range controls for profile variants', () => {
+  async function createWeightRangePage(
+    profile: Exclude<KnownProductProfile, 'widoor'>,
+    lower: number,
+    upper: number,
+    result: LegacyBleWriteExecutionResult = weightRangeExecutionResult(
+      profile,
+      '00 32 3c',
+    ),
+  ): Promise<{
+    readonly component: ProductPage;
+    readonly fixture: ComponentFixture<ProductPage>;
+    readonly bleService: FakeBleService;
+    readonly loadService: FakeProductDataLoadService;
+    readonly writeExecutionService: FakeBleWriteExecutionService;
+  }> {
+    const bleService = new FakeBleService();
+    const loadService = new FakeProductDataLoadService();
+    loadService.nextResult = completeLoadResult(
+      'success',
+      profile,
+      userValue(),
+      professionalValue(profile, lower, upper),
+    );
+    const writeExecutionService = new FakeBleWriteExecutionService();
+    writeExecutionService.nextResult = result;
+
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [ProductPage],
+      providers: [
+        { provide: BleService, useValue: bleService },
+        {
+          provide: AlertController,
+          useValue: {
+            create: jasmine.createSpy('create').and.resolveTo({
+              present: async () => undefined,
+              onDidDismiss: async () => ({ role: 'confirm' }),
+            }),
+          },
+        },
+        {
+          provide: BleWriteExecutionService,
+          useValue: writeExecutionService,
+        },
+        { provide: ProductDataLoadService, useValue: loadService },
+        { provide: ProductDetection, useClass: ProductDetection },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { data: { profile } } },
+        },
+        {
+          provide: Router,
+          useValue: {
+            getCurrentNavigation: () => ({
+              extras: { state: navigationState(profile) },
+            }),
+            navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+          },
+        },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ProductPage);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    await component.refreshProductData();
+    fixture.detectChanges();
+
+    return {
+      component,
+      fixture,
+      bleService,
+      loadService,
+      writeExecutionService,
+    };
+  }
+
+  for (const scenario of [
+    {
+      profile: 'moventiv-60',
+      current: { lower: 40, upper: 50 },
+      accepted: { lower: 50, upper: 60 },
+      invalid: { lower: 60, upper: 80 },
+      payloadHex: '00 32 3c',
+      ranges: [
+        { lower: 10, upper: 20 },
+        { lower: 20, upper: 30 },
+        { lower: 30, upper: 40 },
+        { lower: 40, upper: 50 },
+        { lower: 50, upper: 60 },
+      ],
+    },
+    {
+      profile: 'moventiv-80',
+      current: { lower: 50, upper: 60 },
+      accepted: { lower: 60, upper: 80 },
+      invalid: { lower: 80, upper: 100 },
+      payloadHex: '00 3c 50',
+      ranges: [
+        { lower: 10, upper: 20 },
+        { lower: 20, upper: 30 },
+        { lower: 30, upper: 40 },
+        { lower: 40, upper: 50 },
+        { lower: 50, upper: 60 },
+        { lower: 60, upper: 80 },
+      ],
+    },
+    {
+      profile: 'garline',
+      current: { lower: 80, upper: 100 },
+      accepted: { lower: 120, upper: 140 },
+      invalid: { lower: 50, upper: 60 },
+      payloadHex: '00 78 8c',
+      ranges: [
+        { lower: 60, upper: 80 },
+        { lower: 80, upper: 100 },
+        { lower: 100, upper: 120 },
+        { lower: 120, upper: 140 },
+      ],
+    },
+  ] as const) {
+    it(`should apply ${scenario.profile} weight ranges and writes`,
+      async () => {
+        const {
+          component,
+          fixture,
+          writeExecutionService,
+        } = await createWeightRangePage(
+          scenario.profile,
+          scenario.current.lower,
+          scenario.current.upper,
+          weightRangeExecutionResult(scenario.profile, scenario.payloadHex),
+        );
+
+        expect(component.weightRangeControls.map((control) =>
+          control.config.range,
+        )).toEqual(scenario.ranges);
+        expect(component.currentWeightRangeValue()).toEqual(scenario.current);
+        expect(component.weightRangeDraftValue()).toEqual(scenario.current);
+        expect(fixture.nativeElement.textContent)
+          .toContain(`${scenario.current.lower}–${scenario.current.upper}`);
+
+        component.setWeightRangeDraftValue(scenario.invalid);
+        await component.requestWeightRangeChange();
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+        expect(component.weightRangeDraftValue()).toEqual(scenario.current);
+
+        component.setWeightRangeDraftValue(scenario.accepted);
+        expect(component.weightRangeDraftValue()).toEqual(scenario.accepted);
+        expect(component.canApplyWeightRange()).toBeTrue();
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+
+        await component.requestWeightRangeChange();
+
+        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        const request = writeExecutionService.execute.calls.mostRecent()
+          .args[0] as LegacyBleWriteRequest;
+        expect(request.profile).toBe(scenario.profile);
+        expect(request.write.operation).toBe('weight-range');
+        expect(request.write.serviceUuid)
+          .toBe(BLE_UUIDS.moventivGarlineService);
+        expect(request.write.characteristicUuid)
+          .toBe(BLE_UUIDS.professionalParametersCharacteristic);
+        expect(request.write.payloadHex).toBe(scenario.payloadHex);
+        expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
+        expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+      },
+    );
+  }
+
+  it('should keep Widoor weight range read-only and preserve other controls',
+    async () => {
+      const bleService = new FakeBleService();
+      const loadService = new FakeProductDataLoadService();
+      loadService.nextResult = completeLoadResult('success', 'widoor');
+      const writeExecutionService = new FakeBleWriteExecutionService();
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          {
+            provide: AlertController,
+            useValue: {
+              create: jasmine.createSpy('create').and.resolveTo({
+                present: async () => undefined,
+                onDidDismiss: async () => ({ role: 'confirm' }),
+              }),
+            },
+          },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          { provide: ProductDataLoadService, useValue: loadService },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile: 'widoor' } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState('widoor') },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+      await component.refreshProductData();
+
+      expect(component.showWeightRangeControls).toBeFalse();
+      expect(component.weightRangeControls).toEqual([]);
+      expect(component.showUserSpeedControls).toBeTrue();
+      expect(component.showUserTimingControls).toBeTrue();
+      expect(component.showLockModeControls).toBeTrue();
+      expect(component.showProductMotorCommands).toBeTrue();
+
+      await component.requestWeightRangeChange();
+
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should leave the BLE value unchanged when a weight write fails',
+    async () => {
+      const {
+        component,
+        writeExecutionService,
+      } = await createWeightRangePage(
+        'moventiv-80',
+        50,
+        60,
+        weightRangeExecutionResult('moventiv-80', '00 3c 50', 'failed'),
+      );
+
+      component.setWeightRangeDraftValue({ lower: 60, upper: 80 });
+      await component.requestWeightRangeChange();
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(component.currentWeightRangeValue())
+        .toEqual({ lower: 50, upper: 60 });
+      expect(component.weightRangeDraftValue())
+        .toEqual({ lower: 60, upper: 80 });
+      expect(component.weightRangeWriteState.status).toBe('failed');
+    },
+  );
+
+  it('should reset the weight draft after a BLE reload',
+    async () => {
+      const {
+        component,
+        loadService,
+      } = await createWeightRangePage('moventiv-80', 50, 60);
+
+      component.setWeightRangeDraftValue({ lower: 60, upper: 80 });
+      expect(component.weightRangeDraftValue())
+        .toEqual({ lower: 60, upper: 80 });
+
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'moventiv-80',
+        userValue(),
+        professionalValue('moventiv-80', 40, 50),
+      );
+      await component.refreshProductData();
+
+      expect(component.currentWeightRangeValue())
+        .toEqual({ lower: 40, upper: 50 });
+      expect(component.weightRangeDraftValue())
+        .toEqual({ lower: 40, upper: 50 });
+    },
+  );
+
+  it('should reset weight editing on disconnection',
+    async () => {
+      const {
+        component,
+        bleService,
+      } = await createWeightRangePage('moventiv-80', 50, 60);
+
+      component.setWeightRangeDraftValue({ lower: 60, upper: 80 });
+      component.weightRangeWriteState = Object.freeze({
+        status: 'failed',
+        message: 'failed',
+      });
+
+      bleService.disconnect();
+
+      expect(component.weightRangeDraftValue()).toBeNull();
+      expect(component.weightRangeWriteState).toEqual({
+        status: 'idle',
+        message: null,
+      });
+      expect(component.canApplyWeightRange()).toBeFalse();
+    },
+  );
+
+  it('should require an explicit draft when the BLE weight range is unknown',
+    async () => {
+      const {
+        component,
+        writeExecutionService,
+      } = await createWeightRangePage('moventiv-80', 255, 255);
+
+      expect(component.currentWeightRangeValue())
+        .toEqual({ lower: 255, upper: 255 });
+      expect(component.weightRangeDraftValue()).toBeNull();
+      expect(component.canApplyWeightRange()).toBeFalse();
+
+      await component.requestWeightRangeChange();
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+
+      component.setWeightRangeDraftValue({ lower: 60, upper: 80 });
+      expect(component.canApplyWeightRange()).toBeTrue();
+    },
+  );
+});
+
 describe('ProductPage lock-mode controls for profile variants', () => {
   it('should expose Garline lock-open only and reject lock-closed',
     async () => {
@@ -2631,10 +2958,44 @@ function userTimingExecutionResult(
   };
 }
 
+function weightRangeExecutionResult(
+  profile: Exclude<KnownProductProfile, 'widoor'>,
+  payloadHex: string,
+  status: LegacyBleWriteExecutionResult['status'] = 'success',
+): LegacyBleWriteExecutionResult {
+  return {
+    status,
+    operation: 'weight-range',
+    profile,
+    deviceId: 'device-1',
+    serviceUuid: BLE_UUIDS.moventivGarlineService,
+    characteristicUuid: BLE_UUIDS.professionalParametersCharacteristic,
+    payloadHex,
+    length: 3,
+    destructiveLevel: 'non-destructive-setting',
+    hardwareValidationStatus: 'phase1-reference-only',
+    policyOverrideUsed: true,
+    startedAt: 100,
+    completedAt: 200,
+    connectionGeneration: 4,
+    nativeWriteCompleted: status === 'success',
+    confirmationStatus: status === 'success' ? 'not-required' : 'unavailable',
+    confirmedMotorStateRaw: null,
+    movementStartConfirmed: false,
+    timedCycleValidationStatus: 'not-observed',
+    error: status === 'success'
+      ? null
+      : { code: 'weight-range-test-error', message: 'Weight range error' },
+  };
+}
+
 function completeLoadResult(
   status: ProductDataLoadStatus,
   profile: KnownProductProfile = 'widoor',
   userParameters: BleUserParameters = userValue(),
+  professionalParameters: BleProfessionalParameters = professionalValue(
+    profile,
+  ),
 ): ProductDataLoadResult {
   return {
     profile,
@@ -2674,7 +3035,7 @@ function completeLoadResult(
       professionalParameters: successRead(
         'professional-parameters',
         BLE_UUIDS.professionalParametersCharacteristic,
-        professionalValue(),
+        professionalParameters,
       ),
     },
     notRequested: [],
@@ -2950,21 +3311,39 @@ function userValueWithTimings(
   };
 }
 
-function professionalValue(): BleProfessionalParameters {
-  return {
-    profile: 'widoor',
-    weightRangeLower: 0,
-    weightRangeUpper: 0,
-    breakForceAtOpen: 1,
+function professionalValue(
+  profile: KnownProductProfile = 'widoor',
+  weightRangeLower = 0,
+  weightRangeUpper = 0,
+): BleProfessionalParameters {
+  const common = {
+    weightRangeLower,
+    weightRangeUpper,
     nearOpenSpeed: 70,
     nearCloseSpeed: 50,
     nearOpenTorque: 0,
     nearCloseTorque: 0,
-    nearOpenProportional: 0,
-    nearCloseProportional: 0,
-    nearOpenIntegral: 0,
-    nearCloseIntegral: 0,
     peripheralByte1: 0,
     peripheralByte2: 0,
+  };
+  if (profile === 'widoor') {
+    return {
+      ...common,
+      profile,
+      breakForceAtOpen: 1,
+      nearOpenProportional: 0,
+      nearCloseProportional: 0,
+      nearOpenIntegral: 0,
+      nearCloseIntegral: 0,
+    };
+  }
+  return {
+    ...common,
+    profile,
+    exactWeight: 0,
+    brakingOpenPower: 0,
+    obstacleSensitivity: 0,
+    nearOpenIntegral: 0,
+    nearCloseIntegral: 0,
   };
 }

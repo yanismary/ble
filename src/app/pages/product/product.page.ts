@@ -12,6 +12,8 @@ import {
   IonContent,
   IonHeader,
   IonRange,
+  IonSelect,
+  IonSelectOption,
   IonSpinner,
   IonTitle,
   IonToggle,
@@ -58,6 +60,7 @@ import {
   PRODUCT_PAGE_CONFIG,
   ProductPageConfig,
   ProductProfessionalField,
+  ProductWeightRange,
   ProductUserField,
   isKnownProductProfile,
 } from './product-page.config';
@@ -81,6 +84,13 @@ import {
   isValidProductUserTimingValue,
   productUserTimingConfigsFor,
 } from './product-user-timing';
+import {
+  ProductWeightRangeUiConfig,
+  createProductWeightRangeAuthorization,
+  isSameProductWeightRange,
+  isValidProductWeightRange,
+  productWeightRangeConfigsFor,
+} from './product-weight-range';
 import {
   ProductOpenCommandState,
   ProductCommandHistoryEntry,
@@ -125,6 +135,8 @@ const ROOM_SUFFIXES = [
     IonContent,
     IonHeader,
     IonRange,
+    IonSelect,
+    IonSelectOption,
     IonSpinner,
     IonTitle,
     IonToggle,
@@ -154,6 +166,7 @@ export class ProductPage implements OnDestroy {
   private readonly userSpeedDrafts = new Map<ProductUserSpeedField, number>();
   private readonly userTimingWrites: Map<ProductUserTimingField, LegacyBleWrite>;
   private readonly userTimingDrafts = new Map<ProductUserTimingField, number>();
+  private weightRangeDraft: ProductWeightRange | null = null;
 
   readonly config: ProductPageConfig;
   readonly text = PRODUCT_PAGE_TEXT;
@@ -183,6 +196,9 @@ export class ProductPage implements OnDestroy {
       ProductUserTimingUiConfig['textKey']
     ];
   }[];
+  readonly weightRangeControls: readonly {
+    readonly config: ProductWeightRangeUiConfig;
+  }[];
   readonly emptyTechnicalRows: readonly ProductDisplayRow[] = [];
   viewModel: ProductViewModel;
   openCommandState = initialProductOpenCommandState();
@@ -200,7 +216,15 @@ export class ProductPage implements OnDestroy {
     readonly field: ProductUserTimingField | null;
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', field: null, message: null });
+  weightRangeWriteState: {
+    readonly status: 'idle' | 'executing' | 'sent' | 'failed';
+    readonly message: string | null;
+  } = Object.freeze({ status: 'idle', message: null });
   private commandHistoryEntries: readonly ProductCommandHistoryEntry[] = [];
+  readonly compareWeightRangeOptions = (
+    first: ProductWeightRange | null,
+    second: ProductWeightRange | null,
+  ): boolean => isSameProductWeightRange(first, second);
 
   constructor() {
     const routeProfile = this.route.snapshot.data['profile'];
@@ -274,6 +298,11 @@ export class ProductPage implements OnDestroy {
         config.catalogFactory(config.range.min),
       ]),
     );
+    this.weightRangeControls = Object.freeze(
+      productWeightRangeConfigsFor(this.config).map((config) =>
+        Object.freeze({ config }),
+      ),
+    );
     this.context = this.resolveNavigationContext(routeProfile);
     this.viewModel = this.createInitialViewModel(
       profile,
@@ -303,7 +332,8 @@ export class ProductPage implements OnDestroy {
       !this.bleService.isWriting &&
       this.lockModeWriteState.status !== 'executing' &&
       this.userSpeedWriteState.status !== 'executing' &&
-      this.userTimingWriteState.status !== 'executing';
+      this.userTimingWriteState.status !== 'executing' &&
+      this.weightRangeWriteState.status !== 'executing';
   }
 
   get hasProductNavigationContext(): boolean {
@@ -339,6 +369,12 @@ export class ProductPage implements OnDestroy {
       this.viewModel.reads.userParameters.status === 'available';
   }
 
+  get showWeightRangeControls(): boolean {
+    return this.pageContextCurrent &&
+      this.weightRangeControls.length > 0 &&
+      this.viewModel.reads.professionalParameters.status === 'available';
+  }
+
   get canOpenWidoor(): boolean {
     return this.canExecuteWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[0]);
   }
@@ -365,6 +401,7 @@ export class ProductPage implements OnDestroy {
         this.lockModeWriteState.status === 'executing' ||
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
+        this.weightRangeWriteState.status === 'executing' ||
         this.motorCommandsBlockedByLockMode() ||
         this.commandInProgress) {
       return false;
@@ -894,6 +931,7 @@ export class ProductPage implements OnDestroy {
         this.lockModeWriteState.status === 'executing' ||
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
+        this.weightRangeWriteState.status === 'executing' ||
         this.commandInProgress) {
       return false;
     }
@@ -971,6 +1009,7 @@ export class ProductPage implements OnDestroy {
         this.lockModeWriteState.status === 'executing' ||
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
+        this.weightRangeWriteState.status === 'executing' ||
         this.commandInProgress) {
       return false;
     }
@@ -985,6 +1024,85 @@ export class ProductPage implements OnDestroy {
     if (write === undefined) {
       return false;
     }
+    const properties = this.bleService.getGattCharacteristicProperties(
+      write.serviceUuid,
+      write.characteristicUuid,
+      this.context?.deviceId,
+    );
+    return properties.servicePresent &&
+      properties.characteristicPresent &&
+      properties.propertiesAvailable &&
+      properties.write === true;
+  }
+
+  currentWeightRangeValue(): ProductWeightRange | null {
+    const value = this.viewModel.reads.professionalParameters.value;
+    if (value === null) {
+      return null;
+    }
+    return {
+      lower: value.weightRangeLower,
+      upper: value.weightRangeUpper,
+    };
+  }
+
+  weightRangeDraftValue(): ProductWeightRange | null {
+    const current = this.currentWeightRangeValue();
+    return this.weightRangeDraft ??
+      this.findWeightRangeControl(current)?.config.range ??
+      null;
+  }
+
+  setWeightRangeDraftValue(
+    eventOrRange: CustomEvent<{ readonly value?: unknown }> |
+      ProductWeightRange,
+  ): void {
+    const candidate = isProductWeightRange(eventOrRange)
+      ? eventOrRange
+      : isProductWeightRange(eventOrRange.detail?.value)
+        ? eventOrRange.detail.value
+        : null;
+    const config = this.findWeightRangeControl(candidate)?.config;
+    if (config === undefined) {
+      return;
+    }
+    this.weightRangeDraft = config.range;
+    if (this.weightRangeWriteState.status !== 'executing') {
+      this.weightRangeWriteState = Object.freeze({
+        status: 'idle',
+        message: null,
+      });
+    }
+  }
+
+  canApplyWeightRange(): boolean {
+    if (!this.showWeightRangeControls ||
+        !this.isCurrentContext() ||
+        this.viewModel.loading ||
+        this.productDataLoadService.isLoading ||
+        this.bleService.isWriting ||
+        this.bleService.disconnectingDeviceId !== null ||
+        this.bleWriteExecutionService.isExecuting ||
+        this.lockModeWriteState.status === 'executing' ||
+        this.userSpeedWriteState.status === 'executing' ||
+        this.userTimingWriteState.status === 'executing' ||
+        this.weightRangeWriteState.status === 'executing' ||
+        this.commandInProgress) {
+      return false;
+    }
+    const currentValue = this.currentWeightRangeValue();
+    const draftValue = this.weightRangeDraftValue();
+    if (currentValue === null ||
+        draftValue === null ||
+        isSameProductWeightRange(currentValue, draftValue) ||
+        !isValidProductWeightRange(this.weightRangeUiConfigs, draftValue)) {
+      return false;
+    }
+    const config = this.findWeightRangeControl(draftValue)?.config;
+    if (config === undefined) {
+      return false;
+    }
+    const write = config.catalogFactory(draftValue);
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
       write.characteristicUuid,
@@ -1014,6 +1132,8 @@ export class ProductPage implements OnDestroy {
         this.bleWriteExecutionService.isExecuting ||
         this.lockModeWriteState.status === 'executing' ||
         this.userSpeedWriteState.status === 'executing' ||
+        this.userTimingWriteState.status === 'executing' ||
+        this.weightRangeWriteState.status === 'executing' ||
         this.commandInProgress) {
       return false;
     }
@@ -1332,6 +1452,78 @@ export class ProductPage implements OnDestroy {
     });
   }
 
+  async requestWeightRangeChange(): Promise<void> {
+    if (!this.canApplyWeightRange() || this.context === null) {
+      return;
+    }
+    const draftValue = this.weightRangeDraftValue();
+    if (!isValidProductWeightRange(this.weightRangeUiConfigs, draftValue)) {
+      return;
+    }
+    const config = this.findWeightRangeControl(draftValue)?.config;
+    if (config === undefined || draftValue === null) {
+      return;
+    }
+    const write = config.catalogFactory(draftValue);
+    const context = this.context;
+    const contextStatus = this.writeContextStatus(context, write);
+    if (contextStatus !== null) {
+      this.weightRangeWriteState = Object.freeze({
+        status: 'failed',
+        message: this.weightRangeFailureMessage(contextStatus),
+      });
+      return;
+    }
+
+    const attemptId = this.nextCommandIdentifier('attempt');
+    const confirmedAt = Date.now();
+    const authorization = createProductWeightRangeAuthorization({
+      write,
+      deviceId: context.deviceId,
+      connectionGeneration: context.connectionGeneration,
+      attemptId,
+      confirmationId: this.nextCommandIdentifier('confirmation'),
+      confirmedAt,
+    });
+    this.weightRangeWriteState = Object.freeze({
+      status: 'executing',
+      message: this.text.weightRangeControls.executing,
+    });
+
+    const result = await this.bleWriteExecutionService.execute({
+      write,
+      deviceId: context.deviceId,
+      profile: config.profile,
+      connectionGeneration: context.connectionGeneration,
+      identification: { profile: config.profile, confidence: 'strong' },
+      authorization,
+      attemptId,
+      confirmationPolicy: config.confirmationPolicy,
+      policy: config.policy,
+    });
+    if (!this.isCurrentContext() || this.context !== context) {
+      this.weightRangeWriteState = Object.freeze({
+        status: 'failed',
+        message: this.text.openCommand.stale,
+      });
+      return;
+    }
+    if (result.status === 'success') {
+      this.weightRangeWriteState = Object.freeze({
+        status: 'sent',
+        message: this.text.weightRangeControls.sent,
+      });
+      if (this.canRefresh) {
+        await this.refreshProductData();
+      }
+      return;
+    }
+    this.weightRangeWriteState = Object.freeze({
+      status: 'failed',
+      message: this.text.weightRangeControls.failed,
+    });
+  }
+
   async requestLockModeChange(
     config: ProductLockModeUiConfig,
     eventOrChecked: CustomEvent<{ readonly checked: boolean }> | boolean,
@@ -1428,6 +1620,7 @@ export class ProductPage implements OnDestroy {
     }
     this.resetUserSpeedEditing();
     this.resetUserTimingEditing();
+    this.resetWeightRangeEditing();
     this.subscriptions.unsubscribe();
   }
 
@@ -1552,6 +1745,7 @@ export class ProductPage implements OnDestroy {
     };
     this.userSpeedDrafts.clear();
     this.userTimingDrafts.clear();
+    this.weightRangeDraft = null;
   }
 
   private handleDisconnection(event: BleDisconnectionEvent): void {
@@ -1596,6 +1790,7 @@ export class ProductPage implements OnDestroy {
     }
     this.resetUserSpeedEditing();
     this.resetUserTimingEditing();
+    this.resetWeightRangeEditing();
     this.viewModel = {
       ...this.viewModel,
       connectionState: state,
@@ -1635,6 +1830,29 @@ export class ProductPage implements OnDestroy {
   private isUserTimingControl(config: ProductUserTimingUiConfig): boolean {
     return config.profile === this.config.profile &&
       this.userTimingControls.some((control) => control.config === config);
+  }
+
+  private resetWeightRangeEditing(): void {
+    this.weightRangeDraft = null;
+    this.weightRangeWriteState = Object.freeze({
+      status: 'idle',
+      message: null,
+    });
+  }
+
+  private get weightRangeUiConfigs(): readonly ProductWeightRangeUiConfig[] {
+    return this.weightRangeControls.map((control) => control.config);
+  }
+
+  private findWeightRangeControl(
+    range: ProductWeightRange | null,
+  ): { readonly config: ProductWeightRangeUiConfig } | undefined {
+    if (range === null) {
+      return undefined;
+    }
+    return this.weightRangeControls.find((control) =>
+      isSameProductWeightRange(control.config.range, range),
+    );
   }
 
   private isCurrentCommandCycle(cycle: number): boolean {
@@ -1724,6 +1942,19 @@ export class ProductPage implements OnDestroy {
         return this.text.openCommand.stale;
       case 'unavailable':
         return this.text.userTimingControls.unavailable;
+    }
+  }
+
+  private weightRangeFailureMessage(
+    status: 'disconnected' | 'stale' | 'unavailable',
+  ): string {
+    switch (status) {
+      case 'disconnected':
+        return this.text.openCommand.disconnected;
+      case 'stale':
+        return this.text.openCommand.stale;
+      case 'unavailable':
+        return this.text.weightRangeControls.unavailable;
     }
   }
 
@@ -2192,6 +2423,15 @@ function rangeEventNumber(event: Event): number | null {
     return value;
   }
   return null;
+}
+
+function isProductWeightRange(value: unknown): value is ProductWeightRange {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const candidate = value as Partial<ProductWeightRange>;
+  return Number.isInteger(candidate.lower) &&
+    Number.isInteger(candidate.upper);
 }
 
 function splitDisplayName(
