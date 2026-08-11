@@ -240,6 +240,201 @@ describe('ProductPage', () => {
     },
   );
 
+  it('should expose name and room editing from the navigation display name',
+    () => {
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(component.showNameRoomControls).toBeTrue();
+      expect(component.currentNameRoomValue()).toEqual({
+        name: 'Porte',
+        roomSuffix: '#CHA',
+      });
+      expect(component.nameRoomDraftValue()).toEqual({
+        name: 'Porte',
+        roomSuffix: '#CHA',
+      });
+      expect(element.querySelector('ion-input.name-room-name-input'))
+        .not.toBeNull();
+      expect(element.querySelector('ion-select.name-room-select'))
+        .not.toBeNull();
+      expect(component.canApplyNameRoom()).toBeFalse();
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should write a product name change through the executor', async () => {
+    writeExecutionService.nextResult = nameRoomExecutionResult(
+      'widoor',
+      '43 6f 75 6c 6f 69 72 23 43 48 41',
+    );
+
+    component.setNameRoomDraftName('Couloir');
+    await component.requestNameRoomChange();
+
+    expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+    const request = writeExecutionService.execute.calls.mostRecent()
+      .args[0] as LegacyBleWriteRequest;
+    expect(request.profile).toBe('widoor');
+    expect(request.write.operation).toBe('name-room');
+    expect(request.write.serviceUuid).toBe(BLE_UUIDS.shdoService);
+    expect(request.write.characteristicUuid)
+      .toBe(BLE_UUIDS.nameCharacteristic);
+    expect(request.write.payloadHex)
+      .toBe('43 6f 75 6c 6f 69 72 23 43 48 41');
+    expect(Array.from(request.write.payload)).toEqual(
+      Array.from('Couloir#CHA', (character) => character.charCodeAt(0)),
+    );
+    expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
+    expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+    expect(request.authorization).toEqual(jasmine.objectContaining({
+      profile: 'widoor',
+      operation: 'name-room',
+      payloadHex: '43 6f 75 6c 6f 69 72 23 43 48 41',
+    }));
+    expect(component.viewModel.displayedName).toBe('Couloir');
+    expect(component.viewModel.roomSuffix).toBe('#CHA');
+    expect(component.nameRoomWriteState.status).toBe('sent');
+    expect(loadService.loadProductData).toHaveBeenCalledTimes(1);
+  });
+
+  it('should write a room-only change while keeping the current name',
+    async () => {
+      writeExecutionService.nextResult = nameRoomExecutionResult(
+        'widoor',
+        '50 6f 72 74 65 23 53 44 42',
+      );
+
+      component.setNameRoomDraftRoom('#SDB');
+      await component.requestNameRoomChange();
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      const request = writeExecutionService.execute.calls.mostRecent()
+        .args[0] as LegacyBleWriteRequest;
+      expect(request.write.payloadHex).toBe(
+        '50 6f 72 74 65 23 53 44 42',
+      );
+      expect(Array.from(request.write.payload)).toEqual(
+        Array.from('Porte#SDB', (character) => character.charCodeAt(0)),
+      );
+      expect(component.viewModel.displayedName).toBe('Porte');
+      expect(component.viewModel.roomSuffix).toBe('#SDB');
+      expect(component.nameRoomDraftValue()).toEqual({
+        name: 'Porte',
+        roomSuffix: '#SDB',
+      });
+    },
+  );
+
+  it('should write room removal without changing the current name',
+    async () => {
+      writeExecutionService.nextResult = nameRoomExecutionResult(
+        'widoor',
+        '50 6f 72 74 65',
+      );
+
+      component.setNameRoomDraftRoom(null);
+      await component.requestNameRoomChange();
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      const request = writeExecutionService.execute.calls.mostRecent()
+        .args[0] as LegacyBleWriteRequest;
+      expect(request.write.payloadHex).toBe('50 6f 72 74 65');
+      expect(Array.from(request.write.payload)).toEqual(
+        Array.from('Porte', (character) => character.charCodeAt(0)),
+      );
+      expect(component.viewModel.displayedName).toBe('Porte');
+      expect(component.viewModel.roomSuffix).toBeNull();
+    },
+  );
+
+  it('should write product name and room changes together', async () => {
+    writeExecutionService.nextResult = nameRoomExecutionResult(
+      'widoor',
+      '47 61 72 61 67 65 23 47 41 52',
+    );
+
+    component.setNameRoomDraftName('Garage');
+    component.setNameRoomDraftRoom('#GAR');
+    await component.requestNameRoomChange();
+
+    expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+    const request = writeExecutionService.execute.calls.mostRecent()
+      .args[0] as LegacyBleWriteRequest;
+    expect(request.write.payloadHex)
+      .toBe('47 61 72 61 67 65 23 47 41 52');
+    expect(Array.from(request.write.payload)).toEqual(
+      Array.from('Garage#GAR', (character) => character.charCodeAt(0)),
+    );
+    expect(component.viewModel.displayedName).toBe('Garage');
+    expect(component.viewModel.roomSuffix).toBe('#GAR');
+  });
+
+  it('should reject invalid name and room drafts before any write', async () => {
+    component.setNameRoomDraftName('Abc');
+
+    expect(component.canApplyNameRoom()).toBeFalse();
+    expect(component.nameRoomValidationMessage()).toBe(
+      component.text.nameRoomControls.errors.tooShort,
+    );
+    await component.requestNameRoomChange();
+
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    component.setNameRoomDraftName('Porte_1');
+    expect(component.canApplyNameRoom()).toBeFalse();
+    expect(component.nameRoomValidationMessage()).toBe(
+      component.text.nameRoomControls.errors.invalidCharacters,
+    );
+  });
+
+  it('should keep current name and room when a name write fails', async () => {
+    writeExecutionService.nextResult = {
+      ...nameRoomExecutionResult(
+        'widoor',
+        '43 6f 75 6c 6f 69 72 23 43 48 41',
+      ),
+      status: 'failed',
+      nativeWriteCompleted: false,
+      error: {
+        code: 'native-write-failed',
+        message: 'Native failure',
+      },
+    };
+
+    component.setNameRoomDraftName('Couloir');
+    await component.requestNameRoomChange();
+
+    expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+    expect(component.viewModel.displayedName).toBe('Porte');
+    expect(component.viewModel.roomSuffix).toBe('#CHA');
+    expect(component.nameRoomDraftValue()).toEqual({
+      name: 'Couloir',
+      roomSuffix: '#CHA',
+    });
+    expect(component.nameRoomWriteState.status).toBe('failed');
+  });
+
+  it('should reset name and room drafts on reload and disconnection',
+    async () => {
+      component.setNameRoomDraftName('Couloir');
+      component.setNameRoomDraftRoom('#SDB');
+      expect(component.canApplyNameRoom()).toBeTrue();
+
+      await component.refreshProductData();
+
+      expect(component.nameRoomDraftValue()).toEqual({
+        name: 'Porte',
+        roomSuffix: '#CHA',
+      });
+      component.setNameRoomDraftName('Couloir');
+
+      bleService.disconnect();
+
+      expect(component.showNameRoomControls).toBeFalse();
+      expect(component.canApplyNameRoom()).toBeFalse();
+      expect(component.nameRoomWriteState.status).toBe('idle');
+    },
+  );
+
   it('should expose Widoor commands without executing automatically',
     () => {
       const element = fixture.nativeElement as HTMLElement;
@@ -4140,6 +4335,34 @@ function userPeripheralExecutionResult(
     characteristicUuid: BLE_UUIDS.userParametersCharacteristic,
     payloadHex,
     length: 3,
+    destructiveLevel: 'non-destructive-setting',
+    hardwareValidationStatus: 'phase1-reference-only',
+    policyOverrideUsed: true,
+    startedAt: 100,
+    completedAt: 200,
+    connectionGeneration: 4,
+    nativeWriteCompleted: true,
+    confirmationStatus: 'not-required',
+    confirmedMotorStateRaw: null,
+    movementStartConfirmed: false,
+    timedCycleValidationStatus: 'not-observed',
+    error: null,
+  };
+}
+
+function nameRoomExecutionResult(
+  profile: KnownProductProfile,
+  payloadHex: string,
+): LegacyBleWriteExecutionResult {
+  return {
+    status: 'success',
+    operation: 'name-room',
+    profile,
+    deviceId: 'device-1',
+    serviceUuid: BLE_UUIDS.shdoService,
+    characteristicUuid: BLE_UUIDS.nameCharacteristic,
+    payloadHex,
+    length: payloadHex.split(' ').length,
     destructiveLevel: 'non-destructive-setting',
     hardwareValidationStatus: 'phase1-reference-only',
     policyOverrideUsed: true,

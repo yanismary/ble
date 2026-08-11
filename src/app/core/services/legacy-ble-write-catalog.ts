@@ -540,15 +540,44 @@ export type LegacyNameEncodingResult =
   | LegacyNameEncodingSuccess
   | LegacyNameEncodingFailure;
 
+export const LEGACY_KNOWN_ROOM_SUFFIXES = [
+  '#CHA',
+  '#ENT',
+  '#SAL',
+  '#CUI',
+  '#SAM',
+  '#SDB',
+  '#WCS',
+  '#GAR',
+  '#SLL',
+  '#SDJ',
+] as const;
+
+export type LegacyRoomSuffix = typeof LEGACY_KNOWN_ROOM_SUFFIXES[number];
+
+export const LEGACY_SELECTABLE_ROOM_SUFFIXES: readonly LegacyRoomSuffix[] =
+  Object.freeze([
+    '#CHA',
+    '#SAL',
+    '#SAM',
+    '#CUI',
+    '#SDB',
+    '#WCS',
+    '#GAR',
+    '#SDJ',
+  ]);
+
 export function encodeLegacyName(
   name: string,
   roomSuffix = '',
 ): LegacyNameEncodingResult {
-  const value = `${name.trim()}${roomSuffix}`.trim();
+  const trimmedName = name.trim();
+  const value = `${trimmedName}${roomSuffix}`.trim();
   if (!value) {
     return { valid: false, value: null, bytes: null, error: 'empty' };
   }
-  if (!/^[A-Za-z0-9 -]+$/.test(value)) {
+  if (!/^[A-Za-z0-9 -]+$/.test(trimmedName) ||
+      !/^[A-Za-z0-9# -]*$/.test(roomSuffix)) {
     return {
       valid: false,
       value: null,
@@ -566,6 +595,34 @@ export function encodeLegacyName(
       character.charCodeAt(0),
     ),
   };
+}
+
+export function encodeLegacyNameWrite(
+  profile: KnownProductProfile,
+  name: string,
+  roomSuffix = '',
+): LegacyBleWrite {
+  if (roomSuffix !== '' && !isLegacyRoomSuffix(roomSuffix)) {
+    throw new Error('Invalid legacy name: invalid-room.');
+  }
+  const encoded = encodeLegacyName(name, roomSuffix);
+  if (!encoded.valid) {
+    throw new Error(`Invalid legacy name: ${encoded.error}.`);
+  }
+  return createWrite(
+    profile,
+    'name-room',
+    BLE_UUIDS.shdoService,
+    BLE_UUIDS.nameCharacteristic,
+    encoded.bytes,
+    'non-destructive-setting',
+    false,
+    'phase1-reference-only',
+  );
+}
+
+function isLegacyRoomSuffix(value: string): value is LegacyRoomSuffix {
+  return LEGACY_KNOWN_ROOM_SUFFIXES.some((suffix) => suffix === value);
 }
 
 export interface LegacyBleDateFields {

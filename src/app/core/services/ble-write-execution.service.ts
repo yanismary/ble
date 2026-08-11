@@ -807,6 +807,7 @@ function timedCycleStatus(
 
 function isTargetCompatible(write: LegacyBleWrite): boolean {
   if (write.characteristicUuid === BLE_UUIDS.motorCommandCharacteristic ||
+      write.characteristicUuid === BLE_UUIDS.nameCharacteristic ||
       write.characteristicUuid === BLE_UUIDS.datesAndCyclesCharacteristic) {
     return write.serviceUuid === BLE_UUIDS.shdoService;
   }

@@ -25,6 +25,74 @@
         <dd>{{ formatTimestamp(viewModel.lastUpdatedAt) }}</dd>
       </dl>
 
+      @if (showNameRoomControls) {
+        <div class="name-room-controls">
+          <h2>{{ text.nameRoomControls.title }}</h2>
+          <div class="name-room-grid">
+            <ion-input
+              class="name-room-name-input"
+              [label]="text.nameRoomControls.nameLabel"
+              label-placement="stacked"
+              [maxlength]="15"
+              [value]="nameRoomDraftValue().name"
+              [disabled]="nameRoomWriteState.status === 'executing'"
+              (ionInput)="setNameRoomDraftName($event)"
+            ></ion-input>
+            <ion-select
+              class="name-room-select"
+              [label]="text.nameRoomControls.roomLabel"
+              label-placement="stacked"
+              interface="popover"
+              [value]="nameRoomDraftValue().roomSuffix"
+              [disabled]="nameRoomWriteState.status === 'executing'"
+              (ionChange)="setNameRoomDraftRoom($event)"
+            >
+              @for (room of roomOptions; track room.suffix) {
+                <ion-select-option [value]="room.suffix">
+                  {{ text.nameRoomControls.rooms[room.textKey] }}
+                </ion-select-option>
+              }
+            </ion-select>
+          </div>
+          <div class="product-actions">
+            <span>
+              {{ text.nameRoomControls.current }}
+              {{ currentNameRoomDisplay() }}
+            </span>
+            <span>
+              {{ text.nameRoomControls.draft }}
+              {{ nameRoomDraftDisplay() }}
+            </span>
+            <ion-button
+              type="button"
+              size="small"
+              (click)="requestNameRoomChange()"
+              [disabled]="!canApplyNameRoom()"
+            >
+              {{ text.nameRoomControls.apply }}
+            </ion-button>
+          </div>
+          @if (nameRoomValidationMessage()) {
+            <p class="command-state" role="alert" data-tone="error">
+              <span>{{ nameRoomValidationMessage() }}</span>
+            </p>
+          }
+          @if (nameRoomWriteState.message) {
+            <p
+              class="command-state"
+              role="status"
+              aria-live="polite"
+              [attr.data-tone]="nameRoomWriteState.status === 'failed' ? 'error' : 'neutral'"
+            >
+              @if (nameRoomWriteState.status === 'executing') {
+                <ion-spinner name="crescent"></ion-spinner>
+              }
+              <span>{{ nameRoomWriteState.message }}</span>
+            </p>
+          }
+        </div>
+      }
+
       @if (viewModel.loadStatus) {
         <p class="product-summary" aria-live="polite">
           {{ globalStatusLabel }}

@@ -7,6 +7,7 @@ import {
 import { BleService } from './ble';
 import {
   createWidoorLegacyResetSequence,
+  encodeLegacyNameWrite,
   encodeLegacyMotorCommand,
   encodeLegacyProfessionalScalar,
   encodeLegacyUserScalar,
@@ -105,6 +106,28 @@ describe('BleWriteExecutionService', () => {
       expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
       expect(service.isExecuting).toBeFalse();
     });
+
+  it('executes catalogued name writes on the SHDO name characteristic',
+    async () => {
+      const request = requestFor(
+        encodeLegacyNameWrite('moventiv-60', 'Porte', '#SDB'),
+      );
+
+      const result = await service.execute(request);
+
+      expect(result.status).toBe('success');
+      expect(result.operation).toBe('name-room');
+      expect(result.serviceUuid).toBe(request.write.serviceUuid);
+      expect(result.characteristicUuid).toBe(request.write.characteristicUuid);
+      expect(result.payloadHex).toBe('50 6f 72 74 65 23 53 44 42');
+      expect(ble.writeCharacteristic).toHaveBeenCalledWith(
+        request.write.serviceUuid,
+        request.write.characteristicUuid,
+        jasmine.any(Uint8Array),
+        'device-1',
+      );
+    },
+  );
 
   it('routes validated Widoor OPEN through the unchanged confirmation flow',
     async () => {

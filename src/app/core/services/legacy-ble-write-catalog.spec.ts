@@ -1,5 +1,9 @@
 import { BLE_UUIDS } from './ble-profile-catalog';
 import {
+  LEGACY_KNOWN_ROOM_SUFFIXES,
+  LEGACY_SELECTABLE_ROOM_SUFFIXES,
+  LEGACY_VALUE_SEMANTICS,
+  LEGACY_WRITE_CONSTRAINTS,
   createWidoorLegacyResetSequence,
   encodeLegacyDateWrite,
   encodeLegacyEnabledState,
@@ -8,6 +12,7 @@ import {
   encodeLegacyLockMode,
   encodeLegacyMotorCommand,
   encodeLegacyName,
+  encodeLegacyNameWrite,
   encodeLegacyProfessionalPeripheral,
   encodeLegacyProfessionalScalar,
   encodeLegacyUserPeripheral,
@@ -15,8 +20,6 @@ import {
   encodeLegacyWeightRange,
   inspectCataloguedLegacyBleWrite,
   isCataloguedLegacyBleWrite,
-  LEGACY_VALUE_SEMANTICS,
-  LEGACY_WRITE_CONSTRAINTS,
 } from './legacy-ble-write-catalog';
 
 describe('legacy BLE write catalog', () => {
@@ -244,6 +247,47 @@ describe('legacy BLE write catalog', () => {
     expect(encodeLegacyName('Porte_1')).toEqual(jasmine.objectContaining({
       valid: false, error: 'invalid-characters',
     }));
+  });
+
+  it('encodes catalogued name writes on the SHDO name characteristic', () => {
+    const write = encodeLegacyNameWrite('widoor', 'Porte', '#CHA');
+
+    expect(write.operation).toBe('name-room');
+    expect(write.serviceUuid).toBe(BLE_UUIDS.shdoService);
+    expect(write.characteristicUuid).toBe(BLE_UUIDS.nameCharacteristic);
+    expect(write.payloadHex).toBe('50 6f 72 74 65 23 43 48 41');
+    expect(Array.from(write.payload)).toEqual(
+      Array.from('Porte#CHA', (character) => character.charCodeAt(0)),
+    );
+    expect(write.destructiveLevel).toBe('non-destructive-setting');
+    expect(write.hardwareValidationStatus).toBe('phase1-reference-only');
+    expect(inspectCataloguedLegacyBleWrite(write)).toBe('authentic');
+    expect(() => encodeLegacyNameWrite('widoor', 'Porte_1'))
+      .toThrowError(/invalid-characters/);
+    expect(() => encodeLegacyNameWrite('widoor', 'Porte', '#ABC'))
+      .toThrowError(/invalid-room/);
+    expect(LEGACY_KNOWN_ROOM_SUFFIXES).toEqual([
+      '#CHA',
+      '#ENT',
+      '#SAL',
+      '#CUI',
+      '#SAM',
+      '#SDB',
+      '#WCS',
+      '#GAR',
+      '#SLL',
+      '#SDJ',
+    ]);
+    expect(LEGACY_SELECTABLE_ROOM_SUFFIXES).toEqual([
+      '#CHA',
+      '#SAL',
+      '#SAM',
+      '#CUI',
+      '#SDB',
+      '#WCS',
+      '#GAR',
+      '#SDJ',
+    ]);
   });
 
   it('encodes historical zero-based-month date writes', () => {
