@@ -49,6 +49,7 @@ import {
 import { PRODUCT_PAGE_CONFIG } from './product-page.config';
 import { productLockModeConfigsFor } from './product-lock-mode';
 import { productUserSpeedConfigsFor } from './product-user-speed';
+import { productUserTimingConfigsFor } from './product-user-timing';
 import {
   ProductPageNavigationState,
   ProductReadViewState,
@@ -452,6 +453,204 @@ describe('ProductPage', () => {
         .toBe(component.text.userSpeedControls.failed);
     },
   );
+
+  it('should expose timing controls initialized from decoded user parameters',
+    async () => {
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithTimings(3, 12),
+      );
+
+      await component.refreshProductData();
+      fixture.detectChanges();
+
+      expect(component.showUserTimingControls).toBeTrue();
+      expect(component.userTimingControls.map((control) =>
+        control.config.field,
+      )).toEqual(['short-timing']);
+      const shortControl = component.userTimingControls[0].config;
+      expect(component.currentUserTimingValue(shortControl)).toBe(3);
+      expect(component.userTimingDraftValue(shortControl)).toBe(3);
+      const element = fixture.nativeElement as HTMLElement;
+      expect(element.textContent).toContain(component.text.user.shortTiming);
+      expect(element.textContent).not.toContain(component.text.user.longTiming);
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should write Widoor short timing through the executor', async () => {
+    loadService.nextResult = completeLoadResult(
+      'success',
+      'widoor',
+      userValueWithTimings(1, 12),
+    );
+    await component.refreshProductData();
+    const shortControl = component.userTimingControls[0].config;
+    const transitions = [
+      {
+        value: 0,
+        payloadHex: '03 00',
+        payload: [0x03, 0x00],
+      },
+      {
+        value: 60,
+        payloadHex: '03 3c',
+        payload: [0x03, 0x3c],
+      },
+      {
+        value: 12,
+        payloadHex: '03 0c',
+        payload: [0x03, 0x0c],
+      },
+    ] as const;
+
+    for (const transition of transitions) {
+      writeExecutionService.nextResult = userTimingExecutionResult(
+        'widoor',
+        'short-timing',
+        transition.payloadHex,
+      );
+      writeExecutionService.execute.calls.reset();
+
+      component.setUserTimingDraftValue(shortControl, transition.value);
+      await component.requestUserTimingChange(shortControl);
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      const request = writeExecutionService.execute.calls.mostRecent()
+        .args[0] as LegacyBleWriteRequest;
+      expect(request.profile).toBe('widoor');
+      expect(request.write.operation).toBe('short-timing');
+      expect(request.write.serviceUuid).toBe(BLE_UUIDS.widoorService);
+      expect(request.write.characteristicUuid)
+        .toBe(BLE_UUIDS.userParametersCharacteristic);
+      expect(request.write.payloadHex).toBe(transition.payloadHex);
+      expect(Array.from(request.write.payload)).toEqual(transition.payload);
+      expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
+      expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+      expect(request.authorization).toEqual(jasmine.objectContaining({
+        profile: 'widoor',
+        operation: 'short-timing',
+        payloadHex: transition.payloadHex,
+      }));
+      expect(request.authorization?.motorMovementConfirmed).toBeUndefined();
+      expect(component.userTimingWriteState.status).toBe('sent');
+    }
+  });
+
+  it('should keep timing drafts local until apply and reset them on reload',
+    async () => {
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithTimings(3, 12),
+      );
+      await component.refreshProductData();
+      const shortControl = component.userTimingControls[0].config;
+
+      component.setUserTimingDraftValue(shortControl, 30);
+
+      expect(component.currentUserTimingValue(shortControl)).toBe(3);
+      expect(component.userTimingDraftValue(shortControl)).toBe(30);
+      expect(component.canApplyUserTiming(shortControl)).toBeTrue();
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithTimings(45, 12),
+      );
+      await component.refreshProductData();
+
+      expect(component.currentUserTimingValue(shortControl)).toBe(45);
+      expect(component.userTimingDraftValue(shortControl)).toBe(45);
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should reject invalid timing values without writing', async () => {
+    loadService.nextResult = completeLoadResult(
+      'success',
+      'widoor',
+      userValueWithTimings(3, 12),
+    );
+    await component.refreshProductData();
+    const shortControl = component.userTimingControls[0].config;
+
+    component.setUserTimingDraftValue(shortControl, 61);
+    await component.requestUserTimingChange(shortControl);
+
+    expect(component.userTimingDraftValue(shortControl)).toBe(3);
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+  });
+
+  it('should keep decoded timing as applied state when a write fails',
+    async () => {
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithTimings(3, 12),
+      );
+      writeExecutionService.nextResult = {
+        ...userTimingExecutionResult('widoor', 'short-timing', '03 0c'),
+        status: 'failed',
+        nativeWriteCompleted: false,
+        error: { code: 'native-write-failed', message: 'Native failure' },
+      };
+      await component.refreshProductData();
+      const shortControl = component.userTimingControls[0].config;
+
+      component.setUserTimingDraftValue(shortControl, 12);
+      await component.requestUserTimingChange(shortControl);
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(component.currentUserTimingValue(shortControl)).toBe(3);
+      expect(component.userTimingDraftValue(shortControl)).toBe(12);
+      expect(component.userTimingWriteState.status).toBe('failed');
+      expect(component.userTimingWriteState.message)
+        .toBe(component.text.userTimingControls.failed);
+    },
+  );
+
+  it('should clear timing drafts when the product disconnects', async () => {
+    loadService.nextResult = completeLoadResult(
+      'success',
+      'widoor',
+      userValueWithTimings(3, 12),
+    );
+    await component.refreshProductData();
+    const shortControl = component.userTimingControls[0].config;
+
+    component.setUserTimingDraftValue(shortControl, 30);
+    bleService.disconnect();
+
+    expect(component.currentUserTimingValue(shortControl)).toBeNull();
+    expect(component.userTimingDraftValue(shortControl))
+      .toBe(shortControl.range.min);
+    expect(component.canApplyUserTiming(shortControl)).toBeFalse();
+    expect(component.userTimingWriteState.status).toBe('idle');
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+  });
+
+  it('should reject timing controls from another profile', async () => {
+    loadService.nextResult = completeLoadResult(
+      'success',
+      'widoor',
+      userValueWithTimings(3, 12),
+    );
+    await component.refreshProductData();
+    const widoorShortControl = component.userTimingControls[0].config;
+    const garlineLongControl = productUserTimingConfigsFor(
+      PRODUCT_PAGE_CONFIG.garline,
+    )[1];
+
+    component.setUserTimingDraftValue(garlineLongControl, 10);
+    await component.requestUserTimingChange(garlineLongControl);
+
+    expect(component.userTimingDraftValue(widoorShortControl)).toBe(3);
+    expect(component.canApplyUserTiming(garlineLongControl)).toBeFalse();
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+  });
 
   it('should write Widoor supported lock-mode transitions through the executor',
     async () => {
@@ -1971,6 +2170,206 @@ describe('ProductPage speed controls for profile variants', () => {
   }
 });
 
+describe('ProductPage timing controls for profile variants', () => {
+  for (const scenario of [
+    {
+      profile: 'moventiv-60',
+      controls: ['short-timing'],
+      short: 4,
+      long: 10,
+      accepted: 0,
+      invalid: 61,
+      operation: 'short-timing',
+      payloadHex: '03 00',
+      serviceUuid: BLE_UUIDS.moventivGarlineService,
+      range: { min: 0, max: 60 },
+      unit: 's',
+    },
+    {
+      profile: 'moventiv-80',
+      controls: ['short-timing'],
+      short: 4,
+      long: 10,
+      accepted: 60,
+      invalid: -1,
+      operation: 'short-timing',
+      payloadHex: '03 3c',
+      serviceUuid: BLE_UUIDS.moventivGarlineService,
+      range: { min: 0, max: 60 },
+      unit: 's',
+    },
+    {
+      profile: 'garline',
+      controls: ['short-timing', 'long-timing'],
+      short: 4,
+      long: 10,
+      accepted: 30,
+      invalid: 0,
+      operation: 'long-timing',
+      payloadHex: '04 1e',
+      serviceUuid: BLE_UUIDS.moventivGarlineService,
+      range: { min: 1, max: 60 },
+      unit: 'min',
+    },
+  ] as const) {
+    it(`should apply ${scenario.profile} timing ranges and writes`,
+      async () => {
+        const bleService = new FakeBleService();
+        const loadService = new FakeProductDataLoadService();
+        loadService.nextResult = completeLoadResult(
+          'success',
+          scenario.profile,
+          userValueWithTimings(scenario.short, scenario.long),
+        );
+        const writeExecutionService = new FakeBleWriteExecutionService();
+        writeExecutionService.nextResult = userTimingExecutionResult(
+          scenario.profile,
+          scenario.operation,
+          scenario.payloadHex,
+        );
+
+        TestBed.resetTestingModule();
+        await TestBed.configureTestingModule({
+          imports: [ProductPage],
+          providers: [
+            { provide: BleService, useValue: bleService },
+            {
+              provide: AlertController,
+              useValue: {
+                create: jasmine.createSpy('create').and.resolveTo({
+                  present: async () => undefined,
+                  onDidDismiss: async () => ({ role: 'confirm' }),
+                }),
+              },
+            },
+            {
+              provide: BleWriteExecutionService,
+              useValue: writeExecutionService,
+            },
+            { provide: ProductDataLoadService, useValue: loadService },
+            { provide: ProductDetection, useClass: ProductDetection },
+            {
+              provide: ActivatedRoute,
+              useValue: {
+                snapshot: { data: { profile: scenario.profile } },
+              },
+            },
+            {
+              provide: Router,
+              useValue: {
+                getCurrentNavigation: () => ({
+                  extras: { state: navigationState(scenario.profile) },
+                }),
+                navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+              },
+            },
+          ],
+        }).compileComponents();
+
+        const fixture = TestBed.createComponent(ProductPage);
+        const component = fixture.componentInstance;
+        fixture.detectChanges();
+        await component.refreshProductData();
+        const timingControl = component.userTimingControls.find((control) =>
+          control.config.field === scenario.operation,
+        )?.config;
+
+        expect(component.userTimingControls.map((control) =>
+          control.config.field,
+        )).toEqual(scenario.controls);
+        expect(timingControl).toBeDefined();
+        expect(timingControl?.range).toEqual(scenario.range);
+        expect(timingControl?.unit).toBe(scenario.unit);
+        expect(component.currentUserTimingValue(timingControl!))
+          .toBe(scenario.operation === 'short-timing'
+            ? scenario.short
+            : scenario.long);
+
+        component.setUserTimingDraftValue(timingControl!, scenario.invalid);
+        await component.requestUserTimingChange(timingControl!);
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+
+        component.setUserTimingDraftValue(timingControl!, scenario.accepted);
+        await component.requestUserTimingChange(timingControl!);
+
+        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        const request = writeExecutionService.execute.calls.mostRecent()
+          .args[0] as LegacyBleWriteRequest;
+        expect(request.profile).toBe(scenario.profile);
+        expect(request.write.operation).toBe(scenario.operation);
+        expect(request.write.serviceUuid).toBe(scenario.serviceUuid);
+        expect(request.write.characteristicUuid)
+          .toBe(BLE_UUIDS.userParametersCharacteristic);
+        expect(request.write.payloadHex).toBe(scenario.payloadHex);
+      },
+    );
+  }
+
+  it('should keep Garline short and long timing drafts independent',
+    async () => {
+      const bleService = new FakeBleService();
+      const loadService = new FakeProductDataLoadService();
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'garline',
+        userValueWithTimings(4, 10),
+      );
+      const writeExecutionService = new FakeBleWriteExecutionService();
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          {
+            provide: AlertController,
+            useValue: {
+              create: jasmine.createSpy('create').and.resolveTo({
+                present: async () => undefined,
+                onDidDismiss: async () => ({ role: 'confirm' }),
+              }),
+            },
+          },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          { provide: ProductDataLoadService, useValue: loadService },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile: 'garline' } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState('garline') },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+      await component.refreshProductData();
+      const shortControl = component.userTimingControls[0].config;
+      const longControl = component.userTimingControls[1].config;
+
+      component.setUserTimingDraftValue(longControl, 30);
+
+      expect(component.userTimingDraftValue(shortControl)).toBe(4);
+      expect(component.userTimingDraftValue(longControl)).toBe(30);
+      expect(component.canApplyUserTiming(shortControl)).toBeFalse();
+      expect(component.canApplyUserTiming(longControl)).toBeTrue();
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+});
+
 describe('ProductPage lock-mode controls for profile variants', () => {
   it('should expose Garline lock-open only and reject lock-closed',
     async () => {
@@ -2173,6 +2572,37 @@ function lockModeExecutionResult(
 function userSpeedExecutionResult(
   profile: KnownProductProfile,
   operation: 'open-speed' | 'close-speed',
+  payloadHex: string,
+): LegacyBleWriteExecutionResult {
+  return {
+    status: 'success',
+    operation,
+    profile,
+    deviceId: 'device-1',
+    serviceUuid: profile === 'widoor'
+      ? BLE_UUIDS.widoorService
+      : BLE_UUIDS.moventivGarlineService,
+    characteristicUuid: BLE_UUIDS.userParametersCharacteristic,
+    payloadHex,
+    length: 2,
+    destructiveLevel: 'non-destructive-setting',
+    hardwareValidationStatus: 'phase1-reference-only',
+    policyOverrideUsed: true,
+    startedAt: 100,
+    completedAt: 200,
+    connectionGeneration: 4,
+    nativeWriteCompleted: true,
+    confirmationStatus: 'not-required',
+    confirmedMotorStateRaw: null,
+    movementStartConfirmed: false,
+    timedCycleValidationStatus: 'not-observed',
+    error: null,
+  };
+}
+
+function userTimingExecutionResult(
+  profile: KnownProductProfile,
+  operation: 'short-timing' | 'long-timing',
   payloadHex: string,
 ): LegacyBleWriteExecutionResult {
   return {
@@ -2506,6 +2936,17 @@ function userValueWithSpeeds(
     ...userValue(),
     openSpeed,
     closeSpeed,
+  };
+}
+
+function userValueWithTimings(
+  shortOpenTime: number,
+  longOpenTime: number,
+): BleUserParameters {
+  return {
+    ...userValue(),
+    shortOpenTime,
+    longOpenTime,
   };
 }
 

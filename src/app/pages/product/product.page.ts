@@ -75,6 +75,13 @@ import {
   productUserSpeedConfigsFor,
 } from './product-user-speed';
 import {
+  ProductUserTimingField,
+  ProductUserTimingUiConfig,
+  createProductUserTimingAuthorization,
+  isValidProductUserTimingValue,
+  productUserTimingConfigsFor,
+} from './product-user-timing';
+import {
   ProductOpenCommandState,
   ProductCommandHistoryEntry,
   ProductOpenCommandStatus,
@@ -145,6 +152,8 @@ export class ProductPage implements OnDestroy {
   private readonly lockModeWrites: Map<LegacyLockMode, LegacyBleWrite>;
   private readonly userSpeedWrites: Map<ProductUserSpeedField, LegacyBleWrite>;
   private readonly userSpeedDrafts = new Map<ProductUserSpeedField, number>();
+  private readonly userTimingWrites: Map<ProductUserTimingField, LegacyBleWrite>;
+  private readonly userTimingDrafts = new Map<ProductUserTimingField, number>();
 
   readonly config: ProductPageConfig;
   readonly text = PRODUCT_PAGE_TEXT;
@@ -168,6 +177,12 @@ export class ProductPage implements OnDestroy {
       ProductUserSpeedUiConfig['textKey']
     ];
   }[];
+  readonly userTimingControls: readonly {
+    readonly config: ProductUserTimingUiConfig;
+    readonly text: typeof PRODUCT_PAGE_TEXT.user[
+      ProductUserTimingUiConfig['textKey']
+    ];
+  }[];
   readonly emptyTechnicalRows: readonly ProductDisplayRow[] = [];
   viewModel: ProductViewModel;
   openCommandState = initialProductOpenCommandState();
@@ -178,6 +193,11 @@ export class ProductPage implements OnDestroy {
   userSpeedWriteState: {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly field: ProductUserSpeedField | null;
+    readonly message: string | null;
+  } = Object.freeze({ status: 'idle', field: null, message: null });
+  userTimingWriteState: {
+    readonly status: 'idle' | 'executing' | 'sent' | 'failed';
+    readonly field: ProductUserTimingField | null;
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', field: null, message: null });
   private commandHistoryEntries: readonly ProductCommandHistoryEntry[] = [];
@@ -240,6 +260,20 @@ export class ProductPage implements OnDestroy {
         config.catalogFactory(config.range.min),
       ]),
     );
+    this.userTimingControls = Object.freeze(
+      productUserTimingConfigsFor(this.config).map((config) =>
+        Object.freeze({
+          config,
+          text: PRODUCT_PAGE_TEXT.user[config.textKey],
+        }),
+      ),
+    );
+    this.userTimingWrites = new Map(
+      this.userTimingControls.map(({ config }) => [
+        config.field,
+        config.catalogFactory(config.range.min),
+      ]),
+    );
     this.context = this.resolveNavigationContext(routeProfile);
     this.viewModel = this.createInitialViewModel(
       profile,
@@ -268,7 +302,8 @@ export class ProductPage implements OnDestroy {
       !this.productDataLoadService.isLoading &&
       !this.bleService.isWriting &&
       this.lockModeWriteState.status !== 'executing' &&
-      this.userSpeedWriteState.status !== 'executing';
+      this.userSpeedWriteState.status !== 'executing' &&
+      this.userTimingWriteState.status !== 'executing';
   }
 
   get hasProductNavigationContext(): boolean {
@@ -298,6 +333,12 @@ export class ProductPage implements OnDestroy {
       this.viewModel.reads.userParameters.status === 'available';
   }
 
+  get showUserTimingControls(): boolean {
+    return this.pageContextCurrent &&
+      this.userTimingControls.length > 0 &&
+      this.viewModel.reads.userParameters.status === 'available';
+  }
+
   get canOpenWidoor(): boolean {
     return this.canExecuteWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[0]);
   }
@@ -323,6 +364,7 @@ export class ProductPage implements OnDestroy {
         this.bleWriteExecutionService.isExecuting ||
         this.lockModeWriteState.status === 'executing' ||
         this.userSpeedWriteState.status === 'executing' ||
+        this.userTimingWriteState.status === 'executing' ||
         this.motorCommandsBlockedByLockMode() ||
         this.commandInProgress) {
       return false;
@@ -851,6 +893,7 @@ export class ProductPage implements OnDestroy {
         this.bleWriteExecutionService.isExecuting ||
         this.lockModeWriteState.status === 'executing' ||
         this.userSpeedWriteState.status === 'executing' ||
+        this.userTimingWriteState.status === 'executing' ||
         this.commandInProgress) {
       return false;
     }
@@ -862,6 +905,83 @@ export class ProductPage implements OnDestroy {
       return false;
     }
     const write = this.userSpeedWrites.get(config.field);
+    if (write === undefined) {
+      return false;
+    }
+    const properties = this.bleService.getGattCharacteristicProperties(
+      write.serviceUuid,
+      write.characteristicUuid,
+      this.context?.deviceId,
+    );
+    return properties.servicePresent &&
+      properties.characteristicPresent &&
+      properties.propertiesAvailable &&
+      properties.write === true;
+  }
+
+  currentUserTimingValue(config: ProductUserTimingUiConfig): number | null {
+    const value = this.viewModel.reads.userParameters.value;
+    if (value === null) {
+      return null;
+    }
+    return config.field === 'short-timing'
+      ? value.shortOpenTime
+      : value.longOpenTime;
+  }
+
+  userTimingDraftValue(config: ProductUserTimingUiConfig): number {
+    return this.userTimingDrafts.get(config.field) ??
+      this.currentUserTimingValue(config) ??
+      config.range.min;
+  }
+
+  setUserTimingDraftValue(
+    config: ProductUserTimingUiConfig,
+    eventOrValue: Event | number,
+  ): void {
+    if (!this.isUserTimingControl(config)) {
+      return;
+    }
+    const value = typeof eventOrValue === 'number'
+      ? eventOrValue
+      : rangeEventNumber(eventOrValue);
+    if (value === null || !isValidProductUserTimingValue(config, value)) {
+      return;
+    }
+    this.userTimingDrafts.set(config.field, value);
+    if (this.userTimingWriteState.field === config.field &&
+        this.userTimingWriteState.status !== 'executing') {
+      this.userTimingWriteState = Object.freeze({
+        status: 'idle',
+        field: null,
+        message: null,
+      });
+    }
+  }
+
+  canApplyUserTiming(config: ProductUserTimingUiConfig): boolean {
+    if (!this.isUserTimingControl(config) ||
+        !this.showUserTimingControls ||
+        !this.isCurrentContext() ||
+        this.viewModel.loading ||
+        this.productDataLoadService.isLoading ||
+        this.bleService.isWriting ||
+        this.bleService.disconnectingDeviceId !== null ||
+        this.bleWriteExecutionService.isExecuting ||
+        this.lockModeWriteState.status === 'executing' ||
+        this.userSpeedWriteState.status === 'executing' ||
+        this.userTimingWriteState.status === 'executing' ||
+        this.commandInProgress) {
+      return false;
+    }
+    const currentValue = this.currentUserTimingValue(config);
+    const draftValue = this.userTimingDraftValue(config);
+    if (currentValue === null ||
+        draftValue === currentValue ||
+        !isValidProductUserTimingValue(config, draftValue)) {
+      return false;
+    }
+    const write = this.userTimingWrites.get(config.field);
     if (write === undefined) {
       return false;
     }
@@ -1137,6 +1257,81 @@ export class ProductPage implements OnDestroy {
     });
   }
 
+  async requestUserTimingChange(
+    config: ProductUserTimingUiConfig,
+  ): Promise<void> {
+    if (!this.canApplyUserTiming(config) || this.context === null) {
+      return;
+    }
+    const draftValue = this.userTimingDraftValue(config);
+    if (!isValidProductUserTimingValue(config, draftValue)) {
+      return;
+    }
+    const write = config.catalogFactory(draftValue);
+    const context = this.context;
+    const contextStatus = this.writeContextStatus(context, write);
+    if (contextStatus !== null) {
+      this.userTimingWriteState = Object.freeze({
+        status: 'failed',
+        field: config.field,
+        message: this.userTimingFailureMessage(contextStatus),
+      });
+      return;
+    }
+
+    const attemptId = this.nextCommandIdentifier('attempt');
+    const confirmedAt = Date.now();
+    const authorization = createProductUserTimingAuthorization({
+      write,
+      deviceId: context.deviceId,
+      connectionGeneration: context.connectionGeneration,
+      attemptId,
+      confirmationId: this.nextCommandIdentifier('confirmation'),
+      confirmedAt,
+    });
+    this.userTimingWriteState = Object.freeze({
+      status: 'executing',
+      field: config.field,
+      message: this.text.userTimingControls.executing,
+    });
+
+    const result = await this.bleWriteExecutionService.execute({
+      write,
+      deviceId: context.deviceId,
+      profile: config.profile,
+      connectionGeneration: context.connectionGeneration,
+      identification: { profile: config.profile, confidence: 'strong' },
+      authorization,
+      attemptId,
+      confirmationPolicy: config.confirmationPolicy,
+      policy: config.policy,
+    });
+    if (!this.isCurrentContext() || this.context !== context) {
+      this.userTimingWriteState = Object.freeze({
+        status: 'failed',
+        field: config.field,
+        message: this.text.openCommand.stale,
+      });
+      return;
+    }
+    if (result.status === 'success') {
+      this.userTimingWriteState = Object.freeze({
+        status: 'sent',
+        field: config.field,
+        message: this.text.userTimingControls.sent,
+      });
+      if (this.canRefresh) {
+        await this.refreshProductData();
+      }
+      return;
+    }
+    this.userTimingWriteState = Object.freeze({
+      status: 'failed',
+      field: config.field,
+      message: this.text.userTimingControls.failed,
+    });
+  }
+
   async requestLockModeChange(
     config: ProductLockModeUiConfig,
     eventOrChecked: CustomEvent<{ readonly checked: boolean }> | boolean,
@@ -1232,6 +1427,7 @@ export class ProductPage implements OnDestroy {
       this.productDataLoadService.cancelCurrentLoad();
     }
     this.resetUserSpeedEditing();
+    this.resetUserTimingEditing();
     this.subscriptions.unsubscribe();
   }
 
@@ -1355,6 +1551,7 @@ export class ProductPage implements OnDestroy {
       globalError: result.error?.message ?? null,
     };
     this.userSpeedDrafts.clear();
+    this.userTimingDrafts.clear();
   }
 
   private handleDisconnection(event: BleDisconnectionEvent): void {
@@ -1398,6 +1595,7 @@ export class ProductPage implements OnDestroy {
       this.productDataLoadService.cancelCurrentLoad();
     }
     this.resetUserSpeedEditing();
+    this.resetUserTimingEditing();
     this.viewModel = {
       ...this.viewModel,
       connectionState: state,
@@ -1423,6 +1621,20 @@ export class ProductPage implements OnDestroy {
   private isUserSpeedControl(config: ProductUserSpeedUiConfig): boolean {
     return config.profile === this.config.profile &&
       this.userSpeedControls.some((control) => control.config === config);
+  }
+
+  private resetUserTimingEditing(): void {
+    this.userTimingDrafts.clear();
+    this.userTimingWriteState = Object.freeze({
+      status: 'idle',
+      field: null,
+      message: null,
+    });
+  }
+
+  private isUserTimingControl(config: ProductUserTimingUiConfig): boolean {
+    return config.profile === this.config.profile &&
+      this.userTimingControls.some((control) => control.config === config);
   }
 
   private isCurrentCommandCycle(cycle: number): boolean {
@@ -1499,6 +1711,19 @@ export class ProductPage implements OnDestroy {
         return this.text.openCommand.stale;
       case 'unavailable':
         return this.text.userSpeedControls.unavailable;
+    }
+  }
+
+  private userTimingFailureMessage(
+    status: 'disconnected' | 'stale' | 'unavailable',
+  ): string {
+    switch (status) {
+      case 'disconnected':
+        return this.text.openCommand.disconnected;
+      case 'stale':
+        return this.text.openCommand.stale;
+      case 'unavailable':
+        return this.text.userTimingControls.unavailable;
     }
   }
 

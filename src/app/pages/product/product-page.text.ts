@@ -29,6 +29,15 @@ export const PRODUCT_PAGE_TEXT = {
     failed: 'Échec de l’envoi de la vitesse.',
     unavailable: 'Commande de vitesse indisponible',
   },
+  userTimingControls: {
+    apply: 'Appliquer',
+    current: 'Valeur lue :',
+    draft: 'Valeur à appliquer :',
+    executing: 'Envoi de la temporisation…',
+    sent: 'Temporisation envoyée. Lecture de contrôle en cours.',
+    failed: 'Échec de l’envoi de la temporisation.',
+    unavailable: 'Commande de temporisation indisponible',
+  },
   openCommand: {
     cancel: 'Annuler',
     awaitingConfirmation: 'Confirmation requise',

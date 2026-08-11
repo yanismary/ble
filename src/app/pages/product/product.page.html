@@ -247,6 +247,60 @@
               }
             </div>
           }
+          @if (showUserTimingControls) {
+            <div class="user-timing-controls">
+              @for (timingControl of userTimingControls; track timingControl.config.field) {
+                <div class="user-timing-control">
+                  <div class="user-timing-control-header">
+                    <strong>{{ timingControl.text }}</strong>
+                    <span>
+                      {{ text.userTimingControls.current }}
+                      {{ currentUserTimingValue(timingControl.config) }}
+                      {{ timingControl.config.unit }}
+                    </span>
+                  </div>
+                  <ion-range
+                    class="user-timing-range"
+                    [attr.aria-label]="timingControl.text"
+                    [min]="timingControl.config.range.min"
+                    [max]="timingControl.config.range.max"
+                    [step]="1"
+                    [pin]="true"
+                    [value]="userTimingDraftValue(timingControl.config)"
+                    (ionChange)="setUserTimingDraftValue(timingControl.config, $event)"
+                  ></ion-range>
+                  <div class="product-actions">
+                    <span>
+                      {{ text.userTimingControls.draft }}
+                      {{ userTimingDraftValue(timingControl.config) }}
+                      {{ timingControl.config.unit }}
+                    </span>
+                    <ion-button
+                      type="button"
+                      size="small"
+                      (click)="requestUserTimingChange(timingControl.config)"
+                      [disabled]="!canApplyUserTiming(timingControl.config)"
+                    >
+                      {{ text.userTimingControls.apply }}
+                    </ion-button>
+                  </div>
+                </div>
+              }
+              @if (userTimingWriteState.message) {
+                <p
+                  class="command-state"
+                  role="status"
+                  aria-live="polite"
+                  [attr.data-tone]="userTimingWriteState.status === 'failed' ? 'error' : 'neutral'"
+                >
+                  @if (userTimingWriteState.status === 'executing') {
+                    <ion-spinner name="crescent"></ion-spinner>
+                  }
+                  <span>{{ userTimingWriteState.message }}</span>
+                </p>
+              }
+            </div>
+          }
         }
       </article>
 
