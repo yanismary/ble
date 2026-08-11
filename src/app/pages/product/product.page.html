@@ -193,6 +193,60 @@
               <dd>{{ row.value }}</dd>
             }
           </dl>
+          @if (showUserSpeedControls) {
+            <div class="user-speed-controls">
+              @for (speedControl of userSpeedControls; track speedControl.config.field) {
+                <div class="user-speed-control">
+                  <div class="user-speed-control-header">
+                    <strong>{{ speedControl.text }}</strong>
+                    <span>
+                      {{ text.userSpeedControls.current }}
+                      {{ currentUserSpeedValue(speedControl.config) }}
+                      %
+                    </span>
+                  </div>
+                  <ion-range
+                    class="user-speed-range"
+                    [attr.aria-label]="speedControl.text"
+                    [min]="speedControl.config.range.min"
+                    [max]="speedControl.config.range.max"
+                    [step]="1"
+                    [pin]="true"
+                    [value]="userSpeedDraftValue(speedControl.config)"
+                    (ionChange)="setUserSpeedDraftValue(speedControl.config, $event)"
+                  ></ion-range>
+                  <div class="product-actions">
+                    <span>
+                      {{ text.userSpeedControls.draft }}
+                      {{ userSpeedDraftValue(speedControl.config) }}
+                      %
+                    </span>
+                    <ion-button
+                      type="button"
+                      size="small"
+                      (click)="requestUserSpeedChange(speedControl.config)"
+                      [disabled]="!canApplyUserSpeed(speedControl.config)"
+                    >
+                      {{ text.userSpeedControls.apply }}
+                    </ion-button>
+                  </div>
+                </div>
+              }
+              @if (userSpeedWriteState.message) {
+                <p
+                  class="command-state"
+                  role="status"
+                  aria-live="polite"
+                  [attr.data-tone]="userSpeedWriteState.status === 'failed' ? 'error' : 'neutral'"
+                >
+                  @if (userSpeedWriteState.status === 'executing') {
+                    <ion-spinner name="crescent"></ion-spinner>
+                  }
+                  <span>{{ userSpeedWriteState.message }}</span>
+                </p>
+              }
+            </div>
+          }
         }
       </article>
 

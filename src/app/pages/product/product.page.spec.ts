@@ -48,6 +48,7 @@ import {
 } from './product-open-command';
 import { PRODUCT_PAGE_CONFIG } from './product-page.config';
 import { productLockModeConfigsFor } from './product-lock-mode';
+import { productUserSpeedConfigsFor } from './product-user-speed';
 import {
   ProductPageNavigationState,
   ProductReadViewState,
@@ -182,7 +183,8 @@ describe('ProductPage', () => {
         .toHaveBeenCalledOnceWith('widoor', 'device-1');
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
       const element = fixture.nativeElement as HTMLElement;
-      expect(element.querySelector('ion-range')).toBeNull();
+      expect(element.querySelector('ion-range.user-speed-range'))
+        .not.toBeNull();
       expect(element.querySelector('ion-toggle.lock-mode-toggle'))
         .not.toBeNull();
     },
@@ -231,6 +233,223 @@ describe('ProductPage', () => {
         component.text.lockModeControls.lockedClosed.label,
       );
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should expose speed controls initialized from decoded user parameters',
+    async () => {
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithSpeeds(42, 57),
+      );
+
+      await component.refreshProductData();
+      fixture.detectChanges();
+
+      expect(component.showUserSpeedControls).toBeTrue();
+      expect(component.userSpeedControls.map((control) =>
+        control.config.field,
+      )).toEqual(['open-speed', 'close-speed']);
+      expect(component.currentUserSpeedValue(
+        component.userSpeedControls[0].config,
+      )).toBe(42);
+      expect(component.userSpeedDraftValue(
+        component.userSpeedControls[1].config,
+      )).toBe(57);
+      const element = fixture.nativeElement as HTMLElement;
+      expect(element.textContent).toContain(component.text.user.openSpeed);
+      expect(element.textContent).toContain(component.text.user.closeSpeed);
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should write Widoor speed changes through the executor', async () => {
+    loadService.nextResult = completeLoadResult(
+      'success',
+      'widoor',
+      userValueWithSpeeds(25, 35),
+    );
+    await component.refreshProductData();
+    const openControl = component.userSpeedControls[0].config;
+    const closeControl = component.userSpeedControls[1].config;
+
+    const transitions = [
+      {
+        config: openControl,
+        changedValue: 26,
+        operation: 'open-speed',
+        payloadHex: '01 1a',
+        payload: [0x01, 0x1a],
+      },
+      {
+        config: closeControl,
+        changedValue: 100,
+        operation: 'close-speed',
+        payloadHex: '02 64',
+        payload: [0x02, 0x64],
+      },
+      {
+        config: openControl,
+        changedValue: 60,
+        operation: 'open-speed',
+        payloadHex: '01 3c',
+        payload: [0x01, 0x3c],
+      },
+    ] as const;
+
+    for (const transition of transitions) {
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithSpeeds(25, 35),
+      );
+      writeExecutionService.nextResult = userSpeedExecutionResult(
+        'widoor',
+        transition.operation,
+        transition.payloadHex,
+      );
+      writeExecutionService.execute.calls.reset();
+
+      component.setUserSpeedDraftValue(
+        transition.config,
+        transition.changedValue,
+      );
+      await component.requestUserSpeedChange(transition.config);
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      const request = writeExecutionService.execute.calls.mostRecent()
+        .args[0] as LegacyBleWriteRequest;
+      expect(request.profile).toBe('widoor');
+      expect(request.write.operation).toBe(transition.operation);
+      expect(request.write.serviceUuid).toBe(BLE_UUIDS.widoorService);
+      expect(request.write.characteristicUuid)
+        .toBe(BLE_UUIDS.userParametersCharacteristic);
+      expect(request.write.payloadHex).toBe(transition.payloadHex);
+      expect(Array.from(request.write.payload)).toEqual(transition.payload);
+      expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
+      expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+      expect(request.authorization).toEqual(jasmine.objectContaining({
+        profile: 'widoor',
+        operation: transition.operation,
+        payloadHex: transition.payloadHex,
+      }));
+      expect(request.authorization?.motorMovementConfirmed).toBeUndefined();
+      expect(component.userSpeedWriteState.status).toBe('sent');
+    }
+  });
+
+  it('should keep speed drafts local until apply and reset them on reload',
+    async () => {
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithSpeeds(25, 35),
+      );
+      await component.refreshProductData();
+      const openControl = component.userSpeedControls[0].config;
+
+      component.setUserSpeedDraftValue(openControl, 42);
+
+      expect(component.currentUserSpeedValue(openControl)).toBe(25);
+      expect(component.userSpeedDraftValue(openControl)).toBe(42);
+      expect(component.canApplyUserSpeed(openControl)).toBeTrue();
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithSpeeds(55, 35),
+      );
+      await component.refreshProductData();
+
+      expect(component.currentUserSpeedValue(openControl)).toBe(55);
+      expect(component.userSpeedDraftValue(openControl)).toBe(55);
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should clear speed drafts when the product disconnects', async () => {
+    loadService.nextResult = completeLoadResult(
+      'success',
+      'widoor',
+      userValueWithSpeeds(25, 35),
+    );
+    await component.refreshProductData();
+    const openControl = component.userSpeedControls[0].config;
+
+    component.setUserSpeedDraftValue(openControl, 42);
+    bleService.disconnect();
+
+    expect(component.currentUserSpeedValue(openControl)).toBeNull();
+    expect(component.userSpeedDraftValue(openControl))
+      .toBe(openControl.range.min);
+    expect(component.canApplyUserSpeed(openControl)).toBeFalse();
+    expect(component.userSpeedWriteState.status).toBe('idle');
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+  });
+
+  it('should reject speed controls from another profile', async () => {
+    loadService.nextResult = completeLoadResult(
+      'success',
+      'widoor',
+      userValueWithSpeeds(25, 35),
+    );
+    await component.refreshProductData();
+    const widoorOpenControl = component.userSpeedControls[0].config;
+    const moventivOpenControl = productUserSpeedConfigsFor(
+      PRODUCT_PAGE_CONFIG['moventiv-60'],
+    )[0];
+
+    component.setUserSpeedDraftValue(moventivOpenControl, 50);
+    await component.requestUserSpeedChange(moventivOpenControl);
+
+    expect(component.userSpeedDraftValue(widoorOpenControl)).toBe(25);
+    expect(component.canApplyUserSpeed(moventivOpenControl)).toBeFalse();
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+  });
+
+  it('should reject invalid speed values without writing', async () => {
+    loadService.nextResult = completeLoadResult(
+      'success',
+      'widoor',
+      userValueWithSpeeds(25, 35),
+    );
+    await component.refreshProductData();
+    const openControl = component.userSpeedControls[0].config;
+
+    component.setUserSpeedDraftValue(openControl, 24);
+    await component.requestUserSpeedChange(openControl);
+
+    expect(component.userSpeedDraftValue(openControl)).toBe(25);
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+  });
+
+  it('should keep decoded speed as applied state when a write fails',
+    async () => {
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithSpeeds(25, 35),
+      );
+      writeExecutionService.nextResult = {
+        ...userSpeedExecutionResult('widoor', 'open-speed', '01 1a'),
+        status: 'failed',
+        nativeWriteCompleted: false,
+        error: { code: 'native-write-failed', message: 'Native failure' },
+      };
+      await component.refreshProductData();
+      const openControl = component.userSpeedControls[0].config;
+
+      component.setUserSpeedDraftValue(openControl, 26);
+      await component.requestUserSpeedChange(openControl);
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(component.currentUserSpeedValue(openControl)).toBe(25);
+      expect(component.userSpeedDraftValue(openControl)).toBe(26);
+      expect(component.userSpeedWriteState.status).toBe('failed');
+      expect(component.userSpeedWriteState.message)
+        .toBe(component.text.userSpeedControls.failed);
     },
   );
 
@@ -1634,6 +1853,124 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
   );
 });
 
+describe('ProductPage speed controls for profile variants', () => {
+  for (const scenario of [
+    {
+      profile: 'moventiv-60',
+      open: 60,
+      close: 70,
+      accepted: 50,
+      invalid: 49,
+      payloadHex: '01 32',
+      serviceUuid: BLE_UUIDS.moventivGarlineService,
+      range: { min: 50, max: 100 },
+    },
+    {
+      profile: 'moventiv-80',
+      open: 60,
+      close: 70,
+      accepted: 50,
+      invalid: 49,
+      payloadHex: '01 32',
+      serviceUuid: BLE_UUIDS.moventivGarlineService,
+      range: { min: 50, max: 100 },
+    },
+    {
+      profile: 'garline',
+      open: 10,
+      close: 20,
+      accepted: 0,
+      invalid: -1,
+      payloadHex: '01 00',
+      serviceUuid: BLE_UUIDS.moventivGarlineService,
+      range: { min: 0, max: 100 },
+    },
+  ] as const) {
+    it(`should apply ${scenario.profile} speed ranges and writes`,
+      async () => {
+        const bleService = new FakeBleService();
+        const loadService = new FakeProductDataLoadService();
+        loadService.nextResult = completeLoadResult(
+          'success',
+          scenario.profile,
+          userValueWithSpeeds(scenario.open, scenario.close),
+        );
+        const writeExecutionService = new FakeBleWriteExecutionService();
+        writeExecutionService.nextResult = userSpeedExecutionResult(
+          scenario.profile,
+          'open-speed',
+          scenario.payloadHex,
+        );
+
+        TestBed.resetTestingModule();
+        await TestBed.configureTestingModule({
+          imports: [ProductPage],
+          providers: [
+            { provide: BleService, useValue: bleService },
+            {
+              provide: AlertController,
+              useValue: {
+                create: jasmine.createSpy('create').and.resolveTo({
+                  present: async () => undefined,
+                  onDidDismiss: async () => ({ role: 'confirm' }),
+                }),
+              },
+            },
+            {
+              provide: BleWriteExecutionService,
+              useValue: writeExecutionService,
+            },
+            { provide: ProductDataLoadService, useValue: loadService },
+            { provide: ProductDetection, useClass: ProductDetection },
+            {
+              provide: ActivatedRoute,
+              useValue: {
+                snapshot: { data: { profile: scenario.profile } },
+              },
+            },
+            {
+              provide: Router,
+              useValue: {
+                getCurrentNavigation: () => ({
+                  extras: { state: navigationState(scenario.profile) },
+                }),
+                navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+              },
+            },
+          ],
+        }).compileComponents();
+
+        const fixture = TestBed.createComponent(ProductPage);
+        const component = fixture.componentInstance;
+        fixture.detectChanges();
+        await component.refreshProductData();
+        const openControl = component.userSpeedControls[0].config;
+
+        expect(openControl.range).toEqual(scenario.range);
+        expect(component.currentUserSpeedValue(openControl))
+          .toBe(scenario.open);
+
+        component.setUserSpeedDraftValue(openControl, scenario.invalid);
+        await component.requestUserSpeedChange(openControl);
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+
+        component.setUserSpeedDraftValue(openControl, scenario.accepted);
+        await component.requestUserSpeedChange(openControl);
+
+        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        const request = writeExecutionService.execute.calls.mostRecent()
+          .args[0] as LegacyBleWriteRequest;
+        expect(request.profile).toBe(scenario.profile);
+        expect(request.write.operation).toBe('open-speed');
+        expect(request.write.serviceUuid).toBe(scenario.serviceUuid);
+        expect(request.write.characteristicUuid)
+          .toBe(BLE_UUIDS.userParametersCharacteristic);
+        expect(request.write.payloadHex).toBe(scenario.payloadHex);
+      },
+    );
+  }
+});
+
 describe('ProductPage lock-mode controls for profile variants', () => {
   it('should expose Garline lock-open only and reject lock-closed',
     async () => {
@@ -1810,6 +2147,37 @@ function lockModeExecutionResult(
   return {
     status: 'success',
     operation: 'lock-mode',
+    profile,
+    deviceId: 'device-1',
+    serviceUuid: profile === 'widoor'
+      ? BLE_UUIDS.widoorService
+      : BLE_UUIDS.moventivGarlineService,
+    characteristicUuid: BLE_UUIDS.userParametersCharacteristic,
+    payloadHex,
+    length: 2,
+    destructiveLevel: 'non-destructive-setting',
+    hardwareValidationStatus: 'phase1-reference-only',
+    policyOverrideUsed: true,
+    startedAt: 100,
+    completedAt: 200,
+    connectionGeneration: 4,
+    nativeWriteCompleted: true,
+    confirmationStatus: 'not-required',
+    confirmedMotorStateRaw: null,
+    movementStartConfirmed: false,
+    timedCycleValidationStatus: 'not-observed',
+    error: null,
+  };
+}
+
+function userSpeedExecutionResult(
+  profile: KnownProductProfile,
+  operation: 'open-speed' | 'close-speed',
+  payloadHex: string,
+): LegacyBleWriteExecutionResult {
+  return {
+    status: 'success',
+    operation,
     profile,
     deviceId: 'device-1',
     serviceUuid: profile === 'widoor'
@@ -2127,6 +2495,17 @@ function userValueWithLockMode(
     ...userValue(),
     lockMode,
     lockModeRaw: raw[lockMode],
+  };
+}
+
+function userValueWithSpeeds(
+  openSpeed: number,
+  closeSpeed: number,
+): BleUserParameters {
+  return {
+    ...userValue(),
+    openSpeed,
+    closeSpeed,
   };
 }
 

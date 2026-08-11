@@ -4,7 +4,7 @@ export const PRODUCT_PAGE_TEXT = {
   openProductPage: 'Ouvrir la page produit',
   refresh: 'Actualiser les informations',
   loading: 'Chargement en cours…',
-  readonlyNotice: 'Réglages affichés en lecture seule.',
+  readonlyNotice: 'Réglages affichés depuis le produit.',
   commandsUnavailable:
     'Les commandes seront disponibles dans un prochain lot.',
   lockModeControls: {
@@ -19,6 +19,15 @@ export const PRODUCT_PAGE_TEXT = {
     lockedClosed: {
       label: 'Verrouillage fermé',
     },
+  },
+  userSpeedControls: {
+    apply: 'Appliquer',
+    current: 'Valeur lue :',
+    draft: 'Valeur à appliquer :',
+    executing: 'Envoi de la vitesse…',
+    sent: 'Vitesse envoyée. Lecture de contrôle en cours.',
+    failed: 'Échec de l’envoi de la vitesse.',
+    unavailable: 'Commande de vitesse indisponible',
   },
   openCommand: {
     cancel: 'Annuler',

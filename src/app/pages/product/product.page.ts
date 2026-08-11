@@ -11,6 +11,7 @@ import {
   IonButton,
   IonContent,
   IonHeader,
+  IonRange,
   IonSpinner,
   IonTitle,
   IonToggle,
@@ -67,6 +68,13 @@ import {
   productLockModeConfigsFor,
 } from './product-lock-mode';
 import {
+  ProductUserSpeedField,
+  ProductUserSpeedUiConfig,
+  createProductUserSpeedAuthorization,
+  isValidProductUserSpeedValue,
+  productUserSpeedConfigsFor,
+} from './product-user-speed';
+import {
   ProductOpenCommandState,
   ProductCommandHistoryEntry,
   ProductOpenCommandStatus,
@@ -109,6 +117,7 @@ const ROOM_SUFFIXES = [
     IonButton,
     IonContent,
     IonHeader,
+    IonRange,
     IonSpinner,
     IonTitle,
     IonToggle,
@@ -134,6 +143,8 @@ export class ProductPage implements OnDestroy {
   private destroyed = false;
   private readonly productCommandWrites: Map<string, LegacyBleWrite>;
   private readonly lockModeWrites: Map<LegacyLockMode, LegacyBleWrite>;
+  private readonly userSpeedWrites: Map<ProductUserSpeedField, LegacyBleWrite>;
+  private readonly userSpeedDrafts = new Map<ProductUserSpeedField, number>();
 
   readonly config: ProductPageConfig;
   readonly text = PRODUCT_PAGE_TEXT;
@@ -151,6 +162,12 @@ export class ProductPage implements OnDestroy {
       ProductLockModeUiConfig['textKey']
     ];
   }[];
+  readonly userSpeedControls: readonly {
+    readonly config: ProductUserSpeedUiConfig;
+    readonly text: typeof PRODUCT_PAGE_TEXT.user[
+      ProductUserSpeedUiConfig['textKey']
+    ];
+  }[];
   readonly emptyTechnicalRows: readonly ProductDisplayRow[] = [];
   viewModel: ProductViewModel;
   openCommandState = initialProductOpenCommandState();
@@ -158,6 +175,11 @@ export class ProductPage implements OnDestroy {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', message: null });
+  userSpeedWriteState: {
+    readonly status: 'idle' | 'executing' | 'sent' | 'failed';
+    readonly field: ProductUserSpeedField | null;
+    readonly message: string | null;
+  } = Object.freeze({ status: 'idle', field: null, message: null });
   private commandHistoryEntries: readonly ProductCommandHistoryEntry[] = [];
 
   constructor() {
@@ -204,6 +226,20 @@ export class ProductPage implements OnDestroy {
           ),
         ],
     );
+    this.userSpeedControls = Object.freeze(
+      productUserSpeedConfigsFor(this.config).map((config) =>
+        Object.freeze({
+          config,
+          text: PRODUCT_PAGE_TEXT.user[config.textKey],
+        }),
+      ),
+    );
+    this.userSpeedWrites = new Map(
+      this.userSpeedControls.map(({ config }) => [
+        config.field,
+        config.catalogFactory(config.range.min),
+      ]),
+    );
     this.context = this.resolveNavigationContext(routeProfile);
     this.viewModel = this.createInitialViewModel(
       profile,
@@ -231,7 +267,8 @@ export class ProductPage implements OnDestroy {
       !this.viewModel.loading &&
       !this.productDataLoadService.isLoading &&
       !this.bleService.isWriting &&
-      this.lockModeWriteState.status !== 'executing';
+      this.lockModeWriteState.status !== 'executing' &&
+      this.userSpeedWriteState.status !== 'executing';
   }
 
   get hasProductNavigationContext(): boolean {
@@ -252,6 +289,12 @@ export class ProductPage implements OnDestroy {
     return this.pageContextCurrent &&
       this.userFieldVisible('lock-mode') &&
       this.lockModeControls.length > 0 &&
+      this.viewModel.reads.userParameters.status === 'available';
+  }
+
+  get showUserSpeedControls(): boolean {
+    return this.pageContextCurrent &&
+      this.userSpeedControls.length > 0 &&
       this.viewModel.reads.userParameters.status === 'available';
   }
 
@@ -279,6 +322,7 @@ export class ProductPage implements OnDestroy {
         this.bleService.disconnectingDeviceId !== null ||
         this.bleWriteExecutionService.isExecuting ||
         this.lockModeWriteState.status === 'executing' ||
+        this.userSpeedWriteState.status === 'executing' ||
         this.motorCommandsBlockedByLockMode() ||
         this.commandInProgress) {
       return false;
@@ -756,6 +800,82 @@ export class ProductPage implements OnDestroy {
     return this.requestProductCommand(config);
   }
 
+  currentUserSpeedValue(config: ProductUserSpeedUiConfig): number | null {
+    const value = this.viewModel.reads.userParameters.value;
+    if (value === null) {
+      return null;
+    }
+    return config.field === 'open-speed'
+      ? value.openSpeed
+      : value.closeSpeed;
+  }
+
+  userSpeedDraftValue(config: ProductUserSpeedUiConfig): number {
+    return this.userSpeedDrafts.get(config.field) ??
+      this.currentUserSpeedValue(config) ??
+      config.range.min;
+  }
+
+  setUserSpeedDraftValue(
+    config: ProductUserSpeedUiConfig,
+    eventOrValue: Event | number,
+  ): void {
+    if (!this.isUserSpeedControl(config)) {
+      return;
+    }
+    const value = typeof eventOrValue === 'number'
+      ? eventOrValue
+      : rangeEventNumber(eventOrValue);
+    if (value === null || !isValidProductUserSpeedValue(config, value)) {
+      return;
+    }
+    this.userSpeedDrafts.set(config.field, value);
+    if (this.userSpeedWriteState.field === config.field &&
+        this.userSpeedWriteState.status !== 'executing') {
+      this.userSpeedWriteState = Object.freeze({
+        status: 'idle',
+        field: null,
+        message: null,
+      });
+    }
+  }
+
+  canApplyUserSpeed(config: ProductUserSpeedUiConfig): boolean {
+    if (!this.isUserSpeedControl(config) ||
+        !this.showUserSpeedControls ||
+        !this.isCurrentContext() ||
+        this.viewModel.loading ||
+        this.productDataLoadService.isLoading ||
+        this.bleService.isWriting ||
+        this.bleService.disconnectingDeviceId !== null ||
+        this.bleWriteExecutionService.isExecuting ||
+        this.lockModeWriteState.status === 'executing' ||
+        this.userSpeedWriteState.status === 'executing' ||
+        this.commandInProgress) {
+      return false;
+    }
+    const currentValue = this.currentUserSpeedValue(config);
+    const draftValue = this.userSpeedDraftValue(config);
+    if (currentValue === null ||
+        draftValue === currentValue ||
+        !isValidProductUserSpeedValue(config, draftValue)) {
+      return false;
+    }
+    const write = this.userSpeedWrites.get(config.field);
+    if (write === undefined) {
+      return false;
+    }
+    const properties = this.bleService.getGattCharacteristicProperties(
+      write.serviceUuid,
+      write.characteristicUuid,
+      this.context?.deviceId,
+    );
+    return properties.servicePresent &&
+      properties.characteristicPresent &&
+      properties.propertiesAvailable &&
+      properties.write === true;
+  }
+
   isLockModeActive(config: ProductLockModeUiConfig): boolean {
     return this.currentLockMode() === config.mode;
   }
@@ -773,6 +893,7 @@ export class ProductPage implements OnDestroy {
         this.bleService.disconnectingDeviceId !== null ||
         this.bleWriteExecutionService.isExecuting ||
         this.lockModeWriteState.status === 'executing' ||
+        this.userSpeedWriteState.status === 'executing' ||
         this.commandInProgress) {
       return false;
     }
@@ -941,6 +1062,81 @@ export class ProductPage implements OnDestroy {
     }
   }
 
+  async requestUserSpeedChange(
+    config: ProductUserSpeedUiConfig,
+  ): Promise<void> {
+    if (!this.canApplyUserSpeed(config) || this.context === null) {
+      return;
+    }
+    const draftValue = this.userSpeedDraftValue(config);
+    if (!isValidProductUserSpeedValue(config, draftValue)) {
+      return;
+    }
+    const write = config.catalogFactory(draftValue);
+    const context = this.context;
+    const contextStatus = this.writeContextStatus(context, write);
+    if (contextStatus !== null) {
+      this.userSpeedWriteState = Object.freeze({
+        status: 'failed',
+        field: config.field,
+        message: this.userSpeedFailureMessage(contextStatus),
+      });
+      return;
+    }
+
+    const attemptId = this.nextCommandIdentifier('attempt');
+    const confirmedAt = Date.now();
+    const authorization = createProductUserSpeedAuthorization({
+      write,
+      deviceId: context.deviceId,
+      connectionGeneration: context.connectionGeneration,
+      attemptId,
+      confirmationId: this.nextCommandIdentifier('confirmation'),
+      confirmedAt,
+    });
+    this.userSpeedWriteState = Object.freeze({
+      status: 'executing',
+      field: config.field,
+      message: this.text.userSpeedControls.executing,
+    });
+
+    const result = await this.bleWriteExecutionService.execute({
+      write,
+      deviceId: context.deviceId,
+      profile: config.profile,
+      connectionGeneration: context.connectionGeneration,
+      identification: { profile: config.profile, confidence: 'strong' },
+      authorization,
+      attemptId,
+      confirmationPolicy: config.confirmationPolicy,
+      policy: config.policy,
+    });
+    if (!this.isCurrentContext() || this.context !== context) {
+      this.userSpeedWriteState = Object.freeze({
+        status: 'failed',
+        field: config.field,
+        message: this.text.openCommand.stale,
+      });
+      return;
+    }
+    if (result.status === 'success') {
+      this.userSpeedWriteState = Object.freeze({
+        status: 'sent',
+        field: config.field,
+        message: this.text.userSpeedControls.sent,
+      });
+      if (this.canRefresh) {
+        await this.refreshProductData();
+      }
+      return;
+    }
+    this.userSpeedWriteState = Object.freeze({
+      status: 'failed',
+      field: config.field,
+      message: this.text.userSpeedControls.failed,
+    });
+  }
+
   async requestLockModeChange(
     config: ProductLockModeUiConfig,
     eventOrChecked: CustomEvent<{ readonly checked: boolean }> | boolean,
@@ -1035,6 +1231,7 @@ export class ProductPage implements OnDestroy {
     if (this.viewModel.loading) {
       this.productDataLoadService.cancelCurrentLoad();
     }
+    this.resetUserSpeedEditing();
     this.subscriptions.unsubscribe();
   }
 
@@ -1157,6 +1354,7 @@ export class ProductPage implements OnDestroy {
       lastUpdatedAt: result.completedAt,
       globalError: result.error?.message ?? null,
     };
+    this.userSpeedDrafts.clear();
   }
 
   private handleDisconnection(event: BleDisconnectionEvent): void {
@@ -1199,6 +1397,7 @@ export class ProductPage implements OnDestroy {
     if (this.viewModel.loading) {
       this.productDataLoadService.cancelCurrentLoad();
     }
+    this.resetUserSpeedEditing();
     this.viewModel = {
       ...this.viewModel,
       connectionState: state,
@@ -1210,6 +1409,20 @@ export class ProductPage implements OnDestroy {
       lastUpdatedAt: null,
       globalError: this.connectionStateLabel(state),
     };
+  }
+
+  private resetUserSpeedEditing(): void {
+    this.userSpeedDrafts.clear();
+    this.userSpeedWriteState = Object.freeze({
+      status: 'idle',
+      field: null,
+      message: null,
+    });
+  }
+
+  private isUserSpeedControl(config: ProductUserSpeedUiConfig): boolean {
+    return config.profile === this.config.profile &&
+      this.userSpeedControls.some((control) => control.config === config);
   }
 
   private isCurrentCommandCycle(cycle: number): boolean {
@@ -1273,6 +1486,19 @@ export class ProductPage implements OnDestroy {
         return this.text.openCommand.stale;
       case 'unavailable':
         return this.text.lockModeControls.unavailable;
+    }
+  }
+
+  private userSpeedFailureMessage(
+    status: 'disconnected' | 'stale' | 'unavailable',
+  ): string {
+    switch (status) {
+      case 'disconnected':
+        return this.text.openCommand.disconnected;
+      case 'stale':
+        return this.text.openCommand.stale;
+      case 'unavailable':
+        return this.text.userSpeedControls.unavailable;
     }
   }
 
@@ -1732,6 +1958,15 @@ function isNullableNonNegativeInteger(value: unknown): boolean {
 
 function isNonNegativeInteger(value: unknown): value is number {
   return Number.isInteger(value) && (value as number) >= 0;
+}
+
+function rangeEventNumber(event: Event): number | null {
+  const detail = (event as CustomEvent<{ readonly value?: unknown }>).detail;
+  const value = detail?.value;
+  if (typeof value === 'number') {
+    return value;
+  }
+  return null;
 }
 
 function splitDisplayName(
