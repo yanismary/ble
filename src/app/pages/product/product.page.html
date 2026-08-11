@@ -301,6 +301,33 @@
               }
             </div>
           }
+          @if (showUserPeripheralControls) {
+            <div class="user-peripheral-controls">
+              @for (peripheralControl of userPeripheralControls; track peripheralControl.config.field) {
+                <ion-toggle
+                  class="user-peripheral-toggle"
+                  [checked]="currentUserPeripheralState(peripheralControl.config) === true"
+                  [disabled]="!canToggleUserPeripheral(peripheralControl.config)"
+                  (ionChange)="requestUserPeripheralChange(peripheralControl.config, $event)"
+                >
+                  {{ peripheralControl.text }}
+                </ion-toggle>
+              }
+              @if (userPeripheralWriteState.message) {
+                <p
+                  class="command-state"
+                  role="status"
+                  aria-live="polite"
+                  [attr.data-tone]="userPeripheralWriteState.status === 'failed' ? 'error' : 'neutral'"
+                >
+                  @if (userPeripheralWriteState.status === 'executing') {
+                    <ion-spinner name="crescent"></ion-spinner>
+                  }
+                  <span>{{ userPeripheralWriteState.message }}</span>
+                </p>
+              }
+            </div>
+          }
         }
       </article>
 

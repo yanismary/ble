@@ -110,8 +110,6 @@ const PRODUCT_PAGE_CONFIG_DEFINITIONS = {
       'open-speed',
       'close-speed',
       'short-timing',
-      'static-light',
-      'dynamic-light',
       'rgb',
     ],
     professionalFields: [

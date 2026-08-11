@@ -38,6 +38,12 @@ export const PRODUCT_PAGE_TEXT = {
     failed: 'Échec de l’envoi de la temporisation.',
     unavailable: 'Commande de temporisation indisponible',
   },
+  userPeripheralControls: {
+    executing: 'Envoi du réglage d’éclairage…',
+    sent: 'Réglage d’éclairage envoyé. Lecture de contrôle en cours.',
+    failed: 'Échec de l’envoi du réglage d’éclairage.',
+    unavailable: 'Commande d’éclairage indisponible',
+  },
   weightRangeControls: {
     apply: 'Appliquer',
     current: 'Plage lue :',

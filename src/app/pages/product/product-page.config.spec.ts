@@ -19,6 +19,9 @@ describe('Product page configuration', () => {
     const config = PRODUCT_PAGE_CONFIG.widoor;
 
     expect(config.userFields).not.toContain('long-timing');
+    expect(config.userFields).not.toContain('static-light');
+    expect(config.userFields).not.toContain('dynamic-light');
+    expect(config.userFields).toContain('rgb');
     expect(config.professionalFields).toContain('break-force-at-open');
     expect(config.professionalFields).toContain('near-open-proportional');
     expect(config.professionalFields).toContain('near-open-integral');

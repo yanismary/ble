@@ -91,6 +91,12 @@ import {
   productUserTimingConfigsFor,
 } from './product-user-timing';
 import {
+  ProductUserPeripheralField,
+  ProductUserPeripheralUiConfig,
+  createProductUserPeripheralAuthorization,
+  productUserPeripheralConfigsFor,
+} from './product-user-peripheral';
+import {
   ProductWeightRangeUiConfig,
   createProductWeightRangeAuthorization,
   isSameProductWeightRange,
@@ -219,6 +225,12 @@ export class ProductPage implements OnDestroy {
       ProductUserTimingUiConfig['textKey']
     ];
   }[];
+  readonly userPeripheralControls: readonly {
+    readonly config: ProductUserPeripheralUiConfig;
+    readonly text: typeof PRODUCT_PAGE_TEXT.user[
+      ProductUserPeripheralUiConfig['textKey']
+    ];
+  }[];
   readonly weightRangeControls: readonly {
     readonly config: ProductWeightRangeUiConfig;
   }[];
@@ -243,6 +255,11 @@ export class ProductPage implements OnDestroy {
   userTimingWriteState: {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly field: ProductUserTimingField | null;
+    readonly message: string | null;
+  } = Object.freeze({ status: 'idle', field: null, message: null });
+  userPeripheralWriteState: {
+    readonly status: 'idle' | 'executing' | 'sent' | 'failed';
+    readonly field: ProductUserPeripheralField | null;
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', field: null, message: null });
   weightRangeWriteState: {
@@ -336,6 +353,14 @@ export class ProductPage implements OnDestroy {
         config.catalogFactory(config.range.min),
       ]),
     );
+    this.userPeripheralControls = Object.freeze(
+      productUserPeripheralConfigsFor(this.config).map((config) =>
+        Object.freeze({
+          config,
+          text: PRODUCT_PAGE_TEXT.user[config.textKey],
+        }),
+      ),
+    );
     this.weightRangeControls = Object.freeze(
       productWeightRangeConfigsFor(this.config).map((config) =>
         Object.freeze({ config }),
@@ -390,6 +415,7 @@ export class ProductPage implements OnDestroy {
       this.lockModeWriteState.status !== 'executing' &&
       this.userSpeedWriteState.status !== 'executing' &&
       this.userTimingWriteState.status !== 'executing' &&
+      this.userPeripheralWriteState.status !== 'executing' &&
       this.weightRangeWriteState.status !== 'executing' &&
       this.professionalScalarWriteState.status !== 'executing';
   }
@@ -424,6 +450,12 @@ export class ProductPage implements OnDestroy {
   get showUserTimingControls(): boolean {
     return this.pageContextCurrent &&
       this.userTimingControls.length > 0 &&
+      this.viewModel.reads.userParameters.status === 'available';
+  }
+
+  get showUserPeripheralControls(): boolean {
+    return this.pageContextCurrent &&
+      this.userPeripheralControls.length > 0 &&
       this.viewModel.reads.userParameters.status === 'available';
   }
 
@@ -490,6 +522,7 @@ export class ProductPage implements OnDestroy {
         this.lockModeWriteState.status === 'executing' ||
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
+        this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.motorCommandsBlockedByLockMode() ||
@@ -1021,6 +1054,7 @@ export class ProductPage implements OnDestroy {
         this.lockModeWriteState.status === 'executing' ||
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
+        this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.commandInProgress) {
@@ -1100,6 +1134,7 @@ export class ProductPage implements OnDestroy {
         this.lockModeWriteState.status === 'executing' ||
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
+        this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.commandInProgress) {
@@ -1116,6 +1151,53 @@ export class ProductPage implements OnDestroy {
     if (write === undefined) {
       return false;
     }
+    const properties = this.bleService.getGattCharacteristicProperties(
+      write.serviceUuid,
+      write.characteristicUuid,
+      this.context?.deviceId,
+    );
+    return properties.servicePresent &&
+      properties.characteristicPresent &&
+      properties.propertiesAvailable &&
+      properties.write === true;
+  }
+
+  currentUserPeripheralState(
+    config: ProductUserPeripheralUiConfig,
+  ): boolean | null {
+    const value = this.viewModel.reads.userParameters.value;
+    if (value === null) {
+      return null;
+    }
+    switch (config.field) {
+      case 'static-light':
+        return value.peripheralFlags.staticLight;
+      case 'dynamic-light':
+        return value.peripheralFlags.dynamicLight;
+      case 'rgb':
+        return value.peripheralFlags.rgbIndicator;
+    }
+  }
+
+  canToggleUserPeripheral(config: ProductUserPeripheralUiConfig): boolean {
+    if (!this.isUserPeripheralControl(config) ||
+        !this.showUserPeripheralControls ||
+        !this.isCurrentContext() ||
+        this.viewModel.loading ||
+        this.productDataLoadService.isLoading ||
+        this.bleService.isWriting ||
+        this.bleService.disconnectingDeviceId !== null ||
+        this.bleWriteExecutionService.isExecuting ||
+        this.lockModeWriteState.status === 'executing' ||
+        this.userSpeedWriteState.status === 'executing' ||
+        this.userTimingWriteState.status === 'executing' ||
+        this.userPeripheralWriteState.status === 'executing' ||
+        this.weightRangeWriteState.status === 'executing' ||
+        this.professionalScalarWriteState.status === 'executing' ||
+        this.commandInProgress) {
+      return false;
+    }
+    const write = config.catalogFactory(true);
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
       write.characteristicUuid,
@@ -1178,6 +1260,7 @@ export class ProductPage implements OnDestroy {
         this.lockModeWriteState.status === 'executing' ||
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
+        this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.commandInProgress) {
@@ -1281,6 +1364,7 @@ export class ProductPage implements OnDestroy {
         this.lockModeWriteState.status === 'executing' ||
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
+        this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.commandInProgress) {
@@ -1327,6 +1411,7 @@ export class ProductPage implements OnDestroy {
         this.lockModeWriteState.status === 'executing' ||
         this.userSpeedWriteState.status === 'executing' ||
         this.userTimingWriteState.status === 'executing' ||
+        this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.commandInProgress) {
@@ -1647,6 +1732,85 @@ export class ProductPage implements OnDestroy {
     });
   }
 
+  async requestUserPeripheralChange(
+    config: ProductUserPeripheralUiConfig,
+    eventOrChecked: CustomEvent<{ readonly checked: boolean }> | boolean,
+  ): Promise<void> {
+    const checked = typeof eventOrChecked === 'boolean'
+      ? eventOrChecked
+      : eventOrChecked.detail.checked;
+    const currentState = this.currentUserPeripheralState(config);
+    if (currentState === null ||
+        checked === currentState ||
+        !this.canToggleUserPeripheral(config) ||
+        this.context === null) {
+      return;
+    }
+    const write = config.catalogFactory(checked);
+    const context = this.context;
+    const contextStatus = this.writeContextStatus(context, write);
+    if (contextStatus !== null) {
+      this.userPeripheralWriteState = Object.freeze({
+        status: 'failed',
+        field: config.field,
+        message: this.userPeripheralFailureMessage(contextStatus),
+      });
+      return;
+    }
+
+    const attemptId = this.nextCommandIdentifier('attempt');
+    const confirmedAt = Date.now();
+    const authorization = createProductUserPeripheralAuthorization({
+      write,
+      deviceId: context.deviceId,
+      connectionGeneration: context.connectionGeneration,
+      attemptId,
+      confirmationId: this.nextCommandIdentifier('confirmation'),
+      confirmedAt,
+    });
+    this.userPeripheralWriteState = Object.freeze({
+      status: 'executing',
+      field: config.field,
+      message: this.text.userPeripheralControls.executing,
+    });
+
+    const result = await this.bleWriteExecutionService.execute({
+      write,
+      deviceId: context.deviceId,
+      profile: config.profile,
+      connectionGeneration: context.connectionGeneration,
+      identification: { profile: config.profile, confidence: 'strong' },
+      authorization,
+      attemptId,
+      confirmationPolicy: config.confirmationPolicy,
+      policy: config.policy,
+    });
+    if (!this.isCurrentContext() || this.context !== context) {
+      this.userPeripheralWriteState = Object.freeze({
+        status: 'failed',
+        field: config.field,
+        message: this.text.openCommand.stale,
+      });
+      return;
+    }
+    if (result.status === 'success') {
+      this.userPeripheralWriteState = Object.freeze({
+        status: 'sent',
+        field: config.field,
+        message: this.text.userPeripheralControls.sent,
+      });
+      if (this.canRefresh) {
+        await this.refreshProductData();
+      }
+      return;
+    }
+    this.userPeripheralWriteState = Object.freeze({
+      status: 'failed',
+      field: config.field,
+      message: this.text.userPeripheralControls.failed,
+    });
+  }
+
   async requestWeightRangeChange(): Promise<void> {
     if (!this.canApplyWeightRange() || this.context === null) {
       return;
@@ -1942,6 +2106,7 @@ export class ProductPage implements OnDestroy {
     }
     this.resetUserSpeedEditing();
     this.resetUserTimingEditing();
+    this.resetUserPeripheralEditing();
     this.resetWeightRangeEditing();
     this.resetProfessionalScalarEditing();
     this.resetProfessionalAccess();
@@ -2115,6 +2280,7 @@ export class ProductPage implements OnDestroy {
     }
     this.resetUserSpeedEditing();
     this.resetUserTimingEditing();
+    this.resetUserPeripheralEditing();
     this.resetWeightRangeEditing();
     this.resetProfessionalScalarEditing();
     this.resetProfessionalAccess();
@@ -2157,6 +2323,21 @@ export class ProductPage implements OnDestroy {
   private isUserTimingControl(config: ProductUserTimingUiConfig): boolean {
     return config.profile === this.config.profile &&
       this.userTimingControls.some((control) => control.config === config);
+  }
+
+  private resetUserPeripheralEditing(): void {
+    this.userPeripheralWriteState = Object.freeze({
+      status: 'idle',
+      field: null,
+      message: null,
+    });
+  }
+
+  private isUserPeripheralControl(
+    config: ProductUserPeripheralUiConfig,
+  ): boolean {
+    return config.profile === this.config.profile &&
+      this.userPeripheralControls.some((control) => control.config === config);
   }
 
   private resetWeightRangeEditing(): void {
@@ -2325,6 +2506,19 @@ export class ProductPage implements OnDestroy {
         return this.text.openCommand.stale;
       case 'unavailable':
         return this.text.userTimingControls.unavailable;
+    }
+  }
+
+  private userPeripheralFailureMessage(
+    status: 'disconnected' | 'stale' | 'unavailable',
+  ): string {
+    switch (status) {
+      case 'disconnected':
+        return this.text.openCommand.disconnected;
+      case 'stale':
+        return this.text.openCommand.stale;
+      case 'unavailable':
+        return this.text.userPeripheralControls.unavailable;
     }
   }
 

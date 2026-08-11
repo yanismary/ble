@@ -55,6 +55,7 @@ import { PRODUCT_PAGE_CONFIG } from './product-page.config';
 import { productLockModeConfigsFor } from './product-lock-mode';
 import { productUserSpeedConfigsFor } from './product-user-speed';
 import { productUserTimingConfigsFor } from './product-user-timing';
+import { productUserPeripheralConfigsFor } from './product-user-peripheral';
 import { productProfessionalScalarConfigsFor } from
   './product-professional-scalar';
 import {
@@ -699,6 +700,253 @@ describe('ProductPage', () => {
     expect(component.canApplyUserTiming(garlineLongControl)).toBeFalse();
     expect(writeExecutionService.execute).not.toHaveBeenCalled();
   });
+
+  it('should expose only the Widoor RGB user lighting toggle from BLE state',
+    async () => {
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithPeripherals({
+          staticLight: true,
+          dynamicLight: true,
+          rgbIndicator: true,
+        }),
+      );
+
+      await component.refreshProductData();
+      fixture.detectChanges();
+
+      expect(component.showUserPeripheralControls).toBeTrue();
+      expect(component.userPeripheralControls.map((control) =>
+        control.config.field,
+      )).toEqual(['rgb']);
+      expect(component.currentUserPeripheralState(
+        component.userPeripheralControls[0].config,
+      )).toBeTrue();
+      const element = fixture.nativeElement as HTMLElement;
+      expect(element.querySelectorAll('ion-toggle.user-peripheral-toggle')
+        .length).toBe(1);
+      expect(element.textContent).toContain(component.text.user.rgb);
+      expect(element.textContent).not.toContain(
+        component.text.user.staticLight,
+      );
+      expect(element.textContent).not.toContain(
+        component.text.user.dynamicLight,
+      );
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should write Widoor RGB changes through the executor', async () => {
+    loadService.nextResult = completeLoadResult(
+      'success',
+      'widoor',
+      userValueWithPeripherals({ rgbIndicator: false }),
+    );
+    writeExecutionService.nextResult = userPeripheralExecutionResult(
+      'widoor',
+      'rgb-indicator',
+      '05 03 01',
+    );
+
+    await component.refreshProductData();
+    const rgbControl = component.userPeripheralControls[0].config;
+    await component.requestUserPeripheralChange(rgbControl, true);
+
+    expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+    const request = writeExecutionService.execute.calls.mostRecent()
+      .args[0] as LegacyBleWriteRequest;
+    expect(request.profile).toBe('widoor');
+    expect(request.write.operation).toBe('rgb-indicator');
+    expect(request.write.serviceUuid).toBe(BLE_UUIDS.widoorService);
+    expect(request.write.characteristicUuid)
+      .toBe(BLE_UUIDS.userParametersCharacteristic);
+    expect(request.write.payloadHex).toBe('05 03 01');
+    expect(Array.from(request.write.payload)).toEqual([0x05, 0x03, 0x01]);
+    expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
+    expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+    expect(request.authorization).toEqual(jasmine.objectContaining({
+      profile: 'widoor',
+      operation: 'rgb-indicator',
+      payloadHex: '05 03 01',
+    }));
+    expect(request.authorization?.motorMovementConfirmed).toBeUndefined();
+    expect(component.userPeripheralWriteState.status).toBe('sent');
+    expect(loadService.loadProductData).toHaveBeenCalledTimes(2);
+  });
+
+  it('should keep decoded user lighting state when a write fails',
+    async () => {
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithPeripherals({ rgbIndicator: false }),
+      );
+      writeExecutionService.nextResult = {
+        ...userPeripheralExecutionResult(
+          'widoor',
+          'rgb-indicator',
+          '05 03 01',
+        ),
+        status: 'failed',
+        nativeWriteCompleted: false,
+        error: {
+          code: 'native-write-failed',
+          message: 'Native failure',
+        },
+      };
+
+      await component.refreshProductData();
+      const rgbControl = component.userPeripheralControls[0].config;
+      await component.requestUserPeripheralChange(rgbControl, true);
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(component.currentUserPeripheralState(rgbControl)).toBeFalse();
+      expect(component.userPeripheralWriteState.status).toBe('failed');
+      expect(component.userPeripheralWriteState.message)
+        .toBe(component.text.userPeripheralControls.failed);
+    },
+  );
+
+  it('should reject user lighting controls from another profile', async () => {
+    loadService.nextResult = completeLoadResult(
+      'success',
+      'widoor',
+      userValueWithPeripherals({ rgbIndicator: false }),
+    );
+    await component.refreshProductData();
+    const moventivStaticControl = productUserPeripheralConfigsFor(
+      PRODUCT_PAGE_CONFIG['moventiv-60'],
+    )[0];
+
+    await component.requestUserPeripheralChange(moventivStaticControl, true);
+
+    expect(component.canToggleUserPeripheral(moventivStaticControl))
+      .toBeFalse();
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+  });
+
+  it('should block a second user lighting write while one is pending',
+    async () => {
+      const bleService = new FakeBleService();
+      const loadService = new FakeProductDataLoadService();
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'moventiv-60',
+        userValueWithPeripherals({
+          staticLight: false,
+          dynamicLight: true,
+          rgbIndicator: false,
+        }),
+      );
+      const writeExecutionService = new FakeBleWriteExecutionService();
+      let resolveWrite!: (value: LegacyBleWriteExecutionResult) => void;
+      writeExecutionService.execute.and.returnValue(new Promise((resolve) => {
+        resolveWrite = resolve;
+      }));
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          {
+            provide: AlertController,
+            useValue: {
+              create: jasmine.createSpy('create').and.resolveTo({
+                present: async () => undefined,
+                onDidDismiss: async () => ({ role: 'confirm' }),
+              }),
+            },
+          },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          { provide: ProductDataLoadService, useValue: loadService },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: {
+              snapshot: { data: { profile: 'moventiv-60' } },
+            },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState('moventiv-60') },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+      await component.refreshProductData();
+      const dynamicControl = component.userPeripheralControls.find(
+        (candidate) => candidate.config.field === 'dynamic-light',
+      )!.config;
+      const rgbControl = component.userPeripheralControls.find(
+        (candidate) => candidate.config.field === 'rgb',
+      )!.config;
+
+      const firstWrite = component.requestUserPeripheralChange(
+        dynamicControl,
+        false,
+      );
+
+      expect(component.userPeripheralWriteState.status).toBe('executing');
+      expect(component.canToggleUserPeripheral(rgbControl)).toBeFalse();
+      await component.requestUserPeripheralChange(rgbControl, true);
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+
+      resolveWrite(userPeripheralExecutionResult(
+        'moventiv-60',
+        'dynamic-light',
+        '05 07 02',
+      ));
+      await firstWrite;
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(component.userPeripheralWriteState.status).toBe('sent');
+    },
+  );
+
+  it('should reset user lighting write state when the product disconnects',
+    async () => {
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithPeripherals({ rgbIndicator: false }),
+      );
+      writeExecutionService.nextResult = {
+        ...userPeripheralExecutionResult(
+          'widoor',
+          'rgb-indicator',
+          '05 03 01',
+        ),
+        status: 'failed',
+        nativeWriteCompleted: false,
+        error: {
+          code: 'native-write-failed',
+          message: 'Native failure',
+        },
+      };
+      await component.refreshProductData();
+      const rgbControl = component.userPeripheralControls[0].config;
+      await component.requestUserPeripheralChange(rgbControl, true);
+
+      bleService.disconnect();
+
+      expect(component.currentUserPeripheralState(rgbControl)).toBeNull();
+      expect(component.canToggleUserPeripheral(rgbControl)).toBeFalse();
+      expect(component.userPeripheralWriteState.status).toBe('idle');
+    },
+  );
 
   it('should write Widoor supported lock-mode transitions through the executor',
     async () => {
@@ -1517,7 +1765,9 @@ describe('ProductPage', () => {
     expect(text).toContain('26580');
     expect(text).toContain('Cycles depuis maintenance');
     expect(text).toContain('0');
-    expect(text).toContain('Éclairage statique');
+    expect(text).toContain(component.text.user.rgb);
+    expect(text).not.toContain(component.text.user.staticLight);
+    expect(text).not.toContain(component.text.user.dynamicLight);
     expect(text).toContain('Non');
     expect(text).toContain('3.5.3.348');
     expect(text).toContain('Initialisations');
@@ -2416,6 +2666,129 @@ describe('ProductPage timing controls for profile variants', () => {
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
     },
   );
+});
+
+describe('ProductPage user lighting controls for profile variants', () => {
+  for (const scenario of [
+    {
+      profile: 'moventiv-60',
+      current: {
+        staticLight: true,
+        dynamicLight: true,
+        rgbIndicator: false,
+      },
+      controls: ['static-light', 'dynamic-light', 'rgb'],
+      field: 'dynamic-light',
+      checked: false,
+      operation: 'dynamic-light',
+      payloadHex: '05 07 02',
+      payload: [0x05, 0x07, 0x02],
+    },
+    {
+      profile: 'garline',
+      current: {
+        staticLight: false,
+        dynamicLight: true,
+        rgbIndicator: true,
+      },
+      controls: ['static-light', 'dynamic-light', 'rgb'],
+      field: 'static-light',
+      checked: true,
+      operation: 'static-light',
+      payloadHex: '05 06 01',
+      payload: [0x05, 0x06, 0x01],
+    },
+  ] as const) {
+    it(`should apply ${scenario.profile} user lighting writes`,
+      async () => {
+        const bleService = new FakeBleService();
+        const loadService = new FakeProductDataLoadService();
+        loadService.nextResult = completeLoadResult(
+          'success',
+          scenario.profile,
+          userValueWithPeripherals(scenario.current),
+        );
+        const writeExecutionService = new FakeBleWriteExecutionService();
+        writeExecutionService.nextResult = userPeripheralExecutionResult(
+          scenario.profile,
+          scenario.operation,
+          scenario.payloadHex,
+        );
+
+        TestBed.resetTestingModule();
+        await TestBed.configureTestingModule({
+          imports: [ProductPage],
+          providers: [
+            { provide: BleService, useValue: bleService },
+            {
+              provide: AlertController,
+              useValue: {
+                create: jasmine.createSpy('create').and.resolveTo({
+                  present: async () => undefined,
+                  onDidDismiss: async () => ({ role: 'confirm' }),
+                }),
+              },
+            },
+            {
+              provide: BleWriteExecutionService,
+              useValue: writeExecutionService,
+            },
+            { provide: ProductDataLoadService, useValue: loadService },
+            { provide: ProductDetection, useClass: ProductDetection },
+            {
+              provide: ActivatedRoute,
+              useValue: {
+                snapshot: { data: { profile: scenario.profile } },
+              },
+            },
+            {
+              provide: Router,
+              useValue: {
+                getCurrentNavigation: () => ({
+                  extras: { state: navigationState(scenario.profile) },
+                }),
+                navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+              },
+            },
+          ],
+        }).compileComponents();
+
+        const fixture = TestBed.createComponent(ProductPage);
+        const component = fixture.componentInstance;
+        fixture.detectChanges();
+        await component.refreshProductData();
+        fixture.detectChanges();
+        const control = component.userPeripheralControls.find(
+          (candidate) => candidate.config.field === scenario.field,
+        )?.config;
+
+        expect(component.showUserPeripheralControls).toBeTrue();
+        expect(component.userPeripheralControls.map((candidate) =>
+          candidate.config.field,
+        )).toEqual(scenario.controls);
+        expect(control).toBeDefined();
+        await component.requestUserPeripheralChange(
+          control!,
+          scenario.checked,
+        );
+
+        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        const request = writeExecutionService.execute.calls.mostRecent()
+          .args[0] as LegacyBleWriteRequest;
+        expect(request.profile).toBe(scenario.profile);
+        expect(request.write.operation).toBe(scenario.operation);
+        expect(request.write.serviceUuid)
+          .toBe(BLE_UUIDS.moventivGarlineService);
+        expect(request.write.characteristicUuid)
+          .toBe(BLE_UUIDS.userParametersCharacteristic);
+        expect(request.write.payloadHex).toBe(scenario.payloadHex);
+        expect(Array.from(request.write.payload)).toEqual(scenario.payload);
+        expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
+        expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+        expect(component.userPeripheralWriteState.status).toBe('sent');
+      },
+    );
+  }
 });
 
 describe('ProductPage weight-range controls for profile variants', () => {
@@ -3751,6 +4124,37 @@ function userTimingExecutionResult(
   };
 }
 
+function userPeripheralExecutionResult(
+  profile: KnownProductProfile,
+  operation: 'static-light' | 'dynamic-light' | 'rgb-indicator',
+  payloadHex: string,
+): LegacyBleWriteExecutionResult {
+  return {
+    status: 'success',
+    operation,
+    profile,
+    deviceId: 'device-1',
+    serviceUuid: profile === 'widoor'
+      ? BLE_UUIDS.widoorService
+      : BLE_UUIDS.moventivGarlineService,
+    characteristicUuid: BLE_UUIDS.userParametersCharacteristic,
+    payloadHex,
+    length: 3,
+    destructiveLevel: 'non-destructive-setting',
+    hardwareValidationStatus: 'phase1-reference-only',
+    policyOverrideUsed: true,
+    startedAt: 100,
+    completedAt: 200,
+    connectionGeneration: 4,
+    nativeWriteCompleted: true,
+    confirmationStatus: 'not-required',
+    confirmedMotorStateRaw: null,
+    movementStartConfirmed: false,
+    timedCycleValidationStatus: 'not-observed',
+    error: null,
+  };
+}
+
 function weightRangeExecutionResult(
   profile: Exclude<KnownProductProfile, 'widoor'>,
   payloadHex: string,
@@ -4145,6 +4549,18 @@ function userValueWithTimings(
     ...userValue(),
     shortOpenTime,
     longOpenTime,
+  };
+}
+
+function userValueWithPeripherals(
+  flags: Partial<BleUserParameters['peripheralFlags']>,
+): BleUserParameters {
+  return {
+    ...userValue(),
+    peripheralFlags: {
+      ...userValue().peripheralFlags,
+      ...flags,
+    },
   };
 }
 
