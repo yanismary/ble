@@ -52,6 +52,10 @@ describe('Product professional scalar controls', () => {
     expect(garlineObstacle.range).toEqual({ min: 1, max: 5 });
     expect(moventivControls[0].unit).toBe('%');
     expect(moventivControls[1].unit).toBeNull();
+    expect(widoorBreak.requiresProfessionalAccess).toBeFalse();
+    expect(moventivControls[0].requiresProfessionalAccess).toBeTrue();
+    expect(moventivControls[1].requiresProfessionalAccess).toBeTrue();
+    expect(garlineObstacle.requiresProfessionalAccess).toBeTrue();
   });
 
   it('validates min, max and intermediate values outside the template',

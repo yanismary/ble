@@ -53,6 +53,10 @@ import {
   ProductDataLoadService,
 } from '../../core/services/product-data-load.service';
 import {
+  ProfessionalAccessContext,
+  ProfessionalAccessService,
+} from '../../core/services/professional-access.service';
+import {
   MotorStateFrame,
   ProductDetection,
 } from '../../core/services/product-detection';
@@ -65,6 +69,8 @@ import {
   isKnownProductProfile,
 } from './product-page.config';
 import { PRODUCT_PAGE_TEXT } from './product-page.text';
+import { productProfessionalFieldRequiresAccess } from
+  './product-professional-access';
 import {
   ProductLockModeUiConfig,
   createProductLockModeAuthorization,
@@ -157,6 +163,8 @@ export class ProductPage implements OnDestroy {
   private readonly bleWriteExecutionService =
     inject(BleWriteExecutionService);
   private readonly ngZone = inject(NgZone);
+  private readonly professionalAccessService =
+    inject(ProfessionalAccessService);
   private readonly productDataLoadService = inject(ProductDataLoadService);
   private readonly productDetection = inject(ProductDetection);
   private readonly route = inject(ActivatedRoute);
@@ -246,6 +254,10 @@ export class ProductPage implements OnDestroy {
     readonly field: ProductProfessionalScalarField | null;
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', field: null, message: null });
+  professionalAccessState: {
+    readonly status: 'locked' | 'unlocked' | 'failed';
+    readonly message: string | null;
+  } = Object.freeze({ status: 'locked', message: null });
   private commandHistoryEntries: readonly ProductCommandHistoryEntry[] = [];
   readonly compareWeightRangeOptions = (
     first: ProductWeightRange | null,
@@ -344,6 +356,11 @@ export class ProductPage implements OnDestroy {
       ]),
     );
     this.context = this.resolveNavigationContext(routeProfile);
+    if (this.context !== null) {
+      this.professionalAccessService.reset(
+        this.professionalAccessContext(this.context),
+      );
+    }
     this.viewModel = this.createInitialViewModel(
       profile,
       this.context,
@@ -418,8 +435,33 @@ export class ProductPage implements OnDestroy {
 
   get showProfessionalScalarControls(): boolean {
     return this.pageContextCurrent &&
-      this.professionalScalarControls.length > 0 &&
+      this.visibleProfessionalScalarControls.length > 0 &&
       this.viewModel.reads.professionalParameters.status === 'available';
+  }
+
+  get visibleProfessionalScalarControls(): typeof this.professionalScalarControls {
+    return this.professionalScalarControls.filter((control) =>
+      this.canShowProfessionalField(control.config.field),
+    );
+  }
+
+  get professionalAccessGranted(): boolean {
+    return this.professionalAccessService.isAuthenticated(
+      this.currentProfessionalAccessContext(),
+    );
+  }
+
+  get showProfessionalAccessPrompt(): boolean {
+    return this.pageContextCurrent &&
+      this.viewModel.reads.professionalParameters.status === 'available' &&
+      this.professionalAccessControlsAvailable &&
+      !this.professionalAccessGranted;
+  }
+
+  get professionalAccessControlsAvailable(): boolean {
+    return this.config.professionalFields.some((field) =>
+      productProfessionalFieldRequiresAccess(this.config.profile, field),
+    );
   }
 
   get canOpenWidoor(): boolean {
@@ -1194,7 +1236,8 @@ export class ProductPage implements OnDestroy {
     config: ProductProfessionalScalarUiConfig,
     eventOrValue: Event | number,
   ): void {
-    if (!this.isProfessionalScalarControl(config)) {
+    if (!this.isProfessionalScalarControl(config) ||
+        !this.canShowProfessionalField(config.field)) {
       return;
     }
     const value = typeof eventOrValue === 'number'
@@ -1219,6 +1262,7 @@ export class ProductPage implements OnDestroy {
     config: ProductProfessionalScalarUiConfig,
   ): boolean {
     if (!this.isProfessionalScalarControl(config) ||
+        !this.canShowProfessionalField(config.field) ||
         !this.showProfessionalScalarControls ||
         !this.isCurrentContext() ||
         this.viewModel.loading ||
@@ -1742,6 +1786,58 @@ export class ProductPage implements OnDestroy {
     });
   }
 
+  async requestProfessionalAccess(): Promise<void> {
+    const context = this.currentProfessionalAccessContext();
+    if (context === null || !this.professionalAccessControlsAvailable) {
+      return;
+    }
+    const alert = await this.alertController.create({
+      header: this.text.professionalAccess.title,
+      message: this.text.professionalAccess.message,
+      inputs: [
+        {
+          name: 'professionalAccessCode',
+          type: 'password',
+          placeholder: this.text.professionalAccess.placeholder,
+        },
+      ],
+      buttons: [
+        {
+          text: this.text.professionalAccess.cancel,
+          role: 'cancel',
+        },
+        {
+          text: this.text.professionalAccess.confirm,
+          role: 'confirm',
+        },
+      ],
+    });
+    await alert.present();
+    const dismissal = await alert.onDidDismiss<{
+      readonly professionalAccessCode?: string;
+      readonly values?: {
+        readonly professionalAccessCode?: string;
+      };
+    }>();
+    if (dismissal.role !== 'confirm') {
+      return;
+    }
+    const code = dismissal.data?.values?.professionalAccessCode ??
+      dismissal.data?.professionalAccessCode ??
+      '';
+    if (this.professionalAccessService.authenticate(context, code)) {
+      this.professionalAccessState = Object.freeze({
+        status: 'unlocked',
+        message: this.text.professionalAccess.unlocked,
+      });
+      return;
+    }
+    this.professionalAccessState = Object.freeze({
+      status: 'failed',
+      message: this.text.professionalAccess.failed,
+    });
+  }
+
   async requestLockModeChange(
     config: ProductLockModeUiConfig,
     eventOrChecked: CustomEvent<{ readonly checked: boolean }> | boolean,
@@ -1840,6 +1936,7 @@ export class ProductPage implements OnDestroy {
     this.resetUserTimingEditing();
     this.resetWeightRangeEditing();
     this.resetProfessionalScalarEditing();
+    this.resetProfessionalAccess();
     this.subscriptions.unsubscribe();
   }
 
@@ -2012,6 +2109,7 @@ export class ProductPage implements OnDestroy {
     this.resetUserTimingEditing();
     this.resetWeightRangeEditing();
     this.resetProfessionalScalarEditing();
+    this.resetProfessionalAccess();
     this.viewModel = {
       ...this.viewModel,
       connectionState: state,
@@ -2085,6 +2183,19 @@ export class ProductPage implements OnDestroy {
     });
   }
 
+  private resetProfessionalAccess(): void {
+    const context = this.currentProfessionalAccessContext();
+    if (context === null) {
+      this.professionalAccessService.reset();
+    } else {
+      this.professionalAccessService.reset(context);
+    }
+    this.professionalAccessState = Object.freeze({
+      status: 'locked',
+      message: null,
+    });
+  }
+
   private isProfessionalScalarControl(
     config: ProductProfessionalScalarUiConfig,
   ): boolean {
@@ -2092,6 +2203,31 @@ export class ProductPage implements OnDestroy {
       this.professionalScalarControls.some((control) =>
         control.config === config,
       );
+  }
+
+  private canShowProfessionalField(field: ProductProfessionalField): boolean {
+    return !productProfessionalFieldRequiresAccess(
+      this.config.profile,
+      field,
+    ) || this.professionalAccessGranted;
+  }
+
+  private currentProfessionalAccessContext():
+    ProfessionalAccessContext | null {
+    if (this.context === null || !this.isCurrentContext()) {
+      return null;
+    }
+    return this.professionalAccessContext(this.context);
+  }
+
+  private professionalAccessContext(
+    context: ProductPageNavigationState,
+  ): ProfessionalAccessContext {
+    return {
+      profile: context.profile,
+      deviceId: context.deviceId,
+      connectionGeneration: context.connectionGeneration,
+    };
   }
 
   private isCurrentCommandCycle(cycle: number): boolean {
@@ -2469,7 +2605,8 @@ export class ProductPage implements OnDestroy {
   private professionalFieldVisible(
     field: ProductProfessionalField,
   ): boolean {
-    return this.config.professionalFields.includes(field);
+    return this.config.professionalFields.includes(field) &&
+      this.canShowProfessionalField(field);
   }
 
   private widoorLockSupported(): boolean {

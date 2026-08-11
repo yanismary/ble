@@ -31,6 +31,11 @@ import {
   ProductDataLoadService,
   ProductDataLoadStatus,
 } from '../../core/services/product-data-load.service';
+import {
+  ProfessionalAccessContext,
+  ProfessionalAccessService,
+} from
+  '../../core/services/professional-access.service';
 import { ProductDetection } from '../../core/services/product-detection';
 import {
   BleWriteExecutionService,
@@ -111,6 +116,47 @@ class FakeProductDataLoadService {
     .and.callFake(async () => this.nextResult);
   readonly cancelCurrentLoad = jasmine.createSpy('cancelCurrentLoad')
     .and.returnValue(true);
+}
+
+const PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE =
+  'accepted-professional-access-code';
+
+class FakeProfessionalAccessService {
+  private authenticatedContext: ProfessionalAccessContext | null = null;
+
+  isAuthenticated(context: ProfessionalAccessContext | null): boolean {
+    return context !== null &&
+      this.authenticatedContext !== null &&
+      this.sameContext(this.authenticatedContext, context);
+  }
+
+  authenticate(
+    context: ProfessionalAccessContext,
+    accessCode: string,
+  ): boolean {
+    if (accessCode !== PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE) {
+      return false;
+    }
+    this.authenticatedContext = Object.freeze({ ...context });
+    return true;
+  }
+
+  reset(context?: ProfessionalAccessContext): void {
+    if (context === undefined ||
+        (this.authenticatedContext !== null &&
+          this.sameContext(this.authenticatedContext, context))) {
+      this.authenticatedContext = null;
+    }
+  }
+
+  private sameContext(
+    first: ProfessionalAccessContext,
+    second: ProfessionalAccessContext,
+  ): boolean {
+    return first.profile === second.profile &&
+      first.deviceId === second.deviceId &&
+      first.connectionGeneration === second.connectionGeneration;
+  }
 }
 
 describe('ProductPage', () => {
@@ -2712,15 +2758,32 @@ describe('ProductPage professional scalar controls for force and obstacle',
             : 'obstacle-sensitivity',
           profile === 'widoor' ? '01 05' : '07 03',
         ),
+      professionalAccessDismissal: {
+        readonly role: string;
+        readonly data?: {
+          readonly values?: {
+            readonly professionalAccessCode?: string;
+          };
+        };
+      } = {
+        role: 'confirm',
+        data: {
+          values: {
+            professionalAccessCode: PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE,
+          },
+        },
+      },
     ): Promise<{
       readonly component: ProductPage;
       readonly fixture: ComponentFixture<ProductPage>;
       readonly bleService: FakeBleService;
       readonly loadService: FakeProductDataLoadService;
+      readonly professionalAccessService: FakeProfessionalAccessService;
       readonly writeExecutionService: FakeBleWriteExecutionService;
     }> {
       const bleService = new FakeBleService();
       const loadService = new FakeProductDataLoadService();
+      const professionalAccessService = new FakeProfessionalAccessService();
       loadService.nextResult = completeLoadResult(
         'success',
         profile,
@@ -2740,13 +2803,17 @@ describe('ProductPage professional scalar controls for force and obstacle',
             useValue: {
               create: jasmine.createSpy('create').and.resolveTo({
                 present: async () => undefined,
-                onDidDismiss: async () => ({ role: 'confirm' }),
+                onDidDismiss: async () => professionalAccessDismissal,
               }),
             },
           },
           {
             provide: BleWriteExecutionService,
             useValue: writeExecutionService,
+          },
+          {
+            provide: ProfessionalAccessService,
+            useValue: professionalAccessService,
           },
           { provide: ProductDataLoadService, useValue: loadService },
           { provide: ProductDetection, useClass: ProductDetection },
@@ -2777,6 +2844,7 @@ describe('ProductPage professional scalar controls for force and obstacle',
         fixture,
         bleService,
         loadService,
+        professionalAccessService,
         writeExecutionService,
       };
     }
@@ -2830,6 +2898,7 @@ describe('ProductPage professional scalar controls for force and obstacle',
         async () => {
           const {
             component,
+            professionalAccessService,
             writeExecutionService,
           } = await createProfessionalScalarPage(
             scenario.profile,
@@ -2848,6 +2917,16 @@ describe('ProductPage professional scalar controls for force and obstacle',
             candidate.config.field,
           )).toEqual(scenario.controls);
           expect(control).toBeDefined();
+          if (control?.requiresProfessionalAccess) {
+            expect(component.visibleProfessionalScalarControls).toEqual([]);
+            expect(component.canApplyProfessionalScalar(control))
+              .toBeFalse();
+            expect(professionalAccessService.authenticate({
+              profile: scenario.profile,
+              deviceId: 'device-1',
+              connectionGeneration: 4,
+            }, PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE)).toBeTrue();
+          }
           expect(control?.range).toEqual(scenario.range);
           expect(control?.unit).toBe(scenario.unit);
           expect(component.currentProfessionalScalarValue(control!))
@@ -2891,6 +2970,7 @@ describe('ProductPage professional scalar controls for force and obstacle',
       async () => {
         const {
           component,
+          professionalAccessService,
           writeExecutionService,
         } = await createProfessionalScalarPage(
           'garline',
@@ -2905,6 +2985,11 @@ describe('ProductPage professional scalar controls for force and obstacle',
           ),
         );
         const control = component.professionalScalarControls[0].config;
+        expect(professionalAccessService.authenticate({
+          profile: 'garline',
+          deviceId: 'device-1',
+          connectionGeneration: 4,
+        }, PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE)).toBeTrue();
 
         component.setProfessionalScalarDraftValue(control, 3);
         await component.requestProfessionalScalarChange(control);
@@ -2948,6 +3033,7 @@ describe('ProductPage professional scalar controls for force and obstacle',
         const {
           component,
           bleService,
+          professionalAccessService,
         } = await createProfessionalScalarPage(
           'moventiv-80',
           professionalValue('moventiv-80', 50, 60, {
@@ -2956,6 +3042,11 @@ describe('ProductPage professional scalar controls for force and obstacle',
           }),
         );
         const control = component.professionalScalarControls[0].config;
+        expect(professionalAccessService.authenticate({
+          profile: 'moventiv-80',
+          deviceId: 'device-1',
+          connectionGeneration: 4,
+        }, PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE)).toBeTrue();
 
         component.setProfessionalScalarDraftValue(control, 50);
         component.professionalScalarWriteState = Object.freeze({
@@ -2973,7 +3064,95 @@ describe('ProductPage professional scalar controls for force and obstacle',
           field: null,
           message: null,
         });
+        expect(component.professionalAccessGranted).toBeFalse();
         expect(component.canApplyProfessionalScalar(control)).toBeFalse();
+      },
+    );
+
+    it('should keep protected professional settings hidden before access',
+      async () => {
+        const {
+          component,
+        } = await createProfessionalScalarPage(
+          'moventiv-80',
+          professionalValue('moventiv-80', 50, 60, {
+            brakingOpenPower: 40,
+            obstacleSensitivity: 2,
+            nearOpenTorque: 10,
+            nearCloseTorque: 20,
+          }),
+        );
+
+        expect(component.professionalAccessGranted).toBeFalse();
+        expect(component.showProfessionalAccessPrompt).toBeTrue();
+        expect(component.visibleProfessionalScalarControls).toEqual([]);
+        expect(component.professionalRows.map((row) => row.key))
+          .not.toContain('braking-open-power');
+        expect(component.professionalRows.map((row) => row.key))
+          .not.toContain('obstacle-sensitivity');
+        expect(component.professionalRows.map((row) => row.key))
+          .not.toContain('near-open-torque');
+        expect(component.professionalRows.map((row) => row.key))
+          .not.toContain('near-close-torque');
+        expect(component.professionalRows.map((row) => row.key))
+          .toContain('weight-range');
+      },
+    );
+
+    it('should unlock protected professional settings with a valid code',
+      async () => {
+        const {
+          component,
+          fixture,
+        } = await createProfessionalScalarPage(
+          'moventiv-80',
+          professionalValue('moventiv-80', 50, 60, {
+            brakingOpenPower: 40,
+            obstacleSensitivity: 2,
+          }),
+        );
+
+        await component.requestProfessionalAccess();
+        fixture.detectChanges();
+
+        expect(component.professionalAccessGranted).toBeTrue();
+        expect(component.professionalAccessState.status).toBe('unlocked');
+        expect(component.showProfessionalAccessPrompt).toBeFalse();
+        expect(component.visibleProfessionalScalarControls.map((control) =>
+          control.config.field,
+        )).toEqual(['braking-open-power', 'obstacle-sensitivity']);
+        expect(component.professionalRows.map((row) => row.key))
+          .toContain('braking-open-power');
+      },
+    );
+
+    it('should reject an incorrect professional access code without writing',
+      async () => {
+        const {
+          component,
+          writeExecutionService,
+        } = await createProfessionalScalarPage(
+          'garline',
+          professionalValue('garline', 80, 100, {
+            obstacleSensitivity: 2,
+          }),
+          professionalScalarExecutionResult(
+            'garline',
+            'obstacle-sensitivity',
+            '07 03',
+          ),
+          {
+            role: 'confirm',
+            data: { values: { professionalAccessCode: 'bad-code' } },
+          },
+        );
+
+        await component.requestProfessionalAccess();
+
+        expect(component.professionalAccessGranted).toBeFalse();
+        expect(component.professionalAccessState.status).toBe('failed');
+        expect(component.visibleProfessionalScalarControls).toEqual([]);
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
       },
     );
 

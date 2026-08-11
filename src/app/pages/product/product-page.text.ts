@@ -56,6 +56,17 @@ export const PRODUCT_PAGE_TEXT = {
     failed: 'Échec de l’envoi du paramètre professionnel.',
     unavailable: 'Commande de paramètre professionnel indisponible',
   },
+  professionalAccess: {
+    title: 'Accès professionnel',
+    message: 'Saisissez le code professionnel pour afficher ces réglages.',
+    placeholder: 'Code professionnel',
+    cancel: 'Annuler',
+    confirm: 'Valider',
+    unlock: 'Déverrouiller les réglages professionnels',
+    locked: 'Certains réglages professionnels sont masqués.',
+    unlocked: 'Réglages professionnels déverrouillés.',
+    failed: 'Code professionnel incorrect.',
+  },
   openCommand: {
     cancel: 'Annuler',
     awaitingConfirmation: 'Confirmation requise',

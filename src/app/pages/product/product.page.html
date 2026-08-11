@@ -319,6 +319,29 @@
               <dd>{{ row.value }}</dd>
             }
           </dl>
+          @if (showProfessionalAccessPrompt) {
+            <div class="professional-access-controls">
+              <p>{{ text.professionalAccess.locked }}</p>
+              <ion-button
+                type="button"
+                size="small"
+                fill="outline"
+                (click)="requestProfessionalAccess()"
+              >
+                {{ text.professionalAccess.unlock }}
+              </ion-button>
+            </div>
+          }
+          @if (professionalAccessState.message) {
+            <p
+              class="command-state"
+              role="status"
+              aria-live="polite"
+              [attr.data-tone]="professionalAccessState.status === 'failed' ? 'error' : 'neutral'"
+            >
+              <span>{{ professionalAccessState.message }}</span>
+            </p>
+          }
           @if (showWeightRangeControls) {
             <div class="weight-range-controls">
               <div class="weight-range-control-header">
@@ -375,7 +398,7 @@
           }
           @if (showProfessionalScalarControls) {
             <div class="professional-scalar-controls">
-              @for (scalarControl of professionalScalarControls; track scalarControl.config.field) {
+              @for (scalarControl of visibleProfessionalScalarControls; track scalarControl.config.field) {
                 <div class="professional-scalar-control">
                   <div class="professional-scalar-control-header">
                     <strong>{{ scalarControl.text }}</strong>

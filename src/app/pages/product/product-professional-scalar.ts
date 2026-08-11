@@ -15,6 +15,8 @@ import {
   ProductPageConfig,
   ProductProfessionalField,
 } from './product-page.config';
+import { productProfessionalFieldRequiresAccess } from
+  './product-professional-access';
 
 export type ProductProfessionalScalarField = Extract<
   ProductProfessionalField,
@@ -32,6 +34,7 @@ export interface ProductProfessionalScalarUiConfig {
   readonly textKey: ProductProfessionalScalarTextKey;
   readonly range: Readonly<{ min: number; max: number }>;
   readonly unit: '%' | null;
+  readonly requiresProfessionalAccess: boolean;
   readonly catalogFactory: (value: number) => LegacyBleWrite;
   readonly confirmationPolicy: LegacyBleWriteConfirmationPolicy;
   readonly policy: LegacyBleWriteExecutionPolicy;
@@ -176,6 +179,10 @@ function professionalScalarConfig(
     textKey: definition.textKey,
     range: Object.freeze({ min: range.min, max: range.max }),
     unit: definition.unit,
+    requiresProfessionalAccess: productProfessionalFieldRequiresAccess(
+      pageConfig.profile,
+      definition.field,
+    ),
     catalogFactory: (value: number) => {
       if (!Number.isInteger(value) ||
           value < range.min ||
