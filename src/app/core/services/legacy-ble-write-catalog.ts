@@ -149,19 +149,25 @@ export interface LegacyProfileWriteConstraints {
   readonly uiProfessionalRanges: Readonly<Record<string, LegacyValueRange>>;
 }
 
-const MOVENTIV_WEIGHT_RANGES = [
+const MOVENTIV_60_WEIGHT_RANGES = [
   [10, 20],
   [20, 30],
   [30, 40],
   [40, 50],
   [50, 60],
+] as const;
+
+const MOVENTIV_80_WEIGHT_RANGES = [
+  ...MOVENTIV_60_WEIGHT_RANGES,
+  [60, 80],
+] as const;
+
+const GARLINE_WEIGHT_RANGES = [
   [60, 80],
   [80, 100],
   [100, 120],
   [120, 140],
 ] as const;
-
-const GARLINE_WEIGHT_RANGES = MOVENTIV_WEIGHT_RANGES.slice(5);
 
 export const LEGACY_WRITE_CONSTRAINTS: Readonly<
   Record<KnownProductProfile, LegacyProfileWriteConstraints>
@@ -196,7 +202,7 @@ export const LEGACY_WRITE_CONSTRAINTS: Readonly<
     nearCloseTorque: { min: 0, max: 200 },
     brakingOpenPower: { min: 0, max: 200 },
     obstacleSensitivity: { min: 0, max: 200 },
-    weightRanges: MOVENTIV_WEIGHT_RANGES,
+    weightRanges: MOVENTIV_60_WEIGHT_RANGES,
     uiProfessionalRanges: {
       nearOpenSpeed: { min: 1, max: 100 },
       nearCloseSpeed: { min: 1, max: 100 },
@@ -218,7 +224,7 @@ export const LEGACY_WRITE_CONSTRAINTS: Readonly<
     nearCloseTorque: { min: 0, max: 200 },
     brakingOpenPower: { min: 0, max: 200 },
     obstacleSensitivity: { min: 0, max: 200 },
-    weightRanges: MOVENTIV_WEIGHT_RANGES,
+    weightRanges: MOVENTIV_80_WEIGHT_RANGES,
     uiProfessionalRanges: {
       nearOpenSpeed: { min: 1, max: 100 },
       nearCloseSpeed: { min: 1, max: 100 },

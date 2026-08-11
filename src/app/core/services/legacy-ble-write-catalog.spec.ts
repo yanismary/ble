@@ -190,13 +190,21 @@ describe('legacy BLE write catalog', () => {
   });
 
   it('encodes only historical weight ranges allowed by profile', () => {
-    expect(bytes(encodeLegacyWeightRange('moventiv-60', 10, 20)))
-      .toEqual([0, 10, 20]);
-    expect(bytes(encodeLegacyWeightRange('moventiv-80', 120, 140)))
-      .toEqual([0, 120, 140]);
+    expect(bytes(encodeLegacyWeightRange('moventiv-60', 50, 60)))
+      .toEqual([0, 50, 60]);
+    expect(bytes(encodeLegacyWeightRange('moventiv-80', 60, 80)))
+      .toEqual([0, 60, 80]);
     expect(bytes(encodeLegacyWeightRange('garline', 60, 80)))
       .toEqual([0, 60, 80]);
-    expect(() => encodeLegacyWeightRange('garline', 10, 20)).toThrow();
+    expect(bytes(encodeLegacyWeightRange('garline', 80, 100)))
+      .toEqual([0, 80, 100]);
+    expect(bytes(encodeLegacyWeightRange('garline', 100, 120)))
+      .toEqual([0, 100, 120]);
+    expect(bytes(encodeLegacyWeightRange('garline', 120, 140)))
+      .toEqual([0, 120, 140]);
+    expect(() => encodeLegacyWeightRange('moventiv-60', 60, 80)).toThrow();
+    expect(() => encodeLegacyWeightRange('moventiv-80', 80, 100)).toThrow();
+    expect(() => encodeLegacyWeightRange('garline', 50, 60)).toThrow();
   });
 
   it('exposes distinct legacy constraints for all profiles', () => {
