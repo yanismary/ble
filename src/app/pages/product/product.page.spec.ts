@@ -2854,9 +2854,15 @@ describe('ProductPage professional scalar controls',
         profile: 'widoor',
         current: professionalValue('widoor', 0, 0, {
           breakForceAtOpen: 5,
+          nearOpenSpeed: 80,
+          nearCloseSpeed: 70,
         }),
         field: 'break-force-at-open',
-        controls: ['break-force-at-open'],
+        controls: [
+          'break-force-at-open',
+          'near-open-speed',
+          'near-close-speed',
+        ],
         accepted: 10,
         invalid: 11,
         range: { min: 1, max: 10 },
@@ -2866,8 +2872,100 @@ describe('ProductPage professional scalar controls',
         serviceUuid: BLE_UUIDS.widoorService,
       },
       {
+        profile: 'widoor',
+        current: professionalValue('widoor', 0, 0, {
+          breakForceAtOpen: 5,
+          nearOpenSpeed: 80,
+          nearCloseSpeed: 70,
+        }),
+        field: 'near-open-speed',
+        controls: [
+          'break-force-at-open',
+          'near-open-speed',
+          'near-close-speed',
+        ],
+        accepted: 85,
+        invalid: 69,
+        range: { min: 70, max: 100 },
+        unit: '%',
+        currentValue: 80,
+        payloadHex: '02 55',
+        serviceUuid: BLE_UUIDS.widoorService,
+      },
+      {
+        profile: 'widoor',
+        current: professionalValue('widoor', 0, 0, {
+          breakForceAtOpen: 5,
+          nearOpenSpeed: 80,
+          nearCloseSpeed: 70,
+        }),
+        field: 'near-close-speed',
+        controls: [
+          'break-force-at-open',
+          'near-open-speed',
+          'near-close-speed',
+        ],
+        accepted: 75,
+        invalid: 49,
+        range: { min: 50, max: 100 },
+        unit: '%',
+        currentValue: 70,
+        payloadHex: '03 4b',
+        serviceUuid: BLE_UUIDS.widoorService,
+      },
+      {
         profile: 'moventiv-80',
         current: professionalValue('moventiv-80', 50, 60, {
+          nearOpenSpeed: 45,
+          nearCloseSpeed: 55,
+          nearOpenTorque: 90,
+          nearCloseTorque: 110,
+          brakingOpenPower: 40,
+          obstacleSensitivity: 2,
+        }),
+        field: 'near-open-speed',
+        controls: [
+          'near-open-speed',
+          'near-close-speed',
+          'near-open-torque',
+          'near-close-torque',
+          'braking-open-power',
+          'obstacle-sensitivity',
+        ],
+        accepted: 50,
+        invalid: 0,
+        range: { min: 1, max: 100 },
+        unit: '%',
+        currentValue: 45,
+        payloadHex: '02 32',
+        serviceUuid: BLE_UUIDS.moventivGarlineService,
+      },
+      {
+        profile: 'garline',
+        current: professionalValue('garline', 80, 100, {
+          nearOpenSpeed: 20,
+          nearCloseSpeed: 30,
+          obstacleSensitivity: 2,
+        }),
+        field: 'near-close-speed',
+        controls: [
+          'near-open-speed',
+          'near-close-speed',
+          'obstacle-sensitivity',
+        ],
+        accepted: 0,
+        invalid: 101,
+        range: { min: 0, max: 100 },
+        unit: '%',
+        currentValue: 30,
+        payloadHex: '03 00',
+        serviceUuid: BLE_UUIDS.moventivGarlineService,
+      },
+      {
+        profile: 'moventiv-80',
+        current: professionalValue('moventiv-80', 50, 60, {
+          nearOpenSpeed: 45,
+          nearCloseSpeed: 55,
           nearOpenTorque: 90,
           nearCloseTorque: 110,
           brakingOpenPower: 40,
@@ -2875,6 +2973,8 @@ describe('ProductPage professional scalar controls',
         }),
         field: 'near-open-torque',
         controls: [
+          'near-open-speed',
+          'near-close-speed',
           'near-open-torque',
           'near-close-torque',
           'braking-open-power',
@@ -2891,6 +2991,8 @@ describe('ProductPage professional scalar controls',
       {
         profile: 'moventiv-60',
         current: professionalValue('moventiv-60', 50, 60, {
+          nearOpenSpeed: 45,
+          nearCloseSpeed: 55,
           nearOpenTorque: 90,
           nearCloseTorque: 110,
           brakingOpenPower: 40,
@@ -2898,6 +3000,8 @@ describe('ProductPage professional scalar controls',
         }),
         field: 'near-close-torque',
         controls: [
+          'near-open-speed',
+          'near-close-speed',
           'near-open-torque',
           'near-close-torque',
           'braking-open-power',
@@ -2914,6 +3018,8 @@ describe('ProductPage professional scalar controls',
       {
         profile: 'moventiv-80',
         current: professionalValue('moventiv-80', 50, 60, {
+          nearOpenSpeed: 45,
+          nearCloseSpeed: 55,
           nearOpenTorque: 90,
           nearCloseTorque: 110,
           brakingOpenPower: 40,
@@ -2921,6 +3027,8 @@ describe('ProductPage professional scalar controls',
         }),
         field: 'braking-open-power',
         controls: [
+          'near-open-speed',
+          'near-close-speed',
           'near-open-torque',
           'near-close-torque',
           'braking-open-power',
@@ -2937,10 +3045,16 @@ describe('ProductPage professional scalar controls',
       {
         profile: 'garline',
         current: professionalValue('garline', 80, 100, {
+          nearOpenSpeed: 20,
+          nearCloseSpeed: 30,
           obstacleSensitivity: 2,
         }),
         field: 'obstacle-sensitivity',
-        controls: ['obstacle-sensitivity'],
+        controls: [
+          'near-open-speed',
+          'near-close-speed',
+          'obstacle-sensitivity',
+        ],
         accepted: 5,
         invalid: 6,
         range: { min: 1, max: 5 },
@@ -2974,7 +3088,9 @@ describe('ProductPage professional scalar controls',
           )).toEqual(scenario.controls);
           expect(control).toBeDefined();
           if (control?.requiresProfessionalAccess) {
-            expect(component.visibleProfessionalScalarControls).toEqual([]);
+            expect(component.visibleProfessionalScalarControls.map(
+              (candidate) => candidate.config.field,
+            )).not.toContain(scenario.field);
             expect(component.canApplyProfessionalScalar(control))
               .toBeFalse();
             expect(professionalAccessService.authenticate({
@@ -3036,7 +3152,10 @@ describe('ProductPage professional scalar controls',
             'failed',
           ),
         );
-        const control = component.professionalScalarControls[0].config;
+        const control = component.professionalScalarControls.find(
+          (candidate) =>
+            candidate.config.field === 'obstacle-sensitivity',
+        )!.config;
         expect(professionalAccessService.authenticate({
           profile: 'garline',
           deviceId: 'device-1',
@@ -3089,6 +3208,8 @@ describe('ProductPage professional scalar controls',
         } = await createProfessionalScalarPage(
           'moventiv-80',
           professionalValue('moventiv-80', 50, 60, {
+            nearOpenSpeed: 45,
+            nearCloseSpeed: 55,
             nearOpenTorque: 90,
             nearCloseTorque: 110,
             brakingOpenPower: 40,
@@ -3130,6 +3251,8 @@ describe('ProductPage professional scalar controls',
         } = await createProfessionalScalarPage(
           'moventiv-80',
           professionalValue('moventiv-80', 50, 60, {
+            nearOpenSpeed: 45,
+            nearCloseSpeed: 55,
             brakingOpenPower: 40,
             obstacleSensitivity: 2,
             nearOpenTorque: 10,
@@ -3139,7 +3262,9 @@ describe('ProductPage professional scalar controls',
 
         expect(component.professionalAccessGranted).toBeFalse();
         expect(component.showProfessionalAccessPrompt).toBeTrue();
-        expect(component.visibleProfessionalScalarControls).toEqual([]);
+        expect(component.visibleProfessionalScalarControls.map((control) =>
+          control.config.field,
+        )).toEqual(['near-open-speed', 'near-close-speed']);
         expect(component.professionalRows.map((row) => row.key))
           .not.toContain('braking-open-power');
         expect(component.professionalRows.map((row) => row.key))
@@ -3148,6 +3273,10 @@ describe('ProductPage professional scalar controls',
           .not.toContain('near-open-torque');
         expect(component.professionalRows.map((row) => row.key))
           .not.toContain('near-close-torque');
+        expect(component.professionalRows.map((row) => row.key))
+          .toContain('near-open-speed');
+        expect(component.professionalRows.map((row) => row.key))
+          .toContain('near-close-speed');
         expect(component.professionalRows.map((row) => row.key))
           .toContain('weight-range');
       },
@@ -3161,6 +3290,8 @@ describe('ProductPage professional scalar controls',
         } = await createProfessionalScalarPage(
           'moventiv-80',
           professionalValue('moventiv-80', 50, 60, {
+            nearOpenSpeed: 45,
+            nearCloseSpeed: 55,
             brakingOpenPower: 40,
             obstacleSensitivity: 2,
           }),
@@ -3175,6 +3306,8 @@ describe('ProductPage professional scalar controls',
         expect(component.visibleProfessionalScalarControls.map((control) =>
           control.config.field,
         )).toEqual([
+          'near-open-speed',
+          'near-close-speed',
           'near-open-torque',
           'near-close-torque',
           'braking-open-power',
@@ -3187,6 +3320,51 @@ describe('ProductPage professional scalar controls',
       },
     );
 
+    it('should keep near open and near close speed drafts independent',
+      async () => {
+        const {
+          component,
+          writeExecutionService,
+        } = await createProfessionalScalarPage(
+          'moventiv-80',
+          professionalValue('moventiv-80', 50, 60, {
+            nearOpenSpeed: 45,
+            nearCloseSpeed: 55,
+            nearOpenTorque: 90,
+            nearCloseTorque: 110,
+            brakingOpenPower: 40,
+            obstacleSensitivity: 2,
+          }),
+          professionalScalarExecutionResult(
+            'moventiv-80',
+            'near-open-speed',
+            '02 32',
+          ),
+        );
+        const nearOpenSpeed = component.professionalScalarControls.find(
+          (candidate) => candidate.config.field === 'near-open-speed',
+        )!.config;
+        const nearCloseSpeed = component.professionalScalarControls.find(
+          (candidate) => candidate.config.field === 'near-close-speed',
+        )!.config;
+
+        component.setProfessionalScalarDraftValue(nearOpenSpeed, 50);
+
+        expect(component.professionalScalarDraftValue(nearOpenSpeed))
+          .toBe(50);
+        expect(component.professionalScalarDraftValue(nearCloseSpeed))
+          .toBe(55);
+
+        await component.requestProfessionalScalarChange(nearOpenSpeed);
+
+        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        const request = writeExecutionService.execute.calls.mostRecent()
+          .args[0] as LegacyBleWriteRequest;
+        expect(request.write.operation).toBe('near-open-speed');
+        expect(request.write.payloadHex).toBe('02 32');
+      },
+    );
+
     it('should keep near open and near close torque drafts independent',
       async () => {
         const {
@@ -3196,6 +3374,8 @@ describe('ProductPage professional scalar controls',
         } = await createProfessionalScalarPage(
           'moventiv-80',
           professionalValue('moventiv-80', 50, 60, {
+            nearOpenSpeed: 45,
+            nearCloseSpeed: 55,
             nearOpenTorque: 90,
             nearCloseTorque: 110,
             brakingOpenPower: 40,
@@ -3261,7 +3441,9 @@ describe('ProductPage professional scalar controls',
 
         expect(component.professionalAccessGranted).toBeFalse();
         expect(component.professionalAccessState.status).toBe('failed');
-        expect(component.visibleProfessionalScalarControls).toEqual([]);
+        expect(component.visibleProfessionalScalarControls.map((control) =>
+          control.config.field,
+        )).toEqual(['near-open-speed', 'near-close-speed']);
         expect(writeExecutionService.execute).not.toHaveBeenCalled();
       },
     );
@@ -3604,6 +3786,8 @@ function professionalScalarExecutionResult(
   profile: KnownProductProfile,
   operation:
     | 'break-force-at-open'
+    | 'near-open-speed'
+    | 'near-close-speed'
     | 'near-open-torque'
     | 'near-close-torque'
     | 'braking-open-power'
@@ -3966,6 +4150,8 @@ function userValueWithTimings(
 
 interface ProfessionalValueOverrides {
   readonly breakForceAtOpen?: number;
+  readonly nearOpenSpeed?: number;
+  readonly nearCloseSpeed?: number;
   readonly brakingOpenPower?: number;
   readonly obstacleSensitivity?: number;
   readonly nearOpenTorque?: number;
@@ -3981,8 +4167,8 @@ function professionalValue(
   const common = {
     weightRangeLower,
     weightRangeUpper,
-    nearOpenSpeed: 70,
-    nearCloseSpeed: 50,
+    nearOpenSpeed: overrides.nearOpenSpeed ?? 70,
+    nearCloseSpeed: overrides.nearCloseSpeed ?? 50,
     nearOpenTorque: overrides.nearOpenTorque ?? 0,
     nearCloseTorque: overrides.nearCloseTorque ?? 0,
     peripheralByte1: 0,

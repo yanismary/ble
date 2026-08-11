@@ -1217,6 +1217,10 @@ export class ProductPage implements OnDestroy {
     switch (config.field) {
       case 'break-force-at-open':
         return value.profile === 'widoor' ? value.breakForceAtOpen : null;
+      case 'near-open-speed':
+        return value.nearOpenSpeed;
+      case 'near-close-speed':
+        return value.nearCloseSpeed;
       case 'near-open-torque':
         return value.profile === 'widoor' ? null : value.nearOpenTorque;
       case 'near-close-torque':

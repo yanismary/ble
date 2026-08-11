@@ -21,6 +21,8 @@ import { productProfessionalFieldRequiresAccess } from
 export type ProductProfessionalScalarField = Extract<
   ProductProfessionalField,
   | 'break-force-at-open'
+  | 'near-open-speed'
+  | 'near-close-speed'
   | 'near-open-torque'
   | 'near-close-torque'
   | 'braking-open-power'
@@ -29,6 +31,8 @@ export type ProductProfessionalScalarField = Extract<
 
 export type ProductProfessionalScalarTextKey =
   | 'breakForceAtOpen'
+  | 'nearOpenSpeed'
+  | 'nearCloseSpeed'
   | 'nearOpenTorque'
   | 'nearCloseTorque'
   | 'brakingOpenPower'
@@ -59,6 +63,8 @@ const PRODUCT_PROFESSIONAL_SCALAR_AUTHORIZATION_TTL_MS = 30_000;
 
 type ProductProfessionalScalarConstraintKey =
   | 'breakForceAtOpen'
+  | 'nearOpenSpeed'
+  | 'nearCloseSpeed'
   | 'nearOpenTorque'
   | 'nearCloseTorque'
   | 'brakingOpenPower'
@@ -81,6 +87,30 @@ const PROFESSIONAL_SCALAR_DEFINITIONS: readonly (
     constraintKey: 'breakForceAtOpen',
     unit: null,
     profiles: ['widoor'] as const,
+  }),
+  Object.freeze({
+    field: 'near-open-speed',
+    textKey: 'nearOpenSpeed',
+    constraintKey: 'nearOpenSpeed',
+    unit: '%',
+    profiles: [
+      'widoor',
+      'moventiv-60',
+      'moventiv-80',
+      'garline',
+    ] as const,
+  }),
+  Object.freeze({
+    field: 'near-close-speed',
+    textKey: 'nearCloseSpeed',
+    constraintKey: 'nearCloseSpeed',
+    unit: '%',
+    profiles: [
+      'widoor',
+      'moventiv-60',
+      'moventiv-80',
+      'garline',
+    ] as const,
   }),
   Object.freeze({
     field: 'near-open-torque',
@@ -244,6 +274,8 @@ function isProductProfessionalScalarField(
   value: string,
 ): value is ProductProfessionalScalarField {
   return value === 'break-force-at-open' ||
+    value === 'near-open-speed' ||
+    value === 'near-close-speed' ||
     value === 'near-open-torque' ||
     value === 'near-close-torque' ||
     value === 'braking-open-power' ||
