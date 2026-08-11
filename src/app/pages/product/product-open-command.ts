@@ -3,6 +3,7 @@ import {
   LegacyHardwareValidationStatus,
   LegacyMotorCommand,
   LegacyMotorOperation,
+  KnownProductProfile,
   encodeLegacyMotorCommand,
   isCataloguedLegacyBleWrite,
 } from '../../core/services/legacy-ble-write-catalog';
@@ -75,6 +76,7 @@ export type WidoorCommandTextKey =
   | 'learning';
 
 export interface WidoorCommandUiConfig {
+  readonly profile: KnownProductProfile;
   readonly command: LegacyMotorCommand;
   readonly operation: LegacyMotorOperation;
   readonly textKey: WidoorCommandTextKey;
@@ -95,8 +97,9 @@ export interface WidoorCommandUiConfig {
 }
 
 export const WIDOOR_COMMAND_UI_CONFIGS: readonly WidoorCommandUiConfig[] =
-  Object.freeze([
+  commandConfigsForProfile('widoor', [
     commandConfig({
+      profile: 'widoor',
       command: 'OPEN',
       operation: 'motor-open',
       textKey: 'open',
@@ -108,6 +111,7 @@ export const WIDOOR_COMMAND_UI_CONFIGS: readonly WidoorCommandUiConfig[] =
       isTimedCommand: false,
     }),
     commandConfig({
+      profile: 'widoor',
       command: 'CLOSE',
       operation: 'motor-close',
       textKey: 'close',
@@ -125,6 +129,7 @@ export const WIDOOR_COMMAND_UI_CONFIGS: readonly WidoorCommandUiConfig[] =
       isTimedCommand: false,
     }),
     commandConfig({
+      profile: 'widoor',
       command: 'OPEN_SHORT_TIMED',
       operation: 'motor-open-short-timed',
       textKey: 'openShortTimed',
@@ -147,6 +152,7 @@ export const WIDOOR_COMMAND_UI_CONFIGS: readonly WidoorCommandUiConfig[] =
       isTimedCommand: true,
     }),
     commandConfig({
+      profile: 'widoor',
       command: 'OPEN_LONG_TIMED',
       operation: 'motor-open-long-timed',
       textKey: 'openLongTimed',
@@ -169,6 +175,7 @@ export const WIDOOR_COMMAND_UI_CONFIGS: readonly WidoorCommandUiConfig[] =
       isTimedCommand: true,
     }),
     commandConfig({
+      profile: 'widoor',
       command: 'LEARNING',
       operation: 'motor-learning',
       textKey: 'learning',
@@ -179,6 +186,38 @@ export const WIDOOR_COMMAND_UI_CONFIGS: readonly WidoorCommandUiConfig[] =
       isTimedCommand: false,
     }),
   ]);
+
+type MoventivGarlineMotorCommand = Extract<
+  LegacyMotorCommand,
+  'OPEN' | 'CLOSE' | 'OPEN_SHORT_TIMED'
+>;
+
+const MOVENTIV_GARLINE_COMMANDS: readonly MoventivGarlineMotorCommand[] = [
+  'OPEN',
+  'CLOSE',
+  'OPEN_SHORT_TIMED',
+];
+
+export const MOTOR_COMMAND_UI_CONFIGS: Readonly<
+  Record<KnownProductProfile, readonly WidoorCommandUiConfig[]>
+> = Object.freeze({
+  widoor: WIDOOR_COMMAND_UI_CONFIGS,
+  'moventiv-60': commandConfigsForProfile('moventiv-60',
+    MOVENTIV_GARLINE_COMMANDS.map((command) =>
+      commandConfig(gattOnlyCommand('moventiv-60', command)),
+    ),
+  ),
+  'moventiv-80': commandConfigsForProfile('moventiv-80',
+    MOVENTIV_GARLINE_COMMANDS.map((command) =>
+      commandConfig(gattOnlyCommand('moventiv-80', command)),
+    ),
+  ),
+  garline: commandConfigsForProfile('garline',
+    MOVENTIV_GARLINE_COMMANDS.map((command) =>
+      commandConfig(gattOnlyCommand('garline', command)),
+    ),
+  ),
+});
 
 export interface WidoorCommandAuthorizationInput {
   readonly write: LegacyBleWrite;
@@ -195,20 +234,27 @@ export type WidoorOpenAuthorizationInput = WidoorCommandAuthorizationInput;
 export function createWidoorCommandAuthorization(
   input: WidoorCommandAuthorizationInput,
 ): LegacyBleWriteAuthorization {
+  return createProductMotorCommandAuthorization(input);
+}
+
+export function createProductMotorCommandAuthorization(
+  input: WidoorCommandAuthorizationInput,
+): LegacyBleWriteAuthorization {
   const expiresAt = input.confirmedAt + WIDOOR_COMMAND_AUTHORIZATION_TTL_MS;
-  const validOpen = input.write.operation === 'motor-open' &&
+  const validWidoorOpen = input.write.profile === 'widoor' &&
+    input.write.operation === 'motor-open' &&
     input.write.hardwareValidationStatus === 'validated-widoor-old-firmware';
-  const validPhysicalValidation = (
+  const validPhase1MotorReference = (
     input.write.operation === 'motor-close' ||
+    input.write.operation === 'motor-open' ||
     input.write.operation === 'motor-open-short-timed' ||
     input.write.operation === 'motor-open-long-timed'
   ) &&
     input.write.hardwareValidationStatus === 'phase1-reference-only';
   if (!isCataloguedLegacyBleWrite(input.write) ||
-      input.write.profile !== 'widoor' ||
       input.write.destructiveLevel !== 'motor-movement' ||
-      (!validOpen && !validPhysicalValidation)) {
-    throw new Error('A controlled catalogued Widoor motor write is required.');
+      (!validWidoorOpen && !validPhase1MotorReference)) {
+    throw new Error('A controlled catalogued motor write is required.');
   }
   if (!input.deviceId.trim() ||
       !input.attemptId.trim() ||
@@ -231,7 +277,7 @@ export function createWidoorCommandAuthorization(
     confirmationId: input.confirmationId,
     operation: input.write.operation,
     payloadHex: input.write.payloadHex,
-    profile: 'widoor',
+    profile: input.write.profile,
     deviceId: input.deviceId,
     connectionGeneration: input.connectionGeneration,
     attemptId: input.attemptId,
@@ -326,4 +372,51 @@ function commandConfig(
     disabledReason: value.disabledReason ?? null,
   };
   return Object.freeze(config);
+}
+
+function commandConfigsForProfile(
+  profile: KnownProductProfile,
+  configs: readonly WidoorCommandUiConfig[],
+): readonly WidoorCommandUiConfig[] {
+  if (configs.some((config) => config.profile !== profile)) {
+    throw new Error(`Motor command config profile mismatch for ${profile}.`);
+  }
+  return Object.freeze([...configs]);
+}
+
+function gattOnlyCommand(
+  profile: Exclude<KnownProductProfile, 'widoor'>,
+  command: MoventivGarlineMotorCommand,
+): Omit<WidoorCommandUiConfig,
+  'confirmationPolicy' | 'physicalValidationPolicy' |
+  'expectedMotorStateRaw' | 'label' | 'confirmationTitle' |
+  'confirmationMessage' | 'confirmationButtonLabel' |
+  'confirmationSuccessMessage' | 'unconfirmedMessage' |
+  'disabledReason'> & Partial<Pick<WidoorCommandUiConfig,
+  'confirmationPolicy' | 'physicalValidationPolicy' |
+  'expectedMotorStateRaw' |
+  'disabledReason'>> {
+  const textKeys: Record<typeof command, WidoorCommandTextKey> = {
+    OPEN: 'open',
+    CLOSE: 'close',
+    OPEN_SHORT_TIMED: 'openShortTimed',
+  };
+  const operations: Record<typeof command, LegacyMotorOperation> = {
+    OPEN: 'motor-open',
+    CLOSE: 'motor-close',
+    OPEN_SHORT_TIMED: 'motor-open-short-timed',
+  };
+  return {
+    profile,
+    command,
+    operation: operations[command],
+    textKey: textKeys[command],
+    catalogFactory: () => encodeLegacyMotorCommand(profile, command),
+    enabled: true,
+    expectedMotorStateRaw: null,
+    confirmationPolicy: { kind: 'gatt-only' },
+    physicalValidationPolicy: { allowPhase1ReferenceOnly: true },
+    hardwareValidationStatus: 'phase1-reference-only',
+    isTimedCommand: command === 'OPEN_SHORT_TIMED',
+  };
 }

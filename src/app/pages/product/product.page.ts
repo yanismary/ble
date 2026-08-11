@@ -62,9 +62,10 @@ import {
   ProductCommandHistoryEntry,
   ProductOpenCommandStatus,
   ProductMotorCommandOperation,
+  MOTOR_COMMAND_UI_CONFIGS,
   WIDOOR_COMMAND_UI_CONFIGS,
   WidoorCommandUiConfig,
-  createWidoorCommandAuthorization,
+  createProductMotorCommandAuthorization,
   formatCommandHistoryTime,
   initialProductOpenCommandState,
 } from './product-open-command';
@@ -121,27 +122,18 @@ export class ProductPage implements OnDestroy {
   private commandCycle = 0;
   private commandIdentifierSequence = 0;
   private destroyed = false;
-  private readonly widoorCommandWrites = new Map(
-    WIDOOR_COMMAND_UI_CONFIGS.map((config) => [
-      config.command,
-      config.catalogFactory(),
-    ]),
-  );
+  private readonly productCommandWrites: Map<string, LegacyBleWrite>;
 
   readonly config: ProductPageConfig;
   readonly text = PRODUCT_PAGE_TEXT;
-  readonly widoorCommands = Object.freeze(
-    WIDOOR_COMMAND_UI_CONFIGS.map((config) =>
-    Object.freeze({
-      config,
-      text: PRODUCT_PAGE_TEXT.widoorCommands[config.textKey],
-      disabledReason: config.disabledReason === 'physical-validation'
-        ? PRODUCT_PAGE_TEXT.widoorCommands.physicalValidationRequired
-        : config.disabledReason === 'protected'
-          ? PRODUCT_PAGE_TEXT.widoorCommands.protected
-          : null,
-    })),
-  );
+  readonly productCommands: readonly {
+    readonly config: WidoorCommandUiConfig;
+    readonly text: typeof PRODUCT_PAGE_TEXT.widoorCommands[
+      WidoorCommandUiConfig['textKey']
+    ];
+    readonly disabledReason: string | null;
+  }[];
+  readonly widoorCommands: typeof this.productCommands;
   readonly emptyTechnicalRows: readonly ProductDisplayRow[] = [];
   viewModel: ProductViewModel;
   openCommandState = initialProductOpenCommandState();
@@ -153,6 +145,25 @@ export class ProductPage implements OnDestroy {
       ? routeProfile
       : 'widoor';
     this.config = PRODUCT_PAGE_CONFIG[profile];
+    this.productCommands = Object.freeze(
+      MOTOR_COMMAND_UI_CONFIGS[profile].map((config) =>
+      Object.freeze({
+        config,
+        text: PRODUCT_PAGE_TEXT.widoorCommands[config.textKey],
+        disabledReason: config.disabledReason === 'physical-validation'
+          ? PRODUCT_PAGE_TEXT.widoorCommands.physicalValidationRequired
+          : config.disabledReason === 'protected'
+            ? PRODUCT_PAGE_TEXT.widoorCommands.protected
+            : null,
+      })),
+    );
+    this.widoorCommands = this.productCommands;
+    this.productCommandWrites = new Map(
+      this.productCommands.map(({ config }) => [
+        config.command,
+        config.catalogFactory(),
+      ]),
+    );
     this.context = this.resolveNavigationContext(routeProfile);
     this.viewModel = this.createInitialViewModel(
       profile,
@@ -191,6 +202,11 @@ export class ProductPage implements OnDestroy {
       this.config.profile === 'widoor';
   }
 
+  get showProductMotorCommands(): boolean {
+    return this.context?.profile === this.config.profile &&
+      this.productCommands.length > 0;
+  }
+
   get canOpenWidoor(): boolean {
     return this.canExecuteWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[0]);
   }
@@ -200,9 +216,14 @@ export class ProductPage implements OnDestroy {
   }
 
   canExecuteWidoorCommand(config: WidoorCommandUiConfig): boolean {
-    if (!WIDOOR_COMMAND_UI_CONFIGS.includes(config) ||
+    return this.canExecuteProductCommand(config);
+  }
+
+  canExecuteProductCommand(config: WidoorCommandUiConfig): boolean {
+    if (!MOTOR_COMMAND_UI_CONFIGS[this.config.profile].includes(config) ||
+        config.profile !== this.config.profile ||
         !config.enabled ||
-        !this.showWidoorOpenCommand ||
+        !this.showProductMotorCommands ||
         !this.isCurrentContext() ||
         this.viewModel.loading ||
         this.productDataLoadService.isLoading ||
@@ -212,7 +233,7 @@ export class ProductPage implements OnDestroy {
         this.commandInProgress) {
       return false;
     }
-    const write = this.widoorCommandWrites.get(config.command);
+    const write = this.productCommandWrites.get(config.command);
     if (write === undefined) {
       return false;
     }
@@ -243,7 +264,7 @@ export class ProductPage implements OnDestroy {
   }
 
   get displayedOpenCommandStatus(): ProductOpenCommandStatus {
-    if (this.showWidoorOpenCommand && !this.pageContextCurrent) {
+    if (this.showProductMotorCommands && !this.pageContextCurrent) {
       return this.bleService.connectedDeviceId === null
         ? 'disconnected'
         : 'stale';
@@ -682,14 +703,18 @@ export class ProductPage implements OnDestroy {
   }
 
   async requestWidoorCommand(config: WidoorCommandUiConfig): Promise<void> {
-    if (!this.canExecuteWidoorCommand(config) ||
+    return this.requestProductCommand(config);
+  }
+
+  async requestProductCommand(config: WidoorCommandUiConfig): Promise<void> {
+    if (!this.canExecuteProductCommand(config) ||
         this.context === null ||
         config.confirmationPolicy === null ||
         config.operation === 'motor-learning') {
       return;
     }
     const operation: ProductMotorCommandOperation = config.operation;
-    const write = this.widoorCommandWrites.get(config.command);
+    const write = this.productCommandWrites.get(config.command);
     if (write === undefined) {
       return;
     }
@@ -753,7 +778,7 @@ export class ProductPage implements OnDestroy {
       const attemptId = this.nextCommandIdentifier('attempt');
       const confirmationId = this.nextCommandIdentifier('confirmation');
       const confirmedAt = Date.now();
-      const authorization = createWidoorCommandAuthorization({
+      const authorization = createProductMotorCommandAuthorization({
         write,
         deviceId: context.deviceId,
         connectionGeneration: context.connectionGeneration,
@@ -777,9 +802,9 @@ export class ProductPage implements OnDestroy {
       const result = await this.bleWriteExecutionService.execute({
         write,
         deviceId: context.deviceId,
-        profile: 'widoor',
+        profile: config.profile,
         connectionGeneration: context.connectionGeneration,
-        identification: { profile: 'widoor', confidence: 'strong' },
+        identification: { profile: config.profile, confidence: 'strong' },
         authorization,
         attemptId,
         confirmationPolicy: config.confirmationPolicy,
@@ -1021,7 +1046,8 @@ export class ProductPage implements OnDestroy {
     write: LegacyBleWrite,
   ): 'disconnected' | 'stale' | 'unavailable' | null {
     if (this.destroyed || this.context !== context ||
-        context.profile !== 'widoor' || this.config.profile !== 'widoor') {
+        context.profile !== write.profile ||
+        this.config.profile !== write.profile) {
       return 'stale';
     }
     if (this.bleService.connectedDeviceId === null ||
@@ -1092,7 +1118,10 @@ export class ProductPage implements OnDestroy {
     let message: string;
     switch (result.status) {
       case 'success':
-        if (result.confirmationStatus === 'confirmed') {
+        if (config.confirmationPolicy?.kind === 'gatt-only') {
+          status = 'confirmed';
+          message = this.text.openCommand.sent;
+        } else if (result.confirmationStatus === 'confirmed') {
           status = 'confirmed';
           message = config.confirmationSuccessMessage;
         } else {

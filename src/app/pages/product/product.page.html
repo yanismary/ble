@@ -54,28 +54,29 @@
     @if (hasProductNavigationContext) {
       <section class="product-section" aria-labelledby="commands-title">
         <h2 id="commands-title">{{ text.sections.commands }}</h2>
-        @if (showWidoorOpenCommand) {
-          <div class="product-actions widoor-command-grid">
-            @for (command of widoorCommands; track command.config.operation) {
+        @if (showProductMotorCommands) {
+          <div class="product-actions widoor-command-grid motor-command-grid">
+            @for (command of productCommands; track command.config.operation) {
               <div
-                class="widoor-command-item"
+                class="widoor-command-item motor-command-item"
                 [class.widoor-command-item-timed]="command.config.isTimedCommand"
+                [class.motor-command-item-timed]="command.config.isTimedCommand"
               >
                 @if (command.config.enabled) {
                   <ion-button
-                    class="widoor-command"
+                    class="widoor-command motor-command"
                     [class.widoor-open-command]="command.config.operation === 'motor-open'"
                     [class.widoor-close-command]="command.config.operation === 'motor-close'"
                     [class.widoor-timed-command]="command.config.isTimedCommand"
                     type="button"
-                    (click)="requestWidoorCommand(command.config)"
-                    [disabled]="!canExecuteWidoorCommand(command.config)"
+                    (click)="requestProductCommand(command.config)"
+                    [disabled]="!canExecuteProductCommand(command.config)"
                   >
                     {{ command.text.label }}
                   </ion-button>
                 } @else {
                   <ion-button
-                    class="widoor-command widoor-command-disabled"
+                    class="widoor-command motor-command widoor-command-disabled"
                     type="button"
                     disabled
                   >

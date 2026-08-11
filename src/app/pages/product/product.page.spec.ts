@@ -42,7 +42,10 @@ import {
   formatProductTimestamp,
   isProductPageNavigationState,
 } from './product.page';
-import { WIDOOR_COMMAND_UI_CONFIGS } from './product-open-command';
+import {
+  MOTOR_COMMAND_UI_CONFIGS,
+  WIDOOR_COMMAND_UI_CONFIGS,
+} from './product-open-command';
 import {
   ProductPageNavigationState,
   ProductReadViewState,
@@ -1195,7 +1198,8 @@ describe('ProductPage commands for other profiles', () => {
     'moventiv-80',
     'garline',
   ] as const) {
-    it(`should keep ${profile} commands non-interactive`, async () => {
+    it(`should expose ${profile} main commands without auto execution`,
+      async () => {
       const bleService = new FakeBleService();
       const writeExecutionService = new FakeBleWriteExecutionService();
       await TestBed.configureTestingModule({
@@ -1232,9 +1236,15 @@ describe('ProductPage commands for other profiles', () => {
       const element = fixture.nativeElement as HTMLElement;
 
       expect(element.querySelector('ion-button.widoor-open-command'))
-        .toBeNull();
+        .not.toBeNull();
       expect(element.textContent).toContain(
-        fixture.componentInstance.text.commandsUnavailable,
+        fixture.componentInstance.text.widoorCommands.open.label,
+      );
+      expect(element.textContent).toContain(
+        fixture.componentInstance.text.widoorCommands.close.label,
+      );
+      expect(element.textContent).toContain(
+        fixture.componentInstance.text.widoorCommands.openShortTimed.label,
       );
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
@@ -1292,6 +1302,166 @@ describe('ProductPage direct navigation', () => {
         '[aria-labelledby="settings-title"]',
       )).toBeNull();
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe('ProductPage Moventiv/Garline motor commands', () => {
+  for (const profile of ['moventiv-60', 'garline'] as const) {
+    it(`should expose ${profile} Phase 1 main motor commands through the ` +
+      'Phase 2 write executor', async () => {
+      const bleService = new FakeBleService();
+      const loadService = new FakeProductDataLoadService();
+      const writeExecutionService = new FakeBleWriteExecutionService();
+      writeExecutionService.nextResult = {
+        ...openExecutionResult(
+          'success',
+          'not-validated',
+          null,
+          'motor-close',
+        ),
+        profile,
+        hardwareValidationStatus: 'phase1-reference-only',
+        policyOverrideUsed: true,
+      };
+      const alertCreate = jasmine.createSpy('create').and.resolveTo({
+        present: async () => undefined,
+        onDidDismiss: async () => ({ role: 'confirm' }),
+      });
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          { provide: AlertController, useValue: { create: alertCreate } },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          { provide: ProductDataLoadService, useValue: loadService },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState(profile) },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const element = fixture.nativeElement as HTMLElement;
+      expect(element.textContent).toContain(
+        component.text.widoorCommands.open.label,
+      );
+      expect(element.textContent).toContain(
+        component.text.widoorCommands.close.label,
+      );
+      expect(element.textContent).toContain(
+        component.text.widoorCommands.openShortTimed.label,
+      );
+      expect(element.textContent).not.toContain(
+        component.text.widoorCommands.openLongTimed.label,
+      );
+
+      await component.requestProductCommand(
+        MOTOR_COMMAND_UI_CONFIGS[profile][1],
+      );
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      const request = writeExecutionService.execute.calls.mostRecent()
+        .args[0] as LegacyBleWriteRequest;
+      expect(request.profile).toBe(profile);
+      expect(request.identification).toEqual({
+        profile,
+        confidence: 'strong',
+      });
+      expect(request.write.profile).toBe(profile);
+      expect(request.write.operation).toBe('motor-close');
+      expect(request.write.serviceUuid).toBe(BLE_UUIDS.shdoService);
+      expect(request.write.characteristicUuid)
+        .toBe(BLE_UUIDS.motorCommandCharacteristic);
+      expect(request.write.payloadHex).toBe('00 30');
+      expect(Array.from(request.write.payload)).toEqual([0x00, 0x30]);
+      expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
+      expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+      expect(request.authorization).toEqual(jasmine.objectContaining({
+        profile,
+        operation: 'motor-close',
+        payloadHex: '00 30',
+        motorMovementConfirmed: true,
+      }));
+      expect(component.openCommandState.status).toBe('confirmed');
+      expect(component.openCommandState.confirmationStatus)
+        .toBe('not-validated');
+      expect(component.openCommandState.message)
+        .toBe(component.text.openCommand.sent);
+    });
+  }
+
+  it('should reject non-current or unsupported motor command configs',
+    async () => {
+      const bleService = new FakeBleService();
+      const writeExecutionService = new FakeBleWriteExecutionService();
+      const alertCreate = jasmine.createSpy('create').and.resolveTo({
+        present: async () => undefined,
+        onDidDismiss: async () => ({ role: 'confirm' }),
+      });
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          { provide: AlertController, useValue: { create: alertCreate } },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          {
+            provide: ProductDataLoadService,
+            useValue: new FakeProductDataLoadService(),
+          },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile: 'moventiv-60' } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState('moventiv-60') },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      expect(MOTOR_COMMAND_UI_CONFIGS['moventiv-60'].some((config) =>
+        config.command === 'OPEN_LONG_TIMED',
+      )).toBeFalse();
+
+      await component.requestProductCommand(WIDOOR_COMMAND_UI_CONFIGS[3]);
+
+      expect(alertCreate).not.toHaveBeenCalled();
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
     },
   );
 });

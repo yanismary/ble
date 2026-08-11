@@ -10,6 +10,7 @@ export const PRODUCT_PAGE_TEXT = {
   openCommand: {
     cancel: 'Annuler',
     awaitingConfirmation: 'Confirmation requise',
+    sent: 'Commande envoyée',
     executing: 'Commande en cours…',
     unavailable: 'Commande indisponible',
     disconnected: 'Périphérique déconnecté',
