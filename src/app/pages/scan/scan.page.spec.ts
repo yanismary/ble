@@ -74,7 +74,10 @@ class FakeBleService {
     return this.bluetoothEnabled;
   }
 
-  async startScan(callback: (result: ScanResult) => void): Promise<void> {
+  async startScan(
+    callback: (result: ScanResult) => void,
+    _serviceUuids: readonly string[] = [],
+  ): Promise<void> {
     this.scanning = true;
     this.scanCallback = callback;
   }
@@ -390,6 +393,10 @@ describe('ScanPage', () => {
     fixture.detectChanges();
 
     expect(startScanSpy).toHaveBeenCalledTimes(1);
+    expect(startScanSpy).toHaveBeenCalledOnceWith(
+      jasmine.any(Function),
+      [BLE_UUIDS.widoorService, BLE_UUIDS.moventivGarlineService],
+    );
     expect(component.scanning).toBeTrue();
     expect(fixture.nativeElement.textContent).toContain(
       'Recherche d’appareils BLE',
@@ -432,6 +439,36 @@ describe('ScanPage', () => {
     expect(component.devices[0].rssi).toBe(-61);
     await component.stopScan();
   });
+
+  it('should prefer the advertised localName over device.name',
+    async () => {
+      await component.startScan();
+
+      bleService.emit(createScanResult(
+        'device-1',
+        -42,
+        'Ancien nom',
+        'Nouveau nom#CHA',
+      ));
+
+      expect(component.devices[0].name).toBe('Nouveau nom#CHA');
+      await component.stopScan();
+    },
+  );
+
+  it('should preserve a known name while duplicates refresh RSSI',
+    async () => {
+      await component.startScan();
+
+      bleService.emit(createScanResult('device-1', -42, 'Produit'));
+      bleService.emit(createScanResult('device-1', -61));
+
+      expect(component.devices).toEqual([
+        { deviceId: 'device-1', name: 'Produit', rssi: -61 },
+      ]);
+      await component.stopScan();
+    },
+  );
 
   it('should stop scanning', async () => {
     const stopScanSpy = spyOn(bleService, 'stopScan').and.callThrough();
@@ -2597,10 +2634,12 @@ function createScanResult(
   deviceId: string,
   rssi: number,
   name?: string,
+  localName?: string,
 ): ScanResult {
   return {
     device: { deviceId, name },
     rssi,
+    localName,
   };
 }
 

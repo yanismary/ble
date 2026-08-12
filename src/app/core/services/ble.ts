@@ -167,6 +167,7 @@ export class BleService implements OnDestroy {
 
   async startScan(
     onDeviceFound: (result: ScanResult) => void,
+    serviceUuids: readonly string[] = [],
   ): Promise<void> {
     if (this.stopPromise !== null) {
       await this.stopPromise;
@@ -180,10 +181,17 @@ export class BleService implements OnDestroy {
 
     this.scanning = true;
 
+    const services = Array.from(new Set(
+      serviceUuids
+        .map((uuid) => uuid.trim().toLowerCase())
+        .filter((uuid) => uuid.length > 0),
+    ));
+
     try {
       await BleClient.requestLEScan(
         {
-          allowDuplicates: false,
+          ...(services.length > 0 ? { services } : {}),
+          allowDuplicates: true,
         },
         onDeviceFound,
       );

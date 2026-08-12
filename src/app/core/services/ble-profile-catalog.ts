@@ -25,6 +25,11 @@ export const BLE_UUIDS = {
   moventivGarlineService: '978ae765-664c-45d8-9157-3b9031e6478e',
 } as const;
 
+export const BLE_SCAN_SERVICE_UUIDS = [
+  BLE_UUIDS.widoorService,
+  BLE_UUIDS.moventivGarlineService,
+] as const;
+
 export interface WritableBleProfile {
   readonly writable: true;
   readonly primaryServiceUuid: string;

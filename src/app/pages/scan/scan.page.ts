@@ -35,7 +35,10 @@ import {
   SecondaryBleProfile,
   VersionIdentification,
 } from '../../core/services/product-detection';
-import { ProductProfile } from '../../core/services/ble-profile-catalog';
+import {
+  BLE_SCAN_SERVICE_UUIDS,
+  ProductProfile,
+} from '../../core/services/ble-profile-catalog';
 import {
   MotorCommandConfirmation,
   PositionConfirmationProfile,
@@ -475,9 +478,12 @@ export class ScanPage implements OnDestroy {
         return;
       }
 
-      await this.bleService.startScan((result: ScanResult) => {
-        this.ngZone.run(() => this.updateDevice(result));
-      });
+      await this.bleService.startScan(
+        (result: ScanResult) => {
+          this.ngZone.run(() => this.updateDevice(result));
+        },
+        BLE_SCAN_SERVICE_UUIDS,
+      );
 
       if (this.destroyed) {
         await this.bleService.stopScan();
@@ -1200,23 +1206,44 @@ export class ScanPage implements OnDestroy {
       return;
     }
 
-    const name = result.device.name?.trim() || 'Appareil sans nom';
-    const device: ScannedDevice = {
-      deviceId: result.device.deviceId,
-      name,
-      rssi: result.rssi ?? null,
-    };
+    const deviceId = result.device.deviceId;
     const existingIndex = this.devices.findIndex(
-      ({ deviceId }) => deviceId === device.deviceId,
+      (device) => device.deviceId === deviceId,
     );
+    const existingDevice = existingIndex === -1
+      ? null
+      : this.devices[existingIndex];
+    const localName = result.localName?.trim() ?? '';
+    const deviceName = result.device.name?.trim() ?? '';
+    const previousName = existingDevice?.name ?? '';
+    const previousUsableName = previousName !== 'Appareil sans nom'
+      ? previousName
+      : '';
+    const name = localName
+      || previousUsableName
+      || deviceName
+      || previousName
+      || 'Appareil sans nom';
+    const device: ScannedDevice = {
+      deviceId,
+      name,
+      rssi: result.rssi ?? existingDevice?.rssi ?? null,
+    };
 
     if (existingIndex === -1) {
       this.devices = [...this.devices, device];
       return;
     }
 
-    this.devices = this.devices.map((existingDevice, index) =>
-      index === existingIndex ? device : existingDevice,
+    if (
+      existingDevice?.name === device.name &&
+      existingDevice.rssi === device.rssi
+    ) {
+      return;
+    }
+
+    this.devices = this.devices.map((currentDevice, index) =>
+      index === existingIndex ? device : currentDevice,
     );
   }
 

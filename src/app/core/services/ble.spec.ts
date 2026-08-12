@@ -211,7 +211,7 @@ describe('BleService', () => {
     }
   });
 
-  it('should start a scan without duplicate results', async () => {
+  it('should start a scan with duplicate advertisements enabled', async () => {
     const callback = jasmine.createSpy<(result: ScanResult) => void>(
       'deviceFound',
     );
@@ -219,11 +219,37 @@ describe('BleService', () => {
     await service.startScan(callback);
 
     expect(BleClient.requestLEScan).toHaveBeenCalledOnceWith(
-      { allowDuplicates: false },
+      { allowDuplicates: true },
       callback,
     );
     expect(service.isScanning()).toBeTrue();
   });
+
+  it('should normalize and deduplicate service filters when starting a scan',
+    async () => {
+      const callback = jasmine.createSpy<(result: ScanResult) => void>(
+        'deviceFound',
+      );
+      const firstService = '3206890A-650E-46F3-9C73-2BC0840E3B8E';
+      const secondService = '978AE765-664C-45D8-9157-3B9031E6478E';
+
+      await service.startScan(callback, [
+        firstService,
+        ` ${firstService.toLowerCase()} `,
+        secondService,
+        '',
+      ]);
+
+      expect(BleClient.requestLEScan).toHaveBeenCalledOnceWith(
+        {
+          services: [firstService.toLowerCase(), secondService.toLowerCase()],
+          allowDuplicates: true,
+        },
+        callback,
+      );
+      expect(service.isScanning()).toBeTrue();
+    },
+  );
 
   it('should reject a second simultaneous scan', async () => {
     const callback = jasmine.createSpy<(result: ScanResult) => void>(
