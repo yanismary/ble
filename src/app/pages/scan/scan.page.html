@@ -100,12 +100,38 @@
           @if (discoveringServices) {
             <div class="connection-status" role="status">
               <ion-spinner name="crescent"></ion-spinner>
-              <span>Découverte des services…</span>
+              <span>{{ serviceDiscoveryStatusLabel }}</span>
             </div>
           }
 
           @if (discoveryError) {
             <p class="error-message" role="alert">{{ discoveryError }}</p>
+            <p class="connected-status" role="status">
+              Connexion BLE toujours active.
+            </p>
+            <ion-button
+              expand="block"
+              fill="outline"
+              (click)="retryLoadServices()"
+              [disabled]="!canRetryServiceDiscovery"
+            >
+              @if (retryingServiceDiscovery) {
+                <ion-spinner name="crescent"></ion-spinner>
+              }
+              <span>Réessayer le chargement</span>
+            </ion-button>
+            <ion-button
+              expand="block"
+              color="medium"
+              fill="outline"
+              (click)="disconnectAfterDiscoveryError()"
+              [disabled]="!canDisconnectAfterDiscoveryError"
+            >
+              @if (disconnectingAfterDiscoveryError) {
+                <ion-spinner name="crescent"></ion-spinner>
+              }
+              <span>Déconnecter et revenir au scan</span>
+            </ion-button>
           }
 
           @if ((!discoveringServices || readingIdentification) && !discoveryError) {

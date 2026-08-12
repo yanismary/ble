@@ -167,6 +167,10 @@ export class ScanPage implements OnDestroy {
   connectedDeviceId: string | null = null;
   connectionError: string | null = null;
   connectionRetryDeviceId: string | null = null;
+  serviceDiscoveryRetryDeviceId: string | null = null;
+  serviceDiscoveryRetryGeneration: number | null = null;
+  retryingServiceDiscovery = false;
+  disconnectingAfterDiscoveryError = false;
   connecting = false;
   entryConnectionCleanupInProgress = false;
   bleRecoveryInProgress = false;
@@ -279,10 +283,49 @@ export class ScanPage implements OnDestroy {
       this.bleService.connectedDeviceId === null;
   }
 
+  get canRetryServiceDiscovery(): boolean {
+    const deviceId = this.serviceDiscoveryRetryDeviceId;
+    const generation = this.serviceDiscoveryRetryGeneration;
+    return this.discoveryError !== null &&
+      deviceId !== null &&
+      generation !== null &&
+      this.selectedDeviceId === deviceId &&
+      this.isCurrentBleConnection(deviceId, generation) &&
+      !this.connecting &&
+      !this.scanning &&
+      !this.discoveringServices &&
+      !this.readingIdentification &&
+      !this.bleRecoveryInProgress &&
+      !this.entryConnectionCleanupInProgress &&
+      !this.disconnectingAfterDiscoveryError;
+  }
+
+  get canDisconnectAfterDiscoveryError(): boolean {
+    const deviceId = this.serviceDiscoveryRetryDeviceId;
+    const generation = this.serviceDiscoveryRetryGeneration;
+    return this.discoveryError !== null &&
+      deviceId !== null &&
+      generation !== null &&
+      this.selectedDeviceId === deviceId &&
+      this.isCurrentBleConnection(deviceId, generation) &&
+      !this.connecting &&
+      !this.scanning &&
+      !this.discoveringServices &&
+      !this.readingIdentification &&
+      !this.entryConnectionCleanupInProgress &&
+      !this.disconnectingAfterDiscoveryError;
+  }
+
   get connectionStatusLabel(): string {
     return this.retryingConnection
       ? 'Nouvelle tentative de connexion…'
       : 'Connexion en cours…';
+  }
+
+  get serviceDiscoveryStatusLabel(): string {
+    return this.retryingServiceDiscovery
+      ? 'Nouveau chargement des services…'
+      : 'Découverte des services…';
   }
 
   get historicalGattDiagnostic(): BleGattCharacteristicProperties {
@@ -551,10 +594,11 @@ export class ScanPage implements OnDestroy {
       ) {
         return;
       }
+      const nativeGeneration = this.bleService.connectionGeneration;
       this.connectedDeviceId = this.bleService.connectedDeviceId;
-      this.connectedBleGeneration = this.bleService.connectionGeneration;
+      this.connectedBleGeneration = nativeGeneration;
       this.connecting = false;
-      await this.loadServices(device.deviceId);
+      await this.loadServices(device.deviceId, nativeGeneration);
     } catch (error: unknown) {
       if (this.destroyed) {
         return;
@@ -578,6 +622,52 @@ export class ScanPage implements OnDestroy {
     }
     this.retryingConnection = true;
     await this.connectSelectedDevice();
+  }
+
+  async retryLoadServices(): Promise<void> {
+    if (
+      this.serviceDiscoveryRetryDeviceId === null ||
+      this.serviceDiscoveryRetryGeneration === null ||
+      this.discoveringServices ||
+      this.readingIdentification ||
+      this.disconnectingAfterDiscoveryError
+    ) {
+      return;
+    }
+
+    const deviceId = this.serviceDiscoveryRetryDeviceId;
+    const generation = this.serviceDiscoveryRetryGeneration;
+    if (!this.isCurrentBleConnection(deviceId, generation)) {
+      this.clearStaleServiceDiscoveryRecovery();
+      return;
+    }
+
+    this.retryingServiceDiscovery = true;
+    await this.loadServices(deviceId, generation);
+  }
+
+  async disconnectAfterDiscoveryError(): Promise<void> {
+    if (!this.canDisconnectAfterDiscoveryError) {
+      return;
+    }
+
+    this.disconnectingAfterDiscoveryError = true;
+    this.errorMessage = null;
+
+    try {
+      await this.bleService.disconnect();
+      if (!this.destroyed && this.bleService.connectedDeviceId === null) {
+        this.clearConnectedState();
+      }
+    } catch (error: unknown) {
+      if (!this.destroyed) {
+        this.errorMessage = this.toErrorMessage(error);
+      }
+    } finally {
+      if (!this.destroyed) {
+        this.disconnectingAfterDiscoveryError = false;
+      }
+    }
   }
 
   async requestOpenMotorTest(): Promise<void> {
@@ -754,6 +844,10 @@ export class ScanPage implements OnDestroy {
     this.connectedBleGeneration = null;
     this.connecting = false;
     this.discoveringServices = false;
+    this.retryingServiceDiscovery = false;
+    this.disconnectingAfterDiscoveryError = false;
+    this.serviceDiscoveryRetryDeviceId = null;
+    this.serviceDiscoveryRetryGeneration = null;
     this.discoveryError = null;
     this.clearMotorState();
     this.clearIdentification();
@@ -791,6 +885,10 @@ export class ScanPage implements OnDestroy {
         this.connectedBleGeneration = null;
         this.connecting = false;
         this.discoveringServices = false;
+        this.retryingServiceDiscovery = false;
+        this.disconnectingAfterDiscoveryError = false;
+        this.serviceDiscoveryRetryDeviceId = null;
+        this.serviceDiscoveryRetryGeneration = null;
         this.entryConnectionCleanupInProgress = false;
       }
     }
@@ -882,38 +980,63 @@ export class ScanPage implements OnDestroy {
     }
   }
 
-  private async loadServices(deviceId: string): Promise<void> {
+  private async loadServices(
+    deviceId: string,
+    expectedConnectionGeneration: number,
+  ): Promise<void> {
+    if (!this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
+      this.clearStaleServiceDiscoveryRecovery();
+      return;
+    }
+
     this.discoveringServices = true;
     this.discoveryError = null;
+    this.serviceDiscoveryRetryDeviceId = null;
+    this.serviceDiscoveryRetryGeneration = null;
+    this.clearIdentification();
+    this.clearMotorState();
+    this.services = [];
 
     try {
       const services = await this.bleService.discoverServices(deviceId);
 
-      if (!this.destroyed && this.connectedDeviceId === deviceId) {
+      if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
         this.services = services;
         this.detectedSecondaryProfile =
           this.productDetection.detectSecondaryProfile(services);
         this.secondaryProfile = this.detectedSecondaryProfile;
-        await this.loadIdentification(deviceId, services);
+        await this.loadIdentification(
+          deviceId,
+          expectedConnectionGeneration,
+          services,
+        );
       }
     } catch (error: unknown) {
-      if (!this.destroyed && this.connectedDeviceId === deviceId) {
+      if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
         const details = error instanceof Error ? error.message : String(error);
         this.discoveryError = details
           ? `Impossible de découvrir les services BLE : ${details}`
           : 'Impossible de découvrir les services BLE.';
+        this.serviceDiscoveryRetryDeviceId = deviceId;
+        this.serviceDiscoveryRetryGeneration = expectedConnectionGeneration;
       }
     } finally {
-      if (!this.destroyed && this.connectedDeviceId === deviceId) {
+      if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
         this.discoveringServices = false;
       }
+      this.retryingServiceDiscovery = false;
     }
   }
 
   private async loadIdentification(
     deviceId: string,
+    expectedConnectionGeneration: number,
     services: readonly DiscoveredBleService[],
   ): Promise<void> {
+    if (!this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
+      return;
+    }
+
     const versionCharacteristicExists = services.some(
       (service) =>
         this.normalizeUuid(service.uuid) === BLE_UUIDS.shdoService &&
@@ -939,7 +1062,7 @@ export class ScanPage implements OnDestroy {
         deviceId,
       );
 
-      if (!this.destroyed && this.connectedDeviceId === deviceId) {
+      if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
         const identification = this.productDetection.interpretVersion(
           value,
           this.selectedDevice?.name,
@@ -952,17 +1075,21 @@ export class ScanPage implements OnDestroy {
           `${this.detectedSecondaryProfile} — ` +
           `${identification.detectionReason} ` +
           `(confiance ${identification.detectionConfidence.toLowerCase()})`;
-        await this.startMotorStateNotifications(deviceId, services);
+        await this.startMotorStateNotifications(
+          deviceId,
+          expectedConnectionGeneration,
+          services,
+        );
       }
     } catch (error: unknown) {
-      if (!this.destroyed && this.connectedDeviceId === deviceId) {
+      if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
         const details = error instanceof Error ? error.message : String(error);
         this.identificationError = details
           ? `Impossible de lire l’identification BLE : ${details}`
           : 'Impossible de lire l’identification BLE.';
       }
     } finally {
-      if (!this.destroyed && this.connectedDeviceId === deviceId) {
+      if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
         this.readingIdentification = false;
       }
     }
@@ -970,6 +1097,7 @@ export class ScanPage implements OnDestroy {
 
   private async startMotorStateNotifications(
     deviceId: string,
+    expectedConnectionGeneration: number,
     services: readonly DiscoveredBleService[],
   ): Promise<void> {
     const motorStateCharacteristic = services
@@ -1003,7 +1131,12 @@ export class ScanPage implements OnDestroy {
         BLE_UUIDS.motorStateCharacteristic,
         (value: DataView) => {
           this.ngZone.run(() => {
-            if (!this.destroyed && this.connectedDeviceId === deviceId) {
+            if (
+              this.isCurrentBleConnection(
+                deviceId,
+                expectedConnectionGeneration,
+              )
+            ) {
               const frame = this.productDetection.interpretMotorState(value);
               const previousFrame =
                 this.motorNotificationHistory[
@@ -1033,18 +1166,18 @@ export class ScanPage implements OnDestroy {
         },
         deviceId,
       );
-      if (!this.destroyed && this.connectedDeviceId === deviceId) {
+      if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
         this.motorStateNotificationsActive = true;
       }
     } catch (error: unknown) {
-      if (!this.destroyed && this.connectedDeviceId === deviceId) {
+      if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
         const details = error instanceof Error ? error.message : String(error);
         this.motorNotificationError = details
           ? `Impossible de s’abonner à l’état moteur : ${details}`
           : 'Impossible de s’abonner à l’état moteur.';
       }
     } finally {
-      if (!this.destroyed && this.connectedDeviceId === deviceId) {
+      if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
         this.subscribingMotorState = false;
       }
     }
@@ -1196,6 +1329,48 @@ export class ScanPage implements OnDestroy {
     this.productReadInProgress = false;
     this.productReadResult = null;
     this.productReadStatus = 'idle';
+  }
+
+  private isCurrentBleConnection(
+    deviceId: string,
+    nativeGeneration: number,
+  ): boolean {
+    return !this.destroyed &&
+      this.connectedDeviceId === deviceId &&
+      this.bleService.connectedDeviceId === deviceId &&
+      this.connectedBleGeneration === nativeGeneration &&
+      this.bleService.connectionGeneration === nativeGeneration;
+  }
+
+  private clearConnectedState(): void {
+    const hadConnectedDevice = this.connectedDeviceId !== null;
+    this.resetProductRead(true);
+    this.connectedDeviceId = null;
+    this.connectedBleGeneration = null;
+    this.connecting = false;
+    this.discoveringServices = false;
+    this.retryingServiceDiscovery = false;
+    this.disconnectingAfterDiscoveryError = false;
+    this.serviceDiscoveryRetryDeviceId = null;
+    this.serviceDiscoveryRetryGeneration = null;
+    this.discoveryError = null;
+    this.services = [];
+    this.clearMotorState();
+    this.clearIdentification();
+    if (hadConnectedDevice) {
+      this.connectionGeneration += 1;
+    }
+  }
+
+  private clearStaleServiceDiscoveryRecovery(): void {
+    this.discoveryError = null;
+    this.discoveringServices = false;
+    this.retryingServiceDiscovery = false;
+    this.serviceDiscoveryRetryDeviceId = null;
+    this.serviceDiscoveryRetryGeneration = null;
+    if (this.bleService.connectedDeviceId === null) {
+      this.clearConnectedState();
+    }
   }
 
   private isCurrentProductRead(
