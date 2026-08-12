@@ -68,6 +68,7 @@ export class BleService implements OnDestroy {
   private discoveredServicesDeviceIdValue: string | null = null;
   private connectingDeviceId: string | null = null;
   private locallyDisconnectingDeviceId: string | null = null;
+  private readonly remoteDuringLocalDisconnectDeviceIds = new Set<string>();
   private writePromise: Promise<void> | null = null;
   private notificationSequenceValue = 0;
   private connectionGenerationValue = 0;
@@ -217,18 +218,23 @@ export class BleService implements OnDestroy {
     }
 
     this.locallyDisconnectingDeviceId = deviceId;
+    this.remoteDuringLocalDisconnectDeviceIds.delete(deviceId);
     await this.stopAllNotifications(deviceId);
     const disconnection = BleClient.disconnect(deviceId);
     this.disconnectPromise = disconnection;
 
     try {
       await disconnection;
-      this.connectedDeviceIdValue = null;
-      this.clearDiscoveredServices();
-      this.connectionGenerationValue += 1;
-      this.disconnectionSubject.next({ deviceId, reason: 'local' });
+      this.completeLocalDisconnection(deviceId);
+    } catch (error: unknown) {
+      if (this.remoteDuringLocalDisconnectDeviceIds.has(deviceId)) {
+        this.completeLocalDisconnection(deviceId);
+        return;
+      }
+      throw error;
     } finally {
       this.locallyDisconnectingDeviceId = null;
+      this.remoteDuringLocalDisconnectDeviceIds.delete(deviceId);
       if (this.disconnectPromise === disconnection) {
         this.disconnectPromise = null;
       }
@@ -580,6 +586,7 @@ export class BleService implements OnDestroy {
 
   private handleRemoteDisconnection(deviceId: string): void {
     if (this.locallyDisconnectingDeviceId === deviceId) {
+      this.remoteDuringLocalDisconnectDeviceIds.add(deviceId);
       return;
     }
 
@@ -598,6 +605,16 @@ export class BleService implements OnDestroy {
     this.connectingDeviceId = null;
     this.connecting = false;
     this.disconnectionSubject.next({ deviceId, reason: 'remote' });
+  }
+
+  private completeLocalDisconnection(deviceId: string): void {
+    if (this.connectedDeviceIdValue !== deviceId) {
+      return;
+    }
+    this.connectedDeviceIdValue = null;
+    this.clearDiscoveredServices();
+    this.connectionGenerationValue += 1;
+    this.disconnectionSubject.next({ deviceId, reason: 'local' });
   }
 
   private validateNotificationTarget(

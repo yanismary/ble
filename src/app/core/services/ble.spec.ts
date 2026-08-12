@@ -214,6 +214,33 @@ describe('BleService', () => {
     ]);
   });
 
+  it('should treat a remote callback during local disconnection as disconnected even when native disconnect rejects',
+    async () => {
+      let onDisconnect: ((deviceId: string) => void) | undefined;
+      connectSpy.and.callFake(async (_deviceId, callback) => {
+        onDisconnect = callback;
+      });
+      const events: BleDisconnectionEvent[] = [];
+      service.disconnections$.subscribe((event) => events.push(event));
+      await service.connect('device-1');
+      const disconnectSpy = BleClient.disconnect as jasmine.Spy<
+        typeof BleClient.disconnect
+      >;
+      disconnectSpy.and.callFake(async (deviceId) => {
+        onDisconnect?.(deviceId);
+        throw new Error('Native disconnect failed after remote disconnect.');
+      });
+
+      await service.disconnect();
+
+      expect(service.connectedDeviceId).toBeNull();
+      expect(service.connectionGeneration).toBe(2);
+      expect(events).toEqual([
+        { deviceId: 'device-1', reason: 'local' },
+      ]);
+    },
+  );
+
   it('should reject service discovery when no device is connected', async () => {
     await expectAsync(service.discoverServices()).toBeRejectedWithError(
       'No BLE device is connected.',
