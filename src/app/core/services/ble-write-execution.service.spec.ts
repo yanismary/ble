@@ -7,6 +7,7 @@ import {
 import { BleService } from './ble';
 import {
   createWidoorLegacyResetSequence,
+  encodeLegacyDateWrite,
   encodeLegacyNameWrite,
   encodeLegacyMotorCommand,
   encodeLegacyProfessionalScalar,
@@ -126,6 +127,36 @@ describe('BleWriteExecutionService', () => {
         jasmine.any(Uint8Array),
         'device-1',
       );
+    },
+  );
+
+  it('executes catalogued product date writes on SHDO dates and cycles',
+    async () => {
+      const request = requestFor(
+        encodeLegacyDateWrite('garline', 'maintenance', {
+          year: 26,
+          month: 11,
+          day: 31,
+          hour: 23,
+        }),
+      );
+
+      const result = await service.execute(request);
+
+      expect(result.status).toBe('success');
+      expect(result.operation).toBe('maintenance-date');
+      expect(result.serviceUuid).toBe(request.write.serviceUuid);
+      expect(result.characteristicUuid).toBe(request.write.characteristicUuid);
+      expect(result.payloadHex).toBe('02 1a 0b 1f 17');
+      expect(ble.writeCharacteristic).toHaveBeenCalledOnceWith(
+        request.write.serviceUuid,
+        request.write.characteristicUuid,
+        jasmine.any(Uint8Array),
+        'device-1',
+      );
+      expect(Array.from(
+        ble.writeCharacteristic.calls.mostRecent().args[2] as Uint8Array,
+      )).toEqual([0x02, 26, 11, 31, 23]);
     },
   );
 
