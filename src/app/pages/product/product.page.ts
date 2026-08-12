@@ -306,6 +306,8 @@ export class ProductPage implements OnDestroy {
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', action: null, message: null });
   private commandHistoryEntries: readonly ProductCommandHistoryEntry[] = [];
+  returningToScan = false;
+  returnToScanErrorMessage: string | null = null;
   readonly compareWeightRangeOptions = (
     first: ProductWeightRange | null,
     second: ProductWeightRange | null,
@@ -2596,9 +2598,31 @@ export class ProductPage implements OnDestroy {
     });
   }
 
-  backToScan(): void {
+  async backToScan(): Promise<void> {
+    if (this.returningToScan) {
+      return;
+    }
+    this.returningToScan = true;
+    this.returnToScanErrorMessage = null;
     this.resetOpenCommandState();
-    void this.router.navigate(['/scan']);
+    if (this.viewModel.loading || this.productDataLoadService.isLoading) {
+      this.productDataLoadService.cancelCurrentLoad();
+    }
+    try {
+      try {
+        await this.bleService.disconnect();
+      } catch {
+        if (this.bleService.connectedDeviceId !== null) {
+          this.returnToScanErrorMessage = this.text.returnToScanFailed;
+          return;
+        }
+      }
+      await this.router.navigate(['/scan']);
+    } finally {
+      if (!this.destroyed) {
+        this.returningToScan = false;
+      }
+    }
   }
 
   ngOnDestroy(): void {

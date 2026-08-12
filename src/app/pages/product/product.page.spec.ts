@@ -85,7 +85,7 @@ class FakeBleService {
   readonly notifications$: Observable<BleNotificationEvent> =
     this.notificationSubject.asObservable();
 
-  disconnect(): void {
+  async disconnect(): Promise<void> {
     const deviceId = this.connectedDeviceId;
     this.connectedDeviceId = null;
     this.connectionGeneration += 1;
@@ -2287,15 +2287,107 @@ describe('ProductPage', () => {
     }
   });
 
-  it('should contain a responsive read-only layout and return to Scan', () => {
+  it('should contain a responsive read-only layout and return to Scan',
+    async () => {
+      const disconnectSpy = spyOn(bleService, 'disconnect')
+        .and.callThrough();
+
     expect(fixture.nativeElement.querySelector(
       '.product-readonly-grid',
     )).not.toBeNull();
 
-    component.backToScan();
+      await component.backToScan();
 
+      expect(disconnectSpy).toHaveBeenCalledTimes(1);
     expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
-  });
+      expect(bleService.connectedDeviceId).toBeNull();
+      expect(bleService.connectionGeneration).toBe(5);
+    },
+  );
+
+  it('should ignore a second scan return while disconnect is pending',
+    async () => {
+      let releaseDisconnect!: () => void;
+      const pendingDisconnect = new Promise<void>((resolve) => {
+        releaseDisconnect = resolve;
+      });
+      const disconnectSpy = spyOn(bleService, 'disconnect')
+        .and.returnValue(pendingDisconnect);
+
+      const firstReturn = component.backToScan();
+      await component.backToScan();
+
+      expect(disconnectSpy).toHaveBeenCalledTimes(1);
+      expect(routerNavigate).not.toHaveBeenCalled();
+
+      releaseDisconnect();
+      await firstReturn;
+
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
+    },
+  );
+
+  it('should stay on ProductPage and allow retry when disconnect fails while still connected',
+    async () => {
+      const disconnectSpy = spyOn(bleService, 'disconnect')
+        .and.rejectWith(new Error('Native disconnect failed.'));
+
+      await component.backToScan();
+
+      expect(disconnectSpy).toHaveBeenCalledTimes(1);
+      expect(routerNavigate).not.toHaveBeenCalled();
+      expect(component.returningToScan).toBeFalse();
+      expect(component.returnToScanErrorMessage).toBe(
+        component.text.returnToScanFailed,
+      );
+      expect(bleService.connectedDeviceId).toBe('device-1');
+    },
+  );
+
+  it('should navigate to Scan when disconnect rejects after a remote disconnection',
+    async () => {
+      spyOn(bleService, 'disconnect').and.callFake(async () => {
+        bleService.connectedDeviceId = null;
+        bleService.connectionGeneration += 1;
+        throw new Error('Native disconnect failed after remote disconnect.');
+      });
+
+      await component.backToScan();
+
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
+      expect(component.returnToScanErrorMessage).toBeNull();
+      expect(bleService.connectedDeviceId).toBeNull();
+    },
+  );
+
+  it('should cancel an active initial load before returning to Scan',
+    async () => {
+      component.viewModel = {
+        ...component.viewModel,
+        loading: true,
+      };
+      loadService.isLoading = true;
+
+      await component.backToScan();
+
+      expect(loadService.cancelCurrentLoad).toHaveBeenCalled();
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
+    },
+  );
+
+  it('should return to Scan through the central disconnect while a write is in progress',
+    async () => {
+      bleService.isWriting = true;
+      const disconnectSpy = spyOn(bleService, 'disconnect')
+        .and.callThrough();
+
+      await component.backToScan();
+
+      expect(disconnectSpy).toHaveBeenCalledTimes(1);
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
+      expect(bleService.connectedDeviceId).toBeNull();
+    },
+  );
 
   it('should reject incomplete or forged navigation state', () => {
     expect(isProductPageNavigationState(null)).toBeFalse();

@@ -151,6 +151,7 @@ export class ScanPage implements OnDestroy {
   connectedDeviceId: string | null = null;
   connectionError: string | null = null;
   connecting = false;
+  entryConnectionCleanupInProgress = false;
   discoveringServices = false;
   discoveryError: string | null = null;
   errorMessage: string | null = null;
@@ -186,6 +187,7 @@ export class ScanPage implements OnDestroy {
         this.ngZone.run(() => this.handleDisconnection(event));
       },
     );
+    void this.disconnectExistingNativeConnectionForScanEntry();
   }
 
   get selectedDevice(): ScannedDevice | null {
@@ -228,6 +230,14 @@ export class ScanPage implements OnDestroy {
       !this.productDataLoadService.isLoading &&
       !this.bleService.isWriting &&
       !this.motorCommandInProgress;
+  }
+
+  get canStartScan(): boolean {
+    return !this.scanning &&
+      !this.connecting &&
+      !this.entryConnectionCleanupInProgress &&
+      this.connectedDeviceId === null &&
+      this.bleService.connectedDeviceId === null;
   }
 
   get historicalGattDiagnostic(): BleGattCharacteristicProperties {
@@ -358,7 +368,7 @@ export class ScanPage implements OnDestroy {
   }
 
   async startScan(): Promise<void> {
-    if (this.scanning || this.connecting || this.connectedDeviceId !== null) {
+    if (!this.canStartScan) {
       return;
     }
 
@@ -643,6 +653,37 @@ export class ScanPage implements OnDestroy {
 
     if (event.reason === 'remote') {
       this.connectionError = 'Connexion perdue avec l’appareil.';
+    }
+  }
+
+  private async disconnectExistingNativeConnectionForScanEntry():
+    Promise<void> {
+    if (this.bleService.connectedDeviceId === null) {
+      return;
+    }
+
+    this.entryConnectionCleanupInProgress = true;
+    this.connectionError = null;
+    this.resetProductRead(true);
+    this.resetMotorTest();
+    this.clearMotorState();
+    this.clearIdentification();
+    this.services = [];
+
+    try {
+      await this.bleService.disconnect();
+    } catch (error: unknown) {
+      if (!this.destroyed) {
+        this.errorMessage = this.toErrorMessage(error);
+      }
+    } finally {
+      if (!this.destroyed) {
+        this.connectedDeviceId = null;
+        this.connectedBleGeneration = null;
+        this.connecting = false;
+        this.discoveringServices = false;
+        this.entryConnectionCleanupInProgress = false;
+      }
     }
   }
 

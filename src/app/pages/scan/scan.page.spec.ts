@@ -38,6 +38,7 @@ class FakeBleService {
   private notificationCallback: ((value: DataView) => void) | null = null;
   isWriting = false;
   connectionGeneration = 0;
+  disconnectResult: Promise<void> | null = null;
   servicesResult: DiscoveredBleService[] = [];
   readResult: DataView = new DataView(new ArrayBuffer(0));
 
@@ -75,9 +76,17 @@ class FakeBleService {
     this.connectionGeneration += 1;
   }
 
-  async disconnect(): Promise<void> {
-    this.connectedDeviceIdValue = null;
-  }
+  readonly disconnect = jasmine.createSpy('disconnect').and.callFake(
+    async (): Promise<void> => {
+      if (this.disconnectResult !== null) {
+        await this.disconnectResult;
+      }
+      if (this.connectedDeviceIdValue !== null) {
+        this.connectedDeviceIdValue = null;
+        this.connectionGeneration += 1;
+      }
+    },
+  );
 
   async discoverServices(_deviceId?: string): Promise<DiscoveredBleService[]> {
     return this.servicesResult;
@@ -263,6 +272,97 @@ describe('ScanPage', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('should disconnect a native connection left alive when ScanPage is created',
+    async () => {
+      fixture.destroy();
+      bleService.setConnectedDeviceId('device-previous');
+      bleService.connectionGeneration = 7;
+
+      fixture = TestBed.createComponent(ScanPage);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+      await settlePromises();
+
+      expect(bleService.disconnect).toHaveBeenCalledTimes(1);
+      expect(bleService.connectedDeviceId).toBeNull();
+      expect(bleService.connectionGeneration).toBe(8);
+      expect(component.connectedDeviceId).toBeNull();
+      expect(component.canStartScan).toBeTrue();
+
+      await component.startScan();
+
+      expect(component.scanning).toBeTrue();
+    },
+  );
+
+  it('should not disconnect again when ScanPage is created after ProductPage cleaned the service',
+    async () => {
+      fixture.destroy();
+      bleService.setConnectedDeviceId(null);
+      bleService.disconnect.calls.reset();
+
+      fixture = TestBed.createComponent(ScanPage);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+      await settlePromises();
+
+      expect(bleService.disconnect).not.toHaveBeenCalled();
+      expect(component.canStartScan).toBeTrue();
+    },
+  );
+
+  it('should block a new scan while an entry disconnect is pending',
+    async () => {
+      fixture.destroy();
+      let releaseDisconnect!: () => void;
+      bleService.setConnectedDeviceId('device-previous');
+      bleService.disconnectResult = new Promise<void>((resolve) => {
+        releaseDisconnect = resolve;
+      });
+
+      fixture = TestBed.createComponent(ScanPage);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      expect(component.entryConnectionCleanupInProgress).toBeTrue();
+      expect(component.canStartScan).toBeFalse();
+
+      await component.startScan();
+
+      expect(component.scanning).toBeFalse();
+
+      releaseDisconnect();
+      await settlePromises();
+
+      expect(component.entryConnectionCleanupInProgress).toBeFalse();
+      expect(component.canStartScan).toBeTrue();
+    },
+  );
+
+  it('should finish entry cleanup when a remote disconnect happens while cleanup is pending',
+    async () => {
+      fixture.destroy();
+      let releaseDisconnect!: () => void;
+      bleService.setConnectedDeviceId('device-previous');
+      bleService.disconnectResult = new Promise<void>((resolve) => {
+        releaseDisconnect = resolve;
+      });
+
+      fixture = TestBed.createComponent(ScanPage);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      bleService.emitRemoteDisconnection('device-previous');
+      releaseDisconnect();
+      await settlePromises();
+
+      expect(bleService.connectedDeviceId).toBeNull();
+      expect(component.connectedDeviceId).toBeNull();
+      expect(component.entryConnectionCleanupInProgress).toBeFalse();
+      expect(component.canStartScan).toBeTrue();
+    },
+  );
 
   it('should start scanning, display its state and stop after ten seconds', fakeAsync(() => {
     const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
@@ -1413,12 +1513,12 @@ describe('ScanPage', () => {
       productDataLoadService.loadProductData.and.returnValue(
         new Promise(() => undefined),
       );
-      const disconnectSpy = spyOn(bleService, 'disconnect');
+      bleService.disconnect.calls.reset();
       void component.loadProductInformation();
       component.cancelProductInformationLoad();
       expect(productDataLoadService.cancelCurrentLoad)
         .toHaveBeenCalledTimes(1);
-      expect(disconnectSpy).not.toHaveBeenCalled();
+      expect(bleService.disconnect).not.toHaveBeenCalled();
       expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
     },
   );

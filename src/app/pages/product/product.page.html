@@ -107,10 +107,21 @@
         >
           {{ text.refresh }}
         </ion-button>
-        <ion-button type="button" fill="outline" color="medium" (click)="backToScan()">
+        <ion-button
+          type="button"
+          fill="outline"
+          color="medium"
+          (click)="backToScan()"
+          [disabled]="returningToScan"
+        >
           {{ text.backToScan }}
         </ion-button>
       </div>
+      @if (returnToScanErrorMessage) {
+        <p class="command-state" role="alert" data-tone="error">
+          {{ returnToScanErrorMessage }}
+        </p>
+      }
       @if (viewModel.loading) {
         <p class="product-loading" role="status">
           <ion-spinner name="crescent"></ion-spinner>

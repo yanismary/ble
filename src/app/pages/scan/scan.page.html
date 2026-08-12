@@ -15,7 +15,7 @@
     <ion-button
       expand="block"
       (click)="startScan()"
-      [disabled]="scanning || connecting || connectedDeviceId !== null"
+      [disabled]="!canStartScan"
     >
       Lancer le scan
     </ion-button>
