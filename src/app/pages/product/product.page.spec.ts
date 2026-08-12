@@ -32,6 +32,10 @@ import {
   ProductDataLoadStatus,
 } from '../../core/services/product-data-load.service';
 import {
+  MaintenanceAccessContext,
+  MaintenanceAccessService,
+} from '../../core/services/maintenance-access.service';
+import {
   ProfessionalAccessContext,
   ProfessionalAccessService,
 } from
@@ -106,8 +110,11 @@ class FakeBleService {
 class FakeBleWriteExecutionService {
   isExecuting = false;
   nextResult = openExecutionResult('success', 'confirmed');
+  nextResults: LegacyBleWriteExecutionResult[] = [];
   readonly execute = jasmine.createSpy('execute')
-    .and.callFake(async (_request: LegacyBleWriteRequest) => this.nextResult);
+    .and.callFake(async (_request: LegacyBleWriteRequest) =>
+      this.nextResults.shift() ?? this.nextResult,
+    );
 }
 
 class FakeProductDataLoadService {
@@ -153,6 +160,47 @@ class FakeProfessionalAccessService {
   private sameContext(
     first: ProfessionalAccessContext,
     second: ProfessionalAccessContext,
+  ): boolean {
+    return first.profile === second.profile &&
+      first.deviceId === second.deviceId &&
+      first.connectionGeneration === second.connectionGeneration;
+  }
+}
+
+const PRODUCT_PAGE_MAINTENANCE_ACCESS_TEST_CODE =
+  'accepted-maintenance-access-code';
+
+class FakeMaintenanceAccessService {
+  private authenticatedContext: MaintenanceAccessContext | null = null;
+  readonly authenticate = jasmine.createSpy('authenticate')
+    .and.callFake((
+      context: MaintenanceAccessContext,
+      accessCode: string,
+    ): boolean => {
+      if (accessCode !== PRODUCT_PAGE_MAINTENANCE_ACCESS_TEST_CODE) {
+        return false;
+      }
+      this.authenticatedContext = Object.freeze({ ...context });
+      return true;
+    });
+  readonly reset = jasmine.createSpy('reset')
+    .and.callFake((context?: MaintenanceAccessContext): void => {
+      if (context === undefined ||
+          (this.authenticatedContext !== null &&
+            this.sameContext(this.authenticatedContext, context))) {
+        this.authenticatedContext = null;
+      }
+    });
+
+  isAuthenticated(context: MaintenanceAccessContext | null): boolean {
+    return context !== null &&
+      this.authenticatedContext !== null &&
+      this.sameContext(this.authenticatedContext, context);
+  }
+
+  private sameContext(
+    first: MaintenanceAccessContext,
+    second: MaintenanceAccessContext,
   ): boolean {
     return first.profile === second.profile &&
       first.deviceId === second.deviceId &&
@@ -3031,6 +3079,10 @@ describe('ProductPage weight-range controls for profile variants', () => {
           provide: BleWriteExecutionService,
           useValue: writeExecutionService,
         },
+        {
+          provide: MaintenanceAccessService,
+          useValue: new FakeMaintenanceAccessService(),
+        },
         { provide: ProductDataLoadService, useValue: loadService },
         { provide: ProductDetection, useClass: ProductDetection },
         {
@@ -4131,6 +4183,370 @@ describe('ProductPage lock-mode controls for profile variants', () => {
   );
 });
 
+describe('ProductPage product date maintenance actions', () => {
+  for (const profile of [
+    'moventiv-60',
+    'moventiv-80',
+    'garline',
+  ] as const) {
+    it(`should expose setup action for ${profile} when first date is empty`,
+      async () => {
+        const harness = await createProductDateHarness(
+          profile,
+          notInitializedHistoricalDate(),
+        );
+
+        expect(harness.component.showProductDateMaintenanceAction).toBeTrue();
+        expect(harness.component.productDateMaintenanceActionLabel)
+          .toBe(harness.component.text.productDateActions.setupLabel);
+        expect(harness.fixture.nativeElement.textContent).toContain(
+          harness.component.text.productDateActions.setupLabel,
+        );
+        expect(harness.component.canRequestProductDateMaintenanceAction())
+          .toBeTrue();
+      },
+    );
+  }
+
+  it('should expose maintenance action when first date is already present',
+    async () => {
+      const harness = await createProductDateHarness(
+        'moventiv-80',
+        presentHistoricalDate(),
+      );
+
+      expect(harness.component.showProductDateMaintenanceAction).toBeTrue();
+      expect(harness.component.productDateMaintenanceActionLabel)
+        .toBe(harness.component.text.productDateActions.maintenanceLabel);
+      expect(harness.fixture.nativeElement.textContent).toContain(
+        harness.component.text.productDateActions.maintenanceLabel,
+      );
+    },
+  );
+
+  it('should never expose product date actions on Widoor', async () => {
+    const harness = await createProductDateHarness(
+      'widoor',
+      notInitializedHistoricalDate(),
+    );
+
+    expect(harness.component.showProductDateMaintenanceAction).toBeFalse();
+    expect(harness.component.canRequestProductDateMaintenanceAction())
+      .toBeFalse();
+    expect(harness.fixture.nativeElement.textContent).not.toContain(
+      harness.component.text.productDateActions.setupLabel,
+    );
+    expect(harness.fixture.nativeElement.textContent).not.toContain(
+      harness.component.text.productDateActions.maintenanceLabel,
+    );
+  });
+
+  it('should ask the maintenance code and write maintenance then first date',
+    async () => {
+      jasmine.clock().install();
+      jasmine.clock().mockDate(new Date(2026, 0, 2, 3, 59, 58));
+      try {
+        const harness = await createProductDateHarness(
+          'garline',
+          notInitializedHistoricalDate(),
+        );
+        harness.writeExecutionService.nextResults = [
+          productDateExecutionResult(
+            'garline',
+            'maintenance-date',
+            '02 1a 00 02 03',
+          ),
+          productDateExecutionResult(
+            'garline',
+            'first-commissioning-date',
+            '01 1a 00 02 03',
+          ),
+        ];
+
+        await harness.component.requestProductDateMaintenanceAction();
+
+        expect(harness.alertCreate).toHaveBeenCalledTimes(1);
+        expect(harness.alertOptions[0]['message']).toContain(
+          'mise en service',
+        );
+        expect(harness.maintenanceAccessService.authenticate)
+          .toHaveBeenCalledOnceWith(jasmine.objectContaining({
+            profile: 'garline',
+            deviceId: 'device-1',
+            connectionGeneration: 4,
+          }), PRODUCT_PAGE_MAINTENANCE_ACCESS_TEST_CODE);
+        expect(harness.maintenanceAccessService.reset).toHaveBeenCalledWith(
+          jasmine.objectContaining({
+            profile: 'garline',
+            deviceId: 'device-1',
+            connectionGeneration: 4,
+          }),
+        );
+        expect(harness.writeExecutionService.execute).toHaveBeenCalledTimes(2);
+        const requests = harness.writeExecutionService.execute.calls.allArgs()
+          .map(([request]) => request as LegacyBleWriteRequest);
+        expect(requests.map(({ write }) => write.operation)).toEqual([
+          'maintenance-date',
+          'first-commissioning-date',
+        ]);
+        expect(requests.map(({ write }) => write.payloadHex)).toEqual([
+          '02 1a 00 02 03',
+          '01 1a 00 02 03',
+        ]);
+        expect(requests.every((request) =>
+          request.profile === 'garline' &&
+          request.deviceId === 'device-1' &&
+          request.connectionGeneration === 4,
+        )).toBeTrue();
+        expect(harness.component.productDateActionState.status).toBe('sent');
+        expect(harness.component.productDateActionState.message)
+          .toBe(harness.component.text.productDateActions.setupSent);
+        expect(harness.loadService.loadProductData).toHaveBeenCalledTimes(2);
+      } finally {
+        jasmine.clock().uninstall();
+      }
+    },
+  );
+
+  it('should ask the maintenance code again for each maintenance action',
+    async () => {
+      const harness = await createProductDateHarness(
+        'garline',
+        presentHistoricalDate(),
+      );
+
+      await harness.component.requestProductDateMaintenanceAction();
+      await harness.component.requestProductDateMaintenanceAction();
+
+      expect(harness.alertCreate).toHaveBeenCalledTimes(2);
+      expect(harness.maintenanceAccessService.authenticate)
+        .toHaveBeenCalledTimes(2);
+      expect(harness.writeExecutionService.execute).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('should write maintenance only when first date is already initialized',
+    async () => {
+      jasmine.clock().install();
+      jasmine.clock().mockDate(new Date(2026, 11, 31, 23, 12, 30));
+      try {
+        const harness = await createProductDateHarness(
+          'moventiv-60',
+          presentHistoricalDate(),
+        );
+        harness.writeExecutionService.nextResult = productDateExecutionResult(
+          'moventiv-60',
+          'maintenance-date',
+          '02 1a 0b 1f 17',
+        );
+
+        await harness.component.requestProductDateMaintenanceAction();
+
+        expect(harness.writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        const request = harness.writeExecutionService.execute.calls
+          .mostRecent().args[0] as LegacyBleWriteRequest;
+        expect(request.write.operation).toBe('maintenance-date');
+        expect(request.write.payloadHex).toBe('02 1a 0b 1f 17');
+        expect(harness.component.productDateActionState.status).toBe('sent');
+        expect(harness.component.productDateActionState.message)
+          .toBe(harness.component.text.productDateActions.maintenanceSent);
+        expect(harness.loadService.loadProductData).toHaveBeenCalledTimes(2);
+      } finally {
+        jasmine.clock().uninstall();
+      }
+    },
+  );
+
+  it('should reject wrong maintenance code and cancellation before any write',
+    async () => {
+      const wrongCodeHarness = await createProductDateHarness(
+        'garline',
+        presentHistoricalDate(),
+        { accessCode: 'bad-code' },
+      );
+
+      await wrongCodeHarness.component.requestProductDateMaintenanceAction();
+
+      expect(wrongCodeHarness.writeExecutionService.execute)
+        .not.toHaveBeenCalled();
+      expect(wrongCodeHarness.component.productDateActionState.status)
+        .toBe('failed');
+      expect(wrongCodeHarness.component.productDateActionState.message)
+        .toBe(wrongCodeHarness.component.text.productDateActions.wrongCode);
+
+      const cancelledHarness = await createProductDateHarness(
+        'garline',
+        presentHistoricalDate(),
+        { alertRole: 'cancel' },
+      );
+
+      await cancelledHarness.component.requestProductDateMaintenanceAction();
+
+      expect(cancelledHarness.maintenanceAccessService.authenticate)
+        .not.toHaveBeenCalled();
+      expect(cancelledHarness.writeExecutionService.execute)
+        .not.toHaveBeenCalled();
+      expect(cancelledHarness.component.productDateActionState.status)
+        .toBe('cancelled');
+    },
+  );
+
+  it('should report partial failure when setup maintenance succeeds and first date fails',
+    async () => {
+      const harness = await createProductDateHarness(
+        'moventiv-80',
+        notInitializedHistoricalDate(),
+      );
+      harness.writeExecutionService.nextResults = [
+        productDateExecutionResult(
+          'moventiv-80',
+          'maintenance-date',
+          '02 1a 00 02 03',
+        ),
+        productDateExecutionResult(
+          'moventiv-80',
+          'first-commissioning-date',
+          '01 1a 00 02 03',
+          'failed',
+        ),
+      ];
+
+      await harness.component.requestProductDateMaintenanceAction();
+
+      expect(harness.writeExecutionService.execute).toHaveBeenCalledTimes(2);
+      expect(harness.component.productDateActionState.status)
+        .toBe('partial-failed');
+      expect(harness.component.productDateActionState.message)
+        .toBe(harness.component.text.productDateActions.partialFailed);
+      expect(harness.loadService.loadProductData).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('should not write first date when the maintenance write fails',
+    async () => {
+      const harness = await createProductDateHarness(
+        'garline',
+        notInitializedHistoricalDate(),
+      );
+      harness.writeExecutionService.nextResult = productDateExecutionResult(
+        'garline',
+        'maintenance-date',
+        '02 1a 00 02 03',
+        'failed',
+      );
+
+      await harness.component.requestProductDateMaintenanceAction();
+
+      expect(harness.writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      const request = harness.writeExecutionService.execute.calls
+        .mostRecent().args[0] as LegacyBleWriteRequest;
+      expect(request.write.operation).toBe('maintenance-date');
+      expect(harness.component.productDateActionState.status).toBe('failed');
+      expect(harness.loadService.loadProductData).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('should keep write success and report reload failure separately',
+    async () => {
+      const harness = await createProductDateHarness(
+        'moventiv-60',
+        presentHistoricalDate(),
+      );
+      harness.loadService.nextResult = productDateLoadResult(
+        'moventiv-60',
+        presentHistoricalDate(),
+        'failed',
+      );
+
+      await harness.component.requestProductDateMaintenanceAction();
+
+      expect(harness.writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(harness.component.productDateActionState.status).toBe('sent');
+      expect(harness.component.productDateActionState.message)
+        .toBe(harness.component.text.productDateActions
+          .maintenanceSentReloadFailed);
+    },
+  );
+
+  it('should report partial failure when the product disconnects after maintenance',
+    async () => {
+      const harness = await createProductDateHarness(
+        'garline',
+        notInitializedHistoricalDate(),
+      );
+      harness.writeExecutionService.execute.and.callFake(
+        async () => {
+          harness.bleService.disconnect();
+          return productDateExecutionResult(
+            'garline',
+            'maintenance-date',
+            '02 1a 00 02 03',
+          );
+        },
+      );
+
+      await harness.component.requestProductDateMaintenanceAction();
+
+      expect(harness.writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(harness.component.productDateActionState.status)
+        .toBe('partial-failed');
+      expect(harness.component.productDateActionState.message)
+        .toBe(harness.component.text.productDateActions.partialFailed);
+    },
+  );
+
+  it('should report partial failure when the context becomes stale after maintenance',
+    async () => {
+      const harness = await createProductDateHarness(
+        'moventiv-80',
+        notInitializedHistoricalDate(),
+      );
+      harness.writeExecutionService.execute.and.callFake(
+        async () => {
+          harness.bleService.connectionGeneration = 5;
+          return productDateExecutionResult(
+            'moventiv-80',
+            'maintenance-date',
+            '02 1a 00 02 03',
+          );
+        },
+      );
+
+      await harness.component.requestProductDateMaintenanceAction();
+
+      expect(harness.writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(harness.component.productDateActionState.status)
+        .toBe('partial-failed');
+      expect(harness.component.productDateActionState.message)
+        .toBe(harness.component.text.productDateActions.partialFailed);
+    },
+  );
+
+  it('should block double action and reset maintenance access on disconnection',
+    async () => {
+      const harness = await createProductDateHarness(
+        'garline',
+        presentHistoricalDate(),
+      );
+
+      harness.component.productDateActionState = Object.freeze({
+        status: 'awaiting-confirmation',
+        action: 'maintenance',
+        message: harness.component.text.productDateActions
+          .awaitingConfirmation,
+      });
+      expect(harness.component.canRequestProductDateMaintenanceAction())
+        .toBeFalse();
+
+      harness.bleService.disconnect();
+
+      expect(harness.component.productDateActionState.status).toBe('idle');
+      expect(harness.component.showProductDateMaintenanceAction).toBeFalse();
+      expect(harness.maintenanceAccessService.reset).toHaveBeenCalled();
+    },
+  );
+});
+
 function navigationState(
   profile: KnownProductProfile,
 ): ProductPageNavigationState {
@@ -4141,6 +4557,192 @@ function navigationState(
     displayName: 'Porte#CHA',
     identificationConfidence: 'strong',
     motorState: null,
+  };
+}
+
+async function createProductDateHarness(
+  profile: KnownProductProfile,
+  firstCommissioningDate: BleDatesAndCycles['firstCommissioningDate'],
+  options: {
+    readonly alertRole?: string;
+    readonly accessCode?: string;
+  } = {},
+): Promise<{
+  readonly fixture: ComponentFixture<ProductPage>;
+  readonly component: ProductPage;
+  readonly bleService: FakeBleService;
+  readonly loadService: FakeProductDataLoadService;
+  readonly writeExecutionService: FakeBleWriteExecutionService;
+  readonly maintenanceAccessService: FakeMaintenanceAccessService;
+  readonly alertCreate: jasmine.Spy;
+  readonly alertOptions: Record<string, unknown>[];
+}> {
+  const bleService = new FakeBleService();
+  const loadService = new FakeProductDataLoadService();
+  loadService.nextResult = productDateLoadResult(
+    profile,
+    firstCommissioningDate,
+  );
+  const writeExecutionService = new FakeBleWriteExecutionService();
+  writeExecutionService.nextResult = productDateExecutionResult(
+    profile,
+    'maintenance-date',
+    '02 1a 00 02 03',
+  );
+  const maintenanceAccessService = new FakeMaintenanceAccessService();
+  const alertOptions: Record<string, unknown>[] = [];
+  const alertCreate = jasmine.createSpy('create').and.callFake(
+    async (alert: Record<string, unknown>) => {
+      alertOptions.push(alert);
+      return {
+        present: async () => undefined,
+        onDidDismiss: async () => ({
+          role: options.alertRole ?? 'confirm',
+          data: {
+            values: {
+              maintenanceAccessCode: options.accessCode ??
+                PRODUCT_PAGE_MAINTENANCE_ACCESS_TEST_CODE,
+            },
+          },
+        }),
+      };
+    },
+  );
+
+  TestBed.resetTestingModule();
+  await TestBed.configureTestingModule({
+    imports: [ProductPage],
+    providers: [
+      { provide: BleService, useValue: bleService },
+      { provide: AlertController, useValue: { create: alertCreate } },
+      {
+        provide: BleWriteExecutionService,
+        useValue: writeExecutionService,
+      },
+      {
+        provide: MaintenanceAccessService,
+        useValue: maintenanceAccessService,
+      },
+      { provide: ProductDataLoadService, useValue: loadService },
+      { provide: ProductDetection, useClass: ProductDetection },
+      {
+        provide: ActivatedRoute,
+        useValue: { snapshot: { data: { profile } } },
+      },
+      {
+        provide: Router,
+        useValue: {
+          getCurrentNavigation: () => ({
+            extras: { state: navigationState(profile) },
+          }),
+          navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+        },
+      },
+    ],
+  }).compileComponents();
+
+  const fixture = TestBed.createComponent(ProductPage);
+  const component = fixture.componentInstance;
+  fixture.detectChanges();
+  await component.refreshProductData();
+  fixture.detectChanges();
+
+  return {
+    fixture,
+    component,
+    bleService,
+    loadService,
+    writeExecutionService,
+    maintenanceAccessService,
+    alertCreate,
+    alertOptions,
+  };
+}
+
+function productDateLoadResult(
+  profile: KnownProductProfile,
+  firstCommissioningDate: BleDatesAndCycles['firstCommissioningDate'],
+  status: ProductDataLoadStatus = 'success',
+): ProductDataLoadResult {
+  const base = completeLoadResult(status, profile);
+  return {
+    ...base,
+    results: {
+      ...base.results,
+      datesAndCycles: successRead(
+        'dates-and-cycles',
+        BLE_UUIDS.datesAndCyclesCharacteristic,
+        {
+          ...datesValue(),
+          firstCommissioningDate,
+        },
+      ),
+    },
+  };
+}
+
+function productDateExecutionResult(
+  profile: KnownProductProfile,
+  operation: 'maintenance-date' | 'first-commissioning-date',
+  payloadHex: string,
+  status: LegacyBleWriteExecutionResult['status'] = 'success',
+): LegacyBleWriteExecutionResult {
+  return {
+    status,
+    operation,
+    profile,
+    deviceId: 'device-1',
+    serviceUuid: BLE_UUIDS.shdoService,
+    characteristicUuid: BLE_UUIDS.datesAndCyclesCharacteristic,
+    payloadHex,
+    length: 5,
+    destructiveLevel: 'non-destructive-setting',
+    hardwareValidationStatus: 'phase1-reference-only',
+    policyOverrideUsed: true,
+    startedAt: 100,
+    completedAt: 200,
+    connectionGeneration: 4,
+    nativeWriteCompleted: status === 'success',
+    confirmationStatus: status === 'success' ? 'not-required' : 'unavailable',
+    confirmedMotorStateRaw: null,
+    movementStartConfirmed: false,
+    timedCycleValidationStatus: 'not-observed',
+    error: status === 'success'
+      ? null
+      : { code: 'product-date-test-error', message: 'Product date error' },
+  };
+}
+
+function notInitializedHistoricalDate():
+  BleDatesAndCycles['firstCommissioningDate'] {
+  return {
+    status: 'not-initialized',
+    rawYear: 0xff,
+    rawMonth: 0xff,
+    rawDay: 0xff,
+    rawHour: 0xff,
+    raw: [0xff, 0xff, 0xff, 0xff],
+    year: null,
+    month: null,
+    day: null,
+    hour: null,
+    invalidReason: null,
+  };
+}
+
+function presentHistoricalDate(): BleDatesAndCycles['firstCommissioningDate'] {
+  return {
+    status: 'present',
+    rawYear: 26,
+    rawMonth: 0,
+    rawDay: 2,
+    rawHour: 3,
+    raw: [26, 0, 2, 3],
+    year: 2026,
+    month: 1,
+    day: 2,
+    hour: 3,
+    invalidReason: null,
   };
 }
 

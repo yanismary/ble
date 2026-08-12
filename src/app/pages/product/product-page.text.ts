@@ -106,6 +106,43 @@ export const PRODUCT_PAGE_TEXT = {
     unlocked: 'Réglages professionnels déverrouillés.',
     failed: 'Code professionnel incorrect.',
   },
+  productDateActions: {
+    setupLabel: 'Mise en service effectuée',
+    maintenanceLabel: 'Maintenance effectuée',
+    confirmTitle: 'Confirmation requise',
+    passwordPlaceholder: 'Mot de passe maintenance',
+    cancel: 'Décliner',
+    confirm: 'Confirmer',
+    awaitingConfirmation: 'Confirmation maintenance requise.',
+    executing: 'Envoi de l’action historique…',
+    setupSent:
+      'Mise en service envoyée. Lecture de contrôle en cours.',
+    maintenanceSent:
+      'Maintenance envoyée. Lecture de contrôle en cours.',
+    setupSentReloadFailed:
+      'Mise en service envoyée, mais la lecture de contrôle a échoué.',
+    maintenanceSentReloadFailed:
+      'Maintenance envoyée, mais la lecture de contrôle a échoué.',
+    failed: 'Échec de l’envoi de l’action historique.',
+    partialFailed:
+      'Maintenance envoyée, mais la mise en service n’a pas été envoyée. ' +
+      'Lecture de contrôle en cours.',
+    partialReloadFailed:
+      'Maintenance envoyée, mais la mise en service n’a pas été envoyée. ' +
+      'La lecture de contrôle a échoué.',
+    unavailable: 'Action historique indisponible',
+    wrongCode: 'Code maintenance incorrect.',
+    cancelled: 'Action annulée.',
+    setupConfirmation: (date: string) =>
+      'Confirmez-vous qu’une mise en service a été effectuée le ' +
+      `${date} ? La maintenance sera enregistrée puis la date de mise en ` +
+      'service sera définitivement enregistrée si le produit la déclare ' +
+      'encore non initialisée.',
+    maintenanceConfirmation: (date: string) =>
+      'Confirmez-vous qu’une maintenance a été effectuée le ' +
+      `${date} ? Le compteur de cycles depuis la dernière maintenance peut ` +
+      'être réinitialisé par le firmware.',
+  },
   openCommand: {
     cancel: 'Annuler',
     awaitingConfirmation: 'Confirmation requise',

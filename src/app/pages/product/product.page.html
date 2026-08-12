@@ -597,6 +597,36 @@
               <dd>{{ row.value }}</dd>
             }
           </dl>
+          @if (showProductDateMaintenanceAction) {
+            <div class="product-actions">
+              <ion-button
+                type="button"
+                color="warning"
+                (click)="requestProductDateMaintenanceAction()"
+                [disabled]="!canRequestProductDateMaintenanceAction()"
+              >
+                {{ productDateMaintenanceActionLabel }}
+              </ion-button>
+            </div>
+            @if (productDateActionState.message) {
+              <p
+                class="command-state"
+                role="status"
+                aria-live="polite"
+                [attr.data-tone]="
+                  productDateActionState.status === 'failed' ||
+                  productDateActionState.status === 'partial-failed'
+                    ? 'error'
+                    : 'neutral'
+                "
+              >
+                @if (productDateActionState.status === 'executing') {
+                  <ion-spinner name="crescent"></ion-spinner>
+                }
+                <span>{{ productDateActionState.message }}</span>
+              </p>
+            }
+          }
         }
       </article>
 

@@ -10,6 +10,7 @@ import {
   legacyDateFieldsFromDate,
   prepareFirstCommissioningDateAction,
   prepareMaintenanceDateAction,
+  prepareProductDateMaintenanceFlow,
 } from './product-date-actions';
 
 describe('Product date actions', () => {
@@ -204,6 +205,85 @@ describe('Product date actions', () => {
       }
     },
   );
+
+  it('prepares the Phase 1 setup flow as maintenance then first commissioning',
+    () => {
+      const result = prepareProductDateMaintenanceFlow({
+        context: contextFor('garline'),
+        firstCommissioningDate: notInitializedDate(),
+        now: new Date(2026, 0, 2, 3),
+        attemptId: 'attempt-1',
+        confirmationId: 'confirmation-1',
+        confirmedAt: 1_000,
+      });
+
+      expect(result.ok).toBeTrue();
+      if (!result.ok) {
+        return;
+      }
+      expect(result.kind).toBe('first-commissioning');
+      expect(result.actions.length).toBe(2);
+      expect(result.actions.map(({ write }) => write.operation)).toEqual([
+        'maintenance-date',
+        'first-commissioning-date',
+      ]);
+      expect(result.actions.map(({ write }) => write.payloadHex)).toEqual([
+        '02 1a 00 02 03',
+        '01 1a 00 02 03',
+      ]);
+      expect(result.historicalEffect).toBeTrue();
+      expect(result.resetsLocalCounters).toBeFalse();
+    },
+  );
+
+  it('prepares the Phase 1 maintenance flow as maintenance only',
+    () => {
+      const result = prepareProductDateMaintenanceFlow({
+        context: contextFor('moventiv-80'),
+        firstCommissioningDate: presentDate(),
+        now: new Date(2026, 11, 31, 23),
+        attemptId: 'attempt-1',
+        confirmationId: 'confirmation-1',
+        confirmedAt: 1_000,
+      });
+
+      expect(result.ok).toBeTrue();
+      if (!result.ok) {
+        return;
+      }
+      expect(result.kind).toBe('maintenance');
+      expect(result.actions.length).toBe(1);
+      expect(result.actions[0].write.operation).toBe('maintenance-date');
+      expect(result.actions[0].write.payloadHex).toBe('02 1a 0b 1f 17');
+    },
+  );
+
+  it('refuses the maintenance flow for Widoor and invalid contexts', () => {
+    expect(prepareProductDateMaintenanceFlow({
+      context: contextFor('widoor'),
+      firstCommissioningDate: notInitializedDate(),
+      now: new Date(2026, 0, 2, 3),
+      attemptId: 'attempt-1',
+      confirmationId: 'confirmation-1',
+      confirmedAt: 1_000,
+    })).toEqual(jasmine.objectContaining({
+      ok: false,
+      reason: 'unsupported-profile',
+      actions: [],
+    }));
+    expect(prepareProductDateMaintenanceFlow({
+      context: null,
+      firstCommissioningDate: notInitializedDate(),
+      now: new Date(2026, 0, 2, 3),
+      attemptId: 'attempt-1',
+      confirmationId: 'confirmation-1',
+      confirmedAt: 1_000,
+    })).toEqual(jasmine.objectContaining({
+      ok: false,
+      reason: 'invalid-context',
+      actions: [],
+    }));
+  });
 
   it('refuses unsupported profile and invalid contexts before any write',
     () => {

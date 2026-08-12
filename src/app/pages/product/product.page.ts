@@ -54,6 +54,10 @@ import {
   ProductDataLoadService,
 } from '../../core/services/product-data-load.service';
 import {
+  MaintenanceAccessContext,
+  MaintenanceAccessService,
+} from '../../core/services/maintenance-access.service';
+import {
   ProfessionalAccessContext,
   ProfessionalAccessService,
 } from '../../core/services/professional-access.service';
@@ -143,6 +147,11 @@ import {
   splitProductDisplayName,
   validateProductNameRoomDraft,
 } from './product-name-room';
+import {
+  ProductDateActionContext,
+  ProductDateMaintenanceFlowKind,
+  prepareProductDateMaintenanceFlow,
+} from './product-date-actions';
 
 @Component({
   selector: 'app-product',
@@ -170,6 +179,8 @@ export class ProductPage implements OnDestroy {
   private readonly bleWriteExecutionService =
     inject(BleWriteExecutionService);
   private readonly ngZone = inject(NgZone);
+  private readonly maintenanceAccessService =
+    inject(MaintenanceAccessService);
   private readonly professionalAccessService =
     inject(ProfessionalAccessService);
   private readonly productDataLoadService = inject(ProductDataLoadService);
@@ -282,6 +293,18 @@ export class ProductPage implements OnDestroy {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', message: null });
+  productDateActionState: {
+    readonly status:
+      | 'idle'
+      | 'awaiting-confirmation'
+      | 'executing'
+      | 'sent'
+      | 'failed'
+      | 'partial-failed'
+      | 'cancelled';
+    readonly action: ProductDateMaintenanceFlowKind | null;
+    readonly message: string | null;
+  } = Object.freeze({ status: 'idle', action: null, message: null });
   private commandHistoryEntries: readonly ProductCommandHistoryEntry[] = [];
   readonly compareWeightRangeOptions = (
     first: ProductWeightRange | null,
@@ -389,6 +412,9 @@ export class ProductPage implements OnDestroy {
     );
     this.context = this.resolveNavigationContext(routeProfile);
     if (this.context !== null) {
+      this.maintenanceAccessService.reset(
+        this.maintenanceAccessContext(this.context),
+      );
       this.professionalAccessService.reset(
         this.professionalAccessContext(this.context),
       );
@@ -426,7 +452,8 @@ export class ProductPage implements OnDestroy {
       this.userPeripheralWriteState.status !== 'executing' &&
       this.weightRangeWriteState.status !== 'executing' &&
       this.professionalScalarWriteState.status !== 'executing' &&
-      this.nameRoomWriteState.status !== 'executing';
+      this.nameRoomWriteState.status !== 'executing' &&
+      !this.productDateActionBusy;
   }
 
   get hasProductNavigationContext(): boolean {
@@ -484,6 +511,22 @@ export class ProductPage implements OnDestroy {
       this.viewModel.reads.professionalParameters.status === 'available';
   }
 
+  get showProductDateMaintenanceAction(): boolean {
+    return this.currentProductDateMaintenanceActionKind() !== null;
+  }
+
+  get productDateMaintenanceActionLabel(): string {
+    return this.currentProductDateMaintenanceActionKind() ===
+      'first-commissioning'
+      ? this.text.productDateActions.setupLabel
+      : this.text.productDateActions.maintenanceLabel;
+  }
+
+  get productDateActionBusy(): boolean {
+    return this.productDateActionState.status === 'awaiting-confirmation' ||
+      this.productDateActionState.status === 'executing';
+  }
+
   get visibleProfessionalScalarControls(): typeof this.professionalScalarControls {
     return this.professionalScalarControls.filter((control) =>
       this.canShowProfessionalField(control.config.field),
@@ -539,6 +582,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
+        this.productDateActionBusy ||
         this.motorCommandsBlockedByLockMode() ||
         this.commandInProgress) {
       return false;
@@ -792,6 +836,71 @@ export class ProductPage implements OnDestroy {
       this.row('motor-errors', this.text.maintenance.motorErrorCount,
         String(value.motorErrorCount)),
     ];
+  }
+
+  currentProductDateMaintenanceActionKind():
+    ProductDateMaintenanceFlowKind | null {
+    const dates = this.viewModel.reads.datesAndCycles.value;
+    const context = this.currentProductDateActionContext();
+    if (dates === null || context === null) {
+      return null;
+    }
+    const flow = prepareProductDateMaintenanceFlow({
+      context,
+      firstCommissioningDate: dates.firstCommissioningDate,
+      now: new Date(2000, 0, 1, 0),
+      attemptId: 'preview',
+      confirmationId: 'preview',
+      confirmedAt: 0,
+    });
+    return flow.ok ? flow.kind : null;
+  }
+
+  canRequestProductDateMaintenanceAction(): boolean {
+    const dates = this.viewModel.reads.datesAndCycles.value;
+    const context = this.context;
+    if (dates === null ||
+        context === null ||
+        this.currentProductDateMaintenanceActionKind() === null ||
+        !this.isCurrentContext() ||
+        this.viewModel.loading ||
+        this.productDataLoadService.isLoading ||
+        this.bleService.isWriting ||
+        this.bleService.disconnectingDeviceId !== null ||
+        this.bleWriteExecutionService.isExecuting ||
+        this.lockModeWriteState.status === 'executing' ||
+        this.userSpeedWriteState.status === 'executing' ||
+        this.userTimingWriteState.status === 'executing' ||
+        this.userPeripheralWriteState.status === 'executing' ||
+        this.weightRangeWriteState.status === 'executing' ||
+        this.professionalScalarWriteState.status === 'executing' ||
+        this.nameRoomWriteState.status === 'executing' ||
+        this.productDateActionBusy ||
+        this.commandInProgress) {
+      return false;
+    }
+    const flow = prepareProductDateMaintenanceFlow({
+      context: this.productDateActionContext(context),
+      firstCommissioningDate: dates.firstCommissioningDate,
+      now: new Date(),
+      attemptId: 'availability',
+      confirmationId: 'availability',
+      confirmedAt: Date.now(),
+    });
+    if (!flow.ok) {
+      return false;
+    }
+    return flow.actions.every(({ write }) => {
+      const properties = this.bleService.getGattCharacteristicProperties(
+        write.serviceUuid,
+        write.characteristicUuid,
+        context.deviceId,
+      );
+      return properties.servicePresent &&
+        properties.characteristicPresent &&
+        properties.propertiesAvailable &&
+        properties.write === true;
+    });
   }
 
   get motorRows(): readonly ProductDisplayRow[] {
@@ -1115,6 +1224,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
+        this.productDateActionBusy ||
         this.commandInProgress ||
         this.context === null) {
       return false;
@@ -1194,6 +1304,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
+        this.productDateActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -1275,6 +1386,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
+        this.productDateActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -1333,6 +1445,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
+        this.productDateActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -1403,6 +1516,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
+        this.productDateActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -1508,6 +1622,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
+        this.productDateActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -1556,6 +1671,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
+        this.productDateActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -2152,6 +2268,175 @@ export class ProductPage implements OnDestroy {
     });
   }
 
+  async requestProductDateMaintenanceAction(): Promise<void> {
+    if (!this.canRequestProductDateMaintenanceAction() ||
+        this.context === null ||
+        this.viewModel.reads.datesAndCycles.value === null) {
+      return;
+    }
+    const context = this.context;
+    const dates = this.viewModel.reads.datesAndCycles.value;
+    const actionKind = this.currentProductDateMaintenanceActionKind();
+    if (actionKind === null) {
+      return;
+    }
+    const accessContext = this.maintenanceAccessContext(context);
+    const now = new Date();
+    this.productDateActionState = Object.freeze({
+      status: 'awaiting-confirmation',
+      action: actionKind,
+      message: this.text.productDateActions.awaitingConfirmation,
+    });
+    let dismissal: {
+      readonly role?: string;
+      readonly data?: {
+        readonly maintenanceAccessCode?: string;
+        readonly values?: {
+          readonly maintenanceAccessCode?: string;
+        };
+      };
+    };
+    try {
+      const alert = await this.alertController.create({
+        header: this.text.productDateActions.confirmTitle,
+        message: this.productDateActionConfirmationMessage(actionKind, now),
+        inputs: [
+          {
+            name: 'maintenanceAccessCode',
+            type: 'password',
+            placeholder: this.text.productDateActions.passwordPlaceholder,
+          },
+        ],
+        buttons: [
+          {
+            text: this.text.productDateActions.cancel,
+            role: 'cancel',
+          },
+          {
+            text: this.text.productDateActions.confirm,
+            role: 'confirm',
+          },
+        ],
+      });
+      await alert.present();
+      dismissal = await alert.onDidDismiss<{
+        readonly maintenanceAccessCode?: string;
+        readonly values?: {
+          readonly maintenanceAccessCode?: string;
+        };
+      }>();
+    } catch {
+      this.productDateActionState = Object.freeze({
+        status: 'failed',
+        action: actionKind,
+        message: this.text.productDateActions.failed,
+      });
+      return;
+    }
+    if (!this.isCurrentContext() || this.context !== context) {
+      this.productDateActionState = Object.freeze({
+        status: 'failed',
+        action: actionKind,
+        message: this.text.openCommand.stale,
+      });
+      return;
+    }
+    if (dismissal.role !== 'confirm') {
+      this.productDateActionState = Object.freeze({
+        status: 'cancelled',
+        action: actionKind,
+        message: this.text.productDateActions.cancelled,
+      });
+      return;
+    }
+    const accessCode = dismissal.data?.values?.maintenanceAccessCode ??
+      dismissal.data?.maintenanceAccessCode ??
+      '';
+    if (!this.maintenanceAccessService.authenticate(
+          accessContext,
+          accessCode,
+        )) {
+      this.productDateActionState = Object.freeze({
+        status: 'failed',
+        action: actionKind,
+        message: this.text.productDateActions.wrongCode,
+      });
+      return;
+    }
+    this.maintenanceAccessService.reset(accessContext);
+
+    const attemptId = this.nextCommandIdentifier('attempt');
+    const confirmedAt = Date.now();
+    const flow = prepareProductDateMaintenanceFlow({
+      context: this.productDateActionContext(context),
+      firstCommissioningDate: dates.firstCommissioningDate,
+      now,
+      attemptId,
+      confirmationId: this.nextCommandIdentifier('confirmation'),
+      confirmedAt,
+    });
+    if (!flow.ok) {
+      this.productDateActionState = Object.freeze({
+        status: 'failed',
+        action: actionKind,
+        message: this.text.productDateActions.unavailable,
+      });
+      return;
+    }
+
+    this.productDateActionState = Object.freeze({
+      status: 'executing',
+      action: flow.kind,
+      message: this.text.productDateActions.executing,
+    });
+    let successfulWrites = 0;
+    for (const action of flow.actions) {
+      const contextStatus = this.writeContextStatus(context, action.write);
+      if (contextStatus !== null) {
+        this.setProductDateActionFailure(
+          flow.kind,
+          successfulWrites > 0,
+          this.productDateActionFailureMessage(contextStatus),
+        );
+        await this.refreshAfterProductDateAction();
+        return;
+      }
+      const result = await this.bleWriteExecutionService.execute(
+        action.request,
+      );
+      if (result.status === 'success') {
+        successfulWrites += 1;
+      }
+      if (!this.isCurrentContext() || this.context !== context) {
+        this.setProductDateActionFailure(
+          flow.kind,
+          successfulWrites > 0,
+          this.text.openCommand.stale,
+        );
+        await this.refreshAfterProductDateAction();
+        return;
+      }
+      if (result.status !== 'success') {
+        this.setProductDateActionFailure(
+          flow.kind,
+          successfulWrites > 0,
+          this.text.productDateActions.failed,
+        );
+        await this.refreshAfterProductDateAction();
+        return;
+      }
+    }
+
+    this.productDateActionState = Object.freeze({
+      status: 'sent',
+      action: flow.kind,
+      message: flow.kind === 'first-commissioning'
+        ? this.text.productDateActions.setupSent
+        : this.text.productDateActions.maintenanceSent,
+    });
+    await this.refreshAfterProductDateAction();
+  }
+
   async requestNameRoomChange(): Promise<void> {
     if (!this.canApplyNameRoom() || this.context === null) {
       return;
@@ -2330,6 +2615,7 @@ export class ProductPage implements OnDestroy {
     this.resetWeightRangeEditing();
     this.resetProfessionalScalarEditing();
     this.resetProfessionalAccess();
+    this.resetProductDateAction();
     this.subscriptions.unsubscribe();
   }
 
@@ -2517,6 +2803,7 @@ export class ProductPage implements OnDestroy {
     this.resetWeightRangeEditing();
     this.resetProfessionalScalarEditing();
     this.resetProfessionalAccess();
+    this.resetProductDateAction();
   }
 
   private resetNameRoomDraft(): void {
@@ -2628,6 +2915,134 @@ export class ProductPage implements OnDestroy {
       status: 'locked',
       message: null,
     });
+  }
+
+  private resetProductDateAction(): void {
+    const context = this.currentMaintenanceAccessContext();
+    if (context === null) {
+      this.maintenanceAccessService.reset();
+    } else {
+      this.maintenanceAccessService.reset(context);
+    }
+    this.productDateActionState = Object.freeze({
+      status: 'idle',
+      action: null,
+      message: null,
+    });
+  }
+
+  private currentMaintenanceAccessContext():
+    MaintenanceAccessContext | null {
+    if (this.context === null || !this.isCurrentContext()) {
+      return null;
+    }
+    return this.maintenanceAccessContext(this.context);
+  }
+
+  private maintenanceAccessContext(
+    context: ProductPageNavigationState,
+  ): MaintenanceAccessContext {
+    return {
+      profile: context.profile,
+      deviceId: context.deviceId,
+      connectionGeneration: context.connectionGeneration,
+    };
+  }
+
+  private currentProductDateActionContext(): ProductDateActionContext | null {
+    if (this.context === null || !this.isCurrentContext()) {
+      return null;
+    }
+    return this.productDateActionContext(this.context);
+  }
+
+  private productDateActionContext(
+    context: ProductPageNavigationState,
+  ): ProductDateActionContext {
+    return {
+      profile: context.profile,
+      deviceId: context.deviceId,
+      connectionGeneration: context.connectionGeneration,
+      identificationConfidence: context.identificationConfidence,
+    };
+  }
+
+  private productDateActionConfirmationMessage(
+    action: ProductDateMaintenanceFlowKind,
+    date: Date,
+  ): string {
+    const dateText = this.formatProductDateActionDate(date);
+    return action === 'first-commissioning'
+      ? this.text.productDateActions.setupConfirmation(dateText)
+      : this.text.productDateActions.maintenanceConfirmation(dateText);
+  }
+
+  private formatProductDateActionDate(date: Date): string {
+    return new Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+    }).format(date);
+  }
+
+  private productDateActionFailureMessage(
+    status: 'disconnected' | 'stale' | 'unavailable',
+  ): string {
+    switch (status) {
+      case 'disconnected':
+        return this.text.openCommand.disconnected;
+      case 'stale':
+        return this.text.openCommand.stale;
+      case 'unavailable':
+        return this.text.productDateActions.unavailable;
+    }
+  }
+
+  private setProductDateActionFailure(
+    action: ProductDateMaintenanceFlowKind,
+    partial: boolean,
+    fallbackMessage: string,
+  ): void {
+    this.productDateActionState = Object.freeze({
+      status: partial ? 'partial-failed' : 'failed',
+      action,
+      message: partial
+        ? this.text.productDateActions.partialFailed
+        : fallbackMessage,
+    });
+  }
+
+  private async refreshAfterProductDateAction(): Promise<void> {
+    if (!this.canRefresh) {
+      return;
+    }
+    try {
+      await this.refreshProductData();
+    } catch {
+      this.markProductDateActionReloadFailed();
+      return;
+    }
+    if (this.viewModel.loadStatus === 'failed') {
+      this.markProductDateActionReloadFailed();
+    }
+  }
+
+  private markProductDateActionReloadFailed(): void {
+    const state = this.productDateActionState;
+    if (state.status === 'sent') {
+      this.productDateActionState = Object.freeze({
+        ...state,
+        message: state.action === 'first-commissioning'
+          ? this.text.productDateActions.setupSentReloadFailed
+          : this.text.productDateActions.maintenanceSentReloadFailed,
+      });
+    } else if (state.status === 'partial-failed') {
+      this.productDateActionState = Object.freeze({
+        ...state,
+        message: this.text.productDateActions.partialReloadFailed,
+      });
+    }
   }
 
   private isProfessionalScalarControl(

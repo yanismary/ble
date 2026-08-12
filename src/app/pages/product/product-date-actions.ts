@@ -22,6 +22,10 @@ export type ProductDateActionKind =
   | 'first-commissioning'
   | 'maintenance';
 
+export type ProductDateMaintenanceFlowKind =
+  | 'first-commissioning'
+  | 'maintenance';
+
 export type ProductDateActionFailureReason =
   | 'unsupported-profile'
   | 'invalid-context'
@@ -81,6 +85,26 @@ export interface ProductDateActionFailure {
 export type ProductDateActionPreparationResult =
   | ProductDateActionSuccess
   | ProductDateActionFailure;
+
+export interface ProductDateMaintenanceFlowSuccess {
+  readonly ok: true;
+  readonly kind: ProductDateMaintenanceFlowKind;
+  readonly actions: readonly ProductDateActionSuccess[];
+  readonly historicalEffect: true;
+  readonly resetsLocalCounters: false;
+}
+
+export interface ProductDateMaintenanceFlowFailure {
+  readonly ok: false;
+  readonly reason: ProductDateActionFailureReason;
+  readonly actions: readonly ProductDateActionSuccess[];
+  readonly historicalEffect: false;
+  readonly resetsLocalCounters: false;
+}
+
+export type ProductDateMaintenanceFlowPreparationResult =
+  | ProductDateMaintenanceFlowSuccess
+  | ProductDateMaintenanceFlowFailure;
 
 export const PRODUCT_DATE_ACTION_CONFIRMATION_POLICY:
   LegacyBleWriteConfirmationPolicy = Object.freeze({ kind: 'gatt-only' });
@@ -167,6 +191,26 @@ export function prepareMaintenanceDateAction(
     confirmationId: input.confirmationId,
     confirmedAt: input.confirmedAt,
   });
+}
+
+export function prepareProductDateMaintenanceFlow(
+  input: FirstCommissioningDatePreparationInput,
+): ProductDateMaintenanceFlowPreparationResult {
+  const maintenance = prepareMaintenanceDateAction(input);
+  if (!maintenance.ok) {
+    return flowFailure(maintenance.reason);
+  }
+  if (input.firstCommissioningDate?.status !== 'not-initialized') {
+    return flowSuccess('maintenance', [maintenance]);
+  }
+  const firstCommissioning = prepareFirstCommissioningDateAction(input);
+  if (!firstCommissioning.ok) {
+    return flowFailure(firstCommissioning.reason);
+  }
+  return flowSuccess('first-commissioning', [
+    maintenance,
+    firstCommissioning,
+  ]);
 }
 
 export function createProductDateActionAuthorization(
@@ -288,6 +332,31 @@ function failure(
     write: null,
     request: null,
     authorization: null,
+    historicalEffect: false,
+    resetsLocalCounters: false,
+  });
+}
+
+function flowSuccess(
+  kind: ProductDateMaintenanceFlowKind,
+  actions: readonly ProductDateActionSuccess[],
+): ProductDateMaintenanceFlowSuccess {
+  return Object.freeze({
+    ok: true,
+    kind,
+    actions: Object.freeze([...actions]),
+    historicalEffect: true,
+    resetsLocalCounters: false,
+  });
+}
+
+function flowFailure(
+  reason: ProductDateActionFailureReason,
+): ProductDateMaintenanceFlowFailure {
+  return Object.freeze({
+    ok: false,
+    reason,
+    actions: Object.freeze([]),
     historicalEffect: false,
     resetsLocalCounters: false,
   });
