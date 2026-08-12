@@ -22,7 +22,10 @@ import {
 import {
   BleDisconnectionEvent,
   BleGattCharacteristicProperties,
+  BleOperationError,
+  BleOperationErrorCode,
   BleService,
+  isBleOperationError,
 } from '../../core/services/ble';
 import {
   BLE_UUIDS,
@@ -95,6 +98,18 @@ interface ProductReadSummary {
   readonly failed: number;
 }
 
+type ScanBleErrorAction =
+  | 'retry-scan'
+  | 'enable-bluetooth'
+  | 'open-app-settings';
+
+interface ScanBleErrorState {
+  readonly code: BleOperationErrorCode | 'unknown';
+  readonly message: string;
+  readonly action: ScanBleErrorAction;
+  readonly actionLabel: string;
+}
+
 interface MotorStateSource {
   readonly deviceId: string;
   readonly serviceUuid: string;
@@ -152,9 +167,11 @@ export class ScanPage implements OnDestroy {
   connectionError: string | null = null;
   connecting = false;
   entryConnectionCleanupInProgress = false;
+  bleRecoveryInProgress = false;
   discoveringServices = false;
   discoveryError: string | null = null;
   errorMessage: string | null = null;
+  scanBleError: ScanBleErrorState | null = null;
   hasScanned = false;
   identification: VersionIdentification | null = null;
   identificationError: string | null = null;
@@ -235,9 +252,18 @@ export class ScanPage implements OnDestroy {
   get canStartScan(): boolean {
     return !this.scanning &&
       !this.connecting &&
+      !this.bleRecoveryInProgress &&
       !this.entryConnectionCleanupInProgress &&
       this.connectedDeviceId === null &&
       this.bleService.connectedDeviceId === null;
+  }
+
+  get canRunScanBleErrorAction(): boolean {
+    return this.scanBleError !== null &&
+      !this.scanning &&
+      !this.connecting &&
+      !this.bleRecoveryInProgress &&
+      !this.entryConnectionCleanupInProgress;
   }
 
   get historicalGattDiagnostic(): BleGattCharacteristicProperties {
@@ -376,19 +402,12 @@ export class ScanPage implements OnDestroy {
     this.devices = [];
     this.selectedDeviceId = null;
     this.errorMessage = null;
+    this.scanBleError = null;
     this.hasScanned = true;
     this.scanning = true;
 
     try {
-      const bluetoothEnabled = await this.bleService.isBluetoothEnabled();
-
-      if (!bluetoothEnabled) {
-        await this.bleService.requestBluetoothEnable();
-      }
-
-      if (!(await this.bleService.isBluetoothEnabled())) {
-        throw new Error('Le Bluetooth doit être activé pour lancer le scan.');
-      }
+      await this.ensureBluetoothReadyForScan();
 
       if (this.destroyed) {
         return;
@@ -407,9 +426,53 @@ export class ScanPage implements OnDestroy {
         void this.stopScan();
       }, 10_000);
     } catch (error: unknown) {
-      this.scanning = false;
-      this.clearScanTimeout();
-      this.errorMessage = this.toErrorMessage(error);
+      if (!this.destroyed) {
+        this.scanning = false;
+        this.clearScanTimeout();
+        this.applyScanBleError(error);
+      }
+    }
+  }
+
+  async runScanBleErrorAction(): Promise<void> {
+    const state = this.scanBleError;
+
+    if (state === null || !this.canRunScanBleErrorAction) {
+      return;
+    }
+
+    if (state.action === 'retry-scan') {
+      await this.startScan();
+      return;
+    }
+
+    this.bleRecoveryInProgress = true;
+    try {
+      if (state.action === 'enable-bluetooth') {
+        await this.bleService.requestBluetoothEnable();
+        if (this.destroyed) {
+          return;
+        }
+        if (!(await this.bleService.isBluetoothEnabled())) {
+          throw new BleOperationError(
+            'bluetooth-disabled',
+            'Bluetooth is still disabled.',
+          );
+        }
+        this.bleRecoveryInProgress = false;
+        await this.startScan();
+        return;
+      }
+
+      await this.bleService.openAppSettings();
+    } catch (error: unknown) {
+      if (!this.destroyed) {
+        this.applyScanBleError(error);
+      }
+    } finally {
+      if (!this.destroyed) {
+        this.bleRecoveryInProgress = false;
+      }
     }
   }
 
@@ -625,6 +688,7 @@ export class ScanPage implements OnDestroy {
     this.destroyed = true;
     this.resetProductRead(true);
     this.scanning = false;
+    this.bleRecoveryInProgress = false;
     this.clearScanTimeout();
     this.disconnectionSubscription.unsubscribe();
     void this.bleService.stopScan().catch(() => undefined);
@@ -1159,6 +1223,121 @@ export class ScanPage implements OnDestroy {
 
   private normalizeUuid(uuid: string): string {
     return uuid.trim().toLowerCase();
+  }
+
+  private async ensureBluetoothReadyForScan(): Promise<void> {
+    if (!(await this.bleService.isBluetoothEnabled())) {
+      throw new BleOperationError(
+        'bluetooth-disabled',
+        'Bluetooth is disabled.',
+      );
+    }
+  }
+
+  private applyScanBleError(error: unknown): void {
+    this.scanBleError = this.describeScanBleError(error);
+    this.errorMessage = this.scanBleError.message;
+  }
+
+  private describeScanBleError(error: unknown): ScanBleErrorState {
+    const details = this.scanErrorDetails(error);
+    if (isBleOperationError(error)) {
+      switch (error.code) {
+        case 'bluetooth-disabled':
+          return this.bleService.canRequestBluetoothEnable
+            ? {
+              code: error.code,
+              message: 'Bluetooth est désactivé. Activez-le pour lancer le scan.',
+              action: 'enable-bluetooth',
+              actionLabel: 'Activer Bluetooth',
+            }
+            : {
+              code: error.code,
+              message:
+                'Bluetooth est désactivé. Activez-le dans les réglages système puis réessayez.',
+              action: 'retry-scan',
+              actionLabel: 'Réessayer',
+            };
+        case 'permission-denied':
+          return {
+            code: error.code,
+            message:
+              'Permission Bluetooth refusée. Autorisez le Bluetooth puis réessayez.',
+            action: 'retry-scan',
+            actionLabel: 'Réessayer',
+          };
+        case 'permission-settings-required':
+          return this.bleService.canOpenAppSettings
+            ? {
+              code: error.code,
+              message:
+                'Permission Bluetooth refusée. Ouvrez les réglages de l’application pour l’autoriser.',
+              action: 'open-app-settings',
+              actionLabel: 'Ouvrir les réglages',
+            }
+            : {
+              code: error.code,
+              message:
+                'Permission Bluetooth refusée. Autorisez le Bluetooth dans les réglages système puis réessayez.',
+              action: 'retry-scan',
+              actionLabel: 'Réessayer',
+            };
+        case 'initialization-failed':
+          return {
+            code: error.code,
+            message: details
+              ? `Initialisation BLE impossible : ${details}`
+              : 'Initialisation BLE impossible.',
+            action: 'retry-scan',
+            actionLabel: 'Réessayer',
+          };
+        case 'bluetooth-enable-unavailable':
+        case 'bluetooth-enable-failed':
+          return {
+            code: error.code,
+            message:
+              'Bluetooth n’a pas pu être activé depuis l’application. Activez-le dans les réglages système puis réessayez.',
+            action: 'retry-scan',
+            actionLabel: 'Réessayer',
+          };
+        case 'app-settings-unavailable':
+        case 'app-settings-failed':
+          return {
+            code: error.code,
+            message:
+              'Les réglages de l’application n’ont pas pu être ouverts. Autorisez le Bluetooth depuis les réglages système puis réessayez.',
+            action: 'retry-scan',
+            actionLabel: 'Réessayer',
+          };
+        case 'scan-failed':
+          return {
+            code: error.code,
+            message: details
+              ? `Impossible d’effectuer le scan BLE : ${details}`
+              : 'Impossible d’effectuer le scan BLE.',
+            action: 'retry-scan',
+            actionLabel: 'Réessayer',
+          };
+      }
+    }
+    return {
+      code: 'unknown',
+      message: this.toErrorMessage(error),
+      action: 'retry-scan',
+      actionLabel: 'Réessayer',
+    };
+  }
+
+  private scanErrorDetails(error: unknown): string {
+    if (isBleOperationError(error)) {
+      const cause = error.cause;
+      return cause instanceof Error
+        ? cause.message
+        : typeof cause === 'string'
+          ? cause
+          : '';
+    }
+    return '';
   }
 
   private toErrorMessage(error: unknown): string {

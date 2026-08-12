@@ -41,6 +41,20 @@
     <p class="error-message" role="alert">{{ errorMessage }}</p>
   }
 
+  @if (scanBleError) {
+    <ion-button
+      expand="block"
+      fill="outline"
+      (click)="runScanBleErrorAction()"
+      [disabled]="!canRunScanBleErrorAction"
+    >
+      @if (bleRecoveryInProgress) {
+        <ion-spinner name="crescent"></ion-spinner>
+      }
+      <span>{{ scanBleError.actionLabel }}</span>
+    </ion-button>
+  }
+
   @if (selectedDevice; as device) {
     <section class="connection-panel" aria-live="polite">
       <p><strong>Appareil sélectionné :</strong> {{ device.name }}</p>

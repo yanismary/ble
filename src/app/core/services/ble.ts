@@ -4,7 +4,37 @@ import {
   BleService as DiscoveredBleService,
   ScanResult,
 } from '@capacitor-community/bluetooth-le';
+import { Capacitor } from '@capacitor/core';
 import { Observable, Subject } from 'rxjs';
+
+export type BleOperationErrorCode =
+  | 'initialization-failed'
+  | 'permission-denied'
+  | 'permission-settings-required'
+  | 'bluetooth-disabled'
+  | 'bluetooth-enable-unavailable'
+  | 'bluetooth-enable-failed'
+  | 'scan-failed'
+  | 'app-settings-unavailable'
+  | 'app-settings-failed';
+
+export class BleOperationError extends Error {
+  constructor(
+    readonly code: BleOperationErrorCode,
+    message: string,
+    readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = 'BleOperationError';
+    Object.setPrototypeOf(this, BleOperationError.prototype);
+  }
+}
+
+export function isBleOperationError(
+  error: unknown,
+): error is BleOperationError {
+  return error instanceof BleOperationError;
+}
 
 export type BleDisconnectionReason = 'local' | 'remote';
 
@@ -100,13 +130,21 @@ export class BleService implements OnDestroy {
     return this.notificationSequenceValue;
   }
 
+  get canRequestBluetoothEnable(): boolean {
+    return Capacitor.getPlatform() === 'android';
+  }
+
+  get canOpenAppSettings(): boolean {
+    return Capacitor.getPlatform() !== 'web';
+  }
+
   async initialize(): Promise<void> {
     if (this.initializationPromise === null) {
       this.initializationPromise = BleClient.initialize({
         androidNeverForLocation: true,
       }).catch((error: unknown) => {
         this.initializationPromise = null;
-        throw error;
+        throw this.toBleOperationError(error, 'initialization-failed');
       });
     }
 
@@ -115,7 +153,11 @@ export class BleService implements OnDestroy {
 
   async isBluetoothEnabled(): Promise<boolean> {
     await this.initialize();
-    return BleClient.isEnabled();
+    try {
+      return await BleClient.isEnabled();
+    } catch (error: unknown) {
+      throw this.toBleOperationError(error, 'initialization-failed');
+    }
   }
 
   async startScan(
@@ -142,7 +184,7 @@ export class BleService implements OnDestroy {
       );
     } catch (error: unknown) {
       this.scanning = false;
-      throw error;
+      throw this.toBleOperationError(error, 'scan-failed');
     }
   }
 
@@ -165,8 +207,40 @@ export class BleService implements OnDestroy {
   }
 
   async requestBluetoothEnable(): Promise<void> {
+    if (!this.canRequestBluetoothEnable) {
+      throw new BleOperationError(
+        'bluetooth-enable-unavailable',
+        'Bluetooth enable request is not available on this platform.',
+      );
+    }
     await this.initialize();
-    await BleClient.requestEnable();
+    try {
+      await BleClient.requestEnable();
+    } catch (error: unknown) {
+      throw new BleOperationError(
+        'bluetooth-enable-failed',
+        'Bluetooth enable request failed.',
+        error,
+      );
+    }
+  }
+
+  async openAppSettings(): Promise<void> {
+    if (!this.canOpenAppSettings) {
+      throw new BleOperationError(
+        'app-settings-unavailable',
+        'App settings are not available on this platform.',
+      );
+    }
+    try {
+      await BleClient.openAppSettings();
+    } catch (error: unknown) {
+      throw new BleOperationError(
+        'app-settings-failed',
+        'Opening app settings failed.',
+        error,
+      );
+    }
   }
 
   async connect(deviceId: string): Promise<void> {
@@ -615,6 +689,44 @@ export class BleService implements OnDestroy {
     this.clearDiscoveredServices();
     this.connectionGenerationValue += 1;
     this.disconnectionSubject.next({ deviceId, reason: 'local' });
+  }
+
+  private toBleOperationError(
+    error: unknown,
+    fallbackCode: BleOperationErrorCode,
+  ): BleOperationError {
+    if (isBleOperationError(error)) {
+      return error;
+    }
+    if (this.isPermissionDeniedError(error)) {
+      const code: BleOperationErrorCode =
+        Capacitor.getPlatform() === 'ios'
+          ? 'permission-settings-required'
+          : 'permission-denied';
+      return new BleOperationError(
+        code,
+        'BLE permission denied.',
+        error,
+      );
+    }
+    return new BleOperationError(
+      fallbackCode,
+      fallbackCode === 'scan-failed'
+        ? 'BLE scan failed.'
+        : 'BLE initialization failed.',
+      error,
+    );
+  }
+
+  private isPermissionDeniedError(error: unknown): boolean {
+    const message = error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : '';
+    const normalized = message.trim().toLowerCase().replace(/[.!]+$/, '');
+    return normalized === 'permission denied' ||
+      normalized === 'ble permission denied';
   }
 
   private validateNotificationTarget(

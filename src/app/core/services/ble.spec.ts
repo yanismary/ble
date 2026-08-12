@@ -4,8 +4,13 @@ import {
   BleService as DiscoveredBleService,
   ScanResult,
 } from '@capacitor-community/bluetooth-le';
+import { Capacitor } from '@capacitor/core';
 
-import { BleDisconnectionEvent, BleService } from './ble';
+import {
+  BleDisconnectionEvent,
+  BleOperationError,
+  BleService,
+} from './ble';
 
 describe('BleService', () => {
   let service: BleService;
@@ -21,6 +26,7 @@ describe('BleService', () => {
     spyOn(BleClient, 'stopLEScan').and.resolveTo();
     spyOn(BleClient, 'isEnabled').and.resolveTo(true);
     spyOn(BleClient, 'requestEnable').and.resolveTo();
+    spyOn(BleClient, 'openAppSettings').and.resolveTo();
     connectSpy = spyOn(BleClient, 'connect').and.resolveTo();
     spyOn(BleClient, 'disconnect').and.resolveTo();
     spyOn(BleClient, 'getServices').and.resolveTo([]);
@@ -53,6 +59,156 @@ describe('BleService', () => {
     ]);
 
     expect(BleClient.initialize).toHaveBeenCalledTimes(1);
+  });
+
+  it('should expose permission denied as a typed initialize error', async () => {
+    const permissionError = new Error('Permission denied.');
+    (BleClient.initialize as jasmine.Spy<typeof BleClient.initialize>)
+      .and.rejectWith(permissionError);
+
+    try {
+      await service.initialize();
+      fail('initialize should reject');
+    } catch (error: unknown) {
+      expect(error).toEqual(jasmine.any(BleOperationError));
+      expect((error as BleOperationError).code).toBe('permission-denied');
+      expect((error as BleOperationError).cause).toBe(permissionError);
+    }
+  });
+
+  it('should expose iOS permission denial as requiring app settings',
+    async () => {
+      spyOn(Capacitor, 'getPlatform').and.returnValue('ios');
+      const permissionError = new Error('BLE permission denied');
+      (BleClient.initialize as jasmine.Spy<typeof BleClient.initialize>)
+        .and.rejectWith(permissionError);
+
+      try {
+        await service.initialize();
+        fail('initialize should reject');
+      } catch (error: unknown) {
+        expect(error).toEqual(jasmine.any(BleOperationError));
+        expect((error as BleOperationError).code).toBe(
+          'permission-settings-required',
+        );
+      }
+    },
+  );
+
+  it('should not classify arbitrary text containing permission denied as a permission error',
+    async () => {
+      const initializeError = new Error(
+        'Unexpected status: permission denied cache entry is stale',
+      );
+      (BleClient.initialize as jasmine.Spy<typeof BleClient.initialize>)
+        .and.rejectWith(initializeError);
+
+      try {
+        await service.initialize();
+        fail('initialize should reject');
+      } catch (error: unknown) {
+        expect(error).toEqual(jasmine.any(BleOperationError));
+        expect((error as BleOperationError).code).toBe(
+          'initialization-failed',
+        );
+        expect((error as BleOperationError).cause).toBe(initializeError);
+      }
+    },
+  );
+
+  it('should expose generic initialization failures as typed errors',
+    async () => {
+      const initializeError = new Error('BLE unavailable');
+      (BleClient.initialize as jasmine.Spy<typeof BleClient.initialize>)
+        .and.rejectWith(initializeError);
+
+      try {
+        await service.initialize();
+        fail('initialize should reject');
+      } catch (error: unknown) {
+        expect(error).toEqual(jasmine.any(BleOperationError));
+        expect((error as BleOperationError).code).toBe(
+          'initialization-failed',
+        );
+        expect((error as BleOperationError).cause).toBe(initializeError);
+      }
+    },
+  );
+
+  it('should report whether Bluetooth is enabled', async () => {
+    await expectAsync(service.isBluetoothEnabled()).toBeResolvedTo(true);
+
+    (BleClient.isEnabled as jasmine.Spy<typeof BleClient.isEnabled>)
+      .and.resolveTo(false);
+
+    await expectAsync(service.isBluetoothEnabled()).toBeResolvedTo(false);
+  });
+
+  it('should request enabling Bluetooth only on Android', async () => {
+    spyOn(Capacitor, 'getPlatform').and.returnValue('android');
+
+    await service.requestBluetoothEnable();
+
+    expect(BleClient.requestEnable).toHaveBeenCalledTimes(1);
+  });
+
+  it('should reject Bluetooth enable request on iOS without calling the Android API',
+    async () => {
+      spyOn(Capacitor, 'getPlatform').and.returnValue('ios');
+
+      try {
+        await service.requestBluetoothEnable();
+        fail('requestBluetoothEnable should reject');
+      } catch (error: unknown) {
+        expect(error).toEqual(jasmine.any(BleOperationError));
+        expect((error as BleOperationError).code).toBe(
+          'bluetooth-enable-unavailable',
+        );
+      }
+      expect(BleClient.requestEnable).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should expose requestEnable failures as typed errors', async () => {
+    spyOn(Capacitor, 'getPlatform').and.returnValue('android');
+    const enableError = new Error('User cancelled');
+    (BleClient.requestEnable as jasmine.Spy<typeof BleClient.requestEnable>)
+      .and.rejectWith(enableError);
+
+    try {
+      await service.requestBluetoothEnable();
+      fail('requestBluetoothEnable should reject');
+    } catch (error: unknown) {
+      expect(error).toEqual(jasmine.any(BleOperationError));
+      expect((error as BleOperationError).code).toBe(
+        'bluetooth-enable-failed',
+      );
+      expect((error as BleOperationError).cause).toBe(enableError);
+    }
+  });
+
+  it('should open app settings when supported', async () => {
+    spyOn(Capacitor, 'getPlatform').and.returnValue('android');
+
+    await service.openAppSettings();
+
+    expect(BleClient.openAppSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('should expose app settings failures as typed errors', async () => {
+    spyOn(Capacitor, 'getPlatform').and.returnValue('android');
+    const settingsError = new Error('Settings unavailable');
+    (BleClient.openAppSettings as jasmine.Spy<typeof BleClient.openAppSettings>)
+      .and.rejectWith(settingsError);
+
+    try {
+      await service.openAppSettings();
+      fail('openAppSettings should reject');
+    } catch (error: unknown) {
+      expect(error).toEqual(jasmine.any(BleOperationError));
+      expect((error as BleOperationError).code).toBe('app-settings-failed');
+      expect((error as BleOperationError).cause).toBe(settingsError);
+    }
   });
 
   it('should start a scan without duplicate results', async () => {
@@ -100,7 +256,14 @@ describe('BleService', () => {
     const scanError = new Error('Scan unavailable');
     requestLEScanSpy.and.rejectWith(scanError);
 
-    await expectAsync(service.startScan(callback)).toBeRejectedWith(scanError);
+    try {
+      await service.startScan(callback);
+      fail('startScan should reject');
+    } catch (error: unknown) {
+      expect(error).toEqual(jasmine.any(BleOperationError));
+      expect((error as BleOperationError).code).toBe('scan-failed');
+      expect((error as BleOperationError).cause).toBe(scanError);
+    }
     expect(service.isScanning()).toBeFalse();
   });
 

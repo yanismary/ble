@@ -10,6 +10,7 @@ import { Observable, Subject } from 'rxjs';
 import {
   BleDisconnectionEvent,
   BleGattCharacteristicProperties,
+  BleOperationError,
   BleService,
 } from '../../core/services/ble';
 import { BLE_UUIDS } from '../../core/services/product-detection';
@@ -37,10 +38,25 @@ class FakeBleService {
   private scanCallback: ((result: ScanResult) => void) | null = null;
   private notificationCallback: ((value: DataView) => void) | null = null;
   isWriting = false;
+  bluetoothEnabled = true;
+  bluetoothEnabledError: unknown | null = null;
+  canRequestBluetoothEnable = true;
+  canOpenAppSettings = true;
+  requestBluetoothEnableResult: Promise<void> | null = null;
   connectionGeneration = 0;
   disconnectResult: Promise<void> | null = null;
   servicesResult: DiscoveredBleService[] = [];
   readResult: DataView = new DataView(new ArrayBuffer(0));
+  readonly requestBluetoothEnable = jasmine.createSpy(
+    'requestBluetoothEnable',
+  ).and.callFake(async (): Promise<void> => {
+    if (this.requestBluetoothEnableResult !== null) {
+      await this.requestBluetoothEnableResult;
+    }
+    this.bluetoothEnabled = true;
+  });
+  readonly openAppSettings = jasmine.createSpy('openAppSettings')
+    .and.resolveTo();
 
   readonly disconnections$: Observable<BleDisconnectionEvent> =
     this.disconnectionSubject.asObservable();
@@ -52,10 +68,11 @@ class FakeBleService {
   async initialize(): Promise<void> {}
 
   async isBluetoothEnabled(): Promise<boolean> {
-    return true;
+    if (this.bluetoothEnabledError !== null) {
+      throw this.bluetoothEnabledError;
+    }
+    return this.bluetoothEnabled;
   }
-
-  async requestBluetoothEnable(): Promise<void> {}
 
   async startScan(callback: (result: ScanResult) => void): Promise<void> {
     this.scanning = true;
@@ -438,6 +455,220 @@ describe('ScanPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Capteur indisponible');
     expect(component.scanning).toBeFalse();
   });
+
+  it('should show an enable action without starting scan when Bluetooth is off',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      bleService.bluetoothEnabled = false;
+
+      await component.startScan();
+      fixture.detectChanges();
+
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(bleService.requestBluetoothEnable).not.toHaveBeenCalled();
+      expect(component.scanning).toBeFalse();
+      expect(component.scanBleError?.code).toBe('bluetooth-disabled');
+      expect(component.scanBleError?.action).toBe('enable-bluetooth');
+      expect(fixture.nativeElement.textContent).toContain('Activer Bluetooth');
+    },
+  );
+
+  it('should request enabling Bluetooth once and start scanning after it is enabled',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      bleService.bluetoothEnabled = false;
+      await component.startScan();
+
+      await component.runScanBleErrorAction();
+
+      expect(bleService.requestBluetoothEnable).toHaveBeenCalledTimes(1);
+      expect(startScanSpy).toHaveBeenCalledTimes(1);
+      expect(component.scanBleError).toBeNull();
+      expect(component.errorMessage).toBeNull();
+      expect(component.scanning).toBeTrue();
+    },
+  );
+
+  it('should show retry when Bluetooth enable is refused',
+    async () => {
+      bleService.bluetoothEnabled = false;
+      await component.startScan();
+      bleService.requestBluetoothEnable.and.rejectWith(
+        new BleOperationError(
+          'bluetooth-enable-failed',
+          'Bluetooth enable request failed.',
+          new Error('User cancelled'),
+        ),
+      );
+
+      await component.runScanBleErrorAction();
+
+      expect(component.scanBleError?.code).toBe('bluetooth-enable-failed');
+      expect(component.scanBleError?.action).toBe('retry-scan');
+      expect(component.scanning).toBeFalse();
+    },
+  );
+
+  it('should not request Android Bluetooth enable when the platform cannot support it',
+    async () => {
+      bleService.canRequestBluetoothEnable = false;
+      bleService.bluetoothEnabled = false;
+
+      await component.startScan();
+      await component.runScanBleErrorAction();
+
+      expect(bleService.requestBluetoothEnable).not.toHaveBeenCalled();
+      expect(component.scanBleError?.action).toBe('retry-scan');
+      expect(component.scanning).toBeFalse();
+    },
+  );
+
+  it('should show a retry action when BLE permission is denied',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      bleService.bluetoothEnabledError = new BleOperationError(
+        'permission-denied',
+        'BLE permission denied.',
+      );
+
+      await component.startScan();
+      fixture.detectChanges();
+
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(component.scanBleError?.code).toBe('permission-denied');
+      expect(component.scanBleError?.action).toBe('retry-scan');
+      expect(fixture.nativeElement.textContent).toContain('Réessayer');
+    },
+  );
+
+  it('should show app settings when BLE permission requires settings',
+    async () => {
+      bleService.bluetoothEnabledError = new BleOperationError(
+        'permission-settings-required',
+        'BLE permission denied.',
+      );
+
+      await component.startScan();
+      await component.runScanBleErrorAction();
+
+      expect(component.scanBleError?.action).toBe('open-app-settings');
+      expect(bleService.openAppSettings).toHaveBeenCalledTimes(1);
+      expect(component.scanning).toBeFalse();
+    },
+  );
+
+  it('should handle app settings failure without crashing',
+    async () => {
+      bleService.bluetoothEnabledError = new BleOperationError(
+        'permission-settings-required',
+        'BLE permission denied.',
+      );
+      bleService.openAppSettings.and.rejectWith(new BleOperationError(
+        'app-settings-failed',
+        'Opening app settings failed.',
+        new Error('Settings unavailable'),
+      ));
+
+      await component.startScan();
+      await component.runScanBleErrorAction();
+
+      expect(bleService.openAppSettings).toHaveBeenCalledTimes(1);
+      expect(component.scanBleError?.code).toBe('app-settings-failed');
+      expect(component.scanBleError?.action).toBe('retry-scan');
+      expect(component.scanning).toBeFalse();
+    },
+  );
+
+  it('should clear a scan error when retry succeeds', async () => {
+    const startScanSpy = spyOn(bleService, 'startScan').and.rejectWith(
+      new Error('Scan unavailable'),
+    );
+    await component.startScan();
+    expect(component.scanBleError?.action).toBe('retry-scan');
+    startScanSpy.and.callThrough();
+
+    await component.runScanBleErrorAction();
+
+    expect(component.scanBleError).toBeNull();
+    expect(component.errorMessage).toBeNull();
+    expect(component.scanning).toBeTrue();
+  });
+
+  it('should ignore a second Bluetooth recovery action while enable is pending',
+    async () => {
+      let releaseEnable!: () => void;
+      bleService.bluetoothEnabled = false;
+      bleService.requestBluetoothEnableResult = new Promise<void>((resolve) => {
+        releaseEnable = resolve;
+      });
+      await component.startScan();
+
+      const firstAction = component.runScanBleErrorAction();
+      await component.runScanBleErrorAction();
+
+      expect(bleService.requestBluetoothEnable).toHaveBeenCalledTimes(1);
+
+      releaseEnable();
+      await firstAction;
+    },
+  );
+
+  it('should ignore scan retry while Bluetooth initialization is pending',
+    async () => {
+      let releaseEnabled!: (enabled: boolean) => void;
+      const pendingEnabled = new Promise<boolean>((resolve) => {
+        releaseEnabled = resolve;
+      });
+      const enabledSpy = spyOn(bleService, 'isBluetoothEnabled')
+        .and.returnValue(pendingEnabled);
+
+      const firstScan = component.startScan();
+      await component.startScan();
+
+      expect(enabledSpy).toHaveBeenCalledTimes(1);
+
+      releaseEnabled(true);
+      await firstScan;
+    },
+  );
+
+  it('should not update scan errors when destroyed during Bluetooth initialization',
+    async () => {
+      let releaseEnabled!: (enabled: boolean) => void;
+      spyOn(bleService, 'isBluetoothEnabled').and.returnValue(
+        new Promise<boolean>((resolve) => {
+          releaseEnabled = resolve;
+        }),
+      );
+      const scan = component.startScan();
+
+      fixture.destroy();
+      releaseEnabled(false);
+      await scan;
+
+      expect(component.scanning).toBeFalse();
+      expect(component.scanBleError).toBeNull();
+      expect(component.errorMessage).toBeNull();
+    },
+  );
+
+  it('should clear recovery state when destroyed during Bluetooth enable',
+    async () => {
+      let releaseEnable!: () => void;
+      bleService.bluetoothEnabled = false;
+      bleService.requestBluetoothEnableResult = new Promise<void>((resolve) => {
+        releaseEnable = resolve;
+      });
+      await component.startScan();
+      const recovery = component.runScanBleErrorAction();
+
+      fixture.destroy();
+      releaseEnable();
+      await recovery;
+
+      expect(component.bleRecoveryInProgress).toBeFalse();
+    },
+  );
 
   it('should stop scanning when the page is destroyed', fakeAsync(() => {
     const stopScanSpy = spyOn(bleService, 'stopScan').and.callThrough();
