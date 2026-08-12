@@ -161,10 +161,12 @@ export class ScanPage implements OnDestroy {
   private productReadCycle = 0;
   private productReadInProgress = false;
   private connectedBleGeneration: number | null = null;
+  private retryingConnection = false;
 
   devices: ScannedDevice[] = [];
   connectedDeviceId: string | null = null;
   connectionError: string | null = null;
+  connectionRetryDeviceId: string | null = null;
   connecting = false;
   entryConnectionCleanupInProgress = false;
   bleRecoveryInProgress = false;
@@ -264,6 +266,23 @@ export class ScanPage implements OnDestroy {
       !this.connecting &&
       !this.bleRecoveryInProgress &&
       !this.entryConnectionCleanupInProgress;
+  }
+
+  get canRetryConnection(): boolean {
+    return this.connectionRetryDeviceId !== null &&
+      this.selectedDeviceId === this.connectionRetryDeviceId &&
+      !this.connecting &&
+      !this.scanning &&
+      !this.bleRecoveryInProgress &&
+      !this.entryConnectionCleanupInProgress &&
+      this.connectedDeviceId === null &&
+      this.bleService.connectedDeviceId === null;
+  }
+
+  get connectionStatusLabel(): string {
+    return this.retryingConnection
+      ? 'Nouvelle tentative de connexion…'
+      : 'Connexion en cours…';
   }
 
   get historicalGattDiagnostic(): BleGattCharacteristicProperties {
@@ -509,6 +528,7 @@ export class ScanPage implements OnDestroy {
     }
 
     this.connectionError = null;
+    this.connectionRetryDeviceId = null;
     this.discoveryError = null;
     this.connectionGeneration += 1;
     this.resetProductRead(true);
@@ -521,18 +541,43 @@ export class ScanPage implements OnDestroy {
     try {
       await this.stopScan();
       await this.bleService.connect(device.deviceId);
+      if (this.destroyed || this.selectedDeviceId !== device.deviceId) {
+        await this.bleService.disconnect().catch(() => undefined);
+        return;
+      }
+      if (
+        this.selectedDeviceId !== device.deviceId ||
+        this.bleService.connectedDeviceId !== device.deviceId
+      ) {
+        return;
+      }
       this.connectedDeviceId = this.bleService.connectedDeviceId;
       this.connectedBleGeneration = this.bleService.connectionGeneration;
       this.connecting = false;
       await this.loadServices(device.deviceId);
     } catch (error: unknown) {
+      if (this.destroyed) {
+        return;
+      }
       const details = error instanceof Error ? error.message : String(error);
       this.connectionError = details
         ? `Impossible de se connecter : ${details}`
         : 'Impossible de se connecter à cet appareil.';
+      if (this.isRetryableConnectionError(error)) {
+        this.connectionRetryDeviceId = device.deviceId;
+      }
     } finally {
       this.connecting = false;
+      this.retryingConnection = false;
     }
+  }
+
+  async retryConnection(): Promise<void> {
+    if (!this.canRetryConnection) {
+      return;
+    }
+    this.retryingConnection = true;
+    await this.connectSelectedDevice();
   }
 
   async requestOpenMotorTest(): Promise<void> {
@@ -1345,5 +1390,15 @@ export class ScanPage implements OnDestroy {
     return details
       ? `Impossible d’effectuer le scan BLE : ${details}`
       : 'Impossible d’effectuer le scan BLE.';
+  }
+
+  private isRetryableConnectionError(error: unknown): boolean {
+    if (!isBleOperationError(error)) {
+      return false;
+    }
+    return error.code === 'connection-timeout' ||
+      error.code === 'connection-failed' ||
+      error.code === 'service-discovery-failed' ||
+      error.code === 'connection-interrupted';
   }
 }

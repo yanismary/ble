@@ -14,6 +14,10 @@ export type BleOperationErrorCode =
   | 'bluetooth-disabled'
   | 'bluetooth-enable-unavailable'
   | 'bluetooth-enable-failed'
+  | 'connection-timeout'
+  | 'connection-failed'
+  | 'service-discovery-failed'
+  | 'connection-interrupted'
   | 'scan-failed'
   | 'app-settings-unavailable'
   | 'app-settings-failed';
@@ -102,6 +106,7 @@ export class BleService implements OnDestroy {
   private writePromise: Promise<void> | null = null;
   private notificationSequenceValue = 0;
   private connectionGenerationValue = 0;
+  private activeConnectionToken: symbol | null = null;
   private connecting = false;
   private scanning = false;
 
@@ -261,11 +266,23 @@ export class BleService implements OnDestroy {
     this.clearDiscoveredServices();
     this.connecting = true;
     this.connectingDeviceId = normalizedDeviceId;
+    const connectionGenerationBeforeAttempt = this.connectionGenerationValue;
     const connection = this.connectToDevice(normalizedDeviceId);
     this.connectionPromise = connection;
 
     try {
       await connection;
+    } catch (error: unknown) {
+      const connectionError = isBleOperationError(error)
+        ? error
+        : this.toBleConnectionError(error);
+      if (this.isConnectionErrorCode(connectionError.code)) {
+        await this.cleanupFailedConnectionAttempt(
+          normalizedDeviceId,
+          connectionGenerationBeforeAttempt,
+        );
+      }
+      throw connectionError;
     } finally {
       if (this.connectionPromise === connection) {
         this.connectionPromise = null;
@@ -646,15 +663,74 @@ export class BleService implements OnDestroy {
 
     await this.initialize();
     let disconnectedDuringConnection = false;
-    await BleClient.connect(deviceId, (disconnectedDeviceId: string) => {
-      disconnectedDuringConnection = true;
-      this.handleRemoteDisconnection(disconnectedDeviceId);
-    });
+    const connectionToken = Symbol(deviceId);
+    this.activeConnectionToken = connectionToken;
+    try {
+      await BleClient.connect(deviceId, (disconnectedDeviceId: string) => {
+        if (this.activeConnectionToken !== connectionToken) {
+          return;
+        }
+        disconnectedDuringConnection = true;
+        this.handleRemoteDisconnection(disconnectedDeviceId);
+      });
+    } catch (error: unknown) {
+      if (this.activeConnectionToken === connectionToken) {
+        this.activeConnectionToken = null;
+      }
+      throw this.toBleConnectionError(error);
+    }
 
-    if (!disconnectedDuringConnection) {
+    if (
+      !disconnectedDuringConnection &&
+      this.activeConnectionToken === connectionToken
+    ) {
       this.connectedDeviceIdValue = deviceId;
       this.clearDiscoveredServices();
       this.connectionGenerationValue += 1;
+      return;
+    }
+
+    throw new BleOperationError(
+      'connection-interrupted',
+      'BLE connection was interrupted before completion.',
+    );
+  }
+
+  private async cleanupFailedConnectionAttempt(
+    deviceId: string,
+    generationBeforeAttempt: number,
+  ): Promise<void> {
+    const shouldDisconnectNative =
+      this.connectingDeviceId === deviceId ||
+      this.connectedDeviceIdValue === deviceId;
+    const remoteAlreadyCleaned =
+      !shouldDisconnectNative &&
+      this.connectionGenerationValue !== generationBeforeAttempt;
+
+    await this.stopAllNotifications(deviceId);
+    if (this.connectedDeviceIdValue === deviceId) {
+      this.connectedDeviceIdValue = null;
+    }
+    if (this.connectingDeviceId === deviceId) {
+      this.activeConnectionToken = null;
+    }
+    this.clearDiscoveredServices();
+
+    if (
+      !remoteAlreadyCleaned &&
+      this.connectionGenerationValue === generationBeforeAttempt
+    ) {
+      this.connectionGenerationValue += 1;
+    }
+
+    if (!shouldDisconnectNative) {
+      return;
+    }
+
+    try {
+      await BleClient.disconnect(deviceId);
+    } catch {
+      // Keep the original connection failure as the user-visible cause.
     }
   }
 
@@ -676,6 +752,7 @@ export class BleService implements OnDestroy {
     this.connectedDeviceIdValue = null;
     this.clearDiscoveredServices();
     this.connectionGenerationValue += 1;
+    this.activeConnectionToken = null;
     this.connectingDeviceId = null;
     this.connecting = false;
     this.disconnectionSubject.next({ deviceId, reason: 'remote' });
@@ -688,6 +765,7 @@ export class BleService implements OnDestroy {
     this.connectedDeviceIdValue = null;
     this.clearDiscoveredServices();
     this.connectionGenerationValue += 1;
+    this.activeConnectionToken = null;
     this.disconnectionSubject.next({ deviceId, reason: 'local' });
   }
 
@@ -716,6 +794,56 @@ export class BleService implements OnDestroy {
         : 'BLE initialization failed.',
       error,
     );
+  }
+
+  private toBleConnectionError(error: unknown): BleOperationError {
+    if (isBleOperationError(error)) {
+      return error;
+    }
+    const message = this.errorMessage(error).trim();
+    const normalized = message.toLowerCase().replace(/[.!]+$/, '');
+
+    if (normalized === 'connection timeout') {
+      return new BleOperationError(
+        'connection-timeout',
+        'BLE connection timed out.',
+        error,
+      );
+    }
+    if (
+      normalized === 'starting service discovery failed' ||
+      normalized.startsWith('service discovery failed')
+    ) {
+      return new BleOperationError(
+        'service-discovery-failed',
+        'BLE service discovery failed during connection.',
+        error,
+      );
+    }
+    if (normalized === 'disconnected before connection completed') {
+      return new BleOperationError(
+        'connection-interrupted',
+        'BLE connection was interrupted before completion.',
+        error,
+      );
+    }
+
+    return new BleOperationError(
+      'connection-failed',
+      'BLE connection failed.',
+      error,
+    );
+  }
+
+  private isConnectionErrorCode(code: BleOperationErrorCode): boolean {
+    return code === 'connection-timeout' ||
+      code === 'connection-failed' ||
+      code === 'service-discovery-failed' ||
+      code === 'connection-interrupted';
+  }
+
+  private errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 
   private isPermissionDeniedError(error: unknown): boolean {

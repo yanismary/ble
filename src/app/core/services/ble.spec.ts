@@ -301,13 +301,232 @@ describe('BleService', () => {
     const connectionError = new Error('Connection failed');
     connectSpy.and.rejectWith(connectionError);
 
-    await expectAsync(service.connect('device-1')).toBeRejectedWith(
-      connectionError,
-    );
+    try {
+      await service.connect('device-1');
+      fail('connect should reject');
+    } catch (error: unknown) {
+      expect(error).toEqual(jasmine.any(BleOperationError));
+      expect((error as BleOperationError).code).toBe('connection-failed');
+      expect((error as BleOperationError).cause).toBe(connectionError);
+    }
+    expect(BleClient.disconnect).toHaveBeenCalledOnceWith('device-1');
     expect(service.connectedDeviceId).toBeNull();
+    expect(service.connectionGeneration).toBe(1);
 
     connectSpy.and.resolveTo();
     await expectAsync(service.connect('device-1')).toBeResolved();
+    expect(service.connectedDeviceId).toBe('device-1');
+    expect(service.connectionGeneration).toBe(2);
+  });
+
+  it('should expose a typed connection timeout and cleanup the native device',
+    async () => {
+      const connectionError = new Error('Connection timeout.');
+      connectSpy.and.rejectWith(connectionError);
+
+      try {
+        await service.connect('device-1');
+        fail('connect should reject');
+      } catch (error: unknown) {
+        expect(error).toEqual(jasmine.any(BleOperationError));
+        expect((error as BleOperationError).code)
+          .toBe('connection-timeout');
+        expect((error as BleOperationError).cause).toBe(connectionError);
+      }
+      expect(BleClient.disconnect).toHaveBeenCalledOnceWith('device-1');
+      expect(service.connectedDeviceId).toBeNull();
+      expect(service.connectionGeneration).toBe(1);
+    },
+  );
+
+  it('should connect after a timeout cleanup', async () => {
+    connectSpy.and.rejectWith(new Error('Connection timeout.'));
+
+    await expectAsync(service.connect('device-1')).toBeRejected();
+    connectSpy.and.resolveTo();
+    await service.connect('device-1');
+
+    expect(service.connectedDeviceId).toBe('device-1');
+    expect(service.connectionGeneration).toBe(2);
+    expect(BleClient.disconnect).toHaveBeenCalledOnceWith('device-1');
+  });
+
+  it('should expose service discovery failures raised during native connect',
+    async () => {
+      const connectionError = new Error('Service discovery failed.');
+      connectSpy.and.rejectWith(connectionError);
+
+      try {
+        await service.connect('device-1');
+        fail('connect should reject');
+      } catch (error: unknown) {
+        expect(error).toEqual(jasmine.any(BleOperationError));
+        expect((error as BleOperationError).code)
+          .toBe('service-discovery-failed');
+        expect((error as BleOperationError).cause).toBe(connectionError);
+      }
+      expect(BleClient.disconnect).toHaveBeenCalledOnceWith('device-1');
+      expect(service.connectedDeviceId).toBeNull();
+    },
+  );
+
+  it('should preserve the connection error when cleanup disconnect fails',
+    async () => {
+      const connectionError = new Error('Connection timeout.');
+      connectSpy.and.rejectWith(connectionError);
+      (BleClient.disconnect as jasmine.Spy<typeof BleClient.disconnect>)
+        .and.rejectWith(new Error('Disconnect failed'));
+
+      try {
+        await service.connect('device-1');
+        fail('connect should reject');
+      } catch (error: unknown) {
+        expect(error).toEqual(jasmine.any(BleOperationError));
+        expect((error as BleOperationError).code)
+          .toBe('connection-timeout');
+        expect((error as BleOperationError).cause).toBe(connectionError);
+      }
+      expect(service.connectedDeviceId).toBeNull();
+      expect(service.connectionGeneration).toBe(1);
+    },
+  );
+
+  it('should allow a new attempt after cleanup disconnect fails',
+    async () => {
+      connectSpy.and.rejectWith(new Error('Connection timeout.'));
+      (BleClient.disconnect as jasmine.Spy<typeof BleClient.disconnect>)
+        .and.rejectWith(new Error('Disconnect failed'));
+
+      await expectAsync(service.connect('device-1')).toBeRejected();
+      connectSpy.and.resolveTo();
+      (BleClient.disconnect as jasmine.Spy<typeof BleClient.disconnect>)
+        .and.resolveTo();
+
+      await service.connect('device-1');
+
+      expect(service.connectedDeviceId).toBe('device-1');
+      expect(service.connectionGeneration).toBe(2);
+    },
+  );
+
+  it('should not run native cleanup twice after a remote disconnect during connect',
+    async () => {
+      let onDisconnect: ((deviceId: string) => void) | undefined;
+      connectSpy.and.callFake(async (_deviceId, callback) => {
+        onDisconnect = callback;
+        onDisconnect?.('device-1');
+      });
+      const disconnectSpy = BleClient.disconnect as jasmine.Spy<
+        typeof BleClient.disconnect
+      >;
+
+      try {
+        await service.connect('device-1');
+        fail('connect should reject');
+      } catch (error: unknown) {
+        expect(error).toEqual(jasmine.any(BleOperationError));
+        expect((error as BleOperationError).code)
+          .toBe('connection-interrupted');
+      }
+      expect(disconnectSpy).not.toHaveBeenCalled();
+      expect(service.connectedDeviceId).toBeNull();
+      expect(service.connectionGeneration).toBe(1);
+    },
+  );
+
+  it('should connect after an interrupted connection attempt', async () => {
+    let onDisconnect: ((deviceId: string) => void) | undefined;
+    connectSpy.and.callFake(async (_deviceId, callback) => {
+      onDisconnect = callback;
+      onDisconnect?.('device-1');
+    });
+
+    await expectAsync(service.connect('device-1')).toBeRejected();
+    connectSpy.and.callFake(async () => undefined);
+    await service.connect('device-1');
+
+    expect(service.connectedDeviceId).toBe('device-1');
+    expect(service.connectionGeneration).toBe(2);
+  });
+
+  it('should recover after multiple connection failures', async () => {
+    let attempts = 0;
+    connectSpy.and.callFake(async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        throw new Error('Connection failed');
+      }
+      if (attempts === 2) {
+        throw new Error('Connection timeout.');
+      }
+    });
+
+    await expectAsync(service.connect('device-1')).toBeRejected();
+    await expectAsync(service.connect('device-1')).toBeRejected();
+    await service.connect('device-1');
+
+    expect(service.connectedDeviceId).toBe('device-1');
+    expect(service.connectionGeneration).toBe(3);
+    expect(BleClient.disconnect).toHaveBeenCalledTimes(2);
+  });
+
+  it('should ignore an old disconnect callback after a successful reconnect',
+    async () => {
+      let oldDisconnect!: (deviceId: string) => void;
+      let newDisconnect!: (deviceId: string) => void;
+      const firstError = new Error('Connection failed');
+      connectSpy.and.callFake(async (_deviceId, callback) => {
+        if (callback === undefined) {
+          fail('connect should register a disconnect callback');
+          return;
+        }
+        oldDisconnect = callback;
+        throw firstError;
+      });
+
+      await expectAsync(service.connect('device-1')).toBeRejected();
+      connectSpy.and.callFake(async (_deviceId, callback) => {
+        if (callback === undefined) {
+          fail('connect should register a disconnect callback');
+          return;
+        }
+        newDisconnect = callback;
+      });
+      await service.connect('device-1');
+      const generation = service.connectionGeneration;
+
+      oldDisconnect('device-1');
+
+      expect(service.connectedDeviceId).toBe('device-1');
+      expect(service.connectionGeneration).toBe(generation);
+
+      newDisconnect('device-1');
+      expect(service.connectedDeviceId).toBeNull();
+      expect(service.connectionGeneration).toBe(generation + 1);
+    },
+  );
+
+  it('should reconnect after a voluntary disconnect', async () => {
+    await service.connect('device-1');
+    await service.disconnect();
+    await service.connect('device-1');
+
+    expect(service.connectedDeviceId).toBe('device-1');
+    expect(service.connectionGeneration).toBe(3);
+  });
+
+  it('should reconnect after an active remote disconnect', async () => {
+    let onDisconnect: ((deviceId: string) => void) | undefined;
+    connectSpy.and.callFake(async (_deviceId, callback) => {
+      onDisconnect = callback;
+    });
+
+    await service.connect('device-1');
+    onDisconnect?.('device-1');
+    await service.connect('device-1');
+
+    expect(service.connectedDeviceId).toBe('device-1');
+    expect(service.connectionGeneration).toBe(3);
   });
 
   it('should reject a second simultaneous connection', async () => {

@@ -72,7 +72,7 @@
       @if (connecting) {
         <div class="connection-status" role="status">
           <ion-spinner name="crescent"></ion-spinner>
-          <span>Connexion en cours…</span>
+          <span>{{ connectionStatusLabel }}</span>
         </div>
       } @else if (connectedDeviceId === device.deviceId) {
         <p class="connected-status" role="status">Connecté</p>
@@ -80,6 +80,17 @@
 
       @if (connectionError) {
         <p class="error-message" role="alert">{{ connectionError }}</p>
+      }
+
+      @if (canRetryConnection) {
+        <ion-button
+          expand="block"
+          fill="outline"
+          (click)="retryConnection()"
+          [disabled]="!canRetryConnection"
+        >
+          Réessayer la connexion
+        </ion-button>
       }
 
       @if (connectedDeviceId === device.deviceId) {

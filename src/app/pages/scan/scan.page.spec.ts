@@ -729,6 +729,211 @@ describe('ScanPage', () => {
     expect(component.connecting).toBeFalse();
   });
 
+  it('should ignore a late connection failure after the page is destroyed',
+    async () => {
+      let rejectConnection!: (error: unknown) => void;
+      spyOn(bleService, 'connect').and.returnValue(
+        new Promise<void>((_resolve, reject) => {
+          rejectConnection = reject;
+        }),
+      );
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+      component.selectDevice(component.devices[0]);
+
+      const connection = component.connectSelectedDevice();
+      await Promise.resolve();
+      fixture.destroy();
+      rejectConnection(
+        new BleOperationError(
+          'connection-timeout',
+          'BLE connection timed out.',
+        ),
+      );
+      await connection;
+
+      expect(component.connectionError).toBeNull();
+      expect(component.connectionRetryDeviceId).toBeNull();
+      expect(routerNavigate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should offer a manual retry after a retryable connection failure',
+    async () => {
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+      component.selectDevice(component.devices[0]);
+      spyOn(bleService, 'connect').and.rejectWith(
+        new BleOperationError(
+          'connection-timeout',
+          'BLE connection timed out.',
+        ),
+      );
+
+      await component.connectSelectedDevice();
+      fixture.detectChanges();
+
+      expect(component.connectionRetryDeviceId).toBe('device-1');
+      expect(component.canRetryConnection).toBeTrue();
+      expect(fixture.nativeElement.textContent).toContain(
+        'Réessayer la connexion',
+      );
+    },
+  );
+
+  it('should retry the same device through the normal connection flow',
+    async () => {
+      const originalConnect = bleService.connect.bind(bleService);
+      let attempt = 0;
+      const connectSpy = spyOn(bleService, 'connect')
+        .and.callFake(async (deviceId: string) => {
+          attempt += 1;
+          if (attempt === 1) {
+            throw new BleOperationError(
+              'connection-failed',
+              'BLE connection failed.',
+            );
+          }
+          await originalConnect(deviceId);
+        });
+      bleService.servicesResult = createServices();
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+      component.selectDevice(component.devices[0]);
+      await component.connectSelectedDevice();
+
+      await component.retryConnection();
+      fixture.detectChanges();
+
+      expect(connectSpy).toHaveBeenCalledTimes(2);
+      expect(connectSpy.calls.allArgs()).toEqual([
+        ['device-1'],
+        ['device-1'],
+      ]);
+      expect(component.connectedDeviceId).toBe('device-1');
+      expect(component.connectionError).toBeNull();
+      expect(component.connectionRetryDeviceId).toBeNull();
+      expect(fixture.nativeElement.textContent).toContain('Connecté');
+    },
+  );
+
+  it('should keep the manual retry available after a second retryable failure',
+    async () => {
+      spyOn(bleService, 'connect').and.rejectWith(
+        new BleOperationError(
+          'service-discovery-failed',
+          'BLE service discovery failed during connection.',
+        ),
+      );
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+      component.selectDevice(component.devices[0]);
+      await component.connectSelectedDevice();
+
+      await component.retryConnection();
+
+      expect(bleService.connect).toHaveBeenCalledTimes(2);
+      expect(component.connectedDeviceId).toBeNull();
+      expect(component.connectionRetryDeviceId).toBe('device-1');
+      expect(component.canRetryConnection).toBeTrue();
+    },
+  );
+
+  it('should ignore a double manual retry while one connection is pending',
+    async () => {
+      let releaseRetry!: () => void;
+      const originalConnect = bleService.connect.bind(bleService);
+      let attempt = 0;
+      const connectSpy = spyOn(bleService, 'connect')
+        .and.callFake(async (deviceId: string) => {
+          attempt += 1;
+          if (attempt === 1) {
+            throw new BleOperationError(
+              'connection-failed',
+              'BLE connection failed.',
+            );
+          }
+          await new Promise<void>((resolve) => {
+            releaseRetry = resolve;
+          });
+          await originalConnect(deviceId);
+        });
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+      component.selectDevice(component.devices[0]);
+      await component.connectSelectedDevice();
+
+      const retry = component.retryConnection();
+      const ignoredRetry = component.retryConnection();
+      await Promise.resolve();
+
+      expect(connectSpy).toHaveBeenCalledTimes(2);
+      expect(component.connecting).toBeTrue();
+      expect(component.connectionStatusLabel).toContain('Nouvelle tentative');
+
+      releaseRetry();
+      await retry;
+      await ignoredRetry;
+      expect(component.connectedDeviceId).toBe('device-1');
+    },
+  );
+
+  it('should disconnect if a retry succeeds after the page is destroyed',
+    async () => {
+      let releaseRetry!: () => void;
+      const originalConnect = bleService.connect.bind(bleService);
+      let attempt = 0;
+      spyOn(bleService, 'connect')
+        .and.callFake(async (deviceId: string) => {
+          attempt += 1;
+          if (attempt === 1) {
+            throw new BleOperationError(
+              'connection-failed',
+              'BLE connection failed.',
+            );
+          }
+          await new Promise<void>((resolve) => {
+            releaseRetry = resolve;
+          });
+          await originalConnect(deviceId);
+        });
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+      component.selectDevice(component.devices[0]);
+      await component.connectSelectedDevice();
+      bleService.disconnect.calls.reset();
+
+      const retry = component.retryConnection();
+      await Promise.resolve();
+      fixture.destroy();
+      releaseRetry();
+      await retry;
+
+      expect(bleService.disconnect).toHaveBeenCalledTimes(1);
+      expect(bleService.connectedDeviceId).toBeNull();
+      expect(routerNavigate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should not offer connection retry for permission or Bluetooth errors',
+    async () => {
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+      component.selectDevice(component.devices[0]);
+      spyOn(bleService, 'connect').and.rejectWith(
+        new BleOperationError(
+          'permission-denied',
+          'BLE permission denied.',
+        ),
+      );
+
+      await component.connectSelectedDevice();
+
+      expect(component.connectionRetryDeviceId).toBeNull();
+      expect(component.canRetryConnection).toBeFalse();
+    },
+  );
+
   it('should leave the connected state after a remote disconnection', async () => {
     await component.startScan();
     bleService.emit(createScanResult('device-1', -42, 'Capteur'));
