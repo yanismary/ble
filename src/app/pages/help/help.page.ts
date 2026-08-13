@@ -1,7 +1,9 @@
 import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import {
   IonBackButton,
+  IonButton,
   IonButtons,
   IonContent,
   IonHeader,
@@ -21,11 +23,13 @@ import {
   standalone: true,
   imports: [
     IonBackButton,
+    IonButton,
     IonButtons,
     IonContent,
     IonHeader,
     IonTitle,
     IonToolbar,
+    RouterLink,
   ],
 })
 export class HelpPage {

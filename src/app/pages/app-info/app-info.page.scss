@@ -1,0 +1,29 @@
+.app-info-layout {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.app-info-layout h1 {
+  margin-top: 0;
+}
+
+.contact-card {
+  display: grid;
+  gap: 0.65rem;
+  border: 1px solid var(--ion-color-step-200, #d7d7d7);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.contact-card h3,
+.contact-card p {
+  margin: 0;
+}
+
+address {
+  display: grid;
+  gap: 0.2rem;
+  font-style: normal;
+}

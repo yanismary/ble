@@ -1,0 +1,53 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/help"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ copy.aboutTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <main class="app-info-layout">
+    <section>
+      <h1>{{ copy.aboutContentTitle }}</h1>
+
+      <ion-list>
+        <ion-item>
+          <ion-label>{{ copy.versionLabel }}</ion-label>
+          <ion-note slot="end">{{ appVersion }}</ion-note>
+        </ion-item>
+      </ion-list>
+
+      <h2>{{ copy.lastModification }}</h2>
+      <p>{{ copy.lastModificationText }}</p>
+    </section>
+
+    <section>
+      <h2>{{ copy.contactTitle }}</h2>
+
+      <div class="contact-card">
+        <h3>{{ copy.companyName }}</h3>
+
+        <p>
+          <strong>{{ copy.sendMessage }} :</strong>
+          <a href="mailto:appsupport@mantion-smt.fr">
+            appsupport@mantion-smt.fr
+          </a>
+        </p>
+
+        <p>
+          <strong>Téléphone :</strong>
+          <a href="tel:+33380378571">{{ copy.phoneLabel }}</a>
+        </p>
+
+        <address>
+          <strong>{{ copy.companyName }}</strong>
+          @for (line of copy.addressLines; track line) {
+            <span>{{ line }}</span>
+          }
+        </address>
+      </div>
+    </section>
+  </main>
+</ion-content>

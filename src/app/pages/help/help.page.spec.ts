@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { HelpPage, normalizeHelpPlatform } from './help.page';
 
@@ -8,6 +9,7 @@ describe('HelpPage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [HelpPage],
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(HelpPage);

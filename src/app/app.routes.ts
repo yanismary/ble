@@ -17,6 +17,11 @@ export const routes: Routes = [
       import('./pages/tutorial/tutorial.page').then((m) => m.TutorialPage),
   },
   {
+    path: 'app-info',
+    loadComponent: () =>
+      import('./pages/app-info/app-info.page').then((m) => m.AppInfoPage),
+  },
+  {
     path: 'product/widoor',
     data: { profile: 'widoor' },
     loadComponent: () =>
