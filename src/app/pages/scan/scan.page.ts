@@ -216,6 +216,10 @@ export class ScanPage implements OnDestroy {
     void this.disconnectExistingNativeConnectionForScanEntry();
   }
 
+  async openTutorial(): Promise<void> {
+    await this.router.navigate(['/tutorial']);
+  }
+
   async openHelp(): Promise<void> {
     await this.router.navigate(['/help']);
   }

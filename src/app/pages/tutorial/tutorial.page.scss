@@ -1,0 +1,54 @@
+.tutorial-layout {
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.tutorial-choice {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.tutorial-choice h1 {
+  margin-top: 0;
+  text-align: center;
+}
+
+.tutorial-choice-buttons {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.tutorial-slide {
+  display: grid;
+  gap: 1rem;
+  text-align: center;
+}
+
+.tutorial-progress {
+  margin: 0;
+  opacity: 0.7;
+}
+
+.tutorial-image {
+  display: block;
+  width: 100%;
+  max-width: 34rem;
+  max-height: 52vh;
+  margin: 0 auto;
+  object-fit: contain;
+  border-radius: 0.75rem;
+}
+
+.tutorial-slide h1 {
+  margin: 0;
+}
+
+.tutorial-description {
+  text-align: left;
+}
+
+.tutorial-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}

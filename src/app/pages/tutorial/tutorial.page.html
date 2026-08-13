@@ -1,0 +1,65 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/scan"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Guide de démarrage</ion-title>
+    @if (selectedProduct) {
+      <ion-button slot="end" fill="clear" type="button" (click)="finish()">
+        {{ copy.skip }}
+      </ion-button>
+    }
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <main class="tutorial-layout">
+    @if (!selectedProduct) {
+      <section class="tutorial-choice">
+        <h1>{{ copy.choiceTitle }}</h1>
+        <div class="tutorial-choice-buttons">
+          <ion-button expand="block" (click)="selectProduct('widoor')">
+            {{ copy.choiceWidoor }}
+          </ion-button>
+          <ion-button expand="block" (click)="selectProduct('moventiv')">
+            {{ copy.choiceMoventiv }}
+          </ion-button>
+          <ion-button expand="block" (click)="selectProduct('garline')">
+            {{ copy.choiceGarline }}
+          </ion-button>
+        </div>
+      </section>
+    } @else if (currentSlide; as slide) {
+      <section class="tutorial-slide" aria-live="polite">
+        <p class="tutorial-progress">
+          {{ slideIndex + 1 }} / {{ copy.slides.length }}
+        </p>
+
+        @if (slide.image) {
+          <img
+            class="tutorial-image"
+            [src]="slide.image"
+            [alt]="slide.title"
+          />
+        }
+
+        <h1 [innerHTML]="slide.title"></h1>
+        <div class="tutorial-description" [innerHTML]="slide.description"></div>
+
+        <div class="tutorial-actions">
+          <ion-button
+            fill="outline"
+            type="button"
+            (click)="previous()"
+            [disabled]="slideIndex === 0"
+          >
+            Précédent
+          </ion-button>
+          <ion-button type="button" (click)="next()">
+            {{ isLastSlide ? copy.continueLabel : 'Suivant' }}
+          </ion-button>
+        </div>
+      </section>
+    }
+  </main>
+</ion-content>
