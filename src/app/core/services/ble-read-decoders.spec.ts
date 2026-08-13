@@ -6,6 +6,7 @@ import {
   decodeBleProfessionalParameters,
   decodeBleUserParameters,
   decodeBleVersion,
+  decodeProfessionalPeripheralFlags,
   readUint16BigEndian,
   readUint24BigEndian,
 } from './ble-read-decoders';
@@ -426,6 +427,24 @@ describe('decodeBleUserParameters', () => {
 
   it('rejects a short frame', () => {
     expect(decodeBleUserParameters(new Uint8Array(6)).valid).toBeFalse();
+  });
+});
+
+describe('decodeProfessionalPeripheralFlags', () => {
+  it('decodes Phase 1 input/radar and protected peripheral bits', () => {
+    expect(decodeProfessionalPeripheralFlags(0xf8)).toEqual({
+      input1Radar: true,
+      input2Radar: true,
+      radarTest1: true,
+      radarTest2: true,
+      locked: true,
+    });
+  });
+
+  it('decodes cleared input bits as button mode', () => {
+    const flags = decodeProfessionalPeripheralFlags(0x00);
+    expect(flags.input1Radar).toBeFalse();
+    expect(flags.input2Radar).toBeFalse();
   });
 });
 

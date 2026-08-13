@@ -150,6 +150,26 @@ export interface BleUserParameters {
   readonly peripheralFlags: UserPeripheralFlags;
 }
 
+export interface ProfessionalPeripheralFlags {
+  readonly input1Radar: boolean;
+  readonly input2Radar: boolean;
+  readonly radarTest1: boolean;
+  readonly radarTest2: boolean;
+  readonly locked: boolean;
+}
+
+export function decodeProfessionalPeripheralFlags(
+  peripheralByte1: number,
+): ProfessionalPeripheralFlags {
+  return Object.freeze({
+    input1Radar: Boolean(peripheralByte1 & 0x80),
+    input2Radar: Boolean(peripheralByte1 & 0x40),
+    radarTest1: Boolean(peripheralByte1 & 0x20),
+    radarTest2: Boolean(peripheralByte1 & 0x10),
+    locked: Boolean(peripheralByte1 & 0x08),
+  });
+}
+
 interface CommonProfessionalParameters {
   readonly weightRangeLower: number;
   readonly weightRangeUpper: number;

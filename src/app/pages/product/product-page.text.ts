@@ -88,6 +88,18 @@ export const PRODUCT_PAGE_TEXT = {
     failed: 'Échec de l’envoi de la plage de poids.',
     unavailable: 'Commande de plage de poids indisponible',
   },
+  professionalInputControls: {
+    title: 'Configuration des entrées',
+    current: 'Valeur lue :',
+    input1: 'Entrée 1',
+    input2: 'Entrée 2',
+    button: 'Bouton',
+    radar: 'Radar',
+    executing: 'Envoi de la configuration d’entrée…',
+    sent: 'Configuration d’entrée envoyée. Lecture de contrôle en cours.',
+    failed: 'Échec de l’envoi de la configuration d’entrée.',
+    unavailable: 'Commande de configuration d’entrée indisponible',
+  },
   professionalScalarControls: {
     apply: 'Appliquer',
     current: 'Valeur lue :',

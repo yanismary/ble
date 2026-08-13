@@ -448,6 +448,42 @@
               <span>{{ professionalAccessState.message }}</span>
             </p>
           }
+          @if (showProfessionalInputControls) {
+            <div class="professional-input-controls">
+              <h4>{{ text.professionalInputControls.title }}</h4>
+              @for (inputControl of professionalInputControls; track inputControl.config.field) {
+                <ion-select
+                  class="professional-input-select"
+                  [label]="inputControl.text"
+                  label-placement="stacked"
+                  interface="popover"
+                  [value]="currentProfessionalInputMode(inputControl.config)"
+                  [disabled]="!canChangeProfessionalInput(inputControl.config)"
+                  (ionChange)="requestProfessionalInputChange(inputControl.config, $event)"
+                >
+                  <ion-select-option value="button">
+                    {{ text.professionalInputControls.button }}
+                  </ion-select-option>
+                  <ion-select-option value="radar">
+                    {{ text.professionalInputControls.radar }}
+                  </ion-select-option>
+                </ion-select>
+              }
+              @if (professionalInputWriteState.message) {
+                <p
+                  class="command-state"
+                  role="status"
+                  aria-live="polite"
+                  [attr.data-tone]="professionalInputWriteState.status === 'failed' ? 'error' : 'neutral'"
+                >
+                  @if (professionalInputWriteState.status === 'executing') {
+                    <ion-spinner name="crescent"></ion-spinner>
+                  }
+                  <span>{{ professionalInputWriteState.message }}</span>
+                </p>
+              }
+            </div>
+          }
           @if (showWeightRangeControls) {
             <div class="weight-range-controls">
               <div class="weight-range-control-header">

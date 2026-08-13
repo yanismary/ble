@@ -30,6 +30,7 @@ import {
 import { BLE_UUIDS } from '../../core/services/ble-profile-catalog';
 import {
   LegacyBleWrite,
+  LegacyInputMode,
   LegacyLockMode,
 } from
   '../../core/services/legacy-ble-write-catalog';
@@ -43,6 +44,7 @@ import {
   BleStackVersion,
   BleUserParameters,
   HistoricalBleDate,
+  decodeProfessionalPeripheralFlags,
 } from '../../core/services/ble-read-decoders';
 import {
   BleTypedReadResult,
@@ -108,6 +110,12 @@ import {
   isValidProductWeightRange,
   productWeightRangeConfigsFor,
 } from './product-weight-range';
+import {
+  ProductProfessionalInputField,
+  ProductProfessionalInputUiConfig,
+  createProductProfessionalInputAuthorization,
+  productProfessionalInputConfigsFor,
+} from './product-professional-input';
 import {
   ProductProfessionalScalarField,
   ProductProfessionalScalarUiConfig,
@@ -200,6 +208,10 @@ export class ProductPage implements OnDestroy {
   private readonly userTimingWrites: Map<ProductUserTimingField, LegacyBleWrite>;
   private readonly userTimingDrafts = new Map<ProductUserTimingField, number>();
   private weightRangeDraft: ProductWeightRange | null = null;
+  private readonly professionalInputWrites: Map<
+    ProductProfessionalInputField,
+    LegacyBleWrite
+  >;
   private readonly professionalScalarWrites: Map<
     ProductProfessionalScalarField,
     LegacyBleWrite
@@ -248,6 +260,10 @@ export class ProductPage implements OnDestroy {
   readonly weightRangeControls: readonly {
     readonly config: ProductWeightRangeUiConfig;
   }[];
+  readonly professionalInputControls: readonly {
+    readonly config: ProductProfessionalInputUiConfig;
+    readonly text: string;
+  }[];
   readonly professionalScalarControls: readonly {
     readonly config: ProductProfessionalScalarUiConfig;
     readonly text: typeof PRODUCT_PAGE_TEXT.professional[
@@ -280,6 +296,11 @@ export class ProductPage implements OnDestroy {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', message: null });
+  professionalInputWriteState: {
+    readonly status: 'idle' | 'executing' | 'sent' | 'failed';
+    readonly field: ProductProfessionalInputField | null;
+    readonly message: string | null;
+  } = Object.freeze({ status: 'idle', field: null, message: null });
   professionalScalarWriteState: {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly field: ProductProfessionalScalarField | null;
@@ -398,6 +419,22 @@ export class ProductPage implements OnDestroy {
         Object.freeze({ config }),
       ),
     );
+    this.professionalInputControls = Object.freeze(
+      productProfessionalInputConfigsFor(this.config).map((config) =>
+        Object.freeze({
+          config,
+          text: config.textKey === 'input1'
+            ? PRODUCT_PAGE_TEXT.professionalInputControls.input1
+            : PRODUCT_PAGE_TEXT.professionalInputControls.input2,
+        }),
+      ),
+    );
+    this.professionalInputWrites = new Map(
+      this.professionalInputControls.map(({ config }) => [
+        config.field,
+        config.catalogFactory('button'),
+      ]),
+    );
     this.professionalScalarControls = Object.freeze(
       productProfessionalScalarConfigsFor(this.config).map((config) =>
         Object.freeze({
@@ -453,6 +490,7 @@ export class ProductPage implements OnDestroy {
       this.userTimingWriteState.status !== 'executing' &&
       this.userPeripheralWriteState.status !== 'executing' &&
       this.weightRangeWriteState.status !== 'executing' &&
+      this.professionalInputWriteState.status !== 'executing' &&
       this.professionalScalarWriteState.status !== 'executing' &&
       this.nameRoomWriteState.status !== 'executing' &&
       !this.productDateActionBusy;
@@ -504,6 +542,12 @@ export class ProductPage implements OnDestroy {
   get showWeightRangeControls(): boolean {
     return this.pageContextCurrent &&
       this.weightRangeControls.length > 0 &&
+      this.viewModel.reads.professionalParameters.status === 'available';
+  }
+
+  get showProfessionalInputControls(): boolean {
+    return this.pageContextCurrent &&
+      this.professionalInputControls.length > 0 &&
       this.viewModel.reads.professionalParameters.status === 'available';
   }
 
@@ -582,6 +626,7 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalInputWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
@@ -875,6 +920,7 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalInputWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
@@ -1224,6 +1270,7 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalInputWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
@@ -1304,6 +1351,7 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalInputWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
@@ -1386,6 +1434,7 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalInputWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
@@ -1445,6 +1494,7 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalInputWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
@@ -1461,6 +1511,141 @@ export class ProductPage implements OnDestroy {
       properties.characteristicPresent &&
       properties.propertiesAvailable &&
       properties.write === true;
+  }
+
+  currentProfessionalInputMode(
+    config: ProductProfessionalInputUiConfig,
+  ): LegacyInputMode | null {
+    const value = this.viewModel.reads.professionalParameters.value;
+    if (value === null || value.profile !== config.profile) {
+      return null;
+    }
+    const flags = decodeProfessionalPeripheralFlags(value.peripheralByte1);
+    const radar = config.field === 'input-1'
+      ? flags.input1Radar
+      : flags.input2Radar;
+    return radar ? 'radar' : 'button';
+  }
+
+  canChangeProfessionalInput(
+    config: ProductProfessionalInputUiConfig,
+    mode?: LegacyInputMode,
+  ): boolean {
+    if (!this.professionalInputControls.some((control) =>
+          control.config === config,
+        ) ||
+        !this.showProfessionalInputControls ||
+        !this.isCurrentContext() ||
+        this.viewModel.loading ||
+        this.productDataLoadService.isLoading ||
+        this.bleService.isWriting ||
+        this.bleService.disconnectingDeviceId !== null ||
+        this.bleWriteExecutionService.isExecuting ||
+        this.lockModeWriteState.status === 'executing' ||
+        this.userSpeedWriteState.status === 'executing' ||
+        this.userTimingWriteState.status === 'executing' ||
+        this.userPeripheralWriteState.status === 'executing' ||
+        this.weightRangeWriteState.status === 'executing' ||
+        this.professionalInputWriteState.status === 'executing' ||
+        this.professionalScalarWriteState.status === 'executing' ||
+        this.nameRoomWriteState.status === 'executing' ||
+        this.productDateActionBusy ||
+        this.commandInProgress) {
+      return false;
+    }
+    const current = this.currentProfessionalInputMode(config);
+    if (current === null || (mode !== undefined && mode === current)) {
+      return false;
+    }
+    const write = this.professionalInputWrites.get(config.field);
+    if (write === undefined) {
+      return false;
+    }
+    const properties = this.bleService.getGattCharacteristicProperties(
+      write.serviceUuid,
+      write.characteristicUuid,
+      this.context?.deviceId,
+    );
+    return properties.servicePresent &&
+      properties.characteristicPresent &&
+      properties.propertiesAvailable &&
+      properties.write === true;
+  }
+
+  async requestProfessionalInputChange(
+    config: ProductProfessionalInputUiConfig,
+    eventOrMode: CustomEvent<{ readonly value?: LegacyInputMode }> |
+      LegacyInputMode,
+  ): Promise<void> {
+    const mode = typeof eventOrMode === 'string'
+      ? eventOrMode
+      : eventOrMode.detail.value;
+    if ((mode !== 'button' && mode !== 'radar') ||
+        !this.canChangeProfessionalInput(config, mode) ||
+        this.context === null) {
+      return;
+    }
+    const write = config.catalogFactory(mode);
+    const context = this.context;
+    const contextStatus = this.writeContextStatus(context, write);
+    if (contextStatus !== null) {
+      this.professionalInputWriteState = Object.freeze({
+        status: 'failed',
+        field: config.field,
+        message: this.text.professionalInputControls.failed,
+      });
+      return;
+    }
+    const attemptId = this.nextCommandIdentifier('attempt');
+    const confirmedAt = Date.now();
+    const authorization = createProductProfessionalInputAuthorization({
+      write,
+      deviceId: context.deviceId,
+      connectionGeneration: context.connectionGeneration,
+      attemptId,
+      confirmationId: this.nextCommandIdentifier('confirmation'),
+      confirmedAt,
+    });
+    this.professionalInputWriteState = Object.freeze({
+      status: 'executing',
+      field: config.field,
+      message: this.text.professionalInputControls.executing,
+    });
+    const result = await this.bleWriteExecutionService.execute({
+      write,
+      deviceId: context.deviceId,
+      profile: config.profile,
+      connectionGeneration: context.connectionGeneration,
+      identification: { profile: config.profile, confidence: 'strong' },
+      authorization,
+      attemptId,
+      confirmationPolicy: config.confirmationPolicy,
+      policy: config.policy,
+    });
+    if (!this.isCurrentContext() || this.context !== context) {
+      this.professionalInputWriteState = Object.freeze({
+        status: 'failed',
+        field: config.field,
+        message: this.text.openCommand.stale,
+      });
+      return;
+    }
+    if (result.status === 'success') {
+      this.professionalInputWriteState = Object.freeze({
+        status: 'sent',
+        field: config.field,
+        message: this.text.professionalInputControls.sent,
+      });
+      if (this.canRefresh) {
+        await this.refreshProductData();
+      }
+      return;
+    }
+    this.professionalInputWriteState = Object.freeze({
+      status: 'failed',
+      field: config.field,
+      message: this.text.professionalInputControls.failed,
+    });
   }
 
   currentWeightRangeValue(): ProductWeightRange | null {
@@ -1516,6 +1701,7 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalInputWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
@@ -1622,6 +1808,7 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalInputWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
@@ -1671,6 +1858,7 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
+        this.professionalInputWriteState.status === 'executing' ||
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
