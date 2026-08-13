@@ -1,8 +1,9 @@
 import { OnInit, Component } from '@angular/core';
-import { IonicPage, NavController, NavParams, Platform } from 'ionic-angular';
+import { IonicPage, NavController, NavParams } from 'ionic-angular';
 import { TranslateService } from '@ngx-translate/core';
 import { LoggerService } from '../../providers/logger/logger.service';
 import { getProductConfigId, normalizeProductType } from '../../app/product-detection';
+import { Capacitor } from '@capacitor/core';
 
 type TutorialProduct = 'widoor' | 'moventiv' | 'garline';
 
@@ -30,7 +31,6 @@ export class InfoSlidePage implements OnInit {
   private TAG = 'InfoSlidePage';
 
   constructor(
-    public platform: Platform,
     public navCtrl: NavController,
     public navParams: NavParams,
     private logger: LoggerService,
@@ -41,7 +41,7 @@ export class InfoSlidePage implements OnInit {
   ngOnInit(): any {
     this.logger.debug(this.TAG, 'ngOnInit started');
 
-    const platformKey = this.platform.is('ios') ? 'IOS' : 'ANDROID';
+    const platformKey = Capacitor.getPlatform() === 'ios' ? 'IOS' : 'ANDROID';
     this.selectedTutorial = this.resolveInitialTutorial();
 
     this.translate.get([
@@ -68,8 +68,7 @@ export class InfoSlidePage implements OnInit {
       });
 
     this.logger.info(this.TAG, 'Platform detected', {
-      android: this.platform.is('android'),
-      ios: this.platform.is('ios')
+      platform: Capacitor.getPlatform()
     });
   }
 
@@ -151,7 +150,7 @@ export class InfoSlidePage implements OnInit {
     const basePath = 'assets/img/tuto_' + product + '/';
     const lang = localStorage.getItem("lang") === "fr" ? "fr" : "en";
 
-    if (this.platform.is('ios')) {
+    if (Capacitor.getPlatform() === 'ios') {
       return {
         slide1: basePath + 'slide1_' + product + '.png',
         slide2: basePath + 'slide2_ios_' + lang + '_' + product + '.PNG',
