@@ -1,0 +1,35 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/app-info"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ copy.navbarTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <main class="legal-layout">
+    <h1>{{ copy.title }}</h1>
+
+    @for (section of copy.sections; track section.title) {
+      <section>
+        <h2>{{ section.title }}</h2>
+        @for (paragraph of section.paragraphs; track $index) {
+          <p>{{ paragraph }}</p>
+        }
+      </section>
+    }
+
+    <section>
+      <h2>{{ copy.definitionsTitle }}</h2>
+      <dl>
+        @for (definition of copy.definitions; track definition.term) {
+          <div class="definition">
+            <dt>{{ definition.term }}</dt>
+            <dd>{{ definition.description }}</dd>
+          </div>
+        }
+      </dl>
+    </section>
+  </main>
+</ion-content>

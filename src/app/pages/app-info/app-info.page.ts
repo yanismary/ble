@@ -1,8 +1,10 @@
 import { Component, OnInit } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import {
   IonBackButton,
+  IonButton,
   IonButtons,
   IonContent,
   IonHeader,
@@ -26,6 +28,7 @@ import {
   standalone: true,
   imports: [
     IonBackButton,
+    IonButton,
     IonButtons,
     IonContent,
     IonHeader,
@@ -35,6 +38,7 @@ import {
     IonNote,
     IonTitle,
     IonToolbar,
+    RouterLink,
   ],
 })
 export class AppInfoPage implements OnInit {

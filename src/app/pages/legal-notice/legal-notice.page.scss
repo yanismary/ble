@@ -1,0 +1,39 @@
+.legal-layout {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.legal-layout h1 {
+  margin-top: 0;
+}
+
+.legal-layout section {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.legal-layout h2,
+.legal-layout p,
+.legal-layout dl {
+  margin: 0;
+}
+
+.legal-layout dl {
+  display: grid;
+  gap: 1rem;
+}
+
+.definition {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.definition dt {
+  font-weight: 700;
+}
+
+.definition dd {
+  margin: 0;
+}
