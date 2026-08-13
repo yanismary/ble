@@ -117,6 +117,9 @@ import {
   productProfessionalInputConfigsFor,
 } from './product-professional-input';
 import {
+  createProfessionalPeripheralDiagnosticRows,
+} from './product-professional-peripheral-diagnostics';
+import {
   ProductProfessionalScalarField,
   ProductProfessionalScalarUiConfig,
   createProductProfessionalScalarAuthorization,
@@ -768,6 +771,21 @@ export class ProductPage implements OnDestroy {
       this.row('user-peripheral-byte-2', this.text.user.peripheralByte2,
         this.formatByte(value.peripheralByte2)),
     ];
+  }
+
+  get professionalPeripheralDiagnosticRows(): readonly ProductDisplayRow[] {
+    const value = this.viewModel.reads.professionalParameters.value;
+    if (value === null || !this.professionalFieldVisible('peripherals')) {
+      return [];
+    }
+
+    return createProfessionalPeripheralDiagnosticRows(
+      value,
+      this.text.professionalPeripheralDiagnostics,
+      {
+        includeLock: value.profile !== 'widoor' || this.widoorLockSupported(),
+      },
+    );
   }
 
   get professionalTechnicalRows(): readonly ProductDisplayRow[] {

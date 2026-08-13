@@ -88,6 +88,16 @@ export const PRODUCT_PAGE_TEXT = {
     failed: 'Échec de l’envoi de la plage de poids.',
     unavailable: 'Commande de plage de poids indisponible',
   },
+  professionalPeripheralDiagnostics: {
+    title: 'Diagnostic périphériques',
+    readonlyNotice:
+      'États lus depuis le produit. Aucune commande de test ou de verrouillage n’est envoyée.',
+    radarTest1: 'Test radar 1',
+    radarTest2: 'Test radar 2',
+    peripheralLock: 'Verrouillage périphériques',
+    enabled: 'Activé',
+    disabled: 'Désactivé',
+  },
   professionalInputControls: {
     title: 'Configuration des entrées',
     current: 'Valeur lue :',

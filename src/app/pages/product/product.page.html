@@ -448,6 +448,18 @@
               <span>{{ professionalAccessState.message }}</span>
             </p>
           }
+          @if (professionalPeripheralDiagnosticRows.length > 0) {
+            <div class="professional-peripheral-diagnostics">
+              <h4>{{ text.professionalPeripheralDiagnostics.title }}</h4>
+              <p>{{ text.professionalPeripheralDiagnostics.readonlyNotice }}</p>
+              <dl class="product-readonly-grid">
+                @for (row of professionalPeripheralDiagnosticRows; track row.key) {
+                  <dt>{{ row.label }}</dt>
+                  <dd>{{ row.value }}</dd>
+                }
+              </dl>
+            </div>
+          }
           @if (showProfessionalInputControls) {
             <div class="professional-input-controls">
               <h4>{{ text.professionalInputControls.title }}</h4>
