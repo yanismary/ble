@@ -7,6 +7,11 @@ export const routes: Routes = [
       import('./pages/scan/scan.page').then((m) => m.ScanPage),
   },
   {
+    path: 'help',
+    loadComponent: () =>
+      import('./pages/help/help.page').then((m) => m.HelpPage),
+  },
+  {
     path: 'product/widoor',
     data: { profile: 'widoor' },
     loadComponent: () =>

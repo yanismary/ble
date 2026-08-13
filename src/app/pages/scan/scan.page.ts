@@ -216,6 +216,10 @@ export class ScanPage implements OnDestroy {
     void this.disconnectExistingNativeConnectionForScanEntry();
   }
 
+  async openHelp(): Promise<void> {
+    await this.router.navigate(['/help']);
+  }
+
   get selectedDevice(): ScannedDevice | null {
     return this.devices.find(
       ({ deviceId }) => deviceId === this.selectedDeviceId,

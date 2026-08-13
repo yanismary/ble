@@ -989,11 +989,21 @@ describe('ScanPage', () => {
       'Connexion perdue avec l’appareil',
     );
 
-    const buttons = fixture.nativeElement.querySelectorAll(
-      'ion-button',
-    ) as NodeListOf<HTMLButtonElement>;
-    expect(buttons[0].disabled).toBeFalse();
-    expect(buttons[2].disabled).toBeFalse();
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('ion-button'),
+    ) as HTMLIonButtonElement[];
+
+    const scanButton = buttons.find((button) =>
+      button.textContent?.includes('Lancer le scan'),
+    );
+    const connectButton = buttons.find((button) =>
+      button.textContent?.includes('Connecter'),
+    );
+
+    expect(scanButton).toBeDefined();
+    expect(connectButton).toBeDefined();
+    expect(scanButton?.disabled).toBeFalse();
+    expect(connectButton?.disabled).toBeFalse();
   });
 
   it('should discover and display services after connecting', async () => {

@@ -1,0 +1,59 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/scan"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Aide</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <main class="help-layout">
+    <section class="help-intro">
+      <h1>Aide à la connexion</h1>
+      <p>
+        Cette page reprend les indications de connexion de l’ancienne
+        application et les adapte au fonctionnement BLE actuel.
+      </p>
+    </section>
+
+    <details open>
+      <summary>Appairage</summary>
+      <ol>
+        @for (step of instructions.pairing; track $index) {
+          <li>{{ step }}</li>
+        }
+      </ol>
+    </details>
+
+    <details>
+      <summary>Difficulté d’appairage</summary>
+      <ol>
+        @for (step of instructions.troubleshooting; track $index) {
+          <li>{{ step }}</li>
+        }
+      </ol>
+      <p>
+        L’application gère directement les autorisations BLE nécessaires.
+        Sur Android récent, aucune activation du GPS n’est demandée pour le scan.
+      </p>
+    </details>
+
+    <details>
+      <summary>Supprimer un ancien jumelage</summary>
+      <ol>
+        @for (step of instructions.unpairing; track $index) {
+          <li>{{ step }}</li>
+        }
+      </ol>
+    </details>
+
+    <aside class="help-warning">
+      <strong>Important</strong>
+      <p>
+        Les procédures d’effacement, de reset, d’apprentissage et de test
+        radar ne sont pas déclenchées depuis cette page.
+      </p>
+    </aside>
+  </main>
+</ion-content>
