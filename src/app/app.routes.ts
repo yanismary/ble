@@ -29,6 +29,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'company-info',
+    loadComponent: () =>
+      import('./pages/company-info/company-info.page').then(
+        (m) => m.CompanyInfoPage,
+      ),
+  },
+  {
     path: 'product/widoor',
     data: { profile: 'widoor' },
     loadComponent: () =>

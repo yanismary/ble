@@ -1,0 +1,38 @@
+.company-layout {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.company-layout header,
+.company-layout section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.company-layout h1,
+.company-layout p,
+.company-layout ul,
+.company-layout figure {
+  margin: 0;
+}
+
+.subtitle {
+  font-weight: 600;
+}
+
+.company-layout ul {
+  padding-left: 1.25rem;
+}
+
+.company-layout figure {
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+
+.company-layout img {
+  display: block;
+  width: 100%;
+  height: auto;
+}

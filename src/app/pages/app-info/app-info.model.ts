@@ -11,7 +11,28 @@ export interface AppInfoCopy {
   readonly companyName: string;
   readonly phoneLabel: string;
   readonly addressLines: readonly string[];
+  readonly companyInfoLabel: string;
+  readonly legalNoticeLabel: string;
 }
+
+const APP_INFO_NAV_LABELS = {
+  "fr": {
+    "who": "Qui sommes nous ?",
+    "legal": "Mentions légales"
+  },
+  "en": {
+    "who": "Who are we ?",
+    "legal": "Legal notice"
+  },
+  "de": {
+    "who": "Wer sind wir?",
+    "legal": "AGB"
+  },
+  "pl": {
+    "who": "Kim jesteśmy?",
+    "legal": "Informacje prawne"
+  }
+} as const;
 
 const LEGACY_APP_INFO = {
   "fr": {
@@ -273,5 +294,7 @@ export function appInfoCopyFor(language: AppInfoLanguage): AppInfoCopy {
       address.STREET,
       address.CITY,
     ].filter((value): value is string => Boolean(value))),
+    companyInfoLabel: APP_INFO_NAV_LABELS[language].who,
+    legalNoticeLabel: APP_INFO_NAV_LABELS[language].legal,
   });
 }

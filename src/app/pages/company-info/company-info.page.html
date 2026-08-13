@@ -1,0 +1,52 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/app-info"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ copy.navbarTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <main class="company-layout">
+    <header>
+      <h1>{{ copy.contentTitle }}</h1>
+      <p class="subtitle">{{ copy.contentSubtitle }}</p>
+    </header>
+
+    <section>
+      <p>{{ copy.introduction }}</p>
+      <p>{{ copy.expertiseIntro }}</p>
+
+      <ul>
+        @for (item of copy.expertiseItems; track $index) {
+          @if (item) {
+            <li>{{ item }}</li>
+          }
+        }
+      </ul>
+
+      <p>{{ copy.paragraph3 }}</p>
+      <p>{{ copy.paragraph4 }}</p>
+    </section>
+
+    <section class="location">
+      <p>{{ copy.addressPresentation }}</p>
+      <p>{{ copy.addressLocalization }}</p>
+    </section>
+
+    <figure>
+      <img
+        src="assets/img/mantionSMT_exterior.jpg"
+        alt=""
+      />
+    </figure>
+
+    <figure>
+      <img
+        src="assets/img/mantionSMT_manufacturing.jpg"
+        alt=""
+      />
+    </figure>
+  </main>
+</ion-content>
