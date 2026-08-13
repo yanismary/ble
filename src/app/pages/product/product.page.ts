@@ -120,6 +120,10 @@ import {
   createProfessionalPeripheralDiagnosticRows,
 } from './product-professional-peripheral-diagnostics';
 import {
+  DeferredSensitiveActionUiConfig,
+  deferredSensitiveActionsFor,
+} from './product-deferred-sensitive-actions';
+import {
   ProductProfessionalScalarField,
   ProductProfessionalScalarUiConfig,
   createProductProfessionalScalarAuthorization,
@@ -228,6 +232,7 @@ export class ProductPage implements OnDestroy {
   readonly config: ProductPageConfig;
   readonly text = PRODUCT_PAGE_TEXT;
   readonly roomOptions = PRODUCT_ROOM_OPTIONS;
+  readonly deferredSensitiveActions: readonly DeferredSensitiveActionUiConfig[];
   readonly productCommands: readonly {
     readonly config: WidoorCommandUiConfig;
     readonly text: typeof PRODUCT_PAGE_TEXT.widoorCommands[
@@ -343,6 +348,7 @@ export class ProductPage implements OnDestroy {
       ? routeProfile
       : 'widoor';
     this.config = PRODUCT_PAGE_CONFIG[profile];
+    this.deferredSensitiveActions = deferredSensitiveActionsFor(profile);
     this.productCommands = Object.freeze(
       MOTOR_COMMAND_UI_CONFIGS[profile].map((config) =>
       Object.freeze({

@@ -88,6 +88,16 @@ export const PRODUCT_PAGE_TEXT = {
     failed: 'Échec de l’envoi de la plage de poids.',
     unavailable: 'Commande de plage de poids indisponible',
   },
+  deferredSensitiveActions: {
+    title: 'Fonctions en attente de validation physique',
+    notice:
+      'Ces commandes existent dans la référence Phase 1 mais restent désactivées dans la Phase 2 tant que leur comportement n’a pas été validé sur matériel.',
+    learning: 'Apprentissage',
+    radarTest1: 'Lancer le test radar 1',
+    radarTest2: 'Lancer le test radar 2',
+    peripheralLock: 'Modifier le verrouillage périphériques',
+    disabledReason: 'Validation physique requise',
+  },
   professionalPeripheralDiagnostics: {
     title: 'Diagnostic périphériques',
     readonlyNotice:

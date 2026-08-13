@@ -606,6 +606,25 @@
           }
         }
       </article>
+
+      @if (deferredSensitiveActions.length > 0) {
+        <article class="product-subsection deferred-sensitive-actions">
+          <h3>{{ text.deferredSensitiveActions.title }}</h3>
+          <p>{{ text.deferredSensitiveActions.notice }}</p>
+          <div class="product-actions">
+            @for (action of deferredSensitiveActions; track action.action) {
+              <div>
+                <ion-button type="button" size="small" fill="outline" disabled>
+                  {{ text.deferredSensitiveActions[action.textKey] }}
+                </ion-button>
+                <p>
+                  <small>{{ text.deferredSensitiveActions.disabledReason }}</small>
+                </p>
+              </div>
+            }
+          </div>
+        </article>
+      }
       </section>
 
       <section class="product-section" aria-labelledby="information-title">
