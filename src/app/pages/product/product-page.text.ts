@@ -2,7 +2,7 @@
 export const PRODUCT_PAGE_TEXT = {
   backToScan: 'Retour au scan',
   returnToScanFailed:
-    'Impossible de dÃ©connecter le produit. RÃ©essayez avant de revenir au scan.',
+    'Impossible de déconnecter le produit. Réessayez avant de revenir au scan.',
   openProductPage: 'Ouvrir la page produit',
   refresh: 'Actualiser les informations',
   loading: 'Chargement en cours…',

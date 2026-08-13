@@ -76,6 +76,10 @@ import {
   isKnownProductProfile,
 } from './product-page.config';
 import { PRODUCT_PAGE_TEXT } from './product-page.text';
+import {
+  normalizeProductPageLanguage,
+  productPageTextFor,
+} from './product-page-legacy-localization';
 import { productProfessionalFieldRequiresAccess } from
   './product-professional-access';
 import {
@@ -230,7 +234,9 @@ export class ProductPage implements OnDestroy {
   private nameRoomDraft: ProductNameRoomDraft | null = null;
 
   readonly config: ProductPageConfig;
-  readonly text = PRODUCT_PAGE_TEXT;
+  readonly text = productPageTextFor(
+    normalizeProductPageLanguage(localStorage.getItem('lang')),
+  );
   readonly roomOptions = PRODUCT_ROOM_OPTIONS;
   readonly deferredSensitiveActions: readonly DeferredSensitiveActionUiConfig[];
   readonly productCommands: readonly {
