@@ -1,0 +1,56 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/scan"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Configuration de l’application</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <section>
+    <h1>Langue</h1>
+    <p>
+      Choisissez une langue manuellement ou utilisez la langue du téléphone.
+      Les langues disponibles sont les mêmes que dans la Phase 1.
+    </p>
+
+    <ion-button
+      expand="block"
+      fill="outline"
+      type="button"
+      (click)="usePhoneLanguage()"
+    >
+      Utiliser la langue du téléphone
+    </ion-button>
+
+    @if (mode === 'automatic') {
+      <p class="language-mode" role="status">
+        Mode automatique actif — langue actuelle : {{ language.toUpperCase() }}
+      </p>
+    }
+
+    <ion-list>
+      @for (option of languageOptions; track option.code) {
+        <ion-item>
+          <ion-label>
+            <strong>{{ option.label }}</strong>
+            <ion-note>{{ option.code.toUpperCase() }}</ion-note>
+          </ion-label>
+          <ion-button
+            slot="end"
+            type="button"
+            [fill]="isSelected(option.code) && mode === 'manual' ? 'solid' : 'outline'"
+            (click)="selectLanguage(option.code)"
+          >
+            {{ isSelected(option.code) && mode === 'manual' ? 'Sélectionnée' : 'Choisir' }}
+          </ion-button>
+        </ion-item>
+      }
+    </ion-list>
+
+    @if (statusMessage) {
+      <p class="settings-status" role="status">{{ statusMessage }}</p>
+    }
+  </section>
+</ion-content>

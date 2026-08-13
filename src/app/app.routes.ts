@@ -12,6 +12,11 @@ export const routes: Routes = [
       import('./pages/help/help.page').then((m) => m.HelpPage),
   },
   {
+    path: 'settings',
+    loadComponent: () =>
+      import('./pages/settings/settings.page').then((m) => m.SettingsPage),
+  },
+  {
     path: 'tutorial',
     loadComponent: () =>
       import('./pages/tutorial/tutorial.page').then((m) => m.TutorialPage),
