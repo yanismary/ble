@@ -70,6 +70,33 @@
   </section>
 
   <section class="settings-section">
+    <h1>Affichage de la page produit</h1>
+    <p>
+      Ces options reprennent le principe des onglets Réglages et Informations
+      de la Phase 1. Les commandes et l’identité du produit restent toujours
+      accessibles.
+    </p>
+    <ion-list>
+      <ion-item>
+        <ion-toggle
+          [checked]="showProductSettings"
+          (ionChange)="setShowProductSettings($event)"
+        >
+          Afficher les réglages produit
+        </ion-toggle>
+      </ion-item>
+      <ion-item>
+        <ion-toggle
+          [checked]="showProductInformation"
+          (ionChange)="setShowProductInformation($event)"
+        >
+          Afficher les informations produit
+        </ion-toggle>
+      </ion-item>
+    </ion-list>
+  </section>
+
+  <section class="settings-section">
     <h1>Retour haptique</h1>
     <ion-list>
       <ion-item>

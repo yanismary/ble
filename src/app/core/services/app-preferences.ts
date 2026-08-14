@@ -1,5 +1,7 @@
 export const SHOW_BLE_IDENTIFIER_STORAGE_KEY = 'showBleIdentifier';
 export const HAPTIC_FEEDBACK_STORAGE_KEY = 'hapticFeedback';
+export const SHOW_PRODUCT_SETTINGS_STORAGE_KEY = 'showProductSettings';
+export const SHOW_PRODUCT_INFORMATION_STORAGE_KEY = 'showProductInformation';
 
 export interface AppPreferencesStorage {
   getItem(key: string): string | null;
@@ -48,4 +50,46 @@ export function storeHapticFeedback(
   storage: Pick<AppPreferencesStorage, 'setItem'> = localStorage,
 ): boolean {
   return writeBooleanPreference(HAPTIC_FEEDBACK_STORAGE_KEY, value, storage);
+}
+
+export function readShowProductSettings(
+  storage: Pick<AppPreferencesStorage, 'getItem'> = localStorage,
+): boolean {
+  return readBooleanPreference(
+    SHOW_PRODUCT_SETTINGS_STORAGE_KEY,
+    true,
+    storage,
+  );
+}
+
+export function storeShowProductSettings(
+  value: boolean,
+  storage: Pick<AppPreferencesStorage, 'setItem'> = localStorage,
+): boolean {
+  return writeBooleanPreference(
+    SHOW_PRODUCT_SETTINGS_STORAGE_KEY,
+    value,
+    storage,
+  );
+}
+
+export function readShowProductInformation(
+  storage: Pick<AppPreferencesStorage, 'getItem'> = localStorage,
+): boolean {
+  return readBooleanPreference(
+    SHOW_PRODUCT_INFORMATION_STORAGE_KEY,
+    true,
+    storage,
+  );
+}
+
+export function storeShowProductInformation(
+  value: boolean,
+  storage: Pick<AppPreferencesStorage, 'setItem'> = localStorage,
+): boolean {
+  return writeBooleanPreference(
+    SHOW_PRODUCT_INFORMATION_STORAGE_KEY,
+    value,
+    storage,
+  );
 }

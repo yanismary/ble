@@ -1,8 +1,12 @@
 import {
   readHapticFeedback,
   readShowBleIdentifier,
+  readShowProductInformation,
+  readShowProductSettings,
   storeHapticFeedback,
   storeShowBleIdentifier,
+  storeShowProductInformation,
+  storeShowProductSettings,
 } from './app-preferences';
 
 class MemoryStorage {
@@ -40,5 +44,28 @@ describe('app preferences', () => {
     expect(readHapticFeedback(storage)).toBeTrue();
     expect(storeHapticFeedback(false, storage)).toBeFalse();
     expect(readHapticFeedback(storage)).toBeFalse();
+  });
+
+  it('keeps product settings and information visible by default', () => {
+    const storage = new MemoryStorage();
+
+    expect(readShowProductSettings(storage)).toBeTrue();
+    expect(readShowProductInformation(storage)).toBeTrue();
+  });
+
+  it('stores product settings visibility independently', () => {
+    const storage = new MemoryStorage();
+
+    expect(storeShowProductSettings(false, storage)).toBeFalse();
+    expect(readShowProductSettings(storage)).toBeFalse();
+    expect(readShowProductInformation(storage)).toBeTrue();
+  });
+
+  it('stores product information visibility independently', () => {
+    const storage = new MemoryStorage();
+
+    expect(storeShowProductInformation(false, storage)).toBeFalse();
+    expect(readShowProductInformation(storage)).toBeFalse();
+    expect(readShowProductSettings(storage)).toBeTrue();
   });
 });

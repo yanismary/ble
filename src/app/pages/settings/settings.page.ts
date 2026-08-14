@@ -18,8 +18,12 @@ import {
 import {
   readHapticFeedback,
   readShowBleIdentifier,
+  readShowProductInformation,
+  readShowProductSettings,
   storeHapticFeedback,
   storeShowBleIdentifier,
+  storeShowProductInformation,
+  storeShowProductSettings,
 } from '../../core/services/app-preferences';
 import {
   APP_LANGUAGES,
@@ -68,6 +72,8 @@ export class SettingsPage {
   mode: AppLanguageMode = readAppLanguageMode();
   showBleIdentifier = readShowBleIdentifier();
   hapticFeedback = readHapticFeedback();
+  showProductSettings = readShowProductSettings();
+  showProductInformation = readShowProductInformation();
   statusMessage: string | null = null;
 
   constructor() {
@@ -99,6 +105,24 @@ export class SettingsPage {
     this.statusMessage = this.showBleIdentifier
       ? 'Identifiant BLE affiché sur la page de scan.'
       : 'Identifiant BLE masqué sur la page de scan.';
+  }
+
+  setShowProductSettings(event: CustomEvent<{ checked: boolean }>): void {
+    this.showProductSettings =
+      storeShowProductSettings(event.detail.checked);
+    this.statusMessage = this.showProductSettings
+      ? 'Réglages produit affichés.'
+      : 'Réglages produit masqués.';
+  }
+
+  setShowProductInformation(
+    event: CustomEvent<{ checked: boolean }>,
+  ): void {
+    this.showProductInformation =
+      storeShowProductInformation(event.detail.checked);
+    this.statusMessage = this.showProductInformation
+      ? 'Informations produit affichées.'
+      : 'Informations produit masquées.';
   }
 
   async setHapticFeedback(

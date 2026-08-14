@@ -64,6 +64,10 @@ import {
   ProfessionalAccessService,
 } from '../../core/services/professional-access.service';
 import {
+  readShowProductInformation,
+  readShowProductSettings,
+} from '../../core/services/app-preferences';
+import {
   MotorStateFrame,
   ProductDetection,
 } from '../../core/services/product-detection';
@@ -493,6 +497,14 @@ export class ProductPage implements OnDestroy {
         },
       ));
     }
+  }
+
+  get showProductSettingsSection(): boolean {
+    return readShowProductSettings();
+  }
+
+  get showProductInformationSection(): boolean {
+    return readShowProductInformation();
   }
 
   get canRefresh(): boolean {

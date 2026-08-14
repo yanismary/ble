@@ -254,7 +254,7 @@
       </section>
     }
 
-    @if (pageContextCurrent) {
+    @if (pageContextCurrent && showProductSettingsSection) {
       <section class="product-section" aria-labelledby="settings-title">
         <h2 id="settings-title">{{ text.sections.settings }}</h2>
         <p>{{ text.readonlyNotice }}</p>
@@ -626,7 +626,9 @@
         </article>
       }
       </section>
+    }
 
+    @if (pageContextCurrent && showProductInformationSection) {
       <section class="product-section" aria-labelledby="information-title">
         <h2 id="information-title">{{ text.sections.information }}</h2>
 
