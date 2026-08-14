@@ -294,6 +294,27 @@
                     [value]="userSpeedDraftValue(speedControl.config)"
                     (ionChange)="setUserSpeedDraftValue(speedControl.config, $event)"
                   ></ion-range>
+                  <div class="precision-stepper" aria-label="Réglage précis">
+                    <ion-button
+                      type="button"
+                      size="small"
+                      fill="outline"
+                      aria-label="Diminuer de 1"
+                      (click)="stepUserSpeedDraft(speedControl.config, -1)"
+                    >
+                      −
+                    </ion-button>
+                    <strong>{{ userSpeedDraftValue(speedControl.config) }} %</strong>
+                    <ion-button
+                      type="button"
+                      size="small"
+                      fill="outline"
+                      aria-label="Augmenter de 1"
+                      (click)="stepUserSpeedDraft(speedControl.config, 1)"
+                    >
+                      +
+                    </ion-button>
+                  </div>
                   <div class="product-actions">
                     <span>
                       {{ text.userSpeedControls.draft }}
@@ -348,6 +369,30 @@
                     [value]="userTimingDraftValue(timingControl.config)"
                     (ionChange)="setUserTimingDraftValue(timingControl.config, $event)"
                   ></ion-range>
+                  <div class="precision-stepper" aria-label="Réglage précis">
+                    <ion-button
+                      type="button"
+                      size="small"
+                      fill="outline"
+                      aria-label="Diminuer de 1"
+                      (click)="stepUserTimingDraft(timingControl.config, -1)"
+                    >
+                      −
+                    </ion-button>
+                    <strong>
+                      {{ userTimingDraftValue(timingControl.config) }}
+                      {{ timingControl.config.unit }}
+                    </strong>
+                    <ion-button
+                      type="button"
+                      size="small"
+                      fill="outline"
+                      aria-label="Augmenter de 1"
+                      (click)="stepUserTimingDraft(timingControl.config, 1)"
+                    >
+                      +
+                    </ion-button>
+                  </div>
                   <div class="product-actions">
                     <span>
                       {{ text.userTimingControls.draft }}
@@ -572,6 +617,30 @@
                     [value]="professionalScalarDraftValue(scalarControl.config)"
                     (ionChange)="setProfessionalScalarDraftValue(scalarControl.config, $event)"
                   ></ion-range>
+                  <div class="precision-stepper" aria-label="Réglage précis">
+                    <ion-button
+                      type="button"
+                      size="small"
+                      fill="outline"
+                      aria-label="Diminuer de 1"
+                      (click)="stepProfessionalScalarDraft(scalarControl.config, -1)"
+                    >
+                      −
+                    </ion-button>
+                    <strong>
+                      {{ professionalScalarDraftValue(scalarControl.config) }}
+                      {{ scalarControl.config.unit ?? '' }}
+                    </strong>
+                    <ion-button
+                      type="button"
+                      size="small"
+                      fill="outline"
+                      aria-label="Augmenter de 1"
+                      (click)="stepProfessionalScalarDraft(scalarControl.config, 1)"
+                    >
+                      +
+                    </ion-button>
+                  </div>
                   <div class="product-actions">
                     <span>
                       {{ text.professionalScalarControls.draft }}

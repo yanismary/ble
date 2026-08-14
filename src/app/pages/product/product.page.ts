@@ -175,6 +175,10 @@ import {
   ProductDateMaintenanceFlowKind,
   prepareProductDateMaintenanceFlow,
 } from './product-date-actions';
+import {
+  ProductDraftStepDirection,
+  stepProductDraftValue,
+} from './product-draft-step';
 
 @Component({
   selector: 'app-product',
@@ -1379,6 +1383,20 @@ export class ProductPage implements OnDestroy {
     }
   }
 
+  stepUserSpeedDraft(
+    config: ProductUserSpeedUiConfig,
+    direction: ProductDraftStepDirection,
+  ): void {
+    this.setUserSpeedDraftValue(
+      config,
+      stepProductDraftValue(
+        this.userSpeedDraftValue(config),
+        direction,
+        config.range,
+      ),
+    );
+  }
+
   canApplyUserSpeed(config: ProductUserSpeedUiConfig): boolean {
     if (!this.isUserSpeedControl(config) ||
         !this.showUserSpeedControls ||
@@ -1460,6 +1478,20 @@ export class ProductPage implements OnDestroy {
         message: null,
       });
     }
+  }
+
+  stepUserTimingDraft(
+    config: ProductUserTimingUiConfig,
+    direction: ProductDraftStepDirection,
+  ): void {
+    this.setUserTimingDraftValue(
+      config,
+      stepProductDraftValue(
+        this.userTimingDraftValue(config),
+        direction,
+        config.range,
+      ),
+    );
   }
 
   canApplyUserTiming(config: ProductUserTimingUiConfig): boolean {
@@ -1831,6 +1863,20 @@ export class ProductPage implements OnDestroy {
         message: null,
       });
     }
+  }
+
+  stepProfessionalScalarDraft(
+    config: ProductProfessionalScalarUiConfig,
+    direction: ProductDraftStepDirection,
+  ): void {
+    this.setProfessionalScalarDraftValue(
+      config,
+      stepProductDraftValue(
+        this.professionalScalarDraftValue(config),
+        direction,
+        config.range,
+      ),
+    );
   }
 
   canApplyProfessionalScalar(
