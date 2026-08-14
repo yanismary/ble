@@ -283,6 +283,15 @@
                       {{ currentUserSpeedValue(speedControl.config) }}
                       %
                     </span>
+                    <ion-button
+                      type="button"
+                      size="small"
+                      fill="clear"
+                      [attr.aria-label]="isUserSpeedUnlocked(speedControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      (click)="toggleUserSpeedLock(speedControl.config)"
+                    >
+                      {{ isUserSpeedUnlocked(speedControl.config) ? '🔓' : '🔒' }}
+                    </ion-button>
                   </div>
                   <ion-range
                     class="user-speed-range"
@@ -291,6 +300,7 @@
                     [max]="speedControl.config.range.max"
                     [step]="1"
                     [pin]="true"
+                    [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                     [value]="userSpeedDraftValue(speedControl.config)"
                     (ionChange)="setUserSpeedDraftValue(speedControl.config, $event)"
                   ></ion-range>
@@ -300,6 +310,7 @@
                       size="small"
                       fill="outline"
                       aria-label="Diminuer de 1"
+                      [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                       (click)="stepUserSpeedDraft(speedControl.config, -1)"
                     >
                       −
@@ -310,6 +321,7 @@
                       size="small"
                       fill="outline"
                       aria-label="Augmenter de 1"
+                      [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                       (click)="stepUserSpeedDraft(speedControl.config, 1)"
                     >
                       +
@@ -325,7 +337,7 @@
                       type="button"
                       size="small"
                       (click)="requestUserSpeedChange(speedControl.config)"
-                      [disabled]="!canApplyUserSpeed(speedControl.config)"
+                      [disabled]="!isUserSpeedUnlocked(speedControl.config) || !canApplyUserSpeed(speedControl.config)"
                     >
                       {{ text.userSpeedControls.apply }}
                     </ion-button>
@@ -358,6 +370,15 @@
                       {{ currentUserTimingValue(timingControl.config) }}
                       {{ timingControl.config.unit }}
                     </span>
+                    <ion-button
+                      type="button"
+                      size="small"
+                      fill="clear"
+                      [attr.aria-label]="isUserTimingUnlocked(timingControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      (click)="toggleUserTimingLock(timingControl.config)"
+                    >
+                      {{ isUserTimingUnlocked(timingControl.config) ? '🔓' : '🔒' }}
+                    </ion-button>
                   </div>
                   <ion-range
                     class="user-timing-range"
@@ -366,6 +387,7 @@
                     [max]="timingControl.config.range.max"
                     [step]="1"
                     [pin]="true"
+                    [disabled]="!isUserTimingUnlocked(timingControl.config)"
                     [value]="userTimingDraftValue(timingControl.config)"
                     (ionChange)="setUserTimingDraftValue(timingControl.config, $event)"
                   ></ion-range>
@@ -375,6 +397,7 @@
                       size="small"
                       fill="outline"
                       aria-label="Diminuer de 1"
+                      [disabled]="!isUserTimingUnlocked(timingControl.config)"
                       (click)="stepUserTimingDraft(timingControl.config, -1)"
                     >
                       −
@@ -388,6 +411,7 @@
                       size="small"
                       fill="outline"
                       aria-label="Augmenter de 1"
+                      [disabled]="!isUserTimingUnlocked(timingControl.config)"
                       (click)="stepUserTimingDraft(timingControl.config, 1)"
                     >
                       +
@@ -403,7 +427,7 @@
                       type="button"
                       size="small"
                       (click)="requestUserTimingChange(timingControl.config)"
-                      [disabled]="!canApplyUserTiming(timingControl.config)"
+                      [disabled]="!isUserTimingUnlocked(timingControl.config) || !canApplyUserTiming(timingControl.config)"
                     >
                       {{ text.userTimingControls.apply }}
                     </ion-button>
@@ -606,6 +630,15 @@
                       {{ currentProfessionalScalarValue(scalarControl.config) }}
                       {{ scalarControl.config.unit ?? '' }}
                     </span>
+                    <ion-button
+                      type="button"
+                      size="small"
+                      fill="clear"
+                      [attr.aria-label]="isProfessionalScalarUnlocked(scalarControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      (click)="toggleProfessionalScalarLock(scalarControl.config)"
+                    >
+                      {{ isProfessionalScalarUnlocked(scalarControl.config) ? '🔓' : '🔒' }}
+                    </ion-button>
                   </div>
                   <ion-range
                     class="professional-scalar-range"
@@ -614,6 +647,7 @@
                     [max]="scalarControl.config.range.max"
                     [step]="1"
                     [pin]="true"
+                    [disabled]="!isProfessionalScalarUnlocked(scalarControl.config)"
                     [value]="professionalScalarDraftValue(scalarControl.config)"
                     (ionChange)="setProfessionalScalarDraftValue(scalarControl.config, $event)"
                   ></ion-range>
@@ -623,6 +657,7 @@
                       size="small"
                       fill="outline"
                       aria-label="Diminuer de 1"
+                      [disabled]="!isProfessionalScalarUnlocked(scalarControl.config)"
                       (click)="stepProfessionalScalarDraft(scalarControl.config, -1)"
                     >
                       −
@@ -636,6 +671,7 @@
                       size="small"
                       fill="outline"
                       aria-label="Augmenter de 1"
+                      [disabled]="!isProfessionalScalarUnlocked(scalarControl.config)"
                       (click)="stepProfessionalScalarDraft(scalarControl.config, 1)"
                     >
                       +
@@ -651,7 +687,7 @@
                       type="button"
                       size="small"
                       (click)="requestProfessionalScalarChange(scalarControl.config)"
-                      [disabled]="!canApplyProfessionalScalar(scalarControl.config)"
+                      [disabled]="!isProfessionalScalarUnlocked(scalarControl.config) || !canApplyProfessionalScalar(scalarControl.config)"
                     >
                       {{ text.professionalScalarControls.apply }}
                     </ion-button>

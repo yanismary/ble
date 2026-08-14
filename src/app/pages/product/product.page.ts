@@ -179,6 +179,7 @@ import {
   ProductDraftStepDirection,
   stepProductDraftValue,
 } from './product-draft-step';
+import { ProductControlLockRegistry } from './product-control-lock';
 
 @Component({
   selector: 'app-product',
@@ -215,6 +216,7 @@ export class ProductPage implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly subscriptions = new Subscription();
+  private readonly controlLocks = new ProductControlLockRegistry();
   private readonly context: ProductPageNavigationState | null;
   private loadCycle = 0;
   private commandCycle = 0;
@@ -1383,10 +1385,21 @@ export class ProductPage implements OnDestroy {
     }
   }
 
+  isUserSpeedUnlocked(config: ProductUserSpeedUiConfig): boolean {
+    return this.controlLocks.isUnlocked(`user-speed:${config.field}`);
+  }
+
+  toggleUserSpeedLock(config: ProductUserSpeedUiConfig): void {
+    this.controlLocks.toggle(`user-speed:${config.field}`);
+  }
+
   stepUserSpeedDraft(
     config: ProductUserSpeedUiConfig,
     direction: ProductDraftStepDirection,
   ): void {
+    if (!this.isUserSpeedUnlocked(config)) {
+      return;
+    }
     this.setUserSpeedDraftValue(
       config,
       stepProductDraftValue(
@@ -1480,10 +1493,21 @@ export class ProductPage implements OnDestroy {
     }
   }
 
+  isUserTimingUnlocked(config: ProductUserTimingUiConfig): boolean {
+    return this.controlLocks.isUnlocked(`user-timing:${config.field}`);
+  }
+
+  toggleUserTimingLock(config: ProductUserTimingUiConfig): void {
+    this.controlLocks.toggle(`user-timing:${config.field}`);
+  }
+
   stepUserTimingDraft(
     config: ProductUserTimingUiConfig,
     direction: ProductDraftStepDirection,
   ): void {
+    if (!this.isUserTimingUnlocked(config)) {
+      return;
+    }
     this.setUserTimingDraftValue(
       config,
       stepProductDraftValue(
@@ -1865,10 +1889,27 @@ export class ProductPage implements OnDestroy {
     }
   }
 
+  isProfessionalScalarUnlocked(
+    config: ProductProfessionalScalarUiConfig,
+  ): boolean {
+    return this.controlLocks.isUnlocked(
+      `professional-scalar:${config.field}`,
+    );
+  }
+
+  toggleProfessionalScalarLock(
+    config: ProductProfessionalScalarUiConfig,
+  ): void {
+    this.controlLocks.toggle(`professional-scalar:${config.field}`);
+  }
+
   stepProfessionalScalarDraft(
     config: ProductProfessionalScalarUiConfig,
     direction: ProductDraftStepDirection,
   ): void {
+    if (!this.isProfessionalScalarUnlocked(config)) {
+      return;
+    }
     this.setProfessionalScalarDraftValue(
       config,
       stepProductDraftValue(
