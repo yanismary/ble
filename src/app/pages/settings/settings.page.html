@@ -49,8 +49,45 @@
       }
     </ion-list>
 
-    @if (statusMessage) {
-      <p class="settings-status" role="status">{{ statusMessage }}</p>
-    }
   </section>
+
+  <section class="settings-section">
+    <h1>Affichage du scan</h1>
+    <ion-list>
+      <ion-item>
+        <ion-toggle
+          [checked]="showBleIdentifier"
+          (ionChange)="setShowBleIdentifier($event)"
+        >
+          Afficher l’identifiant BLE
+        </ion-toggle>
+      </ion-item>
+    </ion-list>
+    <p>
+      Sur Android il correspond généralement à l’adresse du périphérique ;
+      sur iOS il peut être présenté sous forme d’identifiant UUID.
+    </p>
+  </section>
+
+  <section class="settings-section">
+    <h1>Retour haptique</h1>
+    <ion-list>
+      <ion-item>
+        <ion-toggle
+          [checked]="hapticFeedback"
+          (ionChange)="setHapticFeedback($event)"
+        >
+          Activer les vibrations
+        </ion-toggle>
+      </ion-item>
+    </ion-list>
+    <p>
+      L’activation déclenche une courte vibration de test lorsque le téléphone
+      la prend en charge.
+    </p>
+  </section>
+
+  @if (statusMessage) {
+    <p class="settings-status" role="status">{{ statusMessage }}</p>
+  }
 </ion-content>

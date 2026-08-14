@@ -62,6 +62,7 @@ import {
 import { BleReadStatus } from '../../core/services/ble-read.service';
 import { SCAN_MOTOR_TEST_TEXT } from './scan-motor-test.text';
 import { SCAN_PRODUCT_READ_TEXT } from './scan-product-read.text';
+import { readShowBleIdentifier } from '../../core/services/app-preferences';
 import {
   PRODUCT_PAGE_CONFIG,
 } from '../product/product-page.config';
@@ -226,6 +227,10 @@ export class ScanPage implements OnDestroy {
 
   async openSettings(): Promise<void> {
     await this.router.navigate(['/settings']);
+  }
+
+  get showBleIdentifier(): boolean {
+    return readShowBleIdentifier();
   }
 
   get selectedDevice(): ScannedDevice | null {

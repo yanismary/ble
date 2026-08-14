@@ -85,7 +85,9 @@
   @if (selectedDevice; as device) {
     <section class="connection-panel" aria-live="polite">
       <p><strong>Appareil sélectionné :</strong> {{ device.name }}</p>
-      <p>{{ device.deviceId }}</p>
+      @if (showBleIdentifier) {
+        <p>{{ device.deviceId }}</p>
+      }
 
       <ion-button
         expand="block"
@@ -782,7 +784,9 @@
         >
           <ion-label>
             <h2>{{ device.name }}</h2>
-            <p>{{ device.deviceId }}</p>
+            @if (showBleIdentifier) {
+              <p>{{ device.deviceId }}</p>
+            }
             <p>
               RSSI :
               @if (device.rssi !== null) {

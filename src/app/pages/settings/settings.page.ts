@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { Haptics } from '@capacitor/haptics';
 import {
   IonBackButton,
   IonButton,
@@ -10,9 +11,16 @@ import {
   IonList,
   IonNote,
   IonTitle,
+  IonToggle,
   IonToolbar,
 } from '@ionic/angular/standalone';
 
+import {
+  readHapticFeedback,
+  readShowBleIdentifier,
+  storeHapticFeedback,
+  storeShowBleIdentifier,
+} from '../../core/services/app-preferences';
 import {
   APP_LANGUAGES,
   AppLanguage,
@@ -44,6 +52,7 @@ interface LanguageOption {
     IonList,
     IonNote,
     IonTitle,
+    IonToggle,
     IonToolbar,
   ],
 })
@@ -57,6 +66,8 @@ export class SettingsPage {
 
   language: AppLanguage = readStoredAppLanguage();
   mode: AppLanguageMode = readAppLanguageMode();
+  showBleIdentifier = readShowBleIdentifier();
+  hapticFeedback = readHapticFeedback();
   statusMessage: string | null = null;
 
   constructor() {
@@ -81,5 +92,31 @@ export class SettingsPage {
 
   isSelected(language: AppLanguage): boolean {
     return this.language === language;
+  }
+
+  setShowBleIdentifier(event: CustomEvent<{ checked: boolean }>): void {
+    this.showBleIdentifier = storeShowBleIdentifier(event.detail.checked);
+    this.statusMessage = this.showBleIdentifier
+      ? 'Identifiant BLE affiché sur la page de scan.'
+      : 'Identifiant BLE masqué sur la page de scan.';
+  }
+
+  async setHapticFeedback(
+    event: CustomEvent<{ checked: boolean }>,
+  ): Promise<void> {
+    this.hapticFeedback = storeHapticFeedback(event.detail.checked);
+    this.statusMessage = this.hapticFeedback
+      ? 'Vibrations activées.'
+      : 'Vibrations désactivées.';
+
+    if (!this.hapticFeedback) {
+      return;
+    }
+
+    try {
+      await Haptics.vibrate({ duration: 50 });
+    } catch {
+      // Preference remains valid when haptics are unavailable.
+    }
   }
 }
