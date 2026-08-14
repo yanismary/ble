@@ -1,6 +1,10 @@
 export class ProductControlLockRegistry {
   private readonly unlocked = new Set<string>();
 
+  get hasUnlockedControls(): boolean {
+    return this.unlocked.size > 0;
+  }
+
   isUnlocked(key: string): boolean {
     return this.unlocked.has(key);
   }

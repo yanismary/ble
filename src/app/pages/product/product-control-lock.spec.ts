@@ -4,6 +4,7 @@ describe('ProductControlLockRegistry', () => {
   it('keeps controls locked by default', () => {
     const registry = new ProductControlLockRegistry();
 
+    expect(registry.hasUnlockedControls).toBeFalse();
     expect(registry.isUnlocked('open-speed')).toBeFalse();
   });
 
@@ -11,10 +12,12 @@ describe('ProductControlLockRegistry', () => {
     const registry = new ProductControlLockRegistry();
 
     expect(registry.toggle('open-speed')).toBeTrue();
+    expect(registry.hasUnlockedControls).toBeTrue();
     expect(registry.isUnlocked('open-speed')).toBeTrue();
     expect(registry.isUnlocked('close-speed')).toBeFalse();
 
     expect(registry.toggle('open-speed')).toBeFalse();
+    expect(registry.hasUnlockedControls).toBeFalse();
     expect(registry.isUnlocked('open-speed')).toBeFalse();
   });
 
@@ -36,6 +39,7 @@ describe('ProductControlLockRegistry', () => {
     registry.toggle('short-timing');
     registry.lockAll();
 
+    expect(registry.hasUnlockedControls).toBeFalse();
     expect(registry.isUnlocked('open-speed')).toBeFalse();
     expect(registry.isUnlocked('short-timing')).toBeFalse();
   });

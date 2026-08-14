@@ -258,6 +258,17 @@
       <section class="product-section" aria-labelledby="settings-title">
         <h2 id="settings-title">{{ text.sections.settings }}</h2>
         <p>{{ text.readonlyNotice }}</p>
+        <div class="product-actions">
+          <ion-button
+            type="button"
+            size="small"
+            fill="outline"
+            (click)="lockAllProductControls()"
+            [disabled]="!hasUnlockedProductControls"
+          >
+            Verrouiller tous les réglages
+          </ion-button>
+        </div>
 
       <article class="product-subsection">
         <h3>{{ text.sections.userSettings }}</h3>

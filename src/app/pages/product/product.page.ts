@@ -590,6 +590,14 @@ export class ProductPage implements OnDestroy {
       this.viewModel.reads.professionalParameters.status === 'available';
   }
 
+  get hasUnlockedProductControls(): boolean {
+    return this.controlLocks.hasUnlockedControls;
+  }
+
+  lockAllProductControls(): void {
+    this.controlLocks.lockAll();
+  }
+
   get showProductDateMaintenanceAction(): boolean {
     return this.currentProductDateMaintenanceActionKind() !== null;
   }
@@ -3079,6 +3087,7 @@ export class ProductPage implements OnDestroy {
       lastUpdatedAt: result.completedAt,
       globalError: result.error?.message ?? null,
     };
+    this.controlLocks.lockAll();
     this.userSpeedDrafts.clear();
     this.userTimingDrafts.clear();
     this.resetNameRoomDraft();
@@ -3137,6 +3146,7 @@ export class ProductPage implements OnDestroy {
       lastUpdatedAt: null,
       globalError: this.connectionStateLabel(state),
     };
+    this.controlLocks.lockAll();
     this.resetUserSpeedEditing();
     this.resetUserTimingEditing();
     this.resetNameRoomEditing();
