@@ -1710,6 +1710,8 @@ export class ProductPage implements OnDestroy {
         this.context === null) {
       return;
     }
+
+    void triggerConfiguredHapticFeedback();
     const write = config.catalogFactory(mode);
     const context = this.context;
     const contextStatus = this.writeContextStatus(context, write);
@@ -2194,6 +2196,8 @@ export class ProductPage implements OnDestroy {
     if (!this.canApplyUserSpeed(config) || this.context === null) {
       return;
     }
+
+    void triggerConfiguredHapticFeedback();
     const draftValue = this.userSpeedDraftValue(config);
     if (!isValidProductUserSpeedValue(config, draftValue)) {
       return;
@@ -2269,6 +2273,8 @@ export class ProductPage implements OnDestroy {
     if (!this.canApplyUserTiming(config) || this.context === null) {
       return;
     }
+
+    void triggerConfiguredHapticFeedback();
     const draftValue = this.userTimingDraftValue(config);
     if (!isValidProductUserTimingValue(config, draftValue)) {
       return;
@@ -2360,6 +2366,8 @@ export class ProductPage implements OnDestroy {
         this.context === null) {
       return;
     }
+
+    void triggerConfiguredHapticFeedback();
     const write = config.catalogFactory(checked);
     const context = this.context;
     const contextStatus = this.writeContextStatus(context, write);
@@ -2437,6 +2445,8 @@ export class ProductPage implements OnDestroy {
     if (!this.canApplyWeightRange() || this.context === null) {
       return;
     }
+
+    void triggerConfiguredHapticFeedback();
     const draftValue = this.weightRangeDraftValue();
     if (!isValidProductWeightRange(this.weightRangeUiConfigs, draftValue)) {
       return;
@@ -2511,6 +2521,8 @@ export class ProductPage implements OnDestroy {
     if (!this.canApplyProfessionalScalar(config) || this.context === null) {
       return;
     }
+
+    void triggerConfiguredHapticFeedback();
     const draftValue = this.professionalScalarDraftValue(config);
     if (!isValidProductProfessionalScalarValue(config, draftValue)) {
       return;
@@ -2805,6 +2817,8 @@ export class ProductPage implements OnDestroy {
     if (!this.canApplyNameRoom() || this.context === null) {
       return;
     }
+
+    void triggerConfiguredHapticFeedback();
     const validation = validateProductNameRoomDraft(
       this.currentNameRoomValue(),
       this.nameRoomDraftValue(),
@@ -2904,6 +2918,8 @@ export class ProductPage implements OnDestroy {
         this.context === null) {
       return;
     }
+
+    void triggerConfiguredHapticFeedback();
     const write = this.lockModeWrites.get(nextMode);
     if (write === undefined) {
       return;
