@@ -9,7 +9,15 @@ describe('app info model', () => {
 
     expect(copy.companyName).toBeTruthy();
     expect(copy.phoneLabel).toBeTruthy();
+    expect(copy.phoneHref).toBe('tel:+33380378571');
     expect(copy.addressLines.length).toBeGreaterThan(0);
+  });
+
+  it('uses the Phase 1 support phone target for every migrated language', () => {
+    expect(appInfoCopyFor('fr').phoneHref).toBe('tel:+33380378571');
+    expect(appInfoCopyFor('en').phoneHref).toBe('tel:+33380378571');
+    expect(appInfoCopyFor('de').phoneHref).toBe('tel:+492056582690');
+    expect(appInfoCopyFor('pl').phoneHref).toBe('tel:+33380378571');
   });
 
   it('keeps the Phase 1 about text available in every migrated language', () => {

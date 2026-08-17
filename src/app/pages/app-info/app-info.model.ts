@@ -10,6 +10,7 @@ export interface AppInfoCopy {
   readonly sendMessage: string;
   readonly companyName: string;
   readonly phoneLabel: string;
+  readonly phoneHref: string;
   readonly addressLines: readonly string[];
   readonly companyInfoLabel: string;
   readonly legalNoticeLabel: string;
@@ -289,6 +290,7 @@ export function appInfoCopyFor(language: AppInfoLanguage): AppInfoCopy {
     sendMessage: contact.SEND_A_MESSAGE,
     companyName: address.NAME,
     phoneLabel: contact.CONTACT_2.PHONE.USERSEE,
+    phoneHref: `tel:+${contact.CONTACT_2.PHONE.SYSTEMCALL}`,
     addressLines: Object.freeze([
       address.STATE,
       address.STREET,
