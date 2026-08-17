@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   id="Calque_1"
+   data-name="Calque 1"
+   viewBox="0 0 1025.84 876.49"
+   version="1.1"
+   sodipodi:docname="icon_test_valid_2.svg"
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)">
+  <metadata
+     id="metadata3897">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title>icon entree radar</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1018"
+     id="namedview3895"
+     showgrid="false"
+     inkscape:snap-grids="true"
+     inkscape:zoom="0.9709181"
+     inkscape:cx="318.57046"
+     inkscape:cy="465.56338"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="Calque_1" />
+  <defs
+     id="defs3808">
+    <style
+       id="style3806">.cls-1{fill:#666;}.cls-2{fill:none;stroke:gray;stroke-linecap:round;stroke-linejoin:round;stroke-width:40px;}</style>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath4740">
+      <g
+         style="fill:none"
+         id="use4742"
+         inkscape:label="Clip">
+        <rect
+           style="fill:none"
+           id="rect4761"
+           width="66.946945"
+           height="147.28328"
+           x="958.88623"
+           y="55.617458" />
+      </g>
+    </clipPath>
+  </defs>
+  <title
+     id="title3810">icon entree radar</title>
+  <g
+     id="SPLINE-10"
+     data-name="SPLINE" />
+  <path
+     style="fill:#000000;stroke-width:1.12959313"
+     d="m 343.16362,61.796707 c -43.46982,0 -78.46655,31.514473 -78.46655,70.658943 v 656.89799 c 0,39.14448 34.99673,70.65688 78.46655,70.65688 h 377.61356 c 43.46981,0 78.46654,-31.5124 78.46654,-70.65688 V 132.45565 c 0,-39.14447 -34.99673,-70.658943 -78.46654,-70.658943 h -10.9272 c 3.9142,8.108294 6.09598,17.062246 6.09598,26.496589 0,6.031564 -0.90226,11.864704 -2.5644,17.410354 24.65991,10.14045 41.7256,32.49519 41.7256,58.58517 v 598.75039 c 0,35.67941 -31.89776,64.40328 -71.51964,64.40328 H 382.80608 c -39.62187,0 -71.51965,-28.72387 -71.51965,-64.40328 V 164.28882 c 0,-25.36633 16.13024,-47.20596 39.68897,-57.71841 -1.83437,-5.80354 -2.83641,-11.92967 -2.83641,-18.277114 0,-9.434343 2.18176,-18.388295 6.09597,-26.496589 z"
+     id="rect3936"
+     inkscape:connector-curvature="0" />
+  <path
+     style="fill:#000000;stroke-width:1.07745957"
+     d="m 495.06938,6.1802061 c -24.24297,0 -44.40075,14.4820499 -49.53633,33.9882819 h -15.62933 c -30.47102,0 -55.00081,19.292864 -55.00081,43.257814 v 10.298827 c 0,23.964941 24.52979,43.257811 55.00081,43.257811 h 202.07249 c 30.47101,0 55.00308,-19.29287 55.00308,-43.257811 V 83.426302 c 0,-23.96495 -24.53207,-43.257814 -55.00308,-43.257814 H 613.95702 C 608.82144,20.662256 588.66364,6.1802061 564.4207,6.1802061 Z m 35.27426,29.8671879 a 40.653534,35.533379 0 0 1 40.65258,35.535156 40.653534,35.533379 0 0 1 -40.65258,35.5332 40.653534,35.533379 0 0 1 -40.65485,-35.5332 40.653534,35.533379 0 0 1 40.65485,-35.535156 z"
+     id="rect3959"
+     inkscape:connector-curvature="0" />
+  <path
+     style="fill:#000000;stroke-width:1.32427049"
+     d="M 351.86116,285.21001 V 625.09386 H 717.49379 V 285.21001 Z m 20.85353,22.20335 H 696.64026 V 605.81374 H 372.71469 Z"
+     id="rect4019"
+     inkscape:connector-curvature="0" />
+  <path
+     style="fill:#000000;stroke-width:1.2095561"
+     d="M 472.47425,572.47344 C 452.12081,558.47078 412.59058,531.42342 384.62931,512.3682 356.66803,493.31296 333.7704,477.43109 333.7457,477.07512 c -0.0551,-0.79391 53.04594,-51.56996 59.45198,-56.84892 l 4.6043,-3.79421 51.52188,34.95578 c 37.56464,25.4863 52.02311,34.68563 53.37217,33.95852 1.01767,-0.5485 13.25666,-11.29458 27.19773,-23.88021 27.72282,-25.0274 142.58531,-128.5555 148.65876,-133.98943 l 3.77736,-3.3796 30.44112,20.13017 c 16.74259,11.07159 33.79022,22.40109 37.88359,25.17664 l 7.44251,5.04647 -5.27147,4.97864 c -14.59829,13.78733 -241.99812,218.66396 -242.62074,218.58995 -0.39842,-0.0473 -17.3772,-11.54282 -37.73064,-25.54548 z"
+     id="path4037"
+     inkscape:connector-curvature="0" />
+</svg>

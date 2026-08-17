@@ -1,2 +1,95 @@
 // For information on how to create your own theme, please refer to:
 // https://ionicframework.com/docs/theming/
+
+:root {
+  --mantion-blue: #0159a1;
+  --mantion-blue-rgb: 1, 89, 161;
+  --mantion-blue-contrast: #ffffff;
+  --mantion-blue-contrast-rgb: 255, 255, 255;
+  --mantion-blue-shade: #014e8e;
+  --mantion-blue-tint: #1a6aaa;
+
+  --mantion-green: #a7c855;
+  --mantion-green-rgb: 167, 200, 85;
+  --mantion-green-contrast: #000000;
+  --mantion-green-contrast-rgb: 0, 0, 0;
+  --mantion-green-shade: #93b04b;
+  --mantion-green-tint: #b0ce66;
+
+  --mantion-grey: #9B9B9B;
+  --mantion-grey-rgb: 155, 155, 155;
+  --mantion-grey-contrast: #000000;
+  --mantion-grey-contrast-rgb: 0, 0, 0;
+  --mantion-grey-shade: #888888;
+  --mantion-grey-tint: #a5a5a5;
+
+  --mantion-danger: #911111;
+  --mantion-danger-rgb: 145, 17, 17;
+  --mantion-danger-contrast: #ffffff;
+  --mantion-danger-contrast-rgb: 255, 255, 255;
+  --mantion-danger-shade: #800f0f;
+  --mantion-danger-tint: #9c2929;
+
+  --mantion-led-yellow: #F6FE04;
+  --mantion-led-yellow-rgb: 246, 254, 4;
+  --mantion-led-yellow-contrast: #000000;
+  --mantion-led-yellow-contrast-rgb: 0, 0, 0;
+  --mantion-led-yellow-shade: #d8e004;
+  --mantion-led-yellow-tint: #f7fe1d;
+
+  --mantion-blue-light: #5B91EF;
+  --mantion-ionic-blue: #488aff;
+  --mantion-secondary-green: #32db64;
+  --mantion-success-green: #1AB71B;
+  --mantion-warning: #df7715;
+  --mantion-orange: #F15A24;
+  --mantion-page-background: #f4f4f4;
+  --mantion-text: #222222;
+  --mantion-text-muted: #60646B;
+  --mantion-border: #e6e6e6;
+}
+
+.ion-color-mantion-blue {
+  --ion-color-base: var(--mantion-blue);
+  --ion-color-base-rgb: var(--mantion-blue-rgb);
+  --ion-color-contrast: var(--mantion-blue-contrast);
+  --ion-color-contrast-rgb: var(--mantion-blue-contrast-rgb);
+  --ion-color-shade: var(--mantion-blue-shade);
+  --ion-color-tint: var(--mantion-blue-tint);
+}
+
+.ion-color-mantion-green {
+  --ion-color-base: var(--mantion-green);
+  --ion-color-base-rgb: var(--mantion-green-rgb);
+  --ion-color-contrast: var(--mantion-green-contrast);
+  --ion-color-contrast-rgb: var(--mantion-green-contrast-rgb);
+  --ion-color-shade: var(--mantion-green-shade);
+  --ion-color-tint: var(--mantion-green-tint);
+}
+
+.ion-color-mantion-grey {
+  --ion-color-base: var(--mantion-grey);
+  --ion-color-base-rgb: var(--mantion-grey-rgb);
+  --ion-color-contrast: var(--mantion-grey-contrast);
+  --ion-color-contrast-rgb: var(--mantion-grey-contrast-rgb);
+  --ion-color-shade: var(--mantion-grey-shade);
+  --ion-color-tint: var(--mantion-grey-tint);
+}
+
+.ion-color-mantion-danger {
+  --ion-color-base: var(--mantion-danger);
+  --ion-color-base-rgb: var(--mantion-danger-rgb);
+  --ion-color-contrast: var(--mantion-danger-contrast);
+  --ion-color-contrast-rgb: var(--mantion-danger-contrast-rgb);
+  --ion-color-shade: var(--mantion-danger-shade);
+  --ion-color-tint: var(--mantion-danger-tint);
+}
+
+.ion-color-mantion-led-yellow {
+  --ion-color-base: var(--mantion-led-yellow);
+  --ion-color-base-rgb: var(--mantion-led-yellow-rgb);
+  --ion-color-contrast: var(--mantion-led-yellow-contrast);
+  --ion-color-contrast-rgb: var(--mantion-led-yellow-contrast-rgb);
+  --ion-color-shade: var(--mantion-led-yellow-shade);
+  --ion-color-tint: var(--mantion-led-yellow-tint);
+}

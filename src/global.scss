@@ -35,3 +35,38 @@
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
 @import '@ionic/angular/css/palettes/dark.system.css';
+
+/*
+ * Mantion shared visual primitives.
+ * Page-specific layouts stay in their component stylesheets.
+ */
+.mantion-navbar {
+  --background: var(--mantion-blue);
+  --color: var(--mantion-blue-contrast);
+}
+
+.mantion-page-background {
+  --background: var(--mantion-page-background);
+}
+
+.mantion-list-header {
+  color: var(--mantion-blue);
+  font-weight: 600;
+}
+
+.mantion-value-badge {
+  --background: var(--mantion-green);
+  --color: var(--mantion-green-contrast);
+}
+
+.mantion-danger-action {
+  --background: var(--mantion-danger);
+  --color: var(--mantion-danger-contrast);
+}
+
+.mantion-icon-asset {
+  display: inline-block;
+  height: 1.5rem;
+  object-fit: contain;
+  width: 1.5rem;
+}
