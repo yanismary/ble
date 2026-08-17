@@ -13,6 +13,25 @@ export interface CompanyInfoCopy {
   readonly addressLocalization: string;
 }
 
+interface LegacyCompanyInfoCopy {
+  readonly NAVBAR_TITLE: string;
+  readonly CONTENT_TITLE: string;
+  readonly CONTENT_SUBTITLE: string;
+  readonly PARGRAPH1: string;
+  readonly PARGRAPH2: string;
+  readonly PARGRAPH2_LIST: {
+    readonly ITEM1: string;
+    readonly ITEM2: string;
+    readonly ITEM3: string;
+  };
+  readonly PARGRAPH3: string;
+  readonly PARGRAPH4: string;
+  readonly ADDRESS: {
+    readonly PRESENTATION: string;
+    readonly LOCALIZATION: string;
+  };
+}
+
 const LEGACY_WHO = {
   "fr": {
     "NAVBAR_TITLE": "Qui sommes nous ?",
@@ -86,7 +105,9 @@ const LEGACY_WHO = {
       "LOCALIZATION": "2, rue des Métiers, Z.A. de la Tille, 21110 GENLIS (FRANCE)"
     }
   }
-} as const;
+} as const satisfies Readonly<
+  Record<CompanyInfoLanguage, LegacyCompanyInfoCopy>
+>;
 
 export function normalizeCompanyInfoLanguage(
   value: string | null,
@@ -99,7 +120,7 @@ export function normalizeCompanyInfoLanguage(
 export function companyInfoCopyFor(
   language: CompanyInfoLanguage,
 ): CompanyInfoCopy {
-  const source = LEGACY_WHO[language] as any;
+  const source: LegacyCompanyInfoCopy = LEGACY_WHO[language];
 
   return Object.freeze({
     navbarTitle: source.NAVBAR_TITLE,
