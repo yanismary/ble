@@ -642,6 +642,70 @@ export class ProductPage implements OnDestroy {
       this.viewModel.reads.userParameters.status === 'available';
   }
 
+  get commandUserPeripheralControls(): typeof this.userPeripheralControls {
+    if (!this.showUserPeripheralControls) {
+      return [];
+    }
+    return this.userPeripheralControls.filter((control) =>
+      control.config.field === 'static-light',
+    );
+  }
+
+  get basicUserPeripheralControls(): typeof this.userPeripheralControls {
+    return this.userPeripheralControls.filter((control) =>
+      control.config.field !== 'static-light',
+    );
+  }
+
+  get showCommandPeripheralControls(): boolean {
+    return this.commandUserPeripheralControls.length > 0;
+  }
+
+  get showBasicUserPeripheralControls(): boolean {
+    return this.showUserPeripheralControls &&
+      this.basicUserPeripheralControls.length > 0;
+  }
+
+  productCommandIconSrc(config: WidoorCommandUiConfig): string {
+    switch (config.operation) {
+      case 'motor-close':
+        return 'assets/img/icon_command_close.svg';
+      case 'motor-open-short-timed':
+      case 'motor-open-long-timed':
+        return 'assets/img/icon_command_openThenClose.svg';
+      case 'motor-open':
+        return 'assets/img/icon_command_open.svg';
+    }
+    return 'assets/img/icon_command_open.svg';
+  }
+
+  productCommandDisplayLabel(
+    command: typeof this.productCommands[number],
+  ): string {
+    const userParameters = this.viewModel.reads.userParameters.value;
+    if (command.config.operation === 'motor-open-short-timed' &&
+        userParameters !== null) {
+      return `${command.text.label} (${userParameters.shortOpenTime} s)`;
+    }
+    if (command.config.operation === 'motor-open-long-timed' &&
+        userParameters !== null) {
+      return `${command.text.label} (${userParameters.longOpenTime} min)`;
+    }
+    return command.text.label;
+  }
+
+  productLockIconSrc(config: ProductLockModeUiConfig): string {
+    return this.isLockModeActive(config)
+      ? 'assets/img/icon_lock_on.svg'
+      : 'assets/img/icon_lock_off.svg';
+  }
+
+  productPeripheralIconSrc(config: ProductUserPeripheralUiConfig): string {
+    return this.currentUserPeripheralState(config) === true
+      ? 'assets/img/icon_light_on.svg'
+      : 'assets/img/icon_light_off.svg';
+  }
+
   get showWeightRangeControls(): boolean {
     return this.pageContextCurrent &&
       this.weightRangeControls.length > 0 &&

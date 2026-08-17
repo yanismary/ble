@@ -3179,6 +3179,201 @@ describe('ProductPage user lighting controls for profile variants', () => {
   }
 });
 
+describe('ProductPage Phase 1 commands tab presentation', () => {
+  for (const scenario of [
+    {
+      profile: 'widoor',
+      commands: [
+        'motor-open',
+        'motor-close',
+        'motor-open-short-timed',
+        'motor-open-long-timed',
+      ],
+      commandLighting: [],
+      basicLighting: ['rgb'],
+      locks: ['locked-open', 'locked-closed'],
+      timedAssetCount: 2,
+    },
+    {
+      profile: 'moventiv-60',
+      commands: [
+        'motor-open',
+        'motor-close',
+        'motor-open-short-timed',
+      ],
+      commandLighting: ['static-light'],
+      basicLighting: ['dynamic-light', 'rgb'],
+      locks: ['locked-open', 'locked-closed'],
+      timedAssetCount: 1,
+    },
+    {
+      profile: 'moventiv-80',
+      commands: [
+        'motor-open',
+        'motor-close',
+        'motor-open-short-timed',
+      ],
+      commandLighting: ['static-light'],
+      basicLighting: ['dynamic-light', 'rgb'],
+      locks: ['locked-open', 'locked-closed'],
+      timedAssetCount: 1,
+    },
+    {
+      profile: 'garline',
+      commands: [
+        'motor-open',
+        'motor-close',
+        'motor-open-short-timed',
+      ],
+      commandLighting: ['static-light'],
+      basicLighting: ['dynamic-light', 'rgb'],
+      locks: ['locked-open'],
+      timedAssetCount: 1,
+    },
+  ] as const) {
+    it(`should render Phase 1 command affordances for ${scenario.profile}`,
+      async () => {
+        const {
+          fixture,
+          component,
+          writeExecutionService,
+          bleService,
+        } = await createProductCommandsUiPage(scenario.profile);
+        const element = fixture.nativeElement as HTMLElement;
+
+        expect(component.activeMainTab).toBe('commands');
+        expect(component.productCommands.map((command) =>
+          command.config.operation,
+        )).toEqual([...scenario.commands]);
+        expect(component.lockModeControls.map((control) =>
+          control.config.mode,
+        )).toEqual([...scenario.locks]);
+        expect(component.commandUserPeripheralControls.map((control) =>
+          control.config.field,
+        )).toEqual([...scenario.commandLighting]);
+        expect(component.basicUserPeripheralControls.map((control) =>
+          control.config.field,
+        )).toEqual([...scenario.basicLighting]);
+
+        expect(element.querySelector<HTMLImageElement>(
+          '.widoor-open-command img',
+        )?.getAttribute('src')).toBe('assets/img/icon_command_open.svg');
+        expect(element.querySelector<HTMLImageElement>(
+          '.widoor-close-command img',
+        )?.getAttribute('src')).toBe('assets/img/icon_command_close.svg');
+        expect(Array.from(element.querySelectorAll<HTMLImageElement>(
+          '.widoor-timed-command img',
+        )).map((image) => image.getAttribute('src'))).toEqual(
+          Array.from(
+            { length: scenario.timedAssetCount },
+            () => 'assets/img/icon_command_openThenClose.svg',
+          ),
+        );
+        expect(
+          element.querySelectorAll(
+            '.user-peripheral-command-controls .user-peripheral-toggle',
+          ).length,
+        ).toBe(scenario.commandLighting.length);
+        if (scenario.commandLighting.length > 0) {
+          expect(element.querySelector<HTMLImageElement>(
+            '.user-peripheral-command-controls .cmd-row-icon',
+          )?.getAttribute('src')).toBe('assets/img/icon_light_on.svg');
+        }
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+        expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+      },
+    );
+  }
+
+  it('should keep product command clicks routed through the existing handler',
+    async () => {
+      const { fixture, component, writeExecutionService } =
+        await createProductCommandsUiPage('moventiv-60');
+      const element = fixture.nativeElement as HTMLElement;
+      const openButton = element
+        .querySelector<HTMLIonButtonElement>('ion-button.widoor-open-command');
+      const requestProductCommand = spyOn(component, 'requestProductCommand')
+        .and.resolveTo();
+
+      openButton?.click();
+      fixture.detectChanges();
+
+      expect(requestProductCommand).toHaveBeenCalledOnceWith(
+        component.productCommands[0].config,
+      );
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  async function createProductCommandsUiPage(
+    profile: KnownProductProfile,
+  ): Promise<{
+    readonly fixture: ComponentFixture<ProductPage>;
+    readonly component: ProductPage;
+    readonly bleService: FakeBleService;
+    readonly writeExecutionService: FakeBleWriteExecutionService;
+  }> {
+    const bleService = new FakeBleService();
+    const loadService = new FakeProductDataLoadService();
+    loadService.nextResult = completeLoadResult(
+      'success',
+      profile,
+      userValueWithPeripherals({
+        staticLight: true,
+        dynamicLight: false,
+        rgbIndicator: false,
+      }),
+    );
+    const writeExecutionService = new FakeBleWriteExecutionService();
+
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [ProductPage],
+      providers: [
+        { provide: BleService, useValue: bleService },
+        {
+          provide: AlertController,
+          useValue: {
+            create: jasmine.createSpy('create').and.resolveTo({
+              present: async () => undefined,
+              onDidDismiss: async () => ({ role: 'confirm' }),
+            }),
+          },
+        },
+        { provide: BleWriteExecutionService, useValue: writeExecutionService },
+        { provide: ProductDataLoadService, useValue: loadService },
+        { provide: ProductDetection, useClass: ProductDetection },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { data: { profile } } },
+        },
+        {
+          provide: Router,
+          useValue: {
+            getCurrentNavigation: () => ({
+              extras: { state: navigationState(profile) },
+            }),
+            navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+          },
+        },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ProductPage);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    await component.refreshProductData();
+    fixture.detectChanges();
+
+    return {
+      fixture,
+      component,
+      bleService,
+      writeExecutionService,
+    };
+  }
+});
+
 describe('ProductPage weight-range controls for profile variants', () => {
   async function createWeightRangePage(
     profile: Exclude<KnownProductProfile, 'widoor'>,

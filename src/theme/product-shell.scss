@@ -1,0 +1,120 @@
+.product-navbar {
+  min-height: 56px;
+}
+
+.product-navbar ion-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.product-navbar-button {
+  --color: #fff;
+  height: 44px;
+  margin-right: 4px;
+}
+
+.product-navbar-icon {
+  font-size: 1.65rem;
+}
+
+.product-command-header {
+  background: var(--mantion-blue);
+  padding: 12px 10px 8px;
+}
+
+:is(.product-main-segment, .product-sub-segment) {
+  --background: transparent;
+}
+
+:is(.product-main-segment, .product-sub-segment) ion-segment-button {
+  --background: transparent;
+  --background-checked: transparent;
+  --indicator-color: transparent;
+  border-bottom: 4px solid transparent;
+  border-radius: 0;
+  min-height: 0;
+  text-transform: uppercase;
+}
+
+.product-main-segment ion-segment-button {
+  --color: rgba(255, 255, 255, 0.72);
+  --color-checked: #fff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  height: 64px;
+  padding: 0 6px 10px;
+}
+
+.product-main-segment ion-segment-button.segment-button-checked {
+  border-bottom-color: #fff;
+}
+
+.product-sub-segment {
+  margin-top: 8px;
+}
+
+.product-sub-segment ion-segment-button {
+  --color: var(--mantion-green);
+  --color-checked: var(--mantion-green);
+  font-size: 0.95rem;
+  font-weight: 700;
+  height: 48px;
+}
+
+.product-sub-segment ion-segment-button.segment-button-checked {
+  border-bottom-color: var(--mantion-green);
+}
+
+.product-controlled-door {
+  align-items: center;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  display: flex;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 24px;
+}
+
+.product-controlled-door span {
+  color: var(--mantion-grey);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-page-layout {
+  margin: 0 auto;
+  max-width: 56rem;
+  padding: 12px 12px 24px;
+}
+
+.product-shell-status {
+  margin-bottom: 12px;
+}
+
+.product-subsection,
+.technical-details {
+  border-top: 1px solid var(--ion-color-light-shade);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+:is(.command-state, .read-state, .product-summary, .technical-details summary) {
+  font-weight: 600;
+}
+
+:is(code, .long-value) {
+  overflow-wrap: anywhere;
+}
+
+:is(.product-actions, .product-loading, .command-state) {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.product-actions {
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}

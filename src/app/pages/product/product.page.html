@@ -150,16 +150,15 @@
       >
         <h2 id="commands-title">{{ text.sections.commands }}</h2>
         @if (showProductMotorCommands) {
-          <div class="product-actions widoor-command-grid motor-command-grid">
+          <div class="cmd-grid">
             @for (command of productCommands; track command.config.operation) {
               <div
-                class="widoor-command-item motor-command-item"
-                [class.widoor-command-item-timed]="command.config.isTimedCommand"
-                [class.motor-command-item-timed]="command.config.isTimedCommand"
+                class="cmd-cell"
+                [class.cmd-timed]="command.config.isTimedCommand"
               >
                 @if (command.config.enabled) {
                   <ion-button
-                    class="widoor-command motor-command"
+                    class="widoor-command motor-command cmd-motor"
                     [class.widoor-open-command]="command.config.operation === 'motor-open'"
                     [class.widoor-close-command]="command.config.operation === 'motor-close'"
                     [class.widoor-timed-command]="command.config.isTimedCommand"
@@ -167,17 +166,26 @@
                     (click)="requestProductCommand(command.config)"
                     [disabled]="!canExecuteProductCommand(command.config)"
                   >
-                    {{ command.text.label }}
+                    <img
+                      [src]="productCommandIconSrc(command.config)"
+                      [alt]="productCommandDisplayLabel(command)"
+                    />
                   </ion-button>
                 } @else {
                   <ion-button
-                    class="widoor-command motor-command widoor-command-disabled"
+                    class="widoor-command motor-command cmd-motor widoor-command-disabled"
                     type="button"
                     disabled
                   >
-                    {{ command.text.label }}
+                    <img
+                      [src]="productCommandIconSrc(command.config)"
+                      [alt]="productCommandDisplayLabel(command)"
+                    />
                   </ion-button>
                 }
+                <p class="cmd-label">
+                  {{ productCommandDisplayLabel(command) }}
+                </p>
                 @if (command.disabledReason) {
                   <p><small>{{ command.disabledReason }}</small></p>
                 }
@@ -186,8 +194,8 @@
           </div>
           <p class="command-warning">{{ text.widoorCommands.warning }}</p>
           @if (showLockModeControls) {
-            <div class="lock-mode-controls">
-              <div class="user-speed-control-header">
+            <div class="cmd-list lock-mode-controls">
+              <div class="cmd-head">
                 <h3>{{ text.lockModeControls.title }}</h3>
                 <ion-button
                   type="button"
@@ -196,18 +204,29 @@
                   [attr.aria-label]="lockModeControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
                   (click)="toggleLockModeControlLock()"
                 >
+                  <img
+                    class="cmd-head-icon"
+                    [src]="lockModeControlUnlocked ? 'assets/img/icon_lock_on.svg' : 'assets/img/icon_lock_off.svg'"
+                    alt=""
+                  />
                   {{ lockModeControlUnlocked ? '🔓' : '🔒' }}
                 </ion-button>
               </div>
               @for (lockControl of lockModeControls; track lockControl.config.mode) {
-                <ion-toggle
-                  class="lock-mode-toggle"
-                  [checked]="isLockModeActive(lockControl.config)"
-                  [disabled]="!lockModeControlUnlocked || !canToggleLockMode(lockControl.config)"
-                  (ionChange)="requestLockModeChange(lockControl.config, $event)"
-                >
-                  {{ lockControl.text.label }}
-                </ion-toggle>
+                <div class="cmd-row">
+                  <img
+                    class="cmd-row-icon"
+                    [src]="productLockIconSrc(lockControl.config)"
+                    [alt]="lockControl.text.label"
+                  />
+                  <span>{{ lockControl.text.label }}</span>
+                  <ion-toggle
+                    class="lock-mode-toggle"
+                    [checked]="isLockModeActive(lockControl.config)"
+                    [disabled]="!lockModeControlUnlocked || !canToggleLockMode(lockControl.config)"
+                    (ionChange)="requestLockModeChange(lockControl.config, $event)"
+                  ></ion-toggle>
+                </div>
               }
               @if (lockModeWriteState.message) {
                 <p
@@ -220,6 +239,55 @@
                     <ion-spinner name="crescent"></ion-spinner>
                   }
                   <span>{{ lockModeWriteState.message }}</span>
+                </p>
+              }
+            </div>
+          }
+          @if (showCommandPeripheralControls) {
+            <div class="cmd-list user-peripheral-command-controls">
+              <div class="cmd-head">
+                <h3>Éclairage</h3>
+                <ion-button
+                  type="button"
+                  size="small"
+                  fill="clear"
+                  [attr.aria-label]="userPeripheralControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                  (click)="toggleUserPeripheralControlLock()"
+                >
+                  <img
+                    class="cmd-head-icon"
+                    [src]="userPeripheralControlUnlocked ? 'assets/img/icon_lock_on.svg' : 'assets/img/icon_lock_off.svg'"
+                    alt=""
+                  />
+                </ion-button>
+              </div>
+              @for (peripheralControl of commandUserPeripheralControls; track peripheralControl.config.field) {
+                <div class="cmd-row">
+                  <img
+                    class="cmd-row-icon"
+                    [src]="productPeripheralIconSrc(peripheralControl.config)"
+                    [alt]="peripheralControl.text"
+                  />
+                  <span>{{ peripheralControl.text }}</span>
+                  <ion-toggle
+                    class="user-peripheral-toggle user-peripheral-command-toggle"
+                    [checked]="currentUserPeripheralState(peripheralControl.config) === true"
+                    [disabled]="!userPeripheralControlUnlocked || !canToggleUserPeripheral(peripheralControl.config)"
+                    (ionChange)="requestUserPeripheralChange(peripheralControl.config, $event)"
+                  ></ion-toggle>
+                </div>
+              }
+              @if (userPeripheralWriteState.message) {
+                <p
+                  class="command-state"
+                  role="status"
+                  aria-live="polite"
+                  [attr.data-tone]="userPeripheralWriteState.status === 'failed' ? 'error' : 'neutral'"
+                >
+                  @if (userPeripheralWriteState.status === 'executing') {
+                    <ion-spinner name="crescent"></ion-spinner>
+                  }
+                  <span>{{ userPeripheralWriteState.message }}</span>
                 </p>
               }
             </div>
@@ -559,7 +627,7 @@
               }
             </div>
           }
-          @if (showUserPeripheralControls) {
+          @if (showBasicUserPeripheralControls) {
             <div class="user-peripheral-controls">
               <div class="user-speed-control-header">
                 <strong>Éclairage et voyants</strong>
@@ -573,7 +641,7 @@
                   {{ userPeripheralControlUnlocked ? '🔓' : '🔒' }}
                 </ion-button>
               </div>
-              @for (peripheralControl of userPeripheralControls; track peripheralControl.config.field) {
+              @for (peripheralControl of basicUserPeripheralControls; track peripheralControl.config.field) {
                 <ion-toggle
                   class="user-peripheral-toggle"
                   [checked]="currentUserPeripheralState(peripheralControl.config) === true"
