@@ -528,33 +528,61 @@ describe('BleWriteExecutionService', () => {
       .not.toHaveBeenCalled();
   });
 
-  it('always blocks learning and reset without native calls', async () => {
-    const learning = requestFor(
-      encodeLegacyMotorCommand('widoor', 'LEARNING'),
-    );
-    learning.authorization = {
-      ...learning.authorization!,
-      motorMovementConfirmed: true,
-    };
-    learning.policy = { allowPhase1ReferenceOnly: true };
-    const reset = requestFor(createWidoorLegacyResetSequence()[0]);
-    reset.policy = { allowPhase1ReferenceOnly: true };
+  it('blocks learning and reset unless their dedicated policy is explicit',
+    async () => {
+      const learning = requestFor(
+        encodeLegacyMotorCommand('widoor', 'LEARNING'),
+      );
+      learning.policy = { allowPhase1ReferenceOnly: true };
+      const reset = requestFor(createWidoorLegacyResetSequence()[0]);
+      reset.policy = { allowPhase1ReferenceOnly: true };
 
-    expect((await service.execute(learning))).toEqual(
-      jasmine.objectContaining({
-        status: 'blocked-by-policy',
-        error: jasmine.objectContaining({ code: 'learning-blocked' }),
-      }),
-    );
-    expect((await service.execute(reset))).toEqual(
-      jasmine.objectContaining({
-        status: 'blocked-by-policy',
-        error: jasmine.objectContaining({ code: 'reset-blocked' }),
-      }),
-    );
-    expect(ble.writeCharacteristic).not.toHaveBeenCalled();
-    expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
-  });
+      expect((await service.execute(learning))).toEqual(
+        jasmine.objectContaining({
+          status: 'blocked-by-policy',
+          error: jasmine.objectContaining({ code: 'learning-blocked' }),
+        }),
+      );
+      expect((await service.execute(reset))).toEqual(
+        jasmine.objectContaining({
+          status: 'blocked-by-policy',
+          error: jasmine.objectContaining({ code: 'reset-blocked' }),
+        }),
+      );
+      expect(ble.writeCharacteristic).not.toHaveBeenCalled();
+    });
+
+  it('executes learning and reset only with their dedicated explicit policy',
+    async () => {
+      const learning = requestFor(
+        encodeLegacyMotorCommand('moventiv-60', 'LEARNING'),
+      );
+      learning.policy = {
+        allowPhase1ReferenceOnly: true,
+        allowLearning: true,
+      };
+      const learningResult = await service.execute(learning);
+
+      expect(learningResult.status).toBe('success');
+      expect(learningResult.destructiveLevel).toBe('learning');
+      expect(Array.from(
+        ble.writeCharacteristic.calls.mostRecent().args[2] as Uint8Array,
+      )).toEqual([0x00, 0x12]);
+
+      const reset = requestFor(createWidoorLegacyResetSequence()[0]);
+      reset.policy = {
+        allowPhase1ReferenceOnly: true,
+        allowReset: true,
+      };
+      const resetResult = await service.execute(reset);
+
+      expect(resetResult.status).toBe('success');
+      expect(resetResult.destructiveLevel).toBe('reset');
+      expect(Array.from(
+        ble.writeCharacteristic.calls.mostRecent().args[2] as Uint8Array,
+      )).toEqual([0x01, 50]);
+      expect(ble.writeCharacteristic).toHaveBeenCalledTimes(2);
+    });
 
   it('rejects a second execution immediately and releases both locks',
     async () => {

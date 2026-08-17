@@ -174,17 +174,6 @@ export const WIDOOR_COMMAND_UI_CONFIGS: readonly WidoorCommandUiConfig[] =
       hardwareValidationStatus: 'phase1-reference-only',
       isTimedCommand: true,
     }),
-    commandConfig({
-      profile: 'widoor',
-      command: 'LEARNING',
-      operation: 'motor-learning',
-      textKey: 'learning',
-      catalogFactory: () => encodeLegacyMotorCommand('widoor', 'LEARNING'),
-      enabled: false,
-      hardwareValidationStatus: 'phase1-reference-only',
-      disabledReason: 'protected',
-      isTimedCommand: false,
-    }),
   ]);
 
 type MoventivGarlineMotorCommand = Extract<

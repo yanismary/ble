@@ -1549,33 +1549,36 @@ describe('ProductPage', () => {
     },
   );
 
-  it('should activate timed commands while keeping learning non-interactive',
-    async () => {
+  it('should keep timed commands active and expose Phase 1 sensitive actions',
+    () => {
       const element = fixture.nativeElement as HTMLElement;
-      const disabled = Array.from(element.querySelectorAll<HTMLIonButtonElement>(
-        'ion-button.widoor-command-disabled',
-      ));
 
-      expect(disabled.length).toBe(1);
-      expect(disabled.every((button) => button.disabled)).toBeTrue();
+      expect(element.querySelectorAll(
+        'ion-button.widoor-command-disabled',
+      ).length).toBe(0);
       expect(element.textContent).toContain(
         component.text.widoorCommands.openShortTimed.label,
       );
       expect(element.textContent).toContain(
         component.text.widoorCommands.openLongTimed.label,
       );
-      expect(element.textContent).toContain(
-        component.text.widoorCommands.learning.label,
-      );
       expect(element.querySelectorAll(
         'ion-button.widoor-timed-command',
       ).length).toBe(2);
-      expect(element.textContent).not.toContain('RAZ');
-      for (const command of component.widoorCommands.filter(
-        (item) => !item.config.enabled,
-      )) {
-        await component.requestWidoorCommand(command.config);
-      }
+      expect(component.sensitiveActions.map((action) => action.action))
+        .toEqual([
+          'learning',
+          'radar-test-1',
+          'radar-test-2',
+          'professional-peripheral-lock',
+          'reset',
+        ]);
+      expect(element.textContent).toContain(
+        component.text.sensitiveActions.learning,
+      );
+      expect(element.textContent).toContain(
+        component.text.sensitiveActions.reset,
+      );
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(alertCreate).not.toHaveBeenCalled();
     },

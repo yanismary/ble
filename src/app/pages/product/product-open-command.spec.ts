@@ -12,8 +12,7 @@ import {
 } from './product-open-command';
 
 describe('Widoor motor authorization factory', () => {
-  it('should expose four active commands while keeping learning disabled',
-    () => {
+  it('should expose the four main Widoor movement commands', () => {
       expect(WIDOOR_COMMAND_UI_CONFIGS.map((config) => ({
         profile: config.profile,
         command: config.command,
@@ -28,8 +27,6 @@ describe('Widoor motor authorization factory', () => {
           expectedState: 0x21 },
         { profile: 'widoor', command: 'OPEN_LONG_TIMED', enabled: true,
           expectedState: 0x21 },
-        { profile: 'widoor', command: 'LEARNING', enabled: false,
-          expectedState: null },
       ]);
       expect(WIDOOR_COMMAND_UI_CONFIGS.every(Object.isFrozen)).toBeTrue();
       expect(WIDOOR_COMMAND_UI_CONFIGS.map(
@@ -39,14 +36,12 @@ describe('Widoor motor authorization factory', () => {
         '00 30',
         '00 21 00 00',
         '00 22',
-        '00 12',
       ]);
-      expect(WIDOOR_COMMAND_UI_CONFIGS.slice(0, 4).every((config) =>
+      expect(WIDOOR_COMMAND_UI_CONFIGS.every((config) =>
         Boolean(config.label && config.confirmationTitle &&
           config.confirmationMessage && config.confirmationButtonLabel &&
           config.confirmationSuccessMessage && config.unconfirmedMessage),
       )).toBeTrue();
-      expect(WIDOOR_COMMAND_UI_CONFIGS[4].enabled).toBeFalse();
     },
   );
 

@@ -88,15 +88,28 @@ export const PRODUCT_PAGE_TEXT = {
     failed: 'Échec de l’envoi de la plage de poids.',
     unavailable: 'Commande de plage de poids indisponible',
   },
-  deferredSensitiveActions: {
-    title: 'Fonctions en attente de validation physique',
+  sensitiveActions: {
+    title: 'Fonctions avancées Phase 1',
     notice:
-      'Ces commandes existent dans la référence Phase 1 mais restent désactivées dans la Phase 2 tant que leur comportement n’a pas été validé sur matériel.',
+      'Ces fonctions reprennent les commandes réellement exposées dans la Phase 1. Les actions destructives demandent une confirmation explicite.',
     learning: 'Apprentissage',
-    radarTest1: 'Lancer le test radar 1',
-    radarTest2: 'Lancer le test radar 2',
-    peripheralLock: 'Modifier le verrouillage périphériques',
-    disabledReason: 'Validation physique requise',
+    radarTest1: 'Test radar 1',
+    radarTest2: 'Test radar 2',
+    peripheralLock: 'Verrouillage périphériques',
+    reset: 'Réinitialiser les réglages Widoor',
+    awaitingConfirmation: 'Confirmation requise.',
+    executing: 'Commande avancée en cours…',
+    sent: 'Commande envoyée. Lecture de contrôle en cours.',
+    failed: 'Échec de la commande avancée.',
+    cancelled: 'Commande annulée.',
+    cancel: 'Annuler',
+    confirm: 'Confirmer',
+    learningConfirmTitle: 'Lancer l’apprentissage ?',
+    learningConfirmMessage:
+      'Cette commande peut provoquer des mouvements automatiques du moteur. Vérifiez que la zone est dégagée avant de confirmer.',
+    resetConfirmTitle: 'Réinitialiser les réglages Widoor ?',
+    resetConfirmMessage:
+      'Cette action réapplique les neuf valeurs par défaut de la Phase 1 et remplace plusieurs réglages actuels. Cette opération ne peut pas être annulée automatiquement.',
   },
   professionalPeripheralDiagnostics: {
     title: 'Diagnostic périphériques',

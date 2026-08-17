@@ -79,6 +79,8 @@ export type LegacyBleWriteConfirmationPolicy =
 
 export interface LegacyBleWriteExecutionPolicy {
   readonly allowPhase1ReferenceOnly?: true;
+  readonly allowLearning?: true;
+  readonly allowReset?: true;
   readonly allowPhysicalValidationAttempt?: {
     readonly operation: WidoorPhysicalValidationOperation;
     readonly profile: 'widoor';
@@ -326,7 +328,9 @@ export class BleWriteExecutionService implements OnDestroy {
         'The catalogued service is incompatible with this profile and write.',
       );
     }
-    if (request.write.destructiveLevel === 'motor-movement' &&
+    if ((request.write.destructiveLevel === 'motor-movement' ||
+        request.write.destructiveLevel === 'learning' ||
+        request.write.destructiveLevel === 'reset') &&
         request.identification.confidence !== 'strong') {
       return this.result(
         request, startedAt, 'invalid-request', false, 'unavailable', false,
@@ -450,12 +454,20 @@ export class BleWriteExecutionService implements OnDestroy {
     startedAt: number,
   ): LegacyBleWriteExecutionResult | null {
     const write = request.write;
-    if (write.destructiveLevel === 'learning' ||
-        write.destructiveLevel === 'reset') {
+    if (write.destructiveLevel === 'learning' &&
+        request.policy?.allowLearning !== true) {
       return this.result(
         request, startedAt, 'blocked-by-policy', false, 'unavailable', false,
-        `${write.destructiveLevel}-blocked`,
-        `${write.destructiveLevel} writes are blocked by policy.`,
+        'learning-blocked',
+        'Learning writes require the explicit learning policy.',
+      );
+    }
+    if (write.destructiveLevel === 'reset' &&
+        request.policy?.allowReset !== true) {
+      return this.result(
+        request, startedAt, 'blocked-by-policy', false, 'unavailable', false,
+        'reset-blocked',
+        'Reset writes require the explicit reset policy.',
       );
     }
 

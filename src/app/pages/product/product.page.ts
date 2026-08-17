@@ -131,9 +131,12 @@ import {
   createProfessionalPeripheralDiagnosticRows,
 } from './product-professional-peripheral-diagnostics';
 import {
-  DeferredSensitiveActionUiConfig,
-  deferredSensitiveActionsFor,
-} from './product-deferred-sensitive-actions';
+  ProductSensitiveAction,
+  ProductSensitiveActionUiConfig,
+  createProductSensitiveActionAuthorization,
+  productSensitiveActionConfigsFor,
+  productSensitiveActionWriteSteps,
+} from './product-sensitive-actions';
 import {
   ProductProfessionalScalarField,
   ProductProfessionalScalarUiConfig,
@@ -251,7 +254,7 @@ export class ProductPage implements OnDestroy {
     normalizeProductPageLanguage(localStorage.getItem('lang')),
   );
   readonly roomOptions = PRODUCT_ROOM_OPTIONS;
-  readonly deferredSensitiveActions: readonly DeferredSensitiveActionUiConfig[];
+  readonly sensitiveActions: readonly ProductSensitiveActionUiConfig[];
   readonly productCommands: readonly {
     readonly config: WidoorCommandUiConfig;
     readonly text: typeof PRODUCT_PAGE_TEXT.widoorCommands[
@@ -341,6 +344,17 @@ export class ProductPage implements OnDestroy {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', message: null });
+  sensitiveActionState: {
+    readonly status:
+      | 'idle'
+      | 'awaiting-confirmation'
+      | 'executing'
+      | 'sent'
+      | 'failed'
+      | 'cancelled';
+    readonly action: ProductSensitiveAction | null;
+    readonly message: string | null;
+  } = Object.freeze({ status: 'idle', action: null, message: null });
   productDateActionState: {
     readonly status:
       | 'idle'
@@ -367,7 +381,7 @@ export class ProductPage implements OnDestroy {
       ? routeProfile
       : 'widoor';
     this.config = PRODUCT_PAGE_CONFIG[profile];
-    this.deferredSensitiveActions = deferredSensitiveActionsFor(profile);
+    this.sensitiveActions = productSensitiveActionConfigsFor(profile);
     this.productCommands = Object.freeze(
       MOTOR_COMMAND_UI_CONFIGS[profile].map((config) =>
       Object.freeze({
@@ -529,7 +543,8 @@ export class ProductPage implements OnDestroy {
       this.professionalInputWriteState.status !== 'executing' &&
       this.professionalScalarWriteState.status !== 'executing' &&
       this.nameRoomWriteState.status !== 'executing' &&
-      !this.productDateActionBusy;
+      !this.productDateActionBusy &&
+      !this.sensitiveActionBusy;
   }
 
   get hasProductNavigationContext(): boolean {
@@ -617,6 +632,11 @@ export class ProductPage implements OnDestroy {
       this.productDateActionState.status === 'executing';
   }
 
+  get sensitiveActionBusy(): boolean {
+    return this.sensitiveActionState.status === 'awaiting-confirmation' ||
+      this.sensitiveActionState.status === 'executing';
+  }
+
   get visibleProfessionalScalarControls(): typeof this.professionalScalarControls {
     return this.professionalScalarControls.filter((control) =>
       this.canShowProfessionalField(control.config.field),
@@ -674,6 +694,7 @@ export class ProductPage implements OnDestroy {
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
+        this.sensitiveActionBusy ||
         this.motorCommandsBlockedByLockMode() ||
         this.commandInProgress) {
       return false;
@@ -983,6 +1004,7 @@ export class ProductPage implements OnDestroy {
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
+        this.sensitiveActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -1341,6 +1363,7 @@ export class ProductPage implements OnDestroy {
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
+        this.sensitiveActionBusy ||
         this.commandInProgress ||
         this.context === null) {
       return false;
@@ -1447,6 +1470,7 @@ export class ProductPage implements OnDestroy {
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
+        this.sensitiveActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -1555,6 +1579,7 @@ export class ProductPage implements OnDestroy {
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
+        this.sensitiveActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -1615,6 +1640,7 @@ export class ProductPage implements OnDestroy {
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
+        this.sensitiveActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -1667,6 +1693,7 @@ export class ProductPage implements OnDestroy {
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
+        this.sensitiveActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -1832,6 +1859,7 @@ export class ProductPage implements OnDestroy {
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
+        this.sensitiveActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -1970,6 +1998,7 @@ export class ProductPage implements OnDestroy {
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
+        this.sensitiveActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -2020,6 +2049,7 @@ export class ProductPage implements OnDestroy {
         this.professionalScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
+        this.sensitiveActionBusy ||
         this.commandInProgress) {
       return false;
     }
@@ -2044,6 +2074,207 @@ export class ProductPage implements OnDestroy {
       properties.characteristicPresent &&
       properties.propertiesAvailable &&
       properties.write === true;
+  }
+
+  sensitiveActionCurrentEnabled(
+    config: ProductSensitiveActionUiConfig,
+  ): boolean | null {
+    if (config.control !== 'toggle') {
+      return null;
+    }
+    const value = this.viewModel.reads.professionalParameters.value;
+    if (value === null || value.profile !== 'widoor') {
+      return null;
+    }
+    const flags = decodeProfessionalPeripheralFlags(value.peripheralByte1);
+    switch (config.action) {
+      case 'radar-test-1':
+        return flags.radarTest1;
+      case 'radar-test-2':
+        return flags.radarTest2;
+      case 'professional-peripheral-lock':
+        return flags.locked;
+      default:
+        return null;
+    }
+  }
+
+  canExecuteSensitiveAction(
+    config: ProductSensitiveActionUiConfig,
+  ): boolean {
+    if (!this.sensitiveActions.includes(config) ||
+        config.profile !== this.config.profile ||
+        !this.isCurrentContext() ||
+        this.context === null ||
+        this.viewModel.loading ||
+        this.productDataLoadService.isLoading ||
+        this.bleService.isWriting ||
+        this.bleService.disconnectingDeviceId !== null ||
+        this.bleWriteExecutionService.isExecuting ||
+        this.sensitiveActionBusy ||
+        this.productDateActionBusy ||
+        this.commandInProgress) {
+      return false;
+    }
+    if (config.action === 'professional-peripheral-lock' &&
+        !this.widoorLockSupported()) {
+      return false;
+    }
+    const current = this.sensitiveActionCurrentEnabled(config);
+    if (config.control === 'toggle' && current === null) {
+      return false;
+    }
+    const steps = productSensitiveActionWriteSteps(
+      config,
+      config.control === 'toggle' ? !current! : undefined,
+    );
+    return steps.every(({ write }) => {
+      const properties = this.bleService.getGattCharacteristicProperties(
+        write.serviceUuid,
+        write.characteristicUuid,
+        this.context?.deviceId,
+      );
+      return properties.servicePresent &&
+        properties.characteristicPresent &&
+        properties.propertiesAvailable &&
+        properties.write === true;
+    });
+  }
+
+  async requestSensitiveAction(
+    config: ProductSensitiveActionUiConfig,
+    eventOrChecked?: CustomEvent<{ readonly checked: boolean }> | boolean,
+  ): Promise<void> {
+    if (!this.canExecuteSensitiveAction(config) || this.context === null) {
+      return;
+    }
+    const current = this.sensitiveActionCurrentEnabled(config);
+    const enabled = config.control === 'toggle'
+      ? (typeof eventOrChecked === 'boolean'
+          ? eventOrChecked
+          : eventOrChecked?.detail.checked)
+      : undefined;
+    if (config.control === 'toggle' &&
+        (enabled === undefined || enabled === current)) {
+      return;
+    }
+
+    void triggerConfiguredHapticFeedback();
+    const context = this.context;
+
+    if (config.requiresConfirmation) {
+      this.sensitiveActionState = Object.freeze({
+        status: 'awaiting-confirmation',
+        action: config.action,
+        message: this.text.sensitiveActions.awaitingConfirmation,
+      });
+      const learning = config.action === 'learning';
+      const alert = await this.alertController.create({
+        header: learning
+          ? this.text.sensitiveActions.learningConfirmTitle
+          : this.text.sensitiveActions.resetConfirmTitle,
+        message: learning
+          ? this.text.sensitiveActions.learningConfirmMessage
+          : this.text.sensitiveActions.resetConfirmMessage,
+        buttons: [
+          { text: this.text.sensitiveActions.cancel, role: 'cancel' },
+          { text: this.text.sensitiveActions.confirm, role: 'confirm' },
+        ],
+      });
+      await alert.present();
+      const dismissal = await alert.onDidDismiss();
+      if (dismissal.role !== 'confirm') {
+        this.sensitiveActionState = Object.freeze({
+          status: 'cancelled',
+          action: config.action,
+          message: this.text.sensitiveActions.cancelled,
+        });
+        return;
+      }
+      if (!this.isCurrentContext() || this.context !== context) {
+        this.sensitiveActionState = Object.freeze({
+          status: 'failed',
+          action: config.action,
+          message: this.text.openCommand.stale,
+        });
+        return;
+      }
+    }
+
+    const steps = productSensitiveActionWriteSteps(config, enabled);
+    this.sensitiveActionState = Object.freeze({
+      status: 'executing',
+      action: config.action,
+      message: this.text.sensitiveActions.executing,
+    });
+
+    for (const [index, step] of steps.entries()) {
+      const contextStatus = this.writeContextStatus(context, step.write);
+      if (contextStatus !== null) {
+        this.sensitiveActionState = Object.freeze({
+          status: 'failed',
+          action: config.action,
+          message: this.text.sensitiveActions.failed,
+        });
+        return;
+      }
+
+      const attemptId = this.nextCommandIdentifier('attempt');
+      const confirmedAt = Date.now();
+      const authorization = createProductSensitiveActionAuthorization({
+        write: step.write,
+        deviceId: context.deviceId,
+        connectionGeneration: context.connectionGeneration,
+        attemptId,
+        confirmationId: this.nextCommandIdentifier('confirmation'),
+        confirmedAt,
+      });
+      const result = await this.bleWriteExecutionService.execute({
+        write: step.write,
+        deviceId: context.deviceId,
+        profile: config.profile,
+        connectionGeneration: context.connectionGeneration,
+        identification: { profile: config.profile, confidence: 'strong' },
+        authorization,
+        attemptId,
+        confirmationPolicy: { kind: 'gatt-only' },
+        policy: step.policy,
+      });
+
+      if (!this.isCurrentContext() ||
+          this.context !== context ||
+          result.status !== 'success') {
+        this.sensitiveActionState = Object.freeze({
+          status: 'failed',
+          action: config.action,
+          message: this.text.sensitiveActions.failed,
+        });
+        return;
+      }
+
+      if (step.delayAfterMs > 0 && index < steps.length - 1) {
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, step.delayAfterMs),
+        );
+        if (!this.isCurrentContext() || this.context !== context) {
+          this.sensitiveActionState = Object.freeze({
+            status: 'failed',
+            action: config.action,
+            message: this.text.openCommand.stale,
+          });
+          return;
+        }
+      }
+    }
+
+    this.sensitiveActionState = Object.freeze({
+      status: 'sent',
+      action: config.action,
+      message: this.text.sensitiveActions.sent,
+    });
+    if (this.canRefresh) {
+      await this.refreshProductData();
+    }
   }
 
   async requestProductCommand(config: WidoorCommandUiConfig): Promise<void> {
@@ -3216,6 +3447,11 @@ export class ProductPage implements OnDestroy {
     this.resetProfessionalScalarEditing();
     this.resetProfessionalAccess();
     this.resetProductDateAction();
+    this.sensitiveActionState = Object.freeze({
+      status: 'idle',
+      action: null,
+      message: null,
+    });
   }
 
   private resetNameRoomDraft(): void {

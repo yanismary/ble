@@ -411,8 +411,8 @@ export function productPageTextFor(language: ProductPageLanguage) {
       setupLabel: labels.actions.setup,
       maintenanceLabel: labels.actions.maintenance,
     }),
-    deferredSensitiveActions: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.deferredSensitiveActions,
+    sensitiveActions: Object.freeze({
+      ...PRODUCT_PAGE_TEXT.sensitiveActions,
       learning: labels.actions.learning,
     }),
     user: Object.freeze({

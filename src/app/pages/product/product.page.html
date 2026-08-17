@@ -775,22 +775,46 @@
         }
       </article>
 
-      @if (deferredSensitiveActions.length > 0) {
+      @if (sensitiveActions.length > 0) {
         <article class="product-subsection deferred-sensitive-actions">
-          <h3>{{ text.deferredSensitiveActions.title }}</h3>
-          <p>{{ text.deferredSensitiveActions.notice }}</p>
+          <h3>{{ text.sensitiveActions.title }}</h3>
+          <p>{{ text.sensitiveActions.notice }}</p>
           <div class="product-actions">
-            @for (action of deferredSensitiveActions; track action.action) {
-              <div>
-                <ion-button type="button" size="small" fill="outline" disabled>
-                  {{ text.deferredSensitiveActions[action.textKey] }}
+            @for (action of sensitiveActions; track action.action) {
+              @if (action.control === 'toggle') {
+                <ion-toggle
+                  [checked]="sensitiveActionCurrentEnabled(action) === true"
+                  [disabled]="!canExecuteSensitiveAction(action)"
+                  (ionChange)="requestSensitiveAction(action, $event)"
+                >
+                  {{ text.sensitiveActions[action.textKey] }}
+                </ion-toggle>
+              } @else {
+                <ion-button
+                  type="button"
+                  size="small"
+                  [color]="action.action === 'reset' ? 'danger' : undefined"
+                  [disabled]="!canExecuteSensitiveAction(action)"
+                  (click)="requestSensitiveAction(action)"
+                >
+                  {{ text.sensitiveActions[action.textKey] }}
                 </ion-button>
-                <p>
-                  <small>{{ text.deferredSensitiveActions.disabledReason }}</small>
-                </p>
-              </div>
+              }
             }
           </div>
+          @if (sensitiveActionState.message) {
+            <p
+              class="command-state"
+              role="status"
+              aria-live="polite"
+              [attr.data-tone]="sensitiveActionState.status === 'failed' ? 'error' : 'neutral'"
+            >
+              @if (sensitiveActionState.status === 'executing') {
+                <ion-spinner name="crescent"></ion-spinner>
+              }
+              <span>{{ sensitiveActionState.message }}</span>
+            </p>
+          }
         </article>
       }
       </section>
