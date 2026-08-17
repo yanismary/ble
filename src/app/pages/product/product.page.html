@@ -182,12 +182,23 @@
           <p class="command-warning">{{ text.widoorCommands.warning }}</p>
           @if (showLockModeControls) {
             <div class="lock-mode-controls">
-              <h3>{{ text.lockModeControls.title }}</h3>
+              <div class="user-speed-control-header">
+                <h3>{{ text.lockModeControls.title }}</h3>
+                <ion-button
+                  type="button"
+                  size="small"
+                  fill="clear"
+                  [attr.aria-label]="lockModeControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                  (click)="toggleLockModeControlLock()"
+                >
+                  {{ lockModeControlUnlocked ? '🔓' : '🔒' }}
+                </ion-button>
+              </div>
               @for (lockControl of lockModeControls; track lockControl.config.mode) {
                 <ion-toggle
                   class="lock-mode-toggle"
                   [checked]="isLockModeActive(lockControl.config)"
-                  [disabled]="!canToggleLockMode(lockControl.config)"
+                  [disabled]="!lockModeControlUnlocked || !canToggleLockMode(lockControl.config)"
                   (ionChange)="requestLockModeChange(lockControl.config, $event)"
                 >
                   {{ lockControl.text.label }}
@@ -473,11 +484,23 @@
           }
           @if (showUserPeripheralControls) {
             <div class="user-peripheral-controls">
+              <div class="user-speed-control-header">
+                <strong>Éclairage et voyants</strong>
+                <ion-button
+                  type="button"
+                  size="small"
+                  fill="clear"
+                  [attr.aria-label]="userPeripheralControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                  (click)="toggleUserPeripheralControlLock()"
+                >
+                  {{ userPeripheralControlUnlocked ? '🔓' : '🔒' }}
+                </ion-button>
+              </div>
               @for (peripheralControl of userPeripheralControls; track peripheralControl.config.field) {
                 <ion-toggle
                   class="user-peripheral-toggle"
                   [checked]="currentUserPeripheralState(peripheralControl.config) === true"
-                  [disabled]="!canToggleUserPeripheral(peripheralControl.config)"
+                  [disabled]="!userPeripheralControlUnlocked || !canToggleUserPeripheral(peripheralControl.config)"
                   (ionChange)="requestUserPeripheralChange(peripheralControl.config, $event)"
                 >
                   {{ peripheralControl.text }}
@@ -553,7 +576,18 @@
           }
           @if (showProfessionalInputControls) {
             <div class="professional-input-controls">
-              <h4>{{ text.professionalInputControls.title }}</h4>
+              <div class="user-speed-control-header">
+                <h4>{{ text.professionalInputControls.title }}</h4>
+                <ion-button
+                  type="button"
+                  size="small"
+                  fill="clear"
+                  [attr.aria-label]="professionalInputControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                  (click)="toggleProfessionalInputControlLock()"
+                >
+                  {{ professionalInputControlUnlocked ? '🔓' : '🔒' }}
+                </ion-button>
+              </div>
               @for (inputControl of professionalInputControls; track inputControl.config.field) {
                 <ion-select
                   class="professional-input-select"
@@ -561,7 +595,7 @@
                   label-placement="stacked"
                   interface="popover"
                   [value]="currentProfessionalInputMode(inputControl.config)"
-                  [disabled]="!canChangeProfessionalInput(inputControl.config)"
+                  [disabled]="!professionalInputControlUnlocked || !canChangeProfessionalInput(inputControl.config)"
                   (ionChange)="requestProfessionalInputChange(inputControl.config, $event)"
                 >
                   <ion-select-option value="button">

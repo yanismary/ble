@@ -1686,6 +1686,14 @@ export class ProductPage implements OnDestroy {
       properties.write === true;
   }
 
+  get professionalInputControlUnlocked(): boolean {
+    return this.controlLocks.isUnlocked('professional-inputs');
+  }
+
+  toggleProfessionalInputControlLock(): void {
+    this.controlLocks.toggle('professional-inputs');
+  }
+
   async requestProfessionalInputChange(
     config: ProductProfessionalInputUiConfig,
     eventOrMode: CustomEvent<{ readonly value?: LegacyInputMode }> |
@@ -2325,6 +2333,14 @@ export class ProductPage implements OnDestroy {
     });
   }
 
+  get userPeripheralControlUnlocked(): boolean {
+    return this.controlLocks.isUnlocked('user-peripherals');
+  }
+
+  toggleUserPeripheralControlLock(): void {
+    this.controlLocks.toggle('user-peripherals');
+  }
+
   async requestUserPeripheralChange(
     config: ProductUserPeripheralUiConfig,
     eventOrChecked: CustomEvent<{ readonly checked: boolean }> | boolean,
@@ -2855,6 +2871,14 @@ export class ProductPage implements OnDestroy {
       status: 'failed',
       message: this.text.nameRoomControls.failed,
     });
+  }
+
+  get lockModeControlUnlocked(): boolean {
+    return this.controlLocks.isUnlocked('lock-mode');
+  }
+
+  toggleLockModeControlLock(): void {
+    this.controlLocks.toggle('lock-mode');
   }
 
   async requestLockModeChange(
