@@ -1,6 +1,8 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, NgZone, OnDestroy, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { addIcons } from 'ionicons';
+import { search } from 'ionicons/icons';
 import {
   BleService as DiscoveredBleService,
   ScanResult,
@@ -9,11 +11,16 @@ import { Subscription } from 'rxjs';
 import {
   AlertController,
   IonButton,
+  IonButtons,
   IonContent,
+  IonFab,
+  IonFabButton,
   IonHeader,
+  IonIcon,
   IonItem,
   IonLabel,
   IonList,
+  IonPopover,
   IonSpinner,
   IonTitle,
   IonToolbar,
@@ -73,11 +80,21 @@ import { PRODUCT_PAGE_TEXT } from '../product/product-page.text';
 import {
   ProductPageNavigationState,
 } from '../product/product-view.model';
+import {
+  getBleSignalQualityAsset,
+  getScanRoomIconClass,
+  splitScanDisplayName,
+} from './scan-page-ui';
 
 interface ScannedDevice {
   deviceId: string;
   name: string;
   rssi: number | null;
+}
+
+interface MainMenuItem {
+  readonly label: string;
+  readonly route: readonly string[];
 }
 
 type MotorTestStatus =
@@ -139,11 +156,16 @@ const MOTOR_DIAGNOSTIC_HISTORY_LIMIT = 20;
   standalone: true,
   imports: [
     IonButton,
+    IonButtons,
     IonContent,
+    IonFab,
+    IonFabButton,
     IonHeader,
+    IonIcon,
     IonItem,
     IonLabel,
     IonList,
+    IonPopover,
     IonSpinner,
     IonTitle,
     IonToolbar,
@@ -181,6 +203,7 @@ export class ScanPage implements OnDestroy {
   connecting = false;
   entryConnectionCleanupInProgress = false;
   bleRecoveryInProgress = false;
+  mainMenuOpen = false;
   discoveringServices = false;
   discoveryError: string | null = null;
   errorMessage: string | null = null;
@@ -201,6 +224,14 @@ export class ScanPage implements OnDestroy {
   readonly motorTestText = SCAN_MOTOR_TEST_TEXT;
   readonly productReadText = SCAN_PRODUCT_READ_TEXT;
   readonly productPageText = PRODUCT_PAGE_TEXT;
+  readonly mainMenuItems: readonly MainMenuItem[] = Object.freeze([
+    { label: 'Réglages', route: ['/settings'] },
+    { label: 'Aide', route: ['/help'] },
+    { label: 'À propos', route: ['/app-info'] },
+    { label: 'Qui sommes-nous', route: ['/company-info'] },
+    { label: 'Contact', route: ['/app-info'] },
+    { label: 'Mentions légales', route: ['/legal-notice'] },
+  ]);
   productReadResult: ProductDataLoadResult | null = null;
   productReadStatus: 'idle' | 'loading' | ProductDataLoadStatus = 'idle';
   productProfile: ProductProfile = 'unknown';
@@ -212,6 +243,7 @@ export class ScanPage implements OnDestroy {
   subscribingMotorState = false;
 
   constructor() {
+    addIcons({ search });
     this.disconnectionSubscription = this.bleService.disconnections$.subscribe(
       (event: BleDisconnectionEvent) => {
         this.ngZone.run(() => this.handleDisconnection(event));
@@ -230,6 +262,35 @@ export class ScanPage implements OnDestroy {
 
   async openSettings(): Promise<void> {
     await this.router.navigate(['/settings']);
+  }
+
+  async openMainMenuRoute(item: MainMenuItem): Promise<void> {
+    this.mainMenuOpen = false;
+    await this.router.navigate(item.route);
+  }
+
+  openMainMenu(): void {
+    this.mainMenuOpen = true;
+  }
+
+  closeMainMenu(): void {
+    this.mainMenuOpen = false;
+  }
+
+  getScanDisplayName(device: ScannedDevice): string {
+    return splitScanDisplayName(device.name).displayName || device.name;
+  }
+
+  getScanRoomSuffix(device: ScannedDevice): string | null {
+    return splitScanDisplayName(device.name).roomSuffix;
+  }
+
+  getScanRoomIconClass(device: ScannedDevice): string | null {
+    return getScanRoomIconClass(this.getScanRoomSuffix(device));
+  }
+
+  getSignalQualityAsset(device: ScannedDevice): string {
+    return getBleSignalQualityAsset(device.rssi);
   }
 
   get showBleIdentifier(): boolean {

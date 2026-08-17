@@ -9,6 +9,8 @@
  * https://ionicframework.com/docs/layout/global-stylesheets
  */
 
+@use "./theme/legacy-icons.scss";
+
 /* Core CSS required for Ionic components to work properly */
 @import "@ionic/angular/css/core.css";
 
@@ -69,4 +71,19 @@
   height: 1.5rem;
   object-fit: contain;
   width: 1.5rem;
+}
+
+.scan-main-popover::part(content) {
+  --width: 250px;
+}
+
+.scan-main-menu-list {
+  margin: 0;
+  min-width: 250px;
+  padding: 0;
+}
+
+.scan-main-menu-list ion-item {
+  --min-height: 48px;
+  font-size: 16px;
 }

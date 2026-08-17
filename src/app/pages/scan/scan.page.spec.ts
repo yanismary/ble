@@ -15,6 +15,7 @@ import {
 } from '../../core/services/ble';
 import {
   storeAutoEnableBluetooth,
+  storeShowBleIdentifier,
 } from '../../core/services/app-preferences';
 import { BLE_UUIDS } from '../../core/services/product-detection';
 import { MotorCommandService } from '../../core/services/motor-command.service';
@@ -33,6 +34,12 @@ import {
   decodeBleDatesAndCycles,
 } from '../../core/services/ble-read-decoders';
 import { ScanPage } from './scan.page';
+import {
+  getBleSignalQualityAsset,
+  getBleSignalQualityFromRssi,
+  getScanRoomIconClass,
+  splitScanDisplayName,
+} from './scan-page-ui';
 
 class FakeBleService {
   private readonly disconnectionSubject = new Subject<BleDisconnectionEvent>();
@@ -247,6 +254,7 @@ describe('ScanPage', () => {
 
   beforeEach(async () => {
     storeAutoEnableBluetooth(false);
+    storeShowBleIdentifier(true);
     bleService = new FakeBleService();
     productDataLoadService = new FakeProductDataLoadService();
     routerNavigate = jasmine.createSpy('navigate').and.resolveTo(true);
@@ -296,6 +304,55 @@ describe('ScanPage', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('should map RSSI values to historical signal quality assets', () => {
+    expect(getBleSignalQualityFromRssi(null)).toBe(0);
+    expect(getBleSignalQualityFromRssi(-95)).toBe(0);
+    expect(getBleSignalQualityFromRssi(-90)).toBe(1);
+    expect(getBleSignalQualityFromRssi(-80)).toBe(2);
+    expect(getBleSignalQualityFromRssi(-70)).toBe(3);
+    expect(getBleSignalQualityFromRssi(-60)).toBe(4);
+    expect(getBleSignalQualityAsset(-42)).toBe(
+      'assets/img/img_ble_strenght_4_4.svg',
+    );
+  });
+
+  it('should split scanned names and resolve historical room icons', () => {
+    expect(splitScanDisplayName('Salon#SAL')).toEqual({
+      displayName: 'Salon',
+      roomSuffix: '#SAL',
+    });
+    expect(splitScanDisplayName('Garage')).toEqual({
+      displayName: 'Garage',
+      roomSuffix: null,
+    });
+    expect(getScanRoomIconClass('#CHA')).toBe('ai-loc-cha');
+    expect(getScanRoomIconClass('#ENT')).toBe('ai-loc-autre');
+    expect(getScanRoomIconClass(null)).toBeNull();
+  });
+
+  it('should navigate from the Phase 1 style main menu without BLE calls',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      const connectSpy = spyOn(bleService, 'connect').and.callThrough();
+      fixture.detectChanges();
+
+      expect(component.mainMenuItems.map(({ label }) => label)).toEqual([
+        'Réglages',
+        'Aide',
+        'À propos',
+        'Qui sommes-nous',
+        'Contact',
+        'Mentions légales',
+      ]);
+
+      await component.openMainMenuRoute(component.mainMenuItems[0]);
+
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/settings']);
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(connectSpy).not.toHaveBeenCalled();
+    },
+  );
 
   it('should disconnect a native connection left alive when ScanPage is created',
     async () => {
@@ -423,6 +480,46 @@ describe('ScanPage', () => {
     ]);
     await component.stopScan();
   });
+
+  it('should render scanned devices with Phase 1 compact visual data',
+    async () => {
+      await component.startScan();
+
+      bleService.emit(createScanResult('device-1', -42, 'Salon#SAL'));
+      fixture.detectChanges();
+
+      const item = fixture.nativeElement.querySelector(
+        '.device-list ion-item',
+      ) as HTMLElement | null;
+      const signal = fixture.nativeElement.querySelector(
+        '.scan-rssi-image',
+      ) as HTMLImageElement | null;
+
+      expect(item?.textContent).toContain('Nom : Salon');
+      expect(item?.textContent).toContain('device-1');
+      expect(item?.textContent).toContain('Pièce : #SAL');
+      expect(item?.querySelector('.ai-loc-sal')).not.toBeNull();
+      expect(signal?.getAttribute('src')).toBe(
+        'assets/img/img_ble_strenght_4_4.svg',
+      );
+
+      await component.stopScan();
+    },
+  );
+
+  it('should hide BLE identifiers when the scan preference disables them',
+    async () => {
+      storeShowBleIdentifier(false);
+      await component.startScan();
+
+      bleService.emit(createScanResult('device-1', -42, 'Salon#SAL'));
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).not.toContain('device-1');
+
+      await component.stopScan();
+    },
+  );
 
   it('should deduplicate devices by deviceId', async () => {
     await component.startScan();
@@ -1013,7 +1110,7 @@ describe('ScanPage', () => {
     ) as HTMLIonButtonElement[];
 
     const scanButton = buttons.find((button) =>
-      button.textContent?.includes('Lancer le scan'),
+      button.textContent?.includes('Rechercher'),
     );
     const connectButton = buttons.find((button) =>
       button.textContent?.includes('Connecter'),

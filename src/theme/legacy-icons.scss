@@ -1,0 +1,55 @@
+@font-face {
+  font-family: 'icomoon';
+  src: url('../assets/fonts/icomoon.eot?jr3y2p');
+  src:
+    url('../assets/fonts/icomoon.eot?jr3y2p#iefix') format('embedded-opentype'),
+    url('../assets/fonts/icomoon.ttf?jr3y2p') format('truetype'),
+    url('../assets/fonts/icomoon.woff?jr3y2p') format('woff'),
+    url('../assets/fonts/icomoon.svg?jr3y2p#icomoon') format('svg');
+  font-style: normal;
+  font-weight: normal;
+}
+
+@mixin make-legacy-icon($name, $value) {
+  .ai-#{$name}::before {
+    content: $value;
+  }
+}
+
+[class^='ai-'],
+[class*=' ai-'] {
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-family: 'icomoon' !important;
+  font-style: normal;
+  font-variant: normal;
+  font-weight: normal;
+  line-height: 1;
+  speak: never;
+  text-transform: none;
+}
+
+@include make-legacy-icon(param, '\e911');
+@include make-legacy-icon(loc-autre, '\e900');
+@include make-legacy-icon(loc-cha, '\e902');
+@include make-legacy-icon(loc-cui, '\e903');
+@include make-legacy-icon(loc-garage, '\e904');
+@include make-legacy-icon(loc-sam, '\e905');
+@include make-legacy-icon(loc-sdb, '\e906');
+@include make-legacy-icon(loc-sdj, '\e907');
+@include make-legacy-icon(loc-sal, '\e908');
+@include make-legacy-icon(loc-wcs, '\e909');
+
+[class*='moventiv-'] {
+  background: currentColor;
+  display: inline-block;
+  height: 1em;
+  mask-position: 50% 50%;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  width: 1em;
+}
+
+.moventiv-room_other {
+  mask-image: url('../assets/img/icon_room_other.svg');
+}

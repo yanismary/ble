@@ -1,65 +1,65 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>Scan BLE</ion-title>
-    <ion-button
-      slot="end"
-      fill="clear"
-      type="button"
-      aria-label="Ouvrir le guide de démarrage"
-      (click)="openTutorial()"
-    >
-      Guide
-    </ion-button>
-    <ion-button
-      slot="end"
-      fill="clear"
-      type="button"
-      aria-label="Ouvrir l’aide"
-      (click)="openHelp()"
-    >
-      Aide
-    </ion-button>
-    <ion-button
-      slot="end"
-      fill="clear"
-      type="button"
-      aria-label="Ouvrir la configuration de l’application"
-      (click)="openSettings()"
-    >
-      Réglages
-    </ion-button>
+<ion-header>
+  <ion-toolbar class="mantion-navbar scan-navbar">
+    <ion-title>Sélection</ion-title>
+    <ion-buttons slot="end">
+      <ion-button
+        fill="clear"
+        type="button"
+        aria-label="Ouvrir le menu principal"
+        (click)="openMainMenu()"
+      >
+        <span class="ai-param scan-menu-icon" aria-hidden="true"></span>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <ion-toolbar class="mantion-navbar scan-search-toolbar">
+    <div class="scan-search-row">
+      <div class="scan-search-cell"></div>
+      <ion-button
+        class="scan-search-button"
+        color="light"
+        type="button"
+        (click)="startScan()"
+        [disabled]="!canStartScan"
+      >
+        <ion-icon name="search" aria-hidden="true"></ion-icon>
+        <span>Rechercher</span>
+      </ion-button>
+      <div class="scan-spinner-cell">
+        @if (scanning) {
+          <ion-spinner
+            class="scan-header-spinner"
+            color="light"
+            name="crescent"
+          ></ion-spinner>
+        }
+      </div>
+    </div>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true" class="ion-padding">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Scan BLE</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-popover
+  class="scan-main-popover"
+  [isOpen]="mainMenuOpen"
+  [dismissOnSelect]="true"
+  (didDismiss)="closeMainMenu()"
+>
+  <ng-template>
+    <ion-list class="scan-main-menu-list">
+      @for (item of mainMenuItems; track item.label) {
+        <ion-item button detail="false" (click)="openMainMenuRoute(item)">
+          <ion-label>{{ item.label }}</ion-label>
+        </ion-item>
+      }
+    </ion-list>
+  </ng-template>
+</ion-popover>
 
-  <div class="scan-actions">
-    <ion-button
-      expand="block"
-      (click)="startScan()"
-      [disabled]="!canStartScan"
-    >
-      Lancer le scan
-    </ion-button>
-    <ion-button
-      expand="block"
-      color="medium"
-      fill="outline"
-      (click)="stopScan()"
-      [disabled]="!scanning || connecting"
-    >
-      Arrêter le scan
-    </ion-button>
-  </div>
+<ion-content [fullscreen]="true" class="scan-content mantion-page-background">
 
   @if (scanning) {
     <div class="scan-status" role="status">
-      <ion-spinner name="crescent"></ion-spinner>
       <span>Recherche d’appareils BLE…</span>
     </div>
   }
@@ -80,6 +80,52 @@
       }
       <span>{{ scanBleError.actionLabel }}</span>
     </ion-button>
+  }
+
+  @if (devices.length > 0) {
+    <ion-list class="device-list">
+      @for (device of devices; track device.deviceId) {
+        <ion-item
+          button
+          detail="false"
+          (click)="selectDevice(device)"
+          [disabled]="connecting"
+          [class.selected-device]="selectedDeviceId === device.deviceId"
+        >
+          <div class="scan-room-icon" slot="start" aria-hidden="true">
+            @if (getScanRoomIconClass(device); as roomIconClass) {
+              <span [class]="roomIconClass"></span>
+            } @else {
+              <span class="moventiv-room_other"></span>
+            }
+          </div>
+          <ion-label>
+            <h2>
+              <strong>Nom :</strong>
+              {{ getScanDisplayName(device) }}
+            </h2>
+            @if (showBleIdentifier) {
+              <p><strong>Adresse MAC :</strong> {{ device.deviceId }}</p>
+            }
+            @if (getScanRoomSuffix(device); as roomSuffix) {
+              <p><strong>Pièce :</strong> {{ roomSuffix }}</p>
+            }
+            <p class="scan-rssi-line">
+              Qualité du signal
+              <img
+                [src]="getSignalQualityAsset(device)"
+                class="scan-rssi-image"
+                alt=""
+              />
+            </p>
+          </ion-label>
+        </ion-item>
+      }
+    </ion-list>
+  } @else if (hasScanned && !scanning && !errorMessage) {
+    <p class="empty-message">Aucun appareil détecté.</p>
+  } @else if (!hasScanned && !scanning && !errorMessage) {
+    <p class="empty-message">Aucun appareil détecté.</p>
   }
 
   @if (selectedDevice; as device) {
@@ -123,7 +169,23 @@
       }
 
       @if (connectedDeviceId === device.deviceId) {
-        <section class="services-panel" aria-live="polite">
+        @if (canOpenProductPage) {
+          <ion-button
+            expand="block"
+            fill="outline"
+            (click)="openProductPage()"
+            [disabled]="!canOpenProductPage"
+          >
+            {{ productPageText.openProductPage }}
+          </ion-button>
+        }
+
+        <details
+          class="scan-technical-details"
+          [open]="discoveringServices || readingIdentification || discoveryError"
+        >
+          <summary>Informations techniques</summary>
+          <section class="services-panel" aria-live="polite">
           <h2>Services BLE</h2>
 
           @if (discoveringServices) {
@@ -767,39 +829,21 @@
               <p>Aucun service BLE exposé.</p>
             }
           }
-        </section>
+          </section>
+        </details>
       }
     </section>
   }
 
-  @if (devices.length > 0) {
-    <ion-list class="device-list">
-      @for (device of devices; track device.deviceId) {
-        <ion-item
-          button
-          detail="false"
-          (click)="selectDevice(device)"
-          [disabled]="connecting"
-          [class.selected-device]="selectedDeviceId === device.deviceId"
-        >
-          <ion-label>
-            <h2>{{ device.name }}</h2>
-            @if (showBleIdentifier) {
-              <p>{{ device.deviceId }}</p>
-            }
-            <p>
-              RSSI :
-              @if (device.rssi !== null) {
-                {{ device.rssi }} dBm
-              } @else {
-                Indisponible
-              }
-            </p>
-          </ion-label>
-        </ion-item>
-      }
-    </ion-list>
-  } @else if (hasScanned && !scanning && !errorMessage) {
-    <p class="empty-message">Aucun appareil détecté.</p>
-  }
+  <ion-fab class="scan-footer-fab scan-info-fab" slot="fixed" vertical="bottom" horizontal="end">
+    <ion-fab-button color="mantion-green" type="button" (click)="openTutorial()">
+      Info
+    </ion-fab-button>
+  </ion-fab>
+
+  <ion-fab class="scan-footer-fab scan-demo-fab" slot="fixed" vertical="bottom" horizontal="start">
+    <ion-fab-button color="mantion-blue" type="button" disabled>
+      Demo
+    </ion-fab-button>
+  </ion-fab>
 </ion-content>
