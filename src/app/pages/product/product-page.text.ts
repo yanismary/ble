@@ -304,6 +304,11 @@ export const PRODUCT_PAGE_TEXT = {
     maintenance: 'Maintenance',
     motorState: 'État moteur',
   },
+  shell: {
+    controlledDoor: 'Porte contrôlée',
+    basic: 'Basique',
+    advanced: 'Avancé',
+  },
   states: {
     available: 'Disponible',
     unavailable: 'Non disponible',

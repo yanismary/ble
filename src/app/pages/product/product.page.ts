@@ -9,10 +9,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   AlertController,
   IonButton,
+  IonButtons,
   IonContent,
   IonHeader,
   IonInput,
   IonRange,
+  IonSegment,
+  IonSegmentButton,
   IonSelect,
   IonSelectOption,
   IonSpinner,
@@ -187,6 +190,9 @@ import {
 } from './product-draft-step';
 import { ProductControlLockRegistry } from './product-control-lock';
 
+type ProductShellMainTab = 'commands' | 'settings' | 'information';
+type ProductShellSettingsTab = 'basic' | 'advanced';
+
 @Component({
   selector: 'app-product',
   templateUrl: './product.page.html',
@@ -194,10 +200,13 @@ import { ProductControlLockRegistry } from './product-control-lock';
   standalone: true,
   imports: [
     IonButton,
+    IonButtons,
     IonContent,
     IonHeader,
     IonInput,
     IonRange,
+    IonSegment,
+    IonSegmentButton,
     IonSelect,
     IonSelectOption,
     IonSpinner,
@@ -370,6 +379,8 @@ export class ProductPage implements OnDestroy {
   private commandHistoryEntries: readonly ProductCommandHistoryEntry[] = [];
   returningToScan = false;
   returnToScanErrorMessage: string | null = null;
+  activeMainTab: ProductShellMainTab = 'commands';
+  activeSettingsTab: ProductShellSettingsTab = 'basic';
   readonly compareWeightRangeOptions = (
     first: ProductWeightRange | null,
     second: ProductWeightRange | null,
@@ -528,6 +539,47 @@ export class ProductPage implements OnDestroy {
 
   get showProductInformationSection(): boolean {
     return readShowProductInformation();
+  }
+
+  get showCommandsTab(): boolean {
+    return this.hasProductNavigationContext;
+  }
+
+  get showSettingsTab(): boolean {
+    return this.pageContextCurrent && this.showProductSettingsSection;
+  }
+
+  get showInformationTab(): boolean {
+    return this.pageContextCurrent && this.showProductInformationSection;
+  }
+
+  get controlledDoorName(): string {
+    return this.viewModel.displayedName ||
+      this.viewModel.productName ||
+      this.config.productName ||
+      this.text.noValue;
+  }
+
+  setActiveMainTab(tab: ProductShellMainTab): void {
+    if (
+      (tab === 'commands' && !this.showCommandsTab) ||
+      (tab === 'settings' && !this.showSettingsTab) ||
+      (tab === 'information' && !this.showInformationTab)
+    ) {
+      return;
+    }
+    const previousTab = this.activeMainTab;
+    this.activeMainTab = tab;
+    if (tab === 'settings' && previousTab !== 'settings') {
+      this.activeSettingsTab = 'basic';
+    }
+  }
+
+  setActiveSettingsTab(tab: ProductShellSettingsTab): void {
+    if (this.activeMainTab !== 'settings' || !this.showSettingsTab) {
+      return;
+    }
+    this.activeSettingsTab = tab;
   }
 
   get canRefresh(): boolean {

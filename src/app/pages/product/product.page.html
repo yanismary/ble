@@ -1,109 +1,83 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
+<ion-header>
+  <ion-toolbar class="mantion-navbar product-navbar">
     <ion-title>{{ config.productName }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button
+        type="button"
+        fill="clear"
+        class="product-navbar-button"
+        [disabled]="!showSettingsTab"
+        [attr.aria-label]="text.sections.settings"
+        (click)="setActiveMainTab('settings')"
+      >
+        <span class="ai-param product-navbar-icon" aria-hidden="true"></span>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
+
+  <div class="product-command-header">
+    <ion-segment
+      class="product-main-segment"
+      mode="md"
+      [value]="activeMainTab"
+    >
+      @if (showCommandsTab) {
+        <ion-segment-button
+          value="commands"
+          (click)="setActiveMainTab('commands')"
+        >
+          <span>{{ text.sections.commands }}</span>
+        </ion-segment-button>
+      }
+      @if (showSettingsTab) {
+        <ion-segment-button
+          value="settings"
+          (click)="setActiveMainTab('settings')"
+        >
+          <span>{{ text.sections.settings }}</span>
+        </ion-segment-button>
+      }
+      @if (showInformationTab) {
+        <ion-segment-button
+          value="information"
+          (click)="setActiveMainTab('information')"
+        >
+          <span>{{ text.sections.information }}</span>
+        </ion-segment-button>
+      }
+    </ion-segment>
+
+    @if (activeMainTab === 'settings' && showSettingsTab) {
+      <ion-segment
+        class="product-sub-segment"
+        mode="md"
+        [value]="activeSettingsTab"
+      >
+        <ion-segment-button
+          value="basic"
+          (click)="setActiveSettingsTab('basic')"
+        >
+          <span>{{ text.shell.basic }}</span>
+        </ion-segment-button>
+        <ion-segment-button
+          value="advanced"
+          (click)="setActiveSettingsTab('advanced')"
+        >
+          <span>{{ text.shell.advanced }}</span>
+        </ion-segment-button>
+      </ion-segment>
+    }
+  </div>
+
+  <div class="product-controlled-door" role="status">
+    <strong>{{ text.shell.controlledDoor }}</strong>
+    <span>{{ controlledDoorName }}</span>
+  </div>
 </ion-header>
 
-<ion-content [fullscreen]="true" class="ion-padding">
+<ion-content [fullscreen]="true">
   <main class="product-page-layout">
-    <section class="product-section product-identity" aria-labelledby="identity-title">
-      <h1 id="identity-title">{{ text.sections.identity }}</h1>
-      <dl class="product-readonly-grid">
-        <dt>{{ text.productName }}</dt>
-        <dd>{{ viewModel.productName }}</dd>
-        <dt>{{ text.displayedName }}</dt>
-        <dd>{{ viewModel.displayedName || text.noValue }}</dd>
-        <dt>{{ text.room }}</dt>
-        <dd>{{ viewModel.roomSuffix ?? text.noRoom }}</dd>
-        <dt>{{ text.profile }}</dt>
-        <dd>{{ viewModel.profile }}</dd>
-        <dt>{{ text.deviceId }}</dt>
-        <dd class="long-value">{{ viewModel.deviceId || text.noValue }}</dd>
-        <dt>{{ text.connection }}</dt>
-        <dd>{{ connectionStateLabel(displayedConnectionState) }}</dd>
-        <dt>{{ text.lastRefresh }}</dt>
-        <dd>{{ formatTimestamp(viewModel.lastUpdatedAt) }}</dd>
-      </dl>
-
-      @if (showNameRoomControls) {
-        <div class="name-room-controls">
-          <div class="user-speed-control-header">
-            <h2>{{ text.nameRoomControls.title }}</h2>
-            <ion-button
-              type="button"
-              size="small"
-              fill="clear"
-              [attr.aria-label]="nameRoomControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-              (click)="toggleNameRoomControlLock()"
-            >
-              {{ nameRoomControlUnlocked ? '🔓' : '🔒' }}
-            </ion-button>
-          </div>
-          <div class="name-room-grid">
-            <ion-input
-              class="name-room-name-input"
-              [label]="text.nameRoomControls.nameLabel"
-              label-placement="stacked"
-              [maxlength]="15"
-              [value]="nameRoomDraftValue().name"
-              [disabled]="!nameRoomControlUnlocked || nameRoomWriteState.status === 'executing'"
-              (ionInput)="setNameRoomDraftName($event)"
-            ></ion-input>
-            <ion-select
-              class="name-room-select"
-              [label]="text.nameRoomControls.roomLabel"
-              label-placement="stacked"
-              interface="popover"
-              [value]="nameRoomDraftValue().roomSuffix"
-              [disabled]="!nameRoomControlUnlocked || nameRoomWriteState.status === 'executing'"
-              (ionChange)="setNameRoomDraftRoom($event)"
-            >
-              @for (room of roomOptions; track room.suffix) {
-                <ion-select-option [value]="room.suffix">
-                  {{ text.nameRoomControls.rooms[room.textKey] }}
-                </ion-select-option>
-              }
-            </ion-select>
-          </div>
-          <div class="product-actions">
-            <span>
-              {{ text.nameRoomControls.current }}
-              {{ currentNameRoomDisplay() }}
-            </span>
-            <span>
-              {{ text.nameRoomControls.draft }}
-              {{ nameRoomDraftDisplay() }}
-            </span>
-            <ion-button
-              type="button"
-              size="small"
-              (click)="requestNameRoomChange()"
-              [disabled]="!nameRoomControlUnlocked || !canApplyNameRoom()"
-            >
-              {{ text.nameRoomControls.apply }}
-            </ion-button>
-          </div>
-          @if (nameRoomValidationMessage()) {
-            <p class="command-state" role="alert" data-tone="error">
-              <span>{{ nameRoomValidationMessage() }}</span>
-            </p>
-          }
-          @if (nameRoomWriteState.message) {
-            <p
-              class="command-state"
-              role="status"
-              aria-live="polite"
-              [attr.data-tone]="nameRoomWriteState.status === 'failed' ? 'error' : 'neutral'"
-            >
-              @if (nameRoomWriteState.status === 'executing') {
-                <ion-spinner name="crescent"></ion-spinner>
-              }
-              <span>{{ nameRoomWriteState.message }}</span>
-            </p>
-          }
-        </div>
-      }
-
+    <section class="product-shell-status" aria-labelledby="identity-title">
       @if (viewModel.loadStatus) {
         <p class="product-summary" aria-live="polite">
           {{ globalStatusLabel }}
@@ -147,10 +121,33 @@
           <span>{{ text.loading }}</span>
         </p>
       }
+      <details class="technical-details product-identity-details">
+        <summary id="identity-title">{{ text.sections.identity }}</summary>
+        <dl class="product-readonly-grid">
+          <dt>{{ text.productName }}</dt>
+          <dd>{{ viewModel.productName }}</dd>
+          <dt>{{ text.displayedName }}</dt>
+          <dd>{{ viewModel.displayedName || text.noValue }}</dd>
+          <dt>{{ text.room }}</dt>
+          <dd>{{ viewModel.roomSuffix ?? text.noRoom }}</dd>
+          <dt>{{ text.profile }}</dt>
+          <dd>{{ viewModel.profile }}</dd>
+          <dt>{{ text.deviceId }}</dt>
+          <dd class="long-value">{{ viewModel.deviceId || text.noValue }}</dd>
+          <dt>{{ text.connection }}</dt>
+          <dd>{{ connectionStateLabel(displayedConnectionState) }}</dd>
+          <dt>{{ text.lastRefresh }}</dt>
+          <dd>{{ formatTimestamp(viewModel.lastUpdatedAt) }}</dd>
+        </dl>
+      </details>
     </section>
 
     @if (hasProductNavigationContext) {
-      <section class="product-section" aria-labelledby="commands-title">
+      <section
+        class="product-section"
+        aria-labelledby="commands-title"
+        [hidden]="activeMainTab !== 'commands'"
+      >
         <h2 id="commands-title">{{ text.sections.commands }}</h2>
         @if (showProductMotorCommands) {
           <div class="product-actions widoor-command-grid motor-command-grid">
@@ -285,12 +282,95 @@
     }
 
     @if (pageContextCurrent && showProductSettingsSection) {
-      <section class="product-section" aria-labelledby="settings-title">
+      <section
+        class="product-section"
+        aria-labelledby="settings-title"
+        [hidden]="activeMainTab !== 'settings'"
+      >
         <h2 id="settings-title">{{ text.sections.settings }}</h2>
         <p>{{ text.readonlyNotice }}</p>
 
+      <div [hidden]="activeSettingsTab !== 'basic'">
       <article class="product-subsection">
         <h3>{{ text.sections.userSettings }}</h3>
+        @if (showNameRoomControls) {
+          <div class="name-room-controls">
+            <div class="user-speed-control-header">
+              <h4>{{ text.nameRoomControls.title }}</h4>
+              <ion-button
+                type="button"
+                size="small"
+                fill="clear"
+                [attr.aria-label]="nameRoomControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                (click)="toggleNameRoomControlLock()"
+              >
+                {{ nameRoomControlUnlocked ? '🔓' : '🔒' }}
+              </ion-button>
+            </div>
+            <div class="name-room-grid">
+              <ion-input
+                class="name-room-name-input"
+                [label]="text.nameRoomControls.nameLabel"
+                label-placement="stacked"
+                [maxlength]="15"
+                [value]="nameRoomDraftValue().name"
+                [disabled]="!nameRoomControlUnlocked || nameRoomWriteState.status === 'executing'"
+                (ionInput)="setNameRoomDraftName($event)"
+              ></ion-input>
+              <ion-select
+                class="name-room-select"
+                [label]="text.nameRoomControls.roomLabel"
+                label-placement="stacked"
+                interface="popover"
+                [value]="nameRoomDraftValue().roomSuffix"
+                [disabled]="!nameRoomControlUnlocked || nameRoomWriteState.status === 'executing'"
+                (ionChange)="setNameRoomDraftRoom($event)"
+              >
+                @for (room of roomOptions; track room.suffix) {
+                  <ion-select-option [value]="room.suffix">
+                    {{ text.nameRoomControls.rooms[room.textKey] }}
+                  </ion-select-option>
+                }
+              </ion-select>
+            </div>
+            <div class="product-actions">
+              <span>
+                {{ text.nameRoomControls.current }}
+                {{ currentNameRoomDisplay() }}
+              </span>
+              <span>
+                {{ text.nameRoomControls.draft }}
+                {{ nameRoomDraftDisplay() }}
+              </span>
+              <ion-button
+                type="button"
+                size="small"
+                (click)="requestNameRoomChange()"
+                [disabled]="!nameRoomControlUnlocked || !canApplyNameRoom()"
+              >
+                {{ text.nameRoomControls.apply }}
+              </ion-button>
+            </div>
+            @if (nameRoomValidationMessage()) {
+              <p class="command-state" role="alert" data-tone="error">
+                <span>{{ nameRoomValidationMessage() }}</span>
+              </p>
+            }
+            @if (nameRoomWriteState.message) {
+              <p
+                class="command-state"
+                role="status"
+                aria-live="polite"
+                [attr.data-tone]="nameRoomWriteState.status === 'failed' ? 'error' : 'neutral'"
+              >
+                @if (nameRoomWriteState.status === 'executing') {
+                  <ion-spinner name="crescent"></ion-spinner>
+                }
+                <span>{{ nameRoomWriteState.message }}</span>
+              </p>
+            }
+          </div>
+        }
         <ng-container
           [ngTemplateOutlet]="readStatus"
           [ngTemplateOutletContext]="{ $implicit: viewModel.reads.userParameters }"
@@ -520,7 +600,9 @@
           }
         }
       </article>
+      </div>
 
+      <div [hidden]="activeSettingsTab !== 'advanced'">
       <article class="product-subsection">
         <h3>{{ text.sections.professionalSettings }}</h3>
         <ng-container
@@ -817,11 +899,16 @@
           }
         </article>
       }
+      </div>
       </section>
     }
 
     @if (pageContextCurrent && showProductInformationSection) {
-      <section class="product-section" aria-labelledby="information-title">
+      <section
+        class="product-section"
+        aria-labelledby="information-title"
+        [hidden]="activeMainTab !== 'information'"
+      >
         <h2 id="information-title">{{ text.sections.information }}</h2>
 
       <article class="product-subsection">
@@ -919,7 +1006,7 @@
       </article>
 
       @if (hasTechnicalDetails) {
-        <details class="technical-details">
+        <details class="technical-details product-technical-details">
           <summary>{{ text.technicalDetails }}</summary>
           <ng-container
             [ngTemplateOutlet]="technicalRead"

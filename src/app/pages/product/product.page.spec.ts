@@ -288,6 +288,56 @@ describe('ProductPage', () => {
     },
   );
 
+  it('should show the Phase 1 product shell with commands selected by default',
+    () => {
+      const element = fixture.nativeElement as HTMLElement;
+      const commandsSection = element.querySelector<HTMLElement>(
+        '[aria-labelledby="commands-title"]',
+      );
+      const settingsSection = element.querySelector<HTMLElement>(
+        '[aria-labelledby="settings-title"]',
+      );
+      const informationSection = element.querySelector<HTMLElement>(
+        '[aria-labelledby="information-title"]',
+      );
+
+      expect(component.activeMainTab).toBe('commands');
+      expect(component.activeSettingsTab).toBe('basic');
+      expect(element.textContent).toContain(component.text.shell.controlledDoor);
+      expect(commandsSection?.hidden).toBeFalse();
+      expect(settingsSection?.hidden).toBeTrue();
+      expect(informationSection?.hidden).toBeTrue();
+    },
+  );
+
+  it('should navigate the product shell without BLE writes', () => {
+    component.setActiveMainTab('settings');
+    fixture.detectChanges();
+
+    let element = fixture.nativeElement as HTMLElement;
+    expect(component.activeMainTab).toBe('settings');
+    expect(component.activeSettingsTab).toBe('basic');
+    expect(element.querySelector<HTMLElement>(
+      '[aria-labelledby="commands-title"]',
+    )?.hidden).toBeTrue();
+    expect(element.querySelector<HTMLElement>(
+      '[aria-labelledby="settings-title"]',
+    )?.hidden).toBeFalse();
+
+    component.setActiveSettingsTab('advanced');
+    fixture.detectChanges();
+    expect(component.activeSettingsTab).toBe('advanced');
+
+    component.setActiveMainTab('information');
+    fixture.detectChanges();
+    element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector<HTMLElement>(
+      '[aria-labelledby="information-title"]',
+    )?.hidden).toBeFalse();
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+  });
+
   it('should expose name and room editing from the navigation display name',
     () => {
       const element = fixture.nativeElement as HTMLElement;
@@ -2066,7 +2116,7 @@ describe('ProductPage', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
       const details = element.querySelector<HTMLDetailsElement>(
-        'details.technical-details:not(.command-history)',
+        'details.product-technical-details',
       );
 
       expect(details).not.toBeNull();
@@ -2093,7 +2143,7 @@ describe('ProductPage', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
       const details = element.querySelector<HTMLDetailsElement>(
-        'details.technical-details:not(.command-history)',
+        'details.product-technical-details',
       );
 
       expect(details).not.toBeNull();

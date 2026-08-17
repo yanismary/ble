@@ -1,160 +1,122 @@
+.product-navbar {
+  --background: var(--mantion-blue);
+  --color: #fff;
+  min-height: 56px;
+}
+
+.product-navbar ion-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.product-navbar-button {
+  --color: #fff;
+  height: 44px;
+  margin-right: 4px;
+}
+
+.product-navbar-icon {
+  font-size: 1.65rem;
+}
+
+.product-command-header {
+  background: var(--mantion-blue);
+  padding: 12px 10px 8px;
+}
+
+:is(.product-main-segment, .product-sub-segment) {
+  --background: transparent;
+}
+
+:is(.product-main-segment, .product-sub-segment) ion-segment-button {
+  --background: transparent;
+  --background-checked: transparent;
+  --indicator-color: transparent;
+  border-bottom: 4px solid transparent;
+  border-radius: 0;
+  min-height: 0;
+  text-transform: uppercase;
+}
+
+.product-main-segment ion-segment-button {
+  --color: rgba(255, 255, 255, 0.72);
+  --color-checked: #fff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  height: 64px;
+  padding: 0 6px 10px;
+}
+
+.product-main-segment ion-segment-button.segment-button-checked {
+  border-bottom-color: #fff;
+}
+
+.product-sub-segment {
+  margin-top: 8px;
+}
+
+.product-sub-segment ion-segment-button {
+  --color: var(--mantion-green);
+  --color-checked: var(--mantion-green);
+  font-size: 0.95rem;
+  font-weight: 700;
+  height: 48px;
+}
+
+.product-sub-segment ion-segment-button.segment-button-checked {
+  border-bottom-color: var(--mantion-green);
+}
+
+.product-controlled-door {
+  align-items: center;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  display: flex;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 24px;
+}
+
+.product-controlled-door span {
+  color: var(--mantion-grey);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .product-page-layout {
-  display: grid;
-  gap: 1rem;
   margin: 0 auto;
   max-width: 56rem;
+  padding: 12px 12px 24px;
 }
 
-.product-section {
-  background: rgba(var(--ion-color-primary-rgb), 0.07);
-  border: 1px solid var(--ion-color-light-shade);
-  border-radius: 0.75rem;
-  padding: 1rem;
+.product-shell-status {
+  margin-bottom: 12px;
 }
 
-.product-section :is(h1, h2, h3) {
-  margin-top: 0;
-}
-
-.product-subsection {
-  border-top: 1px solid var(--ion-color-light-shade);
-  margin-top: 1rem;
-  padding-top: 1rem;
-}
-
-.product-readonly-grid {
-  display: grid;
-  gap: 0.35rem 0.75rem;
-  grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
-}
-
-.product-readonly-grid dt {
-  font-weight: 600;
-}
-
-.product-readonly-grid dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.product-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.product-loading,
-.command-state {
-  align-items: center;
-  display: flex;
-  gap: 0.5rem;
-}
-
-.command-warning,
-.command-state,
-.read-state-detail {
-  color: var(--ion-color-medium-shade);
-}
-
-.command-warning {
-  margin-bottom: 0;
-}
-
-.widoor-command-item {
-  flex: 1 1 14rem;
-  min-width: 0;
-}
-
-.widoor-command-item-timed {
-  flex-basis: 100%;
-}
-
-.widoor-command {
-  width: 100%;
-  white-space: normal;
-}
-
-.command-state {
-  font-weight: 600;
-}
-
-.command-state[data-tone='success'],
-.read-state[data-tone='success'] {
-  color: var(--ion-color-success);
-}
-
-.command-state[data-tone='warning'],
-.read-state[data-tone='warning'] {
-  color: var(--ion-color-warning-shade);
-}
-
-.command-state[data-tone='error'],
-.read-state[data-tone='error'] {
-  color: var(--ion-color-danger);
-}
-
-.read-state {
-  color: var(--ion-color-medium-shade);
-  font-weight: 600;
-}
-
-.read-state-detail {
-  margin-top: -0.35rem;
-}
-
-.product-summary {
-  font-weight: 600;
-}
-
-code,
-.long-value {
-  overflow-wrap: anywhere;
-}
-
+.product-subsection,
 .technical-details {
   border-top: 1px solid var(--ion-color-light-shade);
   margin-top: 1rem;
   padding-top: 1rem;
 }
 
-.technical-details summary {
-  cursor: pointer;
+:is(.command-state, .read-state, .product-summary, .technical-details summary) {
   font-weight: 600;
 }
 
-.technical-details summary:focus-visible {
-  outline: 2px solid var(--ion-color-primary);
-  outline-offset: 0.25rem;
+:is(code, .long-value) {
+  overflow-wrap: anywhere;
 }
 
-.technical-read {
-  margin-top: 1rem;
-}
-
-.technical-read h4 {
-  margin-bottom: 0.5rem;
-}
-
-@media (max-width: 480px) {
-  .product-readonly-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .product-readonly-grid dd {
-    margin-bottom: 0.45rem;
-  }
-}
-
-.precision-stepper {
-  display: flex;
+:is(.product-actions, .product-loading, .command-state) {
   align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  margin: 0.35rem 0 0.65rem;
+  display: flex;
+  gap: 0.5rem;
 }
 
-.precision-stepper strong {
-  min-width: 4.5rem;
-  text-align: center;
+.product-actions {
+  flex-wrap: wrap;
+  margin-top: 1rem;
 }
