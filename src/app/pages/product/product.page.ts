@@ -1242,6 +1242,14 @@ export class ProductPage implements OnDestroy {
     );
   }
 
+  get nameRoomControlUnlocked(): boolean {
+    return this.controlLocks.isUnlocked('name-room');
+  }
+
+  toggleNameRoomControlLock(): void {
+    this.controlLocks.toggle('name-room');
+  }
+
   setNameRoomDraftName(
     eventOrValue: CustomEvent<{ readonly value?: string | null }> | string,
   ): void {
@@ -2394,6 +2402,14 @@ export class ProductPage implements OnDestroy {
       field: config.field,
       message: this.text.userPeripheralControls.failed,
     });
+  }
+
+  get weightRangeControlUnlocked(): boolean {
+    return this.controlLocks.isUnlocked('weight-range');
+  }
+
+  toggleWeightRangeControlLock(): void {
+    this.controlLocks.toggle('weight-range');
   }
 
   async requestWeightRangeChange(): Promise<void> {

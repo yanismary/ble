@@ -27,7 +27,18 @@
 
       @if (showNameRoomControls) {
         <div class="name-room-controls">
-          <h2>{{ text.nameRoomControls.title }}</h2>
+          <div class="user-speed-control-header">
+            <h2>{{ text.nameRoomControls.title }}</h2>
+            <ion-button
+              type="button"
+              size="small"
+              fill="clear"
+              [attr.aria-label]="nameRoomControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+              (click)="toggleNameRoomControlLock()"
+            >
+              {{ nameRoomControlUnlocked ? '🔓' : '🔒' }}
+            </ion-button>
+          </div>
           <div class="name-room-grid">
             <ion-input
               class="name-room-name-input"
@@ -35,7 +46,7 @@
               label-placement="stacked"
               [maxlength]="15"
               [value]="nameRoomDraftValue().name"
-              [disabled]="nameRoomWriteState.status === 'executing'"
+              [disabled]="!nameRoomControlUnlocked || nameRoomWriteState.status === 'executing'"
               (ionInput)="setNameRoomDraftName($event)"
             ></ion-input>
             <ion-select
@@ -44,7 +55,7 @@
               label-placement="stacked"
               interface="popover"
               [value]="nameRoomDraftValue().roomSuffix"
-              [disabled]="nameRoomWriteState.status === 'executing'"
+              [disabled]="!nameRoomControlUnlocked || nameRoomWriteState.status === 'executing'"
               (ionChange)="setNameRoomDraftRoom($event)"
             >
               @for (room of roomOptions; track room.suffix) {
@@ -67,7 +78,7 @@
               type="button"
               size="small"
               (click)="requestNameRoomChange()"
-              [disabled]="!canApplyNameRoom()"
+              [disabled]="!nameRoomControlUnlocked || !canApplyNameRoom()"
             >
               {{ text.nameRoomControls.apply }}
             </ion-button>
@@ -585,6 +596,15 @@
                   {{ currentWeightRangeValue()?.lower }}–{{ currentWeightRangeValue()?.upper }}
                   kg
                 </span>
+                <ion-button
+                  type="button"
+                  size="small"
+                  fill="clear"
+                  [attr.aria-label]="weightRangeControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                  (click)="toggleWeightRangeControlLock()"
+                >
+                  {{ weightRangeControlUnlocked ? '🔓' : '🔒' }}
+                </ion-button>
               </div>
               <ion-select
                 class="weight-range-select"
@@ -592,6 +612,7 @@
                 interface="popover"
                 [compareWith]="compareWeightRangeOptions"
                 [value]="weightRangeDraftValue()"
+                [disabled]="!weightRangeControlUnlocked"
                 (ionChange)="setWeightRangeDraftValue($event)"
               >
                 @for (weightControl of weightRangeControls; track weightControl.config.label) {
@@ -610,7 +631,7 @@
                   type="button"
                   size="small"
                   (click)="requestWeightRangeChange()"
-                  [disabled]="!canApplyWeightRange()"
+                  [disabled]="!weightRangeControlUnlocked || !canApplyWeightRange()"
                 >
                   {{ text.weightRangeControls.apply }}
                 </ion-button>
