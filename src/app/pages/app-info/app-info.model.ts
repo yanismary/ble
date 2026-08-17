@@ -16,6 +16,49 @@ export interface AppInfoCopy {
   readonly legalNoticeLabel: string;
 }
 
+interface LegacyAppInfoCopy {
+  readonly ABOUT_PAGE: {
+    readonly NAVBAR_TITLE: string;
+    readonly CONTENT_TITLE: string;
+    readonly VERSION: string;
+    readonly LAST_MODIFICATION: string;
+    readonly PARAGRAPHE1: string;
+    readonly PARAGRAPHE2: string;
+    readonly PARAGRAPHE2_LIST: {
+      readonly ITEM1: string;
+      readonly ITEM2: string;
+      readonly ITEM3: string;
+    };
+    readonly PARAGRAPHE3: string;
+    readonly PARAGRAPHE4: string;
+  };
+  readonly CONTACT_PAGE: {
+    readonly NAVBAR_TITLE: string;
+    readonly SEND_A_MESSAGE: string;
+    readonly CONTACT_1: LegacyContactCopy;
+    readonly CONTACT_2: LegacyContactCopy;
+  };
+}
+
+interface LegacyContactCopy {
+  readonly PHONE: {
+    readonly USERSEE: string;
+    readonly SYSTEMCALL: string;
+  };
+  readonly ADDRESS: {
+    readonly NAME: string;
+    readonly STATE: string;
+    readonly STREET: string;
+    readonly CITY: string;
+  };
+  readonly SEND_MESSAGE: {
+    readonly TO: string;
+    readonly CC: string;
+    readonly SUBJECT: string;
+    readonly BODY: string;
+  };
+}
+
 const APP_INFO_NAV_LABELS = {
   "fr": {
     "who": "Qui sommes nous ?",
@@ -264,7 +307,9 @@ const LEGACY_APP_INFO = {
       }
     }
   }
-} as const;
+} as const satisfies Readonly<
+  Record<AppInfoLanguage, LegacyAppInfoCopy>
+>;
 
 export function normalizeAppInfoLanguage(
   value: string | null,
@@ -275,7 +320,7 @@ export function normalizeAppInfoLanguage(
 }
 
 export function appInfoCopyFor(language: AppInfoLanguage): AppInfoCopy {
-  const source = LEGACY_APP_INFO[language] as any;
+  const source: LegacyAppInfoCopy = LEGACY_APP_INFO[language];
   const about = source.ABOUT_PAGE;
   const contact = source.CONTACT_PAGE;
   const address = contact.CONTACT_2.ADDRESS;

@@ -27,6 +27,14 @@ describe('app info model', () => {
       expect(copy.aboutTitle).toBeTruthy();
       expect(copy.aboutContentTitle).toBeTruthy();
       expect(copy.versionLabel).toBeTruthy();
+      expect(copy.lastModification).toBeTruthy();
+      expect(copy.lastModificationText).toBeTruthy();
+      expect(copy.contactTitle).toBeTruthy();
+      expect(copy.sendMessage).toBeTruthy();
+      expect(copy.companyName).toBeTruthy();
+      expect(copy.phoneLabel).toBeTruthy();
+      expect(copy.phoneHref).toMatch(/^tel:\+\d+$/);
+      expect(copy.addressLines.length).toBeGreaterThan(0);
       expect(copy.companyInfoLabel).toBeTruthy();
       expect(copy.legalNoticeLabel).toBeTruthy();
     }
