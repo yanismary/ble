@@ -69,6 +69,26 @@
     </p>
   </section>
 
+  @if (isAndroid) {
+    <section class="settings-section">
+      <h1>Bluetooth Android</h1>
+      <ion-list>
+        <ion-item>
+          <ion-toggle
+            [checked]="autoEnableBluetooth"
+            (ionChange)="setAutoEnableBluetooth($event)"
+          >
+            Demander automatiquement l’activation du Bluetooth avant un scan
+          </ion-toggle>
+        </ion-item>
+      </ion-list>
+      <p>
+        Lorsque cette option est active et que le Bluetooth est coupé,
+        l’application demande son activation avant de lancer la recherche.
+      </p>
+    </section>
+  }
+
   <section class="settings-section">
     <h1>Affichage de la page produit</h1>
     <p>

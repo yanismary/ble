@@ -62,7 +62,10 @@ import {
 import { BleReadStatus } from '../../core/services/ble-read.service';
 import { SCAN_MOTOR_TEST_TEXT } from './scan-motor-test.text';
 import { SCAN_PRODUCT_READ_TEXT } from './scan-product-read.text';
-import { readShowBleIdentifier } from '../../core/services/app-preferences';
+import {
+  readAutoEnableBluetooth,
+  readShowBleIdentifier,
+} from '../../core/services/app-preferences';
 import {
   PRODUCT_PAGE_CONFIG,
 } from '../product/product-page.config';
@@ -1490,12 +1493,25 @@ export class ScanPage implements OnDestroy {
   }
 
   private async ensureBluetoothReadyForScan(): Promise<void> {
-    if (!(await this.bleService.isBluetoothEnabled())) {
-      throw new BleOperationError(
-        'bluetooth-disabled',
-        'Bluetooth is disabled.',
-      );
+    if (await this.bleService.isBluetoothEnabled()) {
+      return;
     }
+
+    if (
+      readAutoEnableBluetooth() &&
+      this.bleService.canRequestBluetoothEnable
+    ) {
+      await this.bleService.requestBluetoothEnable();
+
+      if (await this.bleService.isBluetoothEnabled()) {
+        return;
+      }
+    }
+
+    throw new BleOperationError(
+      'bluetooth-disabled',
+      'Bluetooth is disabled.',
+    );
   }
 
   private applyScanBleError(error: unknown): void {

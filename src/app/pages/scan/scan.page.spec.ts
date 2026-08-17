@@ -13,6 +13,9 @@ import {
   BleOperationError,
   BleService,
 } from '../../core/services/ble';
+import {
+  storeAutoEnableBluetooth,
+} from '../../core/services/app-preferences';
 import { BLE_UUIDS } from '../../core/services/product-detection';
 import { MotorCommandService } from '../../core/services/motor-command.service';
 import {
@@ -243,6 +246,7 @@ describe('ScanPage', () => {
   let routerNavigate: jasmine.Spy;
 
   beforeEach(async () => {
+    storeAutoEnableBluetooth(false);
     bleService = new FakeBleService();
     productDataLoadService = new FakeProductDataLoadService();
     routerNavigate = jasmine.createSpy('navigate').and.resolveTo(true);
@@ -492,6 +496,21 @@ describe('ScanPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Capteur indisponible');
     expect(component.scanning).toBeFalse();
   });
+
+  it('should automatically enable Bluetooth before scanning when the preference is active',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      storeAutoEnableBluetooth(true);
+      bleService.bluetoothEnabled = false;
+
+      await component.startScan();
+
+      expect(bleService.requestBluetoothEnable).toHaveBeenCalledTimes(1);
+      expect(startScanSpy).toHaveBeenCalledTimes(1);
+      expect(component.scanBleError).toBeNull();
+      expect(component.scanning).toBeTrue();
+    },
+  );
 
   it('should show an enable action without starting scan when Bluetooth is off',
     async () => {

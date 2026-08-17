@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 import { Haptics } from '@capacitor/haptics';
 import {
   IonBackButton,
@@ -16,10 +17,12 @@ import {
 } from '@ionic/angular/standalone';
 
 import {
+  readAutoEnableBluetooth,
   readHapticFeedback,
   readShowBleIdentifier,
   readShowProductInformation,
   readShowProductSettings,
+  storeAutoEnableBluetooth,
   storeHapticFeedback,
   storeShowBleIdentifier,
   storeShowProductInformation,
@@ -70,6 +73,8 @@ export class SettingsPage {
 
   language: AppLanguage = readStoredAppLanguage();
   mode: AppLanguageMode = readAppLanguageMode();
+  readonly isAndroid = Capacitor.getPlatform() === 'android';
+  autoEnableBluetooth = readAutoEnableBluetooth();
   showBleIdentifier = readShowBleIdentifier();
   hapticFeedback = readHapticFeedback();
   showProductSettings = readShowProductSettings();
@@ -98,6 +103,16 @@ export class SettingsPage {
 
   isSelected(language: AppLanguage): boolean {
     return this.language === language;
+  }
+
+  setAutoEnableBluetooth(
+    event: CustomEvent<{ checked: boolean }>,
+  ): void {
+    this.autoEnableBluetooth =
+      storeAutoEnableBluetooth(event.detail.checked);
+    this.statusMessage = this.autoEnableBluetooth
+      ? 'Activation automatique du Bluetooth activée pour les scans.'
+      : 'Activation automatique du Bluetooth désactivée.';
   }
 
   setShowBleIdentifier(event: CustomEvent<{ checked: boolean }>): void {

@@ -1,8 +1,10 @@
 import {
+  readAutoEnableBluetooth,
   readHapticFeedback,
   readShowBleIdentifier,
   readShowProductInformation,
   readShowProductSettings,
+  storeAutoEnableBluetooth,
   storeHapticFeedback,
   storeShowBleIdentifier,
   storeShowProductInformation,
@@ -22,6 +24,19 @@ class MemoryStorage {
 }
 
 describe('app preferences', () => {
+  it('keeps automatic Bluetooth enable active by default', () => {
+    expect(readAutoEnableBluetooth(new MemoryStorage())).toBeTrue();
+  });
+
+  it('stores the automatic Bluetooth enable preference', () => {
+    const storage = new MemoryStorage();
+
+    expect(storeAutoEnableBluetooth(false, storage)).toBeFalse();
+    expect(readAutoEnableBluetooth(storage)).toBeFalse();
+    expect(storeAutoEnableBluetooth(true, storage)).toBeTrue();
+    expect(readAutoEnableBluetooth(storage)).toBeTrue();
+  });
+
   it('keeps BLE identifiers visible by default', () => {
     expect(readShowBleIdentifier(new MemoryStorage())).toBeTrue();
   });

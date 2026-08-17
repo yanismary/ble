@@ -2,6 +2,7 @@ export const SHOW_BLE_IDENTIFIER_STORAGE_KEY = 'showBleIdentifier';
 export const HAPTIC_FEEDBACK_STORAGE_KEY = 'hapticFeedback';
 export const SHOW_PRODUCT_SETTINGS_STORAGE_KEY = 'showProductSettings';
 export const SHOW_PRODUCT_INFORMATION_STORAGE_KEY = 'showProductInformation';
+export const AUTO_ENABLE_BLUETOOTH_STORAGE_KEY = 'autoEnableBluetooth';
 
 export interface AppPreferencesStorage {
   getItem(key: string): string | null;
@@ -24,6 +25,27 @@ function writeBooleanPreference(
 ): boolean {
   storage.setItem(key, String(value));
   return value;
+}
+
+export function readAutoEnableBluetooth(
+  storage: Pick<AppPreferencesStorage, 'getItem'> = localStorage,
+): boolean {
+  return readBooleanPreference(
+    AUTO_ENABLE_BLUETOOTH_STORAGE_KEY,
+    true,
+    storage,
+  );
+}
+
+export function storeAutoEnableBluetooth(
+  value: boolean,
+  storage: Pick<AppPreferencesStorage, 'setItem'> = localStorage,
+): boolean {
+  return writeBooleanPreference(
+    AUTO_ENABLE_BLUETOOTH_STORAGE_KEY,
+    value,
+    storage,
+  );
 }
 
 export function readShowBleIdentifier(
