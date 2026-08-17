@@ -68,6 +68,9 @@ import {
   readShowProductSettings,
 } from '../../core/services/app-preferences';
 import {
+  triggerConfiguredHapticFeedback,
+} from '../../core/services/app-haptics';
+import {
   MotorStateFrame,
   ProductDetection,
 } from '../../core/services/product-detection';
@@ -2048,6 +2051,8 @@ export class ProductPage implements OnDestroy {
         config.operation === 'motor-learning') {
       return;
     }
+
+    void triggerConfiguredHapticFeedback();
     const operation: ProductMotorCommandOperation = config.operation;
     const write = this.productCommandWrites.get(config.command);
     if (write === undefined) {

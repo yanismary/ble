@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
-import { Haptics } from '@capacitor/haptics';
 import {
   IonBackButton,
   IonButton,
@@ -28,6 +27,9 @@ import {
   storeShowProductInformation,
   storeShowProductSettings,
 } from '../../core/services/app-preferences';
+import {
+  triggerConfiguredHapticFeedback,
+} from '../../core/services/app-haptics';
 import {
   APP_LANGUAGES,
   AppLanguage,
@@ -152,10 +154,6 @@ export class SettingsPage {
       return;
     }
 
-    try {
-      await Haptics.vibrate({ duration: 50 });
-    } catch {
-      // Preference remains valid when haptics are unavailable.
-    }
+    await triggerConfiguredHapticFeedback();
   }
 }
