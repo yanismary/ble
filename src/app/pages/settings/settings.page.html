@@ -1,138 +1,151 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
+<ion-header>
+  <ion-toolbar class="mantion-navbar settings-navbar">
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/scan"></ion-back-button>
+      <ion-back-button defaultHref="/scan" text=""></ion-back-button>
     </ion-buttons>
-    <ion-title>Configuration de l’application</ion-title>
+    <ion-title>{{ text.title }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true" class="ion-padding">
-  <section>
-    <h1>Langue</h1>
-    <p>
-      Choisissez une langue manuellement ou utilisez la langue du téléphone.
-      Les langues disponibles sont les mêmes que dans la Phase 1.
-    </p>
+<ion-content class="settings-page">
+  <ion-list class="settings-list" lines="full">
+    <ion-list-header class="mantion-list-header settings-list-header">
+      {{ text.sections.language }}
+    </ion-list-header>
 
-    <ion-button
-      expand="block"
-      fill="outline"
-      type="button"
-      (click)="usePhoneLanguage()"
-    >
-      Utiliser la langue du téléphone
-    </ion-button>
+    <ion-item class="settings-row" data-setting-row="automatic-language">
+      <ion-icon
+        class="settings-row-icon"
+        name="chatbubbles"
+        aria-hidden="true"
+      ></ion-icon>
+      <ion-label>{{ text.language.automatic }}</ion-label>
+      <ion-toggle
+        slot="end"
+        aria-label="automatic language"
+        [checked]="mode === 'automatic'"
+        (ionChange)="setAutomaticLanguage($event)"
+      ></ion-toggle>
+    </ion-item>
 
     @if (mode === 'automatic') {
-      <p class="language-mode" role="status">
-        Mode automatique actif — langue actuelle : {{ language.toUpperCase() }}
+      <p class="settings-inline-status" role="status">
+        {{ text.language.status(language.toUpperCase()) }}
       </p>
+    } @else {
+      <ion-item class="settings-row" data-setting-row="manual-language">
+        <ion-icon
+          class="settings-row-icon"
+          name="chatbubbles"
+          aria-hidden="true"
+        ></ion-icon>
+        <ion-label>{{ text.language.manual }}</ion-label>
+        <ion-select
+          slot="end"
+          interface="popover"
+          class="settings-select"
+          aria-label="manual language"
+          [cancelText]="text.selectCancel"
+          [okText]="text.selectOk"
+          [value]="language"
+          (ionChange)="selectLanguage($any($event.detail.value))"
+        >
+          @for (option of languageOptions; track option.code) {
+            <ion-select-option [value]="option.code">
+              {{ option.label }}
+            </ion-select-option>
+          }
+        </ion-select>
+      </ion-item>
     }
+  </ion-list>
 
-    <ion-list>
-      @for (option of languageOptions; track option.code) {
-        <ion-item>
-          <ion-label>
-            <strong>{{ option.label }}</strong>
-            <ion-note>{{ option.code.toUpperCase() }}</ion-note>
-          </ion-label>
-          <ion-button
-            slot="end"
-            type="button"
-            [fill]="isSelected(option.code) && mode === 'manual' ? 'solid' : 'outline'"
-            (click)="selectLanguage(option.code)"
-          >
-            {{ isSelected(option.code) && mode === 'manual' ? 'Sélectionnée' : 'Choisir' }}
-          </ion-button>
-        </ion-item>
-      }
-    </ion-list>
+  <ion-list class="settings-list" lines="full">
+    <ion-list-header class="mantion-list-header settings-list-header">
+      {{ text.sections.scan }}
+    </ion-list-header>
 
-  </section>
+    <ion-item class="settings-row" data-setting-row="ble-identifier">
+      <ion-icon
+        class="settings-row-icon"
+        name="list"
+        aria-hidden="true"
+      ></ion-icon>
+      <ion-label>{{ bleIdentifierLabel }}</ion-label>
+      <ion-toggle
+        slot="end"
+        aria-label="show BLE identifier"
+        [checked]="showBleIdentifier"
+        (ionChange)="setShowBleIdentifier($event)"
+      ></ion-toggle>
+    </ion-item>
+  </ion-list>
 
-  <section class="settings-section">
-    <h1>Affichage du scan</h1>
-    <ion-list>
-      <ion-item>
+  <ion-list class="settings-list" lines="full">
+    <ion-list-header class="mantion-list-header settings-list-header">
+      {{ text.sections.productTabs }}
+    </ion-list-header>
+
+    <ion-item class="settings-row" data-setting-row="product-settings">
+      <span class="settings-row-icon ai-change-name" aria-hidden="true"></span>
+      <ion-label>{{ text.productTabs.settings }}</ion-label>
+      <ion-toggle
+        slot="end"
+        aria-label="show product settings tab"
+        [checked]="showProductSettings"
+        (ionChange)="setShowProductSettings($event)"
+      ></ion-toggle>
+    </ion-item>
+
+    <ion-item class="settings-row" data-setting-row="product-information">
+      <ion-icon
+        class="settings-row-icon"
+        name="list"
+        aria-hidden="true"
+      ></ion-icon>
+      <ion-label>{{ text.productTabs.information }}</ion-label>
+      <ion-toggle
+        slot="end"
+        aria-label="show product information tab"
+        [checked]="showProductInformation"
+        (ionChange)="setShowProductInformation($event)"
+      ></ion-toggle>
+    </ion-item>
+  </ion-list>
+
+  <ion-list class="settings-list" lines="full">
+    <ion-list-header class="mantion-list-header settings-list-header">
+      {{ text.sections.other }}
+    </ion-list-header>
+
+    <ion-item class="settings-row" data-setting-row="haptics">
+      <span class="settings-row-icon ai-vibrate" aria-hidden="true"></span>
+      <ion-label>{{ text.other.haptics }}</ion-label>
+      <ion-toggle
+        slot="end"
+        aria-label="haptic feedback"
+        [checked]="hapticFeedback"
+        (ionChange)="setHapticFeedback($event)"
+      ></ion-toggle>
+    </ion-item>
+
+    @if (isAndroid) {
+      <ion-item class="settings-row" data-setting-row="auto-bluetooth">
+        <ion-icon
+          class="settings-row-icon"
+          name="bluetooth"
+          aria-hidden="true"
+        ></ion-icon>
+        <ion-label>{{ text.other.bluetooth }}</ion-label>
         <ion-toggle
-          [checked]="showBleIdentifier"
-          (ionChange)="setShowBleIdentifier($event)"
-        >
-          Afficher l’identifiant BLE
-        </ion-toggle>
+          slot="end"
+          aria-label="auto enable bluetooth"
+          [checked]="autoEnableBluetooth"
+          (ionChange)="setAutoEnableBluetooth($event)"
+        ></ion-toggle>
       </ion-item>
-    </ion-list>
-    <p>
-      Sur Android il correspond généralement à l’adresse du périphérique ;
-      sur iOS il peut être présenté sous forme d’identifiant UUID.
-    </p>
-  </section>
-
-  @if (isAndroid) {
-    <section class="settings-section">
-      <h1>Bluetooth Android</h1>
-      <ion-list>
-        <ion-item>
-          <ion-toggle
-            [checked]="autoEnableBluetooth"
-            (ionChange)="setAutoEnableBluetooth($event)"
-          >
-            Demander automatiquement l’activation du Bluetooth avant un scan
-          </ion-toggle>
-        </ion-item>
-      </ion-list>
-      <p>
-        Lorsque cette option est active et que le Bluetooth est coupé,
-        l’application demande son activation avant de lancer la recherche.
-      </p>
-    </section>
-  }
-
-  <section class="settings-section">
-    <h1>Affichage de la page produit</h1>
-    <p>
-      Ces options reprennent le principe des onglets Réglages et Informations
-      de la Phase 1. Les commandes et l’identité du produit restent toujours
-      accessibles.
-    </p>
-    <ion-list>
-      <ion-item>
-        <ion-toggle
-          [checked]="showProductSettings"
-          (ionChange)="setShowProductSettings($event)"
-        >
-          Afficher les réglages produit
-        </ion-toggle>
-      </ion-item>
-      <ion-item>
-        <ion-toggle
-          [checked]="showProductInformation"
-          (ionChange)="setShowProductInformation($event)"
-        >
-          Afficher les informations produit
-        </ion-toggle>
-      </ion-item>
-    </ion-list>
-  </section>
-
-  <section class="settings-section">
-    <h1>Retour haptique</h1>
-    <ion-list>
-      <ion-item>
-        <ion-toggle
-          [checked]="hapticFeedback"
-          (ionChange)="setHapticFeedback($event)"
-        >
-          Activer les vibrations
-        </ion-toggle>
-      </ion-item>
-    </ion-list>
-    <p>
-      L’activation déclenche une courte vibration de test lorsque le téléphone
-      la prend en charge.
-    </p>
-  </section>
+    }
+  </ion-list>
 
   @if (statusMessage) {
     <p class="settings-status" role="status">{{ statusMessage }}</p>

@@ -1,13 +1,94 @@
-.language-mode,
+.settings-navbar {
+  --min-height: 48px;
+
+  ion-title {
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  ion-back-button {
+    --color: #fff;
+    --icon-font-size: 24px;
+    --padding-start: 8px;
+  }
+}
+
+.settings-page {
+  --background: var(--mantion-page-background, #f4f4f4);
+  --padding-bottom: 18px;
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 0;
+}
+
+.settings-list {
+  background: transparent;
+  margin: 0 0 14px;
+  padding: 0;
+}
+
+.settings-list-header {
+  --background: var(--mantion-page-background, #f4f4f4);
+  --color: var(--mantion-grey);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  min-height: 34px;
+  padding-inline-start: 16px;
+  text-transform: uppercase;
+}
+
+.settings-row {
+  --background: #fff;
+  --inner-padding-end: 12px;
+  --min-height: 49px;
+  --padding-start: 14px;
+  color: #202020;
+  font-size: 15px;
+
+  ion-label {
+    line-height: 1.2;
+    white-space: normal;
+  }
+}
+
+.settings-row-icon {
+  color: var(--mantion-grey);
+  display: inline-flex;
+  flex: 0 0 34px;
+  font-size: 23px;
+  height: 24px;
+  justify-content: center;
+  margin-right: 10px;
+  width: 34px;
+}
+
+.settings-select {
+  color: var(--mantion-blue);
+  flex: 0 0 auto;
+  font-size: 15px;
+  max-width: 44%;
+  min-height: 42px;
+  min-width: 112px;
+  text-align: right;
+}
+
+ion-toggle {
+  --handle-background-checked: var(--mantion-green);
+  --track-background-checked: rgba(var(--mantion-green-rgb), 0.36);
+}
+
+.settings-inline-status,
 .settings-status {
-  margin-top: 1rem;
+  color: var(--mantion-grey);
+  font-size: 13px;
+  margin: 8px 16px 0;
 }
 
-.settings-section {
-  margin-top: 1.5rem;
-}
-
-ion-label ion-note {
-  display: block;
-  margin-top: 0.2rem;
+.settings-status {
+  background: #fff;
+  border-left: 4px solid var(--mantion-green);
+  margin-top: 18px;
+  padding: 10px 12px;
 }

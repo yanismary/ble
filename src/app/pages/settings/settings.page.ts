@@ -2,18 +2,22 @@ import { Component } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import {
   IonBackButton,
-  IonButton,
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonItem,
   IonLabel,
   IonList,
-  IonNote,
+  IonListHeader,
+  IonSelect,
+  IonSelectOption,
   IonTitle,
   IonToggle,
   IonToolbar,
 } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { bluetooth, chatbubbles, list } from 'ionicons/icons';
 
 import {
   readAutoEnableBluetooth,
@@ -39,6 +43,10 @@ import {
   storeAutomaticAppLanguage,
   storeManualAppLanguage,
 } from '../../core/services/app-language';
+import {
+  SettingsPageText,
+  settingsPageTextFor,
+} from './settings-page.text';
 
 interface LanguageOption {
   readonly code: AppLanguage;
@@ -52,14 +60,16 @@ interface LanguageOption {
   standalone: true,
   imports: [
     IonBackButton,
-    IonButton,
     IonButtons,
     IonContent,
     IonHeader,
+    IonIcon,
     IonItem,
     IonLabel,
     IonList,
-    IonNote,
+    IonListHeader,
+    IonSelect,
+    IonSelectOption,
     IonTitle,
     IonToggle,
     IonToolbar,
@@ -67,7 +77,7 @@ interface LanguageOption {
 })
 export class SettingsPage {
   readonly languageOptions: readonly LanguageOption[] = Object.freeze([
-    { code: 'fr', label: 'Français' },
+    { code: 'fr', label: 'Fran\u00e7ais' },
     { code: 'en', label: 'English' },
     { code: 'de', label: 'Deutsch' },
     { code: 'pl', label: 'Polski' },
@@ -75,6 +85,7 @@ export class SettingsPage {
 
   language: AppLanguage = readStoredAppLanguage();
   mode: AppLanguageMode = readAppLanguageMode();
+  text: SettingsPageText = settingsPageTextFor(this.language);
   readonly isAndroid = Capacitor.getPlatform() === 'android';
   autoEnableBluetooth = readAutoEnableBluetooth();
   showBleIdentifier = readShowBleIdentifier();
@@ -84,23 +95,46 @@ export class SettingsPage {
   statusMessage: string | null = null;
 
   constructor() {
+    addIcons({ bluetooth, chatbubbles, list });
+
     if (this.languageOptions.length !== APP_LANGUAGES.length) {
       throw new Error('Language option catalogue is incomplete.');
     }
   }
 
+  get bleIdentifierLabel(): string {
+    return this.isAndroid
+      ? this.text.scan.showBleIdentifierAndroid
+      : this.text.scan.showBleIdentifierIos;
+  }
+
   selectLanguage(language: AppLanguage): void {
     this.language = storeManualAppLanguage(language);
     this.mode = 'manual';
-    this.statusMessage =
-      'Langue enregistrée. Elle sera utilisée à la prochaine ouverture des écrans.';
+    this.text = settingsPageTextFor(this.language);
+    this.statusMessage = this.text.status.manualLanguage;
   }
 
   usePhoneLanguage(): void {
     this.language = storeAutomaticAppLanguage(navigator.language);
     this.mode = 'automatic';
+    this.text = settingsPageTextFor(this.language);
     this.statusMessage =
-      'Langue du téléphone enregistrée : ' + this.language.toUpperCase() + '.';
+      this.text.status.automaticLanguage(this.language.toUpperCase());
+  }
+
+  setAutomaticLanguage(
+    event: CustomEvent<{ checked: boolean }>,
+  ): void {
+    if (event.detail.checked) {
+      this.usePhoneLanguage();
+      return;
+    }
+
+    this.language = storeManualAppLanguage(this.language);
+    this.mode = 'manual';
+    this.text = settingsPageTextFor(this.language);
+    this.statusMessage = this.text.status.manualLanguage;
   }
 
   isSelected(language: AppLanguage): boolean {
@@ -113,23 +147,23 @@ export class SettingsPage {
     this.autoEnableBluetooth =
       storeAutoEnableBluetooth(event.detail.checked);
     this.statusMessage = this.autoEnableBluetooth
-      ? 'Activation automatique du Bluetooth activée pour les scans.'
-      : 'Activation automatique du Bluetooth désactivée.';
+      ? this.text.status.enableBluetooth
+      : this.text.status.disableBluetooth;
   }
 
   setShowBleIdentifier(event: CustomEvent<{ checked: boolean }>): void {
     this.showBleIdentifier = storeShowBleIdentifier(event.detail.checked);
     this.statusMessage = this.showBleIdentifier
-      ? 'Identifiant BLE affiché sur la page de scan.'
-      : 'Identifiant BLE masqué sur la page de scan.';
+      ? this.text.status.showBleIdentifier
+      : this.text.status.hideBleIdentifier;
   }
 
   setShowProductSettings(event: CustomEvent<{ checked: boolean }>): void {
     this.showProductSettings =
       storeShowProductSettings(event.detail.checked);
     this.statusMessage = this.showProductSettings
-      ? 'Réglages produit affichés.'
-      : 'Réglages produit masqués.';
+      ? this.text.status.showSettings
+      : this.text.status.hideSettings;
   }
 
   setShowProductInformation(
@@ -138,8 +172,8 @@ export class SettingsPage {
     this.showProductInformation =
       storeShowProductInformation(event.detail.checked);
     this.statusMessage = this.showProductInformation
-      ? 'Informations produit affichées.'
-      : 'Informations produit masquées.';
+      ? this.text.status.showInformation
+      : this.text.status.hideInformation;
   }
 
   async setHapticFeedback(
@@ -147,8 +181,8 @@ export class SettingsPage {
   ): Promise<void> {
     this.hapticFeedback = storeHapticFeedback(event.detail.checked);
     this.statusMessage = this.hapticFeedback
-      ? 'Vibrations activées.'
-      : 'Vibrations désactivées.';
+      ? this.text.status.enableHaptics
+      : this.text.status.disableHaptics;
 
     if (!this.hapticFeedback) {
       return;

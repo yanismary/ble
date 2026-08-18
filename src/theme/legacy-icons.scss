@@ -30,6 +30,8 @@
 }
 
 @include make-legacy-icon(param, '\e911');
+@include make-legacy-icon(change-name, '\e90b');
+@include make-legacy-icon(vibrate, '\e916');
 @include make-legacy-icon(loc-autre, '\e900');
 @include make-legacy-icon(loc-cha, '\e902');
 @include make-legacy-icon(loc-cui, '\e903');
