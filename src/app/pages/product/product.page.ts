@@ -1087,6 +1087,45 @@ export class ProductPage implements OnDestroy {
     ];
   }
 
+  get informationGeneralRows(): readonly ProductDisplayRow[] {
+    const rows: ProductDisplayRow[] = [];
+    if (this.config.maximumWeightLabel !== null) {
+      rows.push(this.row(
+        'maximum-weight',
+        this.text.information.maximumWeight,
+        this.config.maximumWeightLabel,
+      ));
+    }
+    const weightRange = this.config.professionalFields.includes(
+      'weight-range',
+    )
+      ? this.currentWeightRangeValue()
+      : null;
+    if (weightRange !== null) {
+      rows.push(this.row(
+        'current-weight-range',
+        this.text.professional.weightRange,
+        `${weightRange.lower}-${weightRange.upper} kg`,
+      ));
+    }
+    return rows;
+  }
+
+  get informationDateRows(): readonly ProductDisplayRow[] {
+    return this.datesRows.filter(({ key }) =>
+      key === 'first-commissioning' || key === 'total-cycles',
+    );
+  }
+
+  get informationMaintenanceRows(): readonly ProductDisplayRow[] {
+    if (this.config.profile === 'widoor') {
+      return [];
+    }
+    return this.datesRows.filter(({ key }) =>
+      key === 'last-maintenance' || key === 'cycles-since-maintenance',
+    );
+  }
+
   get datesRows(): readonly ProductDisplayRow[] {
     const value = this.viewModel.reads.datesAndCycles.value;
     if (value === null) {
@@ -1156,6 +1195,26 @@ export class ProductPage implements OnDestroy {
       this.row('motor-errors', this.text.maintenance.motorErrorCount,
         String(value.motorErrorCount)),
     ];
+  }
+
+  get informationSupplementalRows(): readonly ProductDisplayRow[] {
+    const phase1Keys = this.config.profile === 'widoor'
+      ? [
+        'initializations',
+        'cycles-since-init',
+        'obstacles',
+        'encoder-errors',
+        'motor-errors',
+      ]
+      : [
+        'initializations',
+        'cycles-since-init',
+        'obstacles',
+        'learning',
+      ];
+    return this.maintenanceRows.filter(({ key }) =>
+      phase1Keys.includes(key),
+    );
   }
 
   currentProductDateMaintenanceActionKind():

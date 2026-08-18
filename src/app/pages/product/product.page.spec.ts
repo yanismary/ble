@@ -2059,7 +2059,10 @@ describe('ProductPage', () => {
 
     expect(text).toContain('27/08/2019');
     expect(text).toContain('26580');
-    expect(text).toContain('Cycles depuis maintenance');
+    expect(component.datesRows.some((row) =>
+      row.key === 'cycles-since-maintenance' &&
+      row.label === 'Cycles depuis maintenance',
+    )).toBeTrue();
     expect(text).toContain('0');
     expect(text).toContain(component.text.user.rgb);
     expect(text).not.toContain(component.text.user.staticLight);
@@ -2084,7 +2087,8 @@ describe('ProductPage', () => {
       expect(text).not.toContain('Succès partiel — Succès partiel');
       expect(text).toContain(component.text.states.invalid);
       expect(text).toContain(component.text.states.unavailable);
-      expect(text).toContain(component.text.errors.unknown);
+      expect(component.readStatusLabel(component.viewModel.reads.maintenance))
+        .toBe(component.text.errors.unknown);
       expect(text).not.toContain('Native maintenance failure');
       expect(text).toContain('3.5.3.348');
     },
@@ -3415,6 +3419,178 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       component.stepUserSpeedDraft(openSpeed, 1);
       expect(component.userSpeedDraftValue(openSpeed)).toBe(openSpeed.range.max);
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  for (const scenario of [
+    {
+      profile: 'widoor',
+      generalRows: [],
+      absentGeneralRows: ['maximum-weight', 'current-weight-range'],
+      maintenanceRows: [],
+      absentMaintenanceRows: ['last-maintenance', 'cycles-since-maintenance'],
+      supplementalRows: [
+        'initializations',
+        'cycles-since-init',
+        'obstacles',
+        'encoder-errors',
+        'motor-errors',
+      ],
+      absentSupplementalRows: ['learning', 'wrong-open', 'wrong-close'],
+    },
+    {
+      profile: 'moventiv-60',
+      generalRows: ['maximum-weight', 'current-weight-range'],
+      absentGeneralRows: [],
+      maintenanceRows: ['last-maintenance', 'cycles-since-maintenance'],
+      absentMaintenanceRows: [],
+      supplementalRows: [
+        'initializations',
+        'cycles-since-init',
+        'obstacles',
+        'learning',
+      ],
+      absentSupplementalRows: [
+        'encoder-errors',
+        'motor-errors',
+        'wrong-open',
+        'wrong-close',
+      ],
+    },
+    {
+      profile: 'moventiv-80',
+      generalRows: ['maximum-weight', 'current-weight-range'],
+      absentGeneralRows: [],
+      maintenanceRows: ['last-maintenance', 'cycles-since-maintenance'],
+      absentMaintenanceRows: [],
+      supplementalRows: [
+        'initializations',
+        'cycles-since-init',
+        'obstacles',
+        'learning',
+      ],
+      absentSupplementalRows: [
+        'encoder-errors',
+        'motor-errors',
+        'wrong-open',
+        'wrong-close',
+      ],
+    },
+    {
+      profile: 'garline',
+      generalRows: ['current-weight-range'],
+      absentGeneralRows: ['maximum-weight'],
+      maintenanceRows: ['last-maintenance', 'cycles-since-maintenance'],
+      absentMaintenanceRows: [],
+      supplementalRows: [
+        'initializations',
+        'cycles-since-init',
+        'obstacles',
+        'learning',
+      ],
+      absentSupplementalRows: [
+        'encoder-errors',
+        'motor-errors',
+        'wrong-open',
+        'wrong-close',
+      ],
+    },
+  ] as const) {
+    it(`should render Phase 1 information lists for ${scenario.profile}`,
+      async () => {
+        const { fixture, component, writeExecutionService, bleService } =
+          await createProductCommandsUiPage(scenario.profile);
+
+        component.setActiveMainTab('information');
+        fixture.detectChanges();
+
+        const element = fixture.nativeElement as HTMLElement;
+        const informationSection = element.querySelector<HTMLElement>(
+          'section[aria-labelledby="information-title"]',
+        );
+        const informationLists = informationSection?.querySelectorAll(
+          '.product-information-list',
+        );
+
+        expect(informationSection).not.toBeNull();
+        expect(informationLists?.length).toBeGreaterThanOrEqual(4);
+        for (const row of scenario.generalRows) {
+          expect(informationSection?.querySelector(
+            `.product-information-row[data-info-row="${row}"]`,
+          )).not.toBeNull();
+        }
+        for (const row of scenario.absentGeneralRows) {
+          expect(informationSection?.querySelector(
+            `.product-information-row[data-info-row="${row}"]`,
+          )).toBeNull();
+        }
+        expect(informationSection?.textContent)
+          .toContain(component.text.noMotorState);
+        expect(informationSection?.querySelector(
+          '.product-information-row[data-info-row="first-commissioning"]',
+        )).not.toBeNull();
+        expect(informationSection?.querySelector(
+          '.product-information-row[data-info-row="total-cycles"]',
+        )).not.toBeNull();
+        for (const row of scenario.maintenanceRows) {
+          expect(informationSection?.querySelector(
+            `.product-information-row[data-info-row="${row}"]`,
+          )).not.toBeNull();
+        }
+        for (const row of scenario.absentMaintenanceRows) {
+          expect(informationSection?.querySelector(
+            `.product-information-row[data-info-row="${row}"]`,
+          )).toBeNull();
+        }
+        for (const row of scenario.supplementalRows) {
+          expect(informationSection?.querySelector(
+            `.product-information-row[data-info-row="${row}"]`,
+          )).not.toBeNull();
+        }
+        for (const row of scenario.absentSupplementalRows) {
+          expect(informationSection?.querySelector(
+            `.product-information-row[data-info-row="${row}"]`,
+          )).toBeNull();
+        }
+        expect(informationSection?.querySelector(
+          '.product-information-row[data-info-row="motor-version"]',
+        )).not.toBeNull();
+        expect(informationSection?.querySelector(
+          '.product-information-row[data-info-row="ble-version"]',
+        )).not.toBeNull();
+        expect(informationSection?.querySelector(
+          '.product-information-row[data-info-row="stack-version"]',
+        )).not.toBeNull();
+        expect(informationSection?.querySelector(
+          'ion-button',
+        )).toBeNull();
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+        expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+      },
+    );
+  }
+
+  it('should keep technical information collapsible without triggering writes',
+    async () => {
+      const { fixture, component, writeExecutionService, bleService } =
+        await createProductCommandsUiPage('moventiv-80');
+
+      component.setActiveMainTab('information');
+      fixture.detectChanges();
+
+      const element = fixture.nativeElement as HTMLElement;
+      const technicalDetails = element.querySelector<HTMLDetailsElement>(
+        '.product-information-technical',
+      );
+
+      expect(technicalDetails).not.toBeNull();
+      expect(technicalDetails?.open).toBeFalse();
+      technicalDetails?.setAttribute('open', '');
+      technicalDetails?.dispatchEvent(new Event('toggle'));
+      fixture.detectChanges();
+
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
     },
   );
 

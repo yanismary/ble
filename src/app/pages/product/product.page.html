@@ -1211,72 +1211,149 @@
       >
         <h2 id="information-title">{{ text.sections.information }}</h2>
 
-      <article class="product-subsection">
-        <h3>{{ text.sections.motorState }}</h3>
+      <article class="product-subsection product-information-panel">
         @if (motorRows.length > 0) {
-          <dl class="product-readonly-grid">
+          <ion-list class="product-information-list" lines="full">
+            <ion-list-header class="mantion-list-header product-information-header">
+              <ion-label>{{ text.sections.motorState }}</ion-label>
+            </ion-list-header>
             @for (row of motorRows; track row.key) {
-              <dt>{{ row.label }}</dt>
-              <dd>{{ row.value }}</dd>
+              <ion-item
+                class="product-information-row"
+                [attr.data-info-row]="row.key"
+              >
+                <ion-label>{{ row.label }}</ion-label>
+                <ion-badge
+                  class="product-information-value"
+                  slot="end"
+                >{{ row.value }}</ion-badge>
+              </ion-item>
             }
-          </dl>
+          </ion-list>
         } @else {
-          <p class="read-state">{{ text.noMotorState }}</p>
+          <ion-list class="product-information-list" lines="full">
+            <ion-list-header class="mantion-list-header product-information-header">
+              <ion-label>{{ text.sections.motorState }}</ion-label>
+            </ion-list-header>
+            <ion-item class="product-information-row">
+              <ion-label>{{ text.noMotorState }}</ion-label>
+            </ion-item>
+          </ion-list>
         }
-      </article>
 
-      <article class="product-subsection">
-        <h3>{{ text.sections.version }}</h3>
-        <ng-container
-          [ngTemplateOutlet]="readStatus"
-          [ngTemplateOutletContext]="{ $implicit: viewModel.reads.version }"
-        ></ng-container>
-        @if (viewModel.reads.version.status === 'available') {
-          <dl class="product-readonly-grid">
+        @if (informationGeneralRows.length > 0) {
+          <ion-list class="product-information-list" lines="full">
+            <ion-list-header class="mantion-list-header product-information-header">
+              <ion-label>{{ text.information.general }}</ion-label>
+            </ion-list-header>
+            @for (row of informationGeneralRows; track row.key) {
+              <ion-item
+                class="product-information-row"
+                [attr.data-info-row]="row.key"
+              >
+                <ion-label>{{ row.label }}</ion-label>
+                <ion-badge
+                  class="product-information-value"
+                  slot="end"
+                >{{ row.value }}</ion-badge>
+              </ion-item>
+            }
+          </ion-list>
+        }
+
+        <ion-list class="product-information-list" lines="full">
+          <ion-list-header class="mantion-list-header product-information-header">
+            <ion-label>{{ text.sections.dates }}</ion-label>
+          </ion-list-header>
+          <ng-container
+            [ngTemplateOutlet]="readStatus"
+            [ngTemplateOutletContext]="{
+              $implicit: viewModel.reads.datesAndCycles
+            }"
+          ></ng-container>
+          @if (viewModel.reads.datesAndCycles.status === 'available') {
+            @for (row of informationDateRows; track row.key) {
+              <ion-item
+                class="product-information-row"
+                [attr.data-info-row]="row.key"
+              >
+                <ion-label>{{ row.label }}</ion-label>
+                <ion-badge
+                  class="product-information-value"
+                  slot="end"
+                >{{ row.value }}</ion-badge>
+              </ion-item>
+            }
+          }
+        </ion-list>
+
+        @if (informationMaintenanceRows.length > 0) {
+          <ion-list class="product-information-list" lines="full">
+            <ion-list-header class="mantion-list-header product-information-header">
+              <ion-label>{{ text.sections.maintenance }}</ion-label>
+            </ion-list-header>
+            @for (row of informationMaintenanceRows; track row.key) {
+              <ion-item
+                class="product-information-row"
+                [attr.data-info-row]="row.key"
+              >
+                <ion-label>{{ row.label }}</ion-label>
+                <ion-badge
+                  class="product-information-value"
+                  slot="end"
+                >{{ row.value }}</ion-badge>
+              </ion-item>
+            }
+          </ion-list>
+        }
+
+        <ion-list class="product-information-list" lines="full">
+          <ion-list-header class="mantion-list-header product-information-header">
+            <ion-label>{{ text.sections.version }}</ion-label>
+          </ion-list-header>
+          <ng-container
+            [ngTemplateOutlet]="readStatus"
+            [ngTemplateOutletContext]="{ $implicit: viewModel.reads.version }"
+          ></ng-container>
+          @if (viewModel.reads.version.status === 'available') {
             @for (row of versionRows; track row.key) {
-              <dt>{{ row.label }}</dt>
-              <dd>{{ row.value }}</dd>
+              <ion-item
+                class="product-information-row"
+                [attr.data-info-row]="row.key"
+              >
+                <ion-label>{{ row.label }}</ion-label>
+                <ion-badge
+                  class="product-information-value"
+                  slot="end"
+                >{{ row.value }}</ion-badge>
+              </ion-item>
             }
-          </dl>
-        }
-      </article>
+          }
+        </ion-list>
 
-      <article class="product-subsection">
-        <h3>{{ text.sections.dates }}</h3>
-        <ng-container
-          [ngTemplateOutlet]="readStatus"
-          [ngTemplateOutletContext]="{
-            $implicit: viewModel.reads.datesAndCycles
-          }"
-        ></ng-container>
-        @if (viewModel.reads.datesAndCycles.status === 'available') {
-          <dl class="product-readonly-grid">
-            @for (row of datesRows; track row.key) {
-              <dt>{{ row.label }}</dt>
-              <dd>{{ row.value }}</dd>
+        @if (informationSupplementalRows.length > 0) {
+          <ion-list class="product-information-list" lines="full">
+            <ion-list-header class="mantion-list-header product-information-header">
+              <ion-label>{{ text.information.supplemental }}</ion-label>
+            </ion-list-header>
+            @for (row of informationSupplementalRows; track row.key) {
+              <ion-item
+                class="product-information-row"
+                [attr.data-info-row]="row.key"
+              >
+                <ion-label>{{ row.label }}</ion-label>
+                <ion-badge
+                  class="product-information-value"
+                  slot="end"
+                >{{ row.value }}</ion-badge>
+              </ion-item>
             }
-          </dl>
-        }
-      </article>
-
-      <article class="product-subsection">
-        <h3>{{ text.sections.maintenance }}</h3>
-        <ng-container
-          [ngTemplateOutlet]="readStatus"
-          [ngTemplateOutletContext]="{ $implicit: viewModel.reads.maintenance }"
-        ></ng-container>
-        @if (viewModel.reads.maintenance.status === 'available') {
-          <dl class="product-readonly-grid">
-            @for (row of maintenanceRows; track row.key) {
-              <dt>{{ row.label }}</dt>
-              <dd>{{ row.value }}</dd>
-            }
-          </dl>
+          </ion-list>
         }
       </article>
 
       @if (hasTechnicalDetails) {
-        <details class="technical-details product-technical-details">
+        <details class="technical-details product-technical-details product-information-technical">
           <summary>{{ text.technicalDetails }}</summary>
           <ng-container
             [ngTemplateOutlet]="technicalRead"
@@ -1299,7 +1376,7 @@
             [ngTemplateOutletContext]="{
               $implicit: viewModel.reads.maintenance,
               title: text.sections.maintenance,
-              rows: emptyTechnicalRows
+              rows: maintenanceRows
             }"
           ></ng-container>
           <ng-container

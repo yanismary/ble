@@ -1,0 +1,57 @@
+.product-information-panel {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  display: block;
+  padding: 0;
+}
+
+.product-information-list {
+  background: transparent;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.product-information-header {
+  --background: var(--mantion-page-background);
+  min-height: 34px;
+  padding-inline-start: 12px;
+  text-transform: none;
+}
+
+.product-information-row {
+  --background: #fff;
+  --inner-padding-end: 10px;
+  --min-height: 42px;
+  --padding-start: 12px;
+  color: var(--mantion-text);
+  font-size: 14px;
+}
+
+.product-information-row ion-label {
+  color: var(--mantion-text);
+  font-size: 14px;
+  white-space: normal;
+}
+
+.product-information-value {
+  --background: var(--mantion-grey);
+  --color: #fff;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  max-width: 45%;
+  min-width: 52px;
+  padding: 5px 8px;
+  text-align: center;
+  white-space: normal;
+}
+
+.product-information-technical {
+  margin-top: 10px;
+}
+
+.product-information-technical summary {
+  color: var(--mantion-blue);
+  font-weight: 600;
+}
