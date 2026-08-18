@@ -1,19 +1,27 @@
 import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import {
+  IonAccordion,
+  IonAccordionGroup,
   IonBackButton,
   IonButton,
   IonButtons,
   IonContent,
   IonHeader,
+  IonItem,
+  IonLabel,
+  IonList,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
 
+import { readStoredAppLanguage } from '../../core/services/app-language';
 import {
   HelpPlatform,
-  helpInstructionsFor,
+  HelpProduct,
+  HelpProductText,
+  helpPageTextFor,
+  helpProductTextFor,
 } from './help-page.text';
 
 @Component({
@@ -22,19 +30,51 @@ import {
   styleUrls: ['./help.page.scss'],
   standalone: true,
   imports: [
+    IonAccordion,
+    IonAccordionGroup,
     IonBackButton,
     IonButton,
     IonButtons,
     IonContent,
     IonHeader,
+    IonItem,
+    IonLabel,
+    IonList,
     IonTitle,
     IonToolbar,
-    RouterLink,
   ],
 })
 export class HelpPage {
   readonly platform = normalizeHelpPlatform(Capacitor.getPlatform());
-  readonly instructions = helpInstructionsFor(this.platform);
+  readonly language = readStoredAppLanguage();
+  readonly text = helpPageTextFor(this.language);
+  readonly products: readonly HelpProduct[] = Object.freeze([
+    'widoor',
+    'moventiv',
+    'garline',
+  ]);
+
+  selectedProduct: HelpProduct | null = null;
+
+  get selectedProductText(): HelpProductText | null {
+    if (this.selectedProduct === null) {
+      return null;
+    }
+
+    return helpProductTextFor(
+      this.language,
+      this.platform,
+      this.selectedProduct,
+    );
+  }
+
+  selectProduct(product: HelpProduct): void {
+    this.selectedProduct = product;
+  }
+
+  isProductSelected(product: HelpProduct): boolean {
+    return this.selectedProduct === product;
+  }
 }
 
 export function normalizeHelpPlatform(value: string): HelpPlatform {

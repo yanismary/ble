@@ -1,27 +1,47 @@
-import { helpInstructionsFor } from './help-page.text';
+import {
+  getHelpProductGroup,
+  helpPageTextFor,
+  helpProductTextFor,
+} from './help-page.text';
 
-describe('helpInstructionsFor', () => {
-  it('keeps the Phase 1 motor-side pairing sequence on Android', () => {
-    const instructions = helpInstructionsFor('android');
-
-    expect(instructions.pairing[0]).toContain('switch 1');
-    expect(instructions.pairing[1]).toContain('PRG');
-    expect(instructions.pairing[1]).toContain('magenta');
+describe('help page text', () => {
+  it('keeps the Phase 1 Widoor and Moventiv/Garline grouping', () => {
+    expect(getHelpProductGroup('widoor')).toBe('widoor');
+    expect(getHelpProductGroup('moventiv')).toBe('moventiv-garline');
+    expect(getHelpProductGroup('garline')).toBe('moventiv-garline');
   });
 
-  it('keeps the iOS pairing acceptance guidance', () => {
-    const instructions = helpInstructionsFor('ios');
+  it('keeps the Phase 1 motor-side pairing sequence', () => {
+    const instructions = helpProductTextFor('fr', 'android', 'moventiv');
 
-    expect(instructions.pairing.some((step) =>
-      step.includes('demande de jumelage'),
+    expect(instructions.pairing.steps.some((step) =>
+      step.includes('switch 1'),
+    )).toBeTrue();
+    expect(instructions.pairing.steps.some((step) =>
+      step.includes('PRG'),
+    )).toBeTrue();
+    expect(instructions.pairing.steps.some((step) =>
+      step.includes('magenta'),
     )).toBeTrue();
   });
 
-  it('does not expose destructive motor reset instructions as an action', () => {
-    const instructions = helpInstructionsFor('ios');
+  it('adapts obsolete Android GPS guidance to the current BLE stack', () => {
+    const instructions = helpProductTextFor('fr', 'android', 'widoor');
 
-    expect(instructions.unpairing.some((step) =>
-      step.includes('procédure produit validée'),
-    )).toBeTrue();
+    expect(instructions.pairing.note).toContain('GPS');
+    expect(instructions.pairing.note).toContain('pas necessaire');
+  });
+
+  it('keeps iOS pairing acceptance guidance', () => {
+    const instructions = helpProductTextFor('en', 'ios', 'widoor');
+
+    expect(instructions.pairing.note).toContain('pairing request');
+  });
+
+  it('resolves supported Phase 2 languages', () => {
+    expect(helpPageTextFor('fr').title).toBe('Aide');
+    expect(helpPageTextFor('en').title).toBe('Help');
+    expect(helpPageTextFor('de').title).toBe('Hilfe');
+    expect(helpPageTextFor('pl').title).toBe('Pomoc');
   });
 });

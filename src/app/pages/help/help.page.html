@@ -1,63 +1,75 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
+<ion-header>
+  <ion-toolbar class="mantion-navbar help-navbar">
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/scan"></ion-back-button>
+      <ion-back-button defaultHref="/scan" text=""></ion-back-button>
     </ion-buttons>
-    <ion-title>Aide</ion-title>
+    <ion-title>{{ text.title }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true" class="ion-padding">
-  <main class="help-layout">
-    <section class="help-intro">
-      <h1>Aide à la connexion</h1>
-      <p>
-        Cette page reprend les indications de connexion de l’ancienne
-        application et les adapte au fonctionnement BLE actuel.
-      </p>
-    </section>
+<ion-content class="help-page">
+  <section class="help-product-choice" aria-labelledby="help-product-title">
+    <p id="help-product-title">{{ text.productChoiceTitle }}</p>
 
-    <details open>
-      <summary>Appairage</summary>
-      <ol>
-        @for (step of instructions.pairing; track $index) {
-          <li>{{ step }}</li>
-        }
-      </ol>
-    </details>
+    @for (product of products; track product) {
+      <ion-button
+        class="help-product-button"
+        expand="block"
+        type="button"
+        [fill]="isProductSelected(product) ? 'solid' : 'outline'"
+        [class.help-product-button-active]="isProductSelected(product)"
+        [attr.data-product-option]="product"
+        (click)="selectProduct(product)"
+      >
+        {{ text.products[product] }}
+      </ion-button>
+    }
+  </section>
 
-    <details>
-      <summary>Difficulté d’appairage</summary>
-      <ol>
-        @for (step of instructions.troubleshooting; track $index) {
-          <li>{{ step }}</li>
-        }
-      </ol>
-      <p>
-        L’application gère directement les autorisations BLE nécessaires.
-        Sur Android récent, aucune activation du GPS n’est demandée pour le scan.
-      </p>
-    </details>
+  @if (selectedProductText; as productHelp) {
+    <ion-list class="help-sections" lines="full">
+      <ion-accordion-group>
+        <ion-accordion value="pairing" data-help-section="pairing">
+          <ion-item slot="header" class="help-section-header">
+            <ion-label>
+              <h2>{{ productHelp.pairing.title }}</h2>
+              <p>{{ productHelp.title }}</p>
+            </ion-label>
+          </ion-item>
+          <div slot="content" class="help-section-content">
+            <ol>
+              @for (step of productHelp.pairing.steps; track $index) {
+                <li>{{ step }}</li>
+              }
+            </ol>
+            @if (productHelp.pairing.note) {
+              <p class="help-section-note">{{ productHelp.pairing.note }}</p>
+            }
+          </div>
+        </ion-accordion>
 
-    <details>
-      <summary>Supprimer un ancien jumelage</summary>
-      <ol>
-        @for (step of instructions.unpairing; track $index) {
-          <li>{{ step }}</li>
-        }
-      </ol>
-    </details>
-
-    <aside class="help-warning">
-      <strong>Important</strong>
-      <p>
-        Les procédures d’effacement, de reset, d’apprentissage et de test
-        radar ne sont pas déclenchées depuis cette page.
-      </p>
-    </aside>
-
-    <ion-button expand="block" fill="outline" routerLink="/app-info">
-      À propos et contact
-    </ion-button>
-  </main>
+        <ion-accordion
+          value="troubleshooting"
+          data-help-section="troubleshooting"
+        >
+          <ion-item slot="header" class="help-section-header">
+            <ion-label>
+              <h2>{{ productHelp.troubleshooting.title }}</h2>
+              <p>{{ productHelp.title }}</p>
+            </ion-label>
+          </ion-item>
+          <div slot="content" class="help-section-content">
+            <ol>
+              @for (
+                step of productHelp.troubleshooting.steps;
+                track $index
+              ) {
+                <li>{{ step }}</li>
+              }
+            </ol>
+          </div>
+        </ion-accordion>
+      </ion-accordion-group>
+    </ion-list>
+  }
 </ion-content>

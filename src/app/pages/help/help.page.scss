@@ -1,40 +1,103 @@
-.help-layout {
-  display: grid;
-  gap: 1rem;
-  max-width: 48rem;
-  margin: 0 auto;
+.help-navbar {
+  --min-height: 48px;
+
+  ion-title {
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  ion-back-button {
+    --color: #fff;
+    --icon-font-size: 24px;
+    --padding-start: 8px;
+  }
 }
 
-.help-intro h1 {
-  margin-top: 0;
+.help-page {
+  --background: var(--mantion-page-background, #f4f4f4);
+  --padding-bottom: 18px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 16px;
 }
 
-details {
-  border: 1px solid var(--ion-color-step-200, #d7d7d7);
-  border-radius: 0.75rem;
-  padding: 0.9rem 1rem;
+.help-product-choice {
+  margin: 0 auto 16px;
+  max-width: 420px;
+  text-align: center;
+
+  p {
+    color: var(--mantion-blue);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0 0 13px;
+  }
 }
 
-summary {
-  cursor: pointer;
+.help-product-button {
+  --border-color: var(--mantion-blue);
+  --border-radius: 4px;
+  --color: var(--mantion-blue);
+  --padding-bottom: 0;
+  --padding-top: 0;
+  font-size: 15px;
   font-weight: 600;
+  height: 42px;
+  margin: 0 0 10px;
 }
 
-ol {
-  margin-bottom: 0;
-  padding-left: 1.4rem;
+.help-product-button-active {
+  --background: var(--mantion-blue);
+  --color: #fff;
 }
 
-li + li {
-  margin-top: 0.55rem;
+.help-sections {
+  background: transparent;
+  margin: 0 -16px;
+  padding: 0;
 }
 
-.help-warning {
-  border: 1px solid var(--ion-color-warning, #ffc409);
-  border-radius: 0.75rem;
-  padding: 0.9rem 1rem;
+.help-section-header {
+  --background: #fff;
+  --inner-padding-end: 12px;
+  --min-height: 58px;
+  --padding-start: 16px;
+
+  h2 {
+    color: var(--mantion-text, #222);
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+
+  p {
+    color: var(--mantion-grey);
+    font-size: 12px;
+    margin: 0;
+  }
 }
 
-.help-warning p {
-  margin-bottom: 0;
+.help-section-content {
+  background: #fff;
+  border-top: 1px solid var(--mantion-border, #e6e6e6);
+  color: var(--mantion-text, #222);
+  font-size: 14px;
+  line-height: 1.35;
+  padding: 4px 18px 16px 32px;
+
+  ol {
+    margin: 0;
+    padding-left: 16px;
+  }
+
+  li + li {
+    margin-top: 8px;
+  }
+}
+
+.help-section-note {
+  color: var(--mantion-text-muted, #60646b);
+  margin: 12px 0 0;
 }
