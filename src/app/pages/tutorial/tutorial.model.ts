@@ -8,12 +8,23 @@ export interface TutorialSlide {
   readonly image?: string;
 }
 
+export interface TutorialImageSet {
+  readonly slide1: string;
+  readonly slide2: string;
+  readonly slide3: string;
+  readonly slide4: string;
+  readonly slide5: string;
+  readonly slide6: string;
+}
+
 export interface TutorialCopy {
   readonly choiceTitle: string;
   readonly choiceWidoor: string;
   readonly choiceMoventiv: string;
   readonly choiceGarline: string;
   readonly skip: string;
+  readonly previousLabel: string;
+  readonly nextLabel: string;
   readonly continueLabel: string;
   readonly readyTitle: string;
   readonly slides: readonly TutorialSlide[];
@@ -30,6 +41,8 @@ const LEGACY_INFOSLIDE = {
     },
     "END": {
       "READY": "Prêt à utiliser votre Widoor ?",
+      "PREVIOUS": "PrÃ©cÃ©dent",
+      "NEXT": "Suivant",
       "CONTINUE": "Continuer"
     },
     "SLIDE1": {
@@ -87,6 +100,8 @@ const LEGACY_INFOSLIDE = {
     },
     "END": {
       "READY": "Ready to use your Widoor ?",
+      "PREVIOUS": "Previous",
+      "NEXT": "Next",
       "CONTINUE": "Continue"
     },
     "SLIDE1": {
@@ -144,6 +159,8 @@ const LEGACY_INFOSLIDE = {
     },
     "END": {
       "READY": "Sind Sie bereit Ihren WIDOOR zu benutzen?",
+      "PREVIOUS": "Zuruck",
+      "NEXT": "Weiter",
       "CONTINUE": "Fortfahren"
     },
     "SLIDE1": {
@@ -201,6 +218,8 @@ const LEGACY_INFOSLIDE = {
     },
     "END": {
       "READY": "Gotowy do korzystania z aplikacji WIDOOR?",
+      "PREVIOUS": "Wstecz",
+      "NEXT": "Dalej",
       "CONTINUE": "Kontynuuj"
     },
     "SLIDE1": {
@@ -267,7 +286,7 @@ export function tutorialCopyFor(
 ): TutorialCopy {
   const source = LEGACY_INFOSLIDE[language] as any;
   const platformKey = platform === 'ios' ? 'IOS' : 'ANDROID';
-  const images = tutorialImagesFor(product, language, platform);
+  const images = tutorialImagePathsFor(product, language, platform);
 
   const slides = Object.freeze([
     legacySlide(source.SLIDE1, product, images.slide1),
@@ -286,6 +305,8 @@ export function tutorialCopyFor(
     choiceMoventiv: source.CHOICE.MOVENTIV,
     choiceGarline: source.CHOICE.GARLINE,
     skip: source.SKIP,
+    previousLabel: source.END.PREVIOUS,
+    nextLabel: source.END.NEXT,
     continueLabel: source.END.CONTINUE,
     readyTitle: productText(source.END.READY, product),
     slides,
@@ -304,11 +325,11 @@ function legacySlide(
   });
 }
 
-function tutorialImagesFor(
+export function tutorialImagePathsFor(
   product: TutorialProduct,
   language: TutorialLanguage,
   platform: TutorialPlatform,
-) {
+): TutorialImageSet {
   const basePath = `assets/img/tuto_${product}/`;
   const imageLanguage = language === 'fr' ? 'fr' : 'en';
 

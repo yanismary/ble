@@ -2,13 +2,8 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import {
-  IonBackButton,
   IonButton,
-  IonButtons,
   IonContent,
-  IonHeader,
-  IonTitle,
-  IonToolbar,
 } from '@ionic/angular/standalone';
 
 import {
@@ -24,13 +19,8 @@ import {
   styleUrls: ['./tutorial.page.scss'],
   standalone: true,
   imports: [
-    IonBackButton,
     IonButton,
-    IonButtons,
     IonContent,
-    IonHeader,
-    IonTitle,
-    IonToolbar,
   ],
 })
 export class TutorialPage {
@@ -51,12 +41,27 @@ export class TutorialPage {
   }
 
   get currentSlide() {
-    return this.selectedProduct ? this.copy.slides[this.slideIndex] : null;
+    return this.selectedProduct && !this.isReadySlide
+      ? this.copy.slides[this.slideIndex]
+      : null;
+  }
+
+  get totalPages(): number {
+    return this.selectedProduct ? this.copy.slides.length + 1 : 0;
+  }
+
+  get pageIndexes(): readonly number[] {
+    return Array.from({ length: this.totalPages }, (_, index) => index);
+  }
+
+  get isReadySlide(): boolean {
+    return this.selectedProduct !== null &&
+      this.slideIndex === this.copy.slides.length;
   }
 
   get isLastSlide(): boolean {
     return this.selectedProduct !== null &&
-      this.slideIndex === this.copy.slides.length - 1;
+      this.slideIndex === this.totalPages - 1;
   }
 
   selectProduct(product: TutorialProduct): void {
@@ -74,11 +79,19 @@ export class TutorialPage {
     if (!this.selectedProduct) {
       return;
     }
-    if (this.slideIndex < this.copy.slides.length - 1) {
+    if (this.slideIndex < this.totalPages - 1) {
       this.slideIndex += 1;
       return;
     }
     void this.finish();
+  }
+
+  goToSlide(index: number): void {
+    if (!this.selectedProduct || index < 0 || index >= this.totalPages) {
+      return;
+    }
+
+    this.slideIndex = index;
   }
 
   async finish(): Promise<void> {

@@ -1,65 +1,112 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-back-button defaultHref="/scan"></ion-back-button>
-    </ion-buttons>
-    <ion-title>Guide de démarrage</ion-title>
-    @if (selectedProduct) {
-      <ion-button slot="end" fill="clear" type="button" (click)="finish()">
-        {{ copy.skip }}
-      </ion-button>
-    }
-  </ion-toolbar>
-</ion-header>
+<ion-content class="tutorial-content">
+  @if (!selectedProduct) {
+    <section class="tutorial-choice" aria-labelledby="tutorial-choice-title">
+      <h1 id="tutorial-choice-title">{{ copy.choiceTitle }}</h1>
+      <div class="tutorial-choice-buttons">
+        <ion-button
+          class="tutorial-choice-button"
+          color="primary"
+          expand="block"
+          size="large"
+          type="button"
+          data-tutorial-product="widoor"
+          (click)="selectProduct('widoor')"
+        >
+          {{ copy.choiceWidoor }}
+        </ion-button>
+        <ion-button
+          class="tutorial-choice-button"
+          color="mantion-green"
+          expand="block"
+          size="large"
+          type="button"
+          data-tutorial-product="moventiv"
+          (click)="selectProduct('moventiv')"
+        >
+          {{ copy.choiceMoventiv }}
+        </ion-button>
+        <ion-button
+          class="tutorial-choice-button"
+          color="mantion-green"
+          expand="block"
+          size="large"
+          type="button"
+          data-tutorial-product="garline"
+          (click)="selectProduct('garline')"
+        >
+          {{ copy.choiceGarline }}
+        </ion-button>
+      </div>
+    </section>
+  } @else {
+    <ion-button
+      class="tutorial-skip-button"
+      fill="clear"
+      type="button"
+      aria-label="skip tutorial"
+      (click)="finish()"
+    >
+      {{ copy.skip }}
+    </ion-button>
 
-<ion-content [fullscreen]="true" class="ion-padding">
-  <main class="tutorial-layout">
-    @if (!selectedProduct) {
-      <section class="tutorial-choice">
-        <h1>{{ copy.choiceTitle }}</h1>
-        <div class="tutorial-choice-buttons">
-          <ion-button expand="block" (click)="selectProduct('widoor')">
-            {{ copy.choiceWidoor }}
-          </ion-button>
-          <ion-button expand="block" (click)="selectProduct('moventiv')">
-            {{ copy.choiceMoventiv }}
-          </ion-button>
-          <ion-button expand="block" (click)="selectProduct('garline')">
-            {{ copy.choiceGarline }}
-          </ion-button>
+    <section
+      class="tutorial-slide"
+      aria-live="polite"
+      [attr.data-slide-index]="slideIndex"
+    >
+      @if (currentSlide; as slide) {
+        <div class="tutorial-slide-content">
+          @if (slide.image) {
+            <img
+              class="tutorial-image"
+              [src]="slide.image"
+              [alt]="slide.title"
+            />
+          }
+
+          <h2 class="slide-title" [innerHTML]="slide.title"></h2>
+          <p class="slide-description" [innerHTML]="slide.description"></p>
         </div>
-      </section>
-    } @else if (currentSlide; as slide) {
-      <section class="tutorial-slide" aria-live="polite">
-        <p class="tutorial-progress">
-          {{ slideIndex + 1 }} / {{ copy.slides.length }}
-        </p>
-
-        @if (slide.image) {
-          <img
-            class="tutorial-image"
-            [src]="slide.image"
-            [alt]="slide.title"
-          />
-        }
-
-        <h1 [innerHTML]="slide.title"></h1>
-        <div class="tutorial-description" [innerHTML]="slide.description"></div>
-
-        <div class="tutorial-actions">
+      } @else {
+        <div class="tutorial-slide-content tutorial-ready-slide">
+          <h2 class="slide-title">{{ copy.readyTitle }}</h2>
           <ion-button
-            fill="outline"
+            class="tutorial-continue-button"
+            fill="clear"
             type="button"
-            (click)="previous()"
-            [disabled]="slideIndex === 0"
+            (click)="finish()"
           >
-            Précédent
-          </ion-button>
-          <ion-button type="button" (click)="next()">
-            {{ isLastSlide ? copy.continueLabel : 'Suivant' }}
+            {{ copy.continueLabel }}
           </ion-button>
         </div>
-      </section>
-    }
-  </main>
+      }
+    </section>
+
+    <nav class="tutorial-navigation" aria-label="tutorial navigation">
+      <ion-button
+        fill="clear"
+        type="button"
+        [disabled]="slideIndex === 0"
+        (click)="previous()"
+      >
+        {{ copy.previousLabel }}
+      </ion-button>
+
+      <div class="tutorial-pager" aria-hidden="true">
+        @for (page of pageIndexes; track page) {
+          <button
+            class="tutorial-pager-dot"
+            type="button"
+            [class.tutorial-pager-dot-active]="page === slideIndex"
+            [attr.data-pager-index]="page"
+            (click)="goToSlide(page)"
+          ></button>
+        }
+      </div>
+
+      <ion-button fill="clear" type="button" (click)="next()">
+        {{ isLastSlide ? copy.continueLabel : copy.nextLabel }}
+      </ion-button>
+    </nav>
+  }
 </ion-content>

@@ -1,6 +1,7 @@
 import {
   normalizeTutorialLanguage,
   normalizeTutorialPlatform,
+  tutorialImagePathsFor,
   tutorialCopyFor,
 } from './tutorial.model';
 
@@ -27,6 +28,29 @@ describe('tutorial model', () => {
     const copy = tutorialCopyFor('moventiv', 'de', 'android');
 
     expect(copy.slides[1].image).toContain('_en_moventiv');
+  });
+
+  it('selects Android tutorial images with their exact historical paths', () => {
+    const images = tutorialImagePathsFor('widoor', 'fr', 'android');
+
+    expect(images.slide1).toBe('assets/img/tuto_widoor/slide1_widoor.png');
+    expect(images.slide2).toBe(
+      'assets/img/tuto_widoor/slide2_android_fr_widoor.jpg',
+    );
+    expect(images.slide4).toBe(
+      'assets/img/tuto_widoor/slide4_anroid_fr_widoor.jpg',
+    );
+  });
+
+  it('selects iOS tutorial images with the historical uppercase extension', () => {
+    const images = tutorialImagePathsFor('garline', 'en', 'ios');
+
+    expect(images.slide2).toBe(
+      'assets/img/tuto_garline/slide2_ios_en_garline.PNG',
+    );
+    expect(images.slide6).toBe(
+      'assets/img/tuto_garline/slide6_ios_en_garline.PNG',
+    );
   });
 
   it('normalizes supported languages and platforms', () => {
