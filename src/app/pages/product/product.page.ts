@@ -716,6 +716,61 @@ export class ProductPage implements OnDestroy {
       : 'assets/img/icon_light_off.svg';
   }
 
+  professionalInputIconSrc(
+    config: ProductProfessionalInputUiConfig,
+  ): string {
+    return this.currentProfessionalInputMode(config) === 'radar'
+      ? 'assets/img/icon_radar.svg'
+      : 'assets/img/icon_button.svg';
+  }
+
+  professionalScalarIconSrc(
+    config: ProductProfessionalScalarUiConfig,
+  ): string {
+    switch (config.field) {
+      case 'near-open-speed':
+      case 'near-close-speed':
+        return 'assets/img/icon_speed.svg';
+      case 'break-force-at-open':
+      case 'near-open-torque':
+      case 'near-close-torque':
+      case 'braking-open-power':
+      case 'obstacle-sensitivity':
+        return 'assets/img/icon_force.svg';
+    }
+  }
+
+  sensitiveActionIconSrc(
+    config: ProductSensitiveActionUiConfig,
+  ): string | null {
+    switch (config.action) {
+      case 'radar-test-1':
+      case 'radar-test-2':
+        return this.sensitiveActionCurrentEnabled(config) === true
+          ? 'assets/img/icon_test_on.svg'
+          : 'assets/img/icon_test_off.svg';
+      case 'professional-peripheral-lock':
+        return this.sensitiveActionCurrentEnabled(config) === true
+          ? 'assets/img/icon_lock_on.svg'
+          : 'assets/img/icon_lock_off.svg';
+      case 'learning':
+      case 'reset':
+        return null;
+    }
+  }
+
+  sensitiveActionButtonColor(
+    config: ProductSensitiveActionUiConfig,
+  ): string | undefined {
+    if (config.action === 'reset') {
+      return 'danger';
+    }
+    if (config.action === 'learning') {
+      return 'warning';
+    }
+    return undefined;
+  }
+
   get showWeightRangeControls(): boolean {
     return this.pageContextCurrent &&
       this.weightRangeControls.length > 0 &&
@@ -795,6 +850,8 @@ export class ProductPage implements OnDestroy {
   get professionalAccessControlsAvailable(): boolean {
     return this.config.professionalFields.some((field) =>
       productProfessionalFieldRequiresAccess(this.config.profile, field),
+    ) || this.sensitiveActions.some((action) =>
+      this.sensitiveActionRequiresProfessionalAccess(action),
     );
   }
 
@@ -2254,6 +2311,10 @@ export class ProductPage implements OnDestroy {
     }
     if (config.action === 'professional-peripheral-lock' &&
         !this.widoorLockSupported()) {
+      return false;
+    }
+    if (this.sensitiveActionRequiresProfessionalAccess(config) &&
+        !this.professionalAccessGranted) {
       return false;
     }
     const current = this.sensitiveActionCurrentEnabled(config);
@@ -3843,6 +3904,17 @@ export class ProductPage implements OnDestroy {
       this.config.profile,
       field,
     ) || this.professionalAccessGranted;
+  }
+
+  private sensitiveActionRequiresProfessionalAccess(
+    config: ProductSensitiveActionUiConfig,
+  ): boolean {
+    return config.profile === 'widoor' &&
+      (
+        config.action === 'radar-test-1' ||
+        config.action === 'radar-test-2' ||
+        config.action === 'professional-peripheral-lock'
+      );
   }
 
   private currentProfessionalAccessContext():

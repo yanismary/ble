@@ -1,0 +1,138 @@
+.advanced-settings-panel {
+  background: transparent;
+}
+
+.advanced-settings-list {
+  background: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+.advanced-section-header {
+  --background: #fff;
+  align-items: center;
+  border-left: 4px solid var(--mantion-green);
+  color: var(--mantion-grey);
+  font-weight: 700;
+  min-height: 44px;
+  padding-left: 12px;
+}
+
+.advanced-section-header ion-label {
+  font-size: 0.98rem;
+}
+
+.advanced-access-row,
+.advanced-action-button-row,
+.advanced-action-toggle-row,
+.advanced-input-row,
+.advanced-select-row,
+.advanced-slider-row {
+  --background: #fff;
+  --inner-padding-end: 8px;
+  --min-height: 54px;
+  --padding-start: 14px;
+  border-top: 1px solid var(--ion-color-light-shade);
+}
+
+.advanced-row-icon {
+  height: 28px;
+  object-fit: contain;
+  width: 28px;
+}
+
+.advanced-lock-button {
+  font-size: 0;
+  margin-inline-start: 6px;
+}
+
+.advanced-lock-button img {
+  height: 22px;
+  width: 22px;
+}
+
+.advanced-value-badge {
+  margin-inline-start: auto;
+  max-width: 46%;
+  min-width: 58px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.advanced-range {
+  --bar-background-active: var(--mantion-blue);
+  --knob-background: var(--mantion-blue);
+  padding-inline: 6px;
+}
+
+.advanced-precision-row {
+  align-items: center;
+  background: #fff;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 44px minmax(58px, auto) 44px auto;
+  padding: 8px 12px 12px 56px;
+}
+
+.advanced-precision-row ion-button {
+  margin: 0;
+}
+
+.advanced-precision-row ion-button:first-child {
+  --border-color: var(--mantion-danger);
+  --color: var(--mantion-danger);
+}
+
+.advanced-precision-row ion-button:nth-child(3) {
+  --border-color: var(--mantion-green);
+  --color: var(--mantion-green);
+}
+
+.advanced-precision-row strong {
+  color: var(--mantion-grey);
+  text-align: center;
+}
+
+.advanced-apply-row {
+  align-items: center;
+  background: #fff;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 8px 12px 12px 56px;
+}
+
+.advanced-apply-row strong {
+  color: var(--mantion-grey);
+}
+
+.advanced-state {
+  background: #fff;
+  margin: 0;
+  padding: 8px 12px 12px 56px;
+}
+
+.advanced-access-row p,
+.advanced-notice {
+  color: var(--mantion-grey);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.advanced-actions-list {
+  background: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+.advanced-danger-button {
+  --background: var(--mantion-danger);
+  --color: var(--mantion-danger-contrast);
+}
+
+.advanced-technical-details {
+  margin-top: 14px;
+}

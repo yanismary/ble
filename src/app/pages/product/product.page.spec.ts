@@ -4393,6 +4393,215 @@ describe('ProductPage professional scalar controls',
       },
     );
 
+    it('should render Phase 1 advanced settings without bypassing access',
+      async () => {
+        const {
+          component,
+          fixture,
+          writeExecutionService,
+        } = await createProfessionalScalarPage(
+          'moventiv-80',
+          professionalValue('moventiv-80', 50, 60, {
+            nearOpenSpeed: 45,
+            nearCloseSpeed: 55,
+            brakingOpenPower: 40,
+            obstacleSensitivity: 2,
+            nearOpenTorque: 90,
+            nearCloseTorque: 110,
+          }),
+        );
+        const protectedControl = component.professionalScalarControls.find(
+          (candidate) => candidate.config.field === 'braking-open-power',
+        )!.config;
+
+        component.setActiveMainTab('settings');
+        component.setActiveSettingsTab('advanced');
+        component.toggleProfessionalScalarLock(protectedControl);
+        fixture.detectChanges();
+
+        let element = fixture.nativeElement as HTMLElement;
+        const advancedPanel = element.querySelector<HTMLElement>(
+          '.advanced-settings-panel',
+        );
+        expect(advancedPanel).not.toBeNull();
+        expect(component.professionalAccessGranted).toBeFalse();
+        expect(component.visibleProfessionalScalarControls.map((control) =>
+          control.config.field,
+        )).toEqual(['near-open-speed', 'near-close-speed']);
+        expect(component.canApplyProfessionalScalar(protectedControl))
+          .toBeFalse();
+        expect(Array.from(element.querySelectorAll<HTMLElement>(
+          '[data-professional-scalar-field]',
+        )).map((row) => row.getAttribute('data-professional-scalar-field')))
+          .toEqual(['near-open-speed', 'near-close-speed']);
+        expect(element.querySelector<HTMLImageElement>(
+          'img[src="assets/img/icon_speed.svg"]',
+        )).not.toBeNull();
+        expect(element.querySelector<HTMLImageElement>(
+          'img[src="assets/img/icon_lock_on.svg"]',
+        )).not.toBeNull();
+
+        await component.requestProfessionalAccess();
+        fixture.detectChanges();
+        element = fixture.nativeElement as HTMLElement;
+
+        expect(component.professionalAccessGranted).toBeTrue();
+        expect(Array.from(element.querySelectorAll<HTMLElement>(
+          '[data-professional-scalar-field]',
+        )).map((row) => row.getAttribute('data-professional-scalar-field')))
+          .toEqual([
+            'near-open-speed',
+            'near-close-speed',
+            'near-open-torque',
+            'near-close-torque',
+            'braking-open-power',
+            'obstacle-sensitivity',
+          ]);
+        expect(element.querySelector<HTMLImageElement>(
+          'img[src="assets/img/icon_force.svg"]',
+        )).not.toBeNull();
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should keep Widoor advanced actions routed through existing handlers',
+      async () => {
+        const {
+          component,
+          fixture,
+          writeExecutionService,
+        } = await createProfessionalScalarPage(
+          'widoor',
+          professionalValue('widoor', 0, 0, {
+            breakForceAtOpen: 5,
+            nearOpenSpeed: 25,
+            nearCloseSpeed: 35,
+          }),
+        );
+        const requestSensitiveAction = spyOn(component, 'requestSensitiveAction')
+          .and.resolveTo();
+
+        component.setActiveMainTab('settings');
+        component.setActiveSettingsTab('advanced');
+        fixture.detectChanges();
+
+        const element = fixture.nativeElement as HTMLElement;
+        expect(Array.from(element.querySelectorAll<HTMLElement>(
+          '[data-sensitive-action]',
+        )).map((row) => row.getAttribute('data-sensitive-action'))).toEqual([
+          'learning',
+          'radar-test-1',
+          'radar-test-2',
+          'professional-peripheral-lock',
+          'reset',
+        ]);
+        expect(element.querySelector<HTMLImageElement>(
+          'img[src="assets/img/icon_test_off.svg"]',
+        )).not.toBeNull();
+        expect(element.querySelector<HTMLImageElement>(
+          'img[src="assets/img/icon_lock_off.svg"]',
+        )).not.toBeNull();
+        expect(component.showProfessionalAccessPrompt).toBeTrue();
+        expect(component.canExecuteSensitiveAction(
+          component.sensitiveActions.find((action) =>
+            action.action === 'radar-test-1',
+          )!,
+        )).toBeFalse();
+        expect(component.canExecuteSensitiveAction(
+          component.sensitiveActions.find((action) =>
+            action.action === 'professional-peripheral-lock',
+          )!,
+        )).toBeFalse();
+
+        const learningButton = element.querySelector<HTMLIonButtonElement>(
+          '[data-sensitive-action="learning"] ion-button',
+        );
+        learningButton?.click();
+        fixture.detectChanges();
+
+        expect(requestSensitiveAction)
+          .toHaveBeenCalledOnceWith(component.sensitiveActions[0]);
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      },
+    );
+
+    for (const actionName of [
+      'radar-test-1',
+      'radar-test-2',
+      'professional-peripheral-lock',
+    ] as const) {
+      it(`should require professional access for Widoor ${actionName}`,
+        async () => {
+          const {
+            component,
+            professionalAccessService,
+            writeExecutionService,
+          } = await createProfessionalScalarPage(
+            'widoor',
+            professionalValue('widoor', 0, 0, {
+              breakForceAtOpen: 5,
+              nearOpenSpeed: 25,
+              nearCloseSpeed: 35,
+            }),
+          );
+          const action = component.sensitiveActions.find((candidate) =>
+            candidate.action === actionName,
+          )!;
+
+          expect(component.professionalAccessGranted).toBeFalse();
+          expect(component.canExecuteSensitiveAction(action)).toBeFalse();
+
+          await component.requestSensitiveAction(action, true);
+
+          expect(writeExecutionService.execute).not.toHaveBeenCalled();
+
+          expect(professionalAccessService.authenticate({
+            profile: 'widoor',
+            deviceId: 'device-1',
+            connectionGeneration: 4,
+          }, PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE)).toBeTrue();
+          expect(component.professionalAccessGranted).toBeTrue();
+          expect(component.canExecuteSensitiveAction(action)).toBeTrue();
+
+          await component.requestSensitiveAction(action, true);
+
+          expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        },
+      );
+    }
+
+    it('should not grant Widoor sensitive access through UI locks alone',
+      async () => {
+        const {
+          component,
+          writeExecutionService,
+        } = await createProfessionalScalarPage(
+          'widoor',
+          professionalValue('widoor', 0, 0, {
+            breakForceAtOpen: 5,
+            nearOpenSpeed: 25,
+            nearCloseSpeed: 35,
+          }),
+        );
+        const radarTest = component.sensitiveActions.find((action) =>
+          action.action === 'radar-test-1',
+        )!;
+        const scalar = component.professionalScalarControls.find((control) =>
+          control.config.field === 'break-force-at-open',
+        )!.config;
+
+        component.toggleProfessionalScalarLock(scalar);
+        component.toggleProfessionalInputControlLock();
+
+        expect(component.professionalAccessGranted).toBeFalse();
+        expect(component.canExecuteSensitiveAction(radarTest)).toBeFalse();
+
+        await component.requestSensitiveAction(radarTest, true);
+
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      },
+    );
+
     it('should keep near open and near close speed drafts independent',
       async () => {
         const {
@@ -4674,6 +4883,42 @@ describe('ProductPage product date maintenance actions', () => {
       expect(harness.fixture.nativeElement.textContent).toContain(
         harness.component.text.productDateActions.maintenanceLabel,
       );
+    },
+  );
+
+  it('should place maintenance actions in the advanced settings tab',
+    async () => {
+      const harness = await createProductDateHarness(
+        'garline',
+        presentHistoricalDate(),
+      );
+      const requestProductDateMaintenanceAction = spyOn(
+        harness.component,
+        'requestProductDateMaintenanceAction',
+      ).and.resolveTo();
+
+      harness.component.setActiveMainTab('settings');
+      harness.component.setActiveSettingsTab('advanced');
+      harness.fixture.detectChanges();
+
+      const element = harness.fixture.nativeElement as HTMLElement;
+      const advancedButton = element.querySelector<HTMLIonButtonElement>(
+        '.advanced-historical-action',
+      );
+      expect(advancedButton?.textContent).toContain(
+        harness.component.text.productDateActions.maintenanceLabel,
+      );
+
+      advancedButton?.click();
+      harness.fixture.detectChanges();
+
+      expect(requestProductDateMaintenanceAction).toHaveBeenCalledTimes(1);
+
+      harness.component.setActiveMainTab('information');
+      harness.fixture.detectChanges();
+      expect(element.querySelector<HTMLIonButtonElement>(
+        'section[aria-labelledby="information-title"] ion-button[color="warning"]',
+      )).toBeNull();
     },
   );
 

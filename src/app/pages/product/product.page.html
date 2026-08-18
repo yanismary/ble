@@ -614,7 +614,7 @@
                 >
                   <ion-label>{{ text.professional.weightRange }}</ion-label>
                   <ion-badge class="mantion-value-badge basic-value-badge">
-                    {{ currentWeightRangeValue()?.lower }}-{{ currentWeightRangeValue()?.upper }} kg
+                    {{ currentWeightRangeValue()?.lower }}–{{ currentWeightRangeValue()?.upper }} kg
                   </ion-badge>
                   <ion-button
                     type="button"
@@ -786,302 +786,419 @@
       </div>
 
       <div [hidden]="activeSettingsTab !== 'advanced'">
-      <article class="product-subsection">
-        <h3>{{ text.sections.professionalSettings }}</h3>
-        <ng-container
-          [ngTemplateOutlet]="readStatus"
-          [ngTemplateOutletContext]="{
-            $implicit: viewModel.reads.professionalParameters
-          }"
-        ></ng-container>
-        @if (viewModel.reads.professionalParameters.status === 'available') {
-          <dl class="product-readonly-grid">
-            @for (row of professionalRows; track row.key) {
-              <dt>{{ row.label }}</dt>
-              <dd>{{ row.value }}</dd>
-            }
-          </dl>
-          @if (showProfessionalAccessPrompt) {
-            <div class="professional-access-controls">
-              <p>{{ text.professionalAccess.locked }}</p>
-              <ion-button
-                type="button"
-                size="small"
-                fill="outline"
-                (click)="requestProfessionalAccess()"
-              >
-                {{ text.professionalAccess.unlock }}
-              </ion-button>
-            </div>
-          }
-          @if (professionalAccessState.message) {
-            <p
-              class="command-state"
-              role="status"
-              aria-live="polite"
-              [attr.data-tone]="professionalAccessState.status === 'failed' ? 'error' : 'neutral'"
-            >
-              <span>{{ professionalAccessState.message }}</span>
-            </p>
-          }
-          @if (professionalPeripheralDiagnosticRows.length > 0) {
-            <div class="professional-peripheral-diagnostics">
-              <h4>{{ text.professionalPeripheralDiagnostics.title }}</h4>
-              <p>{{ text.professionalPeripheralDiagnostics.readonlyNotice }}</p>
-              <dl class="product-readonly-grid">
-                @for (row of professionalPeripheralDiagnosticRows; track row.key) {
-                  <dt>{{ row.label }}</dt>
-                  <dd>{{ row.value }}</dd>
-                }
-              </dl>
-            </div>
-          }
-          @if (showProfessionalInputControls) {
-            <div class="professional-input-controls">
-              <div class="user-speed-control-header">
-                <h4>{{ text.professionalInputControls.title }}</h4>
-                <ion-button
-                  type="button"
-                  size="small"
-                  fill="clear"
-                  [attr.aria-label]="professionalInputControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-                  (click)="toggleProfessionalInputControlLock()"
-                >
-                  {{ professionalInputControlUnlocked ? '🔓' : '🔒' }}
-                </ion-button>
-              </div>
-              @for (inputControl of professionalInputControls; track inputControl.config.field) {
-                <ion-select
-                  class="professional-input-select"
-                  [label]="inputControl.text"
-                  label-placement="stacked"
-                  interface="popover"
-                  [value]="currentProfessionalInputMode(inputControl.config)"
-                  [disabled]="!professionalInputControlUnlocked || !canChangeProfessionalInput(inputControl.config)"
-                  (ionChange)="requestProfessionalInputChange(inputControl.config, $event)"
-                >
-                  <ion-select-option value="button">
-                    {{ text.professionalInputControls.button }}
-                  </ion-select-option>
-                  <ion-select-option value="radar">
-                    {{ text.professionalInputControls.radar }}
-                  </ion-select-option>
-                </ion-select>
+        <article class="product-subsection advanced-settings-panel">
+          <h3>{{ text.sections.professionalSettings }}</h3>
+          <ng-container
+            [ngTemplateOutlet]="readStatus"
+            [ngTemplateOutletContext]="{
+              $implicit: viewModel.reads.professionalParameters
+            }"
+          ></ng-container>
+          @if (viewModel.reads.professionalParameters.status === 'available') {
+            <ion-list class="advanced-settings-list" lines="none">
+              @if (showProfessionalAccessPrompt) {
+                <ion-item class="advanced-access-row">
+                  <ion-label>
+                    <p>{{ text.professionalAccess.locked }}</p>
+                  </ion-label>
+                  <ion-button
+                    slot="end"
+                    type="button"
+                    size="small"
+                    fill="outline"
+                    (click)="requestProfessionalAccess()"
+                  >
+                    {{ text.professionalAccess.unlock }}
+                  </ion-button>
+                </ion-item>
               }
-              @if (professionalInputWriteState.message) {
+              @if (professionalAccessState.message) {
                 <p
-                  class="command-state"
+                  class="command-state advanced-state"
                   role="status"
                   aria-live="polite"
-                  [attr.data-tone]="professionalInputWriteState.status === 'failed' ? 'error' : 'neutral'"
+                  [attr.data-tone]="professionalAccessState.status === 'failed' ? 'error' : 'neutral'"
                 >
-                  @if (professionalInputWriteState.status === 'executing') {
-                    <ion-spinner name="crescent"></ion-spinner>
-                  }
-                  <span>{{ professionalInputWriteState.message }}</span>
+                  <span>{{ professionalAccessState.message }}</span>
                 </p>
               }
-            </div>
-          }
-          @if (showAdvancedWeightRangeControls) {
-            <div class="weight-range-controls">
-              <div class="weight-range-control-header">
-                <strong>{{ text.professional.weightRange }}</strong>
-                <span>
-                  {{ text.weightRangeControls.current }}
-                  {{ currentWeightRangeValue()?.lower }}–{{ currentWeightRangeValue()?.upper }}
-                  kg
-                </span>
-                <ion-button
-                  type="button"
-                  size="small"
-                  fill="clear"
-                  [attr.aria-label]="weightRangeControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-                  (click)="toggleWeightRangeControlLock()"
-                >
-                  {{ weightRangeControlUnlocked ? '🔓' : '🔒' }}
-                </ion-button>
-              </div>
-              <ion-select
-                class="weight-range-select"
-                [attr.aria-label]="text.professional.weightRange"
-                interface="popover"
-                [compareWith]="compareWeightRangeOptions"
-                [value]="weightRangeDraftValue()"
-                [disabled]="!weightRangeControlUnlocked"
-                (ionChange)="setWeightRangeDraftValue($event)"
-              >
-                @for (weightControl of weightRangeControls; track weightControl.config.label) {
-                  <ion-select-option [value]="weightControl.config.range">
-                    {{ weightControl.config.label }}
-                  </ion-select-option>
+
+              @if (showProfessionalInputControls) {
+                <ion-list-header class="advanced-section-header">
+                  <ion-label>{{ text.professionalInputControls.title }}</ion-label>
+                  <ion-button
+                    type="button"
+                    size="small"
+                    fill="clear"
+                    class="advanced-lock-button"
+                    [attr.aria-label]="professionalInputControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                    (click)="toggleProfessionalInputControlLock()"
+                  >
+                    <img
+                      [src]="professionalInputControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                      alt=""
+                    />
+                  </ion-button>
+                </ion-list-header>
+                @for (inputControl of professionalInputControls; track inputControl.config.field) {
+                  <ion-item
+                    class="advanced-input-row"
+                    [attr.data-professional-input-field]="inputControl.config.field"
+                  >
+                    <img
+                      slot="start"
+                      class="advanced-row-icon"
+                      [src]="professionalInputIconSrc(inputControl.config)"
+                      alt=""
+                    />
+                    <ion-label>{{ inputControl.text }}</ion-label>
+                    <ion-badge slot="end" class="advanced-value-badge">
+                      @if (currentProfessionalInputMode(inputControl.config) === 'radar') {
+                        {{ text.professionalInputControls.radar }}
+                      } @else {
+                        {{ text.professionalInputControls.button }}
+                      }
+                    </ion-badge>
+                    <ion-select
+                      slot="end"
+                      interface="popover"
+                      [attr.aria-label]="inputControl.text"
+                      [value]="currentProfessionalInputMode(inputControl.config)"
+                      [disabled]="!professionalInputControlUnlocked || !canChangeProfessionalInput(inputControl.config)"
+                      (ionChange)="requestProfessionalInputChange(inputControl.config, $event)"
+                    >
+                      <ion-select-option value="button">
+                        {{ text.professionalInputControls.button }}
+                      </ion-select-option>
+                      <ion-select-option value="radar">
+                        {{ text.professionalInputControls.radar }}
+                      </ion-select-option>
+                    </ion-select>
+                  </ion-item>
                 }
-              </ion-select>
-              <div class="product-actions">
-                <span>
-                  {{ text.weightRangeControls.draft }}
-                  {{ weightRangeDraftValue()?.lower }}–{{ weightRangeDraftValue()?.upper }}
-                  kg
-                </span>
-                <ion-button
-                  type="button"
-                  size="small"
-                  (click)="requestWeightRangeChange()"
-                  [disabled]="!weightRangeControlUnlocked || !canApplyWeightRange()"
-                >
-                  {{ text.weightRangeControls.apply }}
-                </ion-button>
-              </div>
-              @if (weightRangeWriteState.message) {
-                <p
-                  class="command-state"
-                  role="status"
-                  aria-live="polite"
-                  [attr.data-tone]="weightRangeWriteState.status === 'failed' ? 'error' : 'neutral'"
-                >
-                  @if (weightRangeWriteState.status === 'executing') {
-                    <ion-spinner name="crescent"></ion-spinner>
-                  }
-                  <span>{{ weightRangeWriteState.message }}</span>
-                </p>
+                @if (professionalInputWriteState.message) {
+                  <p
+                    class="command-state advanced-state"
+                    role="status"
+                    aria-live="polite"
+                    [attr.data-tone]="professionalInputWriteState.status === 'failed' ? 'error' : 'neutral'"
+                  >
+                    @if (professionalInputWriteState.status === 'executing') {
+                      <ion-spinner name="crescent"></ion-spinner>
+                    }
+                    <span>{{ professionalInputWriteState.message }}</span>
+                  </p>
+                }
               }
-            </div>
-          }
-          @if (showProfessionalScalarControls) {
-            <div class="professional-scalar-controls">
-              @for (scalarControl of visibleProfessionalScalarControls; track scalarControl.config.field) {
-                <div class="professional-scalar-control">
-                  <div class="professional-scalar-control-header">
-                    <strong>{{ scalarControl.text }}</strong>
-                    <span>
-                      {{ text.professionalScalarControls.current }}
+
+              @if (showAdvancedWeightRangeControls) {
+                <ion-list-header class="advanced-section-header">
+                  <img
+                    slot="start"
+                    class="advanced-row-icon"
+                    src="assets/img/icon_force.svg"
+                    alt=""
+                  />
+                  <ion-label>{{ text.professional.weightRange }}</ion-label>
+                  <ion-badge class="advanced-value-badge">
+                    {{ currentWeightRangeValue()?.lower }}–{{ currentWeightRangeValue()?.upper }}
+                    kg
+                  </ion-badge>
+                  <ion-button
+                    type="button"
+                    size="small"
+                    fill="clear"
+                    class="advanced-lock-button"
+                    [attr.aria-label]="weightRangeControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                    (click)="toggleWeightRangeControlLock()"
+                  >
+                    <img
+                      [src]="weightRangeControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                      alt=""
+                    />
+                  </ion-button>
+                </ion-list-header>
+                <ion-item class="advanced-select-row">
+                  <ion-label>{{ text.weightRangeControls.draft }}</ion-label>
+                  <ion-select
+                    slot="end"
+                    [attr.aria-label]="text.professional.weightRange"
+                    interface="popover"
+                    [compareWith]="compareWeightRangeOptions"
+                    [value]="weightRangeDraftValue()"
+                    [disabled]="!weightRangeControlUnlocked"
+                    (ionChange)="setWeightRangeDraftValue($event)"
+                  >
+                    @for (weightControl of weightRangeControls; track weightControl.config.label) {
+                      <ion-select-option [value]="weightControl.config.range">
+                        {{ weightControl.config.label }}
+                      </ion-select-option>
+                    }
+                  </ion-select>
+                </ion-item>
+                <div class="advanced-apply-row">
+                  <strong>
+                    {{ weightRangeDraftValue()?.lower }}–{{ weightRangeDraftValue()?.upper }}
+                    kg
+                  </strong>
+                  <ion-button
+                    type="button"
+                    size="small"
+                    (click)="requestWeightRangeChange()"
+                    [disabled]="!weightRangeControlUnlocked || !canApplyWeightRange()"
+                  >
+                    {{ text.weightRangeControls.apply }}
+                  </ion-button>
+                </div>
+                @if (weightRangeWriteState.message) {
+                  <p
+                    class="command-state advanced-state"
+                    role="status"
+                    aria-live="polite"
+                    [attr.data-tone]="weightRangeWriteState.status === 'failed' ? 'error' : 'neutral'"
+                  >
+                    @if (weightRangeWriteState.status === 'executing') {
+                      <ion-spinner name="crescent"></ion-spinner>
+                    }
+                    <span>{{ weightRangeWriteState.message }}</span>
+                  </p>
+                }
+              }
+
+              @if (showProfessionalScalarControls) {
+                @for (scalarControl of visibleProfessionalScalarControls; track scalarControl.config.field) {
+                  <ion-list-header
+                    class="advanced-section-header"
+                    [attr.data-professional-scalar-field]="scalarControl.config.field"
+                  >
+                    <img
+                      slot="start"
+                      class="advanced-row-icon"
+                      [src]="professionalScalarIconSrc(scalarControl.config)"
+                      alt=""
+                    />
+                    <ion-label>{{ scalarControl.text }}</ion-label>
+                    <ion-badge class="advanced-value-badge">
                       {{ currentProfessionalScalarValue(scalarControl.config) }}
                       {{ scalarControl.config.unit ?? '' }}
-                    </span>
+                    </ion-badge>
                     <ion-button
                       type="button"
                       size="small"
                       fill="clear"
+                      class="advanced-lock-button"
                       [attr.aria-label]="isProfessionalScalarUnlocked(scalarControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
                       (click)="toggleProfessionalScalarLock(scalarControl.config)"
                     >
-                      {{ isProfessionalScalarUnlocked(scalarControl.config) ? '🔓' : '🔒' }}
+                      <img
+                        [src]="isProfessionalScalarUnlocked(scalarControl.config) ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                        alt=""
+                      />
                     </ion-button>
-                  </div>
-                  <ion-range
-                    class="professional-scalar-range"
-                    [attr.aria-label]="scalarControl.text"
-                    [min]="scalarControl.config.range.min"
-                    [max]="scalarControl.config.range.max"
-                    [step]="1"
-                    [pin]="true"
-                    [disabled]="!isProfessionalScalarUnlocked(scalarControl.config)"
-                    [value]="professionalScalarDraftValue(scalarControl.config)"
-                    (ionChange)="setProfessionalScalarDraftValue(scalarControl.config, $event)"
-                  ></ion-range>
-                  <div class="precision-stepper" aria-label="Réglage précis">
-                    <ion-button
-                      type="button"
-                      size="small"
-                      fill="outline"
-                      aria-label="Diminuer de 1"
+                  </ion-list-header>
+                  <ion-item class="advanced-slider-row">
+                    <ion-range
+                      class="advanced-range"
+                      [attr.aria-label]="scalarControl.text"
+                      [min]="scalarControl.config.range.min"
+                      [max]="scalarControl.config.range.max"
+                      [step]="1"
+                      [pin]="true"
                       [disabled]="!isProfessionalScalarUnlocked(scalarControl.config)"
-                      (click)="stepProfessionalScalarDraft(scalarControl.config, -1)"
-                    >
-                      −
-                    </ion-button>
-                    <strong>
-                      {{ professionalScalarDraftValue(scalarControl.config) }}
-                      {{ scalarControl.config.unit ?? '' }}
-                    </strong>
-                    <ion-button
-                      type="button"
-                      size="small"
-                      fill="outline"
-                      aria-label="Augmenter de 1"
-                      [disabled]="!isProfessionalScalarUnlocked(scalarControl.config)"
-                      (click)="stepProfessionalScalarDraft(scalarControl.config, 1)"
-                    >
-                      +
-                    </ion-button>
-                  </div>
-                  <div class="product-actions">
-                    <span>
-                      {{ text.professionalScalarControls.draft }}
-                      {{ professionalScalarDraftValue(scalarControl.config) }}
-                      {{ scalarControl.config.unit ?? '' }}
-                    </span>
-                    <ion-button
-                      type="button"
-                      size="small"
-                      (click)="requestProfessionalScalarChange(scalarControl.config)"
-                      [disabled]="!isProfessionalScalarUnlocked(scalarControl.config) || !canApplyProfessionalScalar(scalarControl.config)"
-                    >
-                      {{ text.professionalScalarControls.apply }}
-                    </ion-button>
-                  </div>
-                </div>
-              }
-              @if (professionalScalarWriteState.message) {
-                <p
-                  class="command-state"
-                  role="status"
-                  aria-live="polite"
-                  [attr.data-tone]="professionalScalarWriteState.status === 'failed' ? 'error' : 'neutral'"
-                >
-                  @if (professionalScalarWriteState.status === 'executing') {
-                    <ion-spinner name="crescent"></ion-spinner>
+                      [value]="professionalScalarDraftValue(scalarControl.config)"
+                      (ionChange)="setProfessionalScalarDraftValue(scalarControl.config, $event)"
+                    ></ion-range>
+                  </ion-item>
+                  @if (isProfessionalScalarUnlocked(scalarControl.config)) {
+                    <div class="advanced-precision-row" aria-label="Réglage précis">
+                      <ion-button
+                        type="button"
+                        size="small"
+                        fill="outline"
+                        aria-label="Diminuer de 1"
+                        (click)="stepProfessionalScalarDraft(scalarControl.config, -1)"
+                      >
+                        −
+                      </ion-button>
+                      <strong>
+                        {{ professionalScalarDraftValue(scalarControl.config) }}
+                        {{ scalarControl.config.unit ?? '' }}
+                      </strong>
+                      <ion-button
+                        type="button"
+                        size="small"
+                        fill="outline"
+                        aria-label="Augmenter de 1"
+                        (click)="stepProfessionalScalarDraft(scalarControl.config, 1)"
+                      >
+                        +
+                      </ion-button>
+                      <ion-button
+                        type="button"
+                        size="small"
+                        (click)="requestProfessionalScalarChange(scalarControl.config)"
+                        [disabled]="!canApplyProfessionalScalar(scalarControl.config)"
+                      >
+                        {{ text.professionalScalarControls.apply }}
+                      </ion-button>
+                    </div>
                   }
-                  <span>{{ professionalScalarWriteState.message }}</span>
-                </p>
+                }
+                @if (professionalScalarWriteState.message) {
+                  <p
+                    class="command-state advanced-state"
+                    role="status"
+                    aria-live="polite"
+                    [attr.data-tone]="professionalScalarWriteState.status === 'failed' ? 'error' : 'neutral'"
+                  >
+                    @if (professionalScalarWriteState.status === 'executing') {
+                      <ion-spinner name="crescent"></ion-spinner>
+                    }
+                    <span>{{ professionalScalarWriteState.message }}</span>
+                  </p>
+                }
               }
-            </div>
-          }
-        }
-      </article>
 
-      @if (sensitiveActions.length > 0) {
-        <article class="product-subsection deferred-sensitive-actions">
-          <h3>{{ text.sensitiveActions.title }}</h3>
-          <p>{{ text.sensitiveActions.notice }}</p>
-          <div class="product-actions">
-            @for (action of sensitiveActions; track action.action) {
-              @if (action.control === 'toggle') {
-                <ion-toggle
-                  [checked]="sensitiveActionCurrentEnabled(action) === true"
-                  [disabled]="!canExecuteSensitiveAction(action)"
-                  (ionChange)="requestSensitiveAction(action, $event)"
-                >
-                  {{ text.sensitiveActions[action.textKey] }}
-                </ion-toggle>
-              } @else {
-                <ion-button
-                  type="button"
-                  size="small"
-                  [color]="action.action === 'reset' ? 'danger' : undefined"
-                  [disabled]="!canExecuteSensitiveAction(action)"
-                  (click)="requestSensitiveAction(action)"
-                >
-                  {{ text.sensitiveActions[action.textKey] }}
-                </ion-button>
+              @if (professionalPeripheralDiagnosticRows.length > 0) {
+                <details class="technical-details advanced-technical-details">
+                  <summary>{{ text.professionalPeripheralDiagnostics.title }}</summary>
+                  <p class="advanced-notice">
+                    {{ text.professionalPeripheralDiagnostics.readonlyNotice }}
+                  </p>
+                  <dl class="product-readonly-grid">
+                    @for (row of professionalPeripheralDiagnosticRows; track row.key) {
+                      <dt>{{ row.label }}</dt>
+                      <dd>{{ row.value }}</dd>
+                    }
+                  </dl>
+                </details>
               }
-            }
-          </div>
-          @if (sensitiveActionState.message) {
-            <p
-              class="command-state"
-              role="status"
-              aria-live="polite"
-              [attr.data-tone]="sensitiveActionState.status === 'failed' ? 'error' : 'neutral'"
-            >
-              @if (sensitiveActionState.status === 'executing') {
-                <ion-spinner name="crescent"></ion-spinner>
-              }
-              <span>{{ sensitiveActionState.message }}</span>
-            </p>
+            </ion-list>
           }
         </article>
-      }
+
+        @if (showProductDateMaintenanceAction) {
+          <article class="product-subsection advanced-settings-panel">
+            <h3>{{ text.productDateActions.confirmTitle }}</h3>
+            <ion-list class="advanced-actions-list" lines="none">
+              <ion-item class="advanced-action-button-row">
+                <ion-label>
+                  <strong>{{ productDateMaintenanceActionLabel }}</strong>
+                  <p class="advanced-notice">
+                    {{ text.productDateActions.awaitingConfirmation }}
+                  </p>
+                </ion-label>
+                <ion-button
+                  slot="end"
+                  type="button"
+                  class="advanced-historical-action"
+                  color="warning"
+                  (click)="requestProductDateMaintenanceAction()"
+                  [disabled]="!canRequestProductDateMaintenanceAction()"
+                >
+                  {{ productDateMaintenanceActionLabel }}
+                </ion-button>
+              </ion-item>
+            </ion-list>
+            @if (productDateActionState.message) {
+              <p
+                class="command-state advanced-state"
+                role="status"
+                aria-live="polite"
+                [attr.data-tone]="
+                  productDateActionState.status === 'failed' ||
+                  productDateActionState.status === 'partial-failed'
+                    ? 'error'
+                    : 'neutral'
+                "
+              >
+                @if (productDateActionState.status === 'executing') {
+                  <ion-spinner name="crescent"></ion-spinner>
+                }
+                <span>{{ productDateActionState.message }}</span>
+              </p>
+            }
+          </article>
+        }
+
+        @if (sensitiveActions.length > 0) {
+          <article class="product-subsection advanced-settings-panel">
+            <h3>{{ text.sensitiveActions.title }}</h3>
+            <p class="advanced-notice">{{ text.sensitiveActions.notice }}</p>
+            <ion-list class="advanced-actions-list" lines="none">
+              @for (action of sensitiveActions; track action.action) {
+                @if (action.control === 'toggle') {
+                  <ion-item
+                    class="advanced-action-toggle-row"
+                    [attr.data-sensitive-action]="action.action"
+                  >
+                    @if (sensitiveActionIconSrc(action) !== null) {
+                      <img
+                        slot="start"
+                        class="advanced-row-icon"
+                        [src]="sensitiveActionIconSrc(action)!"
+                        alt=""
+                      />
+                    }
+                    <ion-label>{{ text.sensitiveActions[action.textKey] }}</ion-label>
+                    <ion-badge slot="end" class="advanced-value-badge">
+                      @if (sensitiveActionCurrentEnabled(action) === true) {
+                        {{ text.professionalPeripheralDiagnostics.enabled }}
+                      } @else {
+                        {{ text.professionalPeripheralDiagnostics.disabled }}
+                      }
+                    </ion-badge>
+                    <ion-toggle
+                      slot="end"
+                      [checked]="sensitiveActionCurrentEnabled(action) === true"
+                      [disabled]="!canExecuteSensitiveAction(action)"
+                      (ionChange)="requestSensitiveAction(action, $event)"
+                    ></ion-toggle>
+                  </ion-item>
+                } @else {
+                  <ion-item
+                    class="advanced-action-button-row"
+                    [attr.data-sensitive-action]="action.action"
+                  >
+                    @if (sensitiveActionIconSrc(action) !== null) {
+                      <img
+                        slot="start"
+                        class="advanced-row-icon"
+                        [src]="sensitiveActionIconSrc(action)!"
+                        alt=""
+                      />
+                    }
+                    <ion-label>{{ text.sensitiveActions[action.textKey] }}</ion-label>
+                    <ion-button
+                      slot="end"
+                      type="button"
+                      size="small"
+                      [color]="sensitiveActionButtonColor(action)"
+                      [class.advanced-danger-button]="action.action === 'reset'"
+                      [disabled]="!canExecuteSensitiveAction(action)"
+                      (click)="requestSensitiveAction(action)"
+                    >
+                      {{ text.sensitiveActions[action.textKey] }}
+                    </ion-button>
+                  </ion-item>
+                }
+              }
+            </ion-list>
+            @if (sensitiveActionState.message) {
+              <p
+                class="command-state advanced-state"
+                role="status"
+                aria-live="polite"
+                [attr.data-tone]="sensitiveActionState.status === 'failed' ? 'error' : 'neutral'"
+              >
+                @if (sensitiveActionState.status === 'executing') {
+                  <ion-spinner name="crescent"></ion-spinner>
+                }
+                <span>{{ sensitiveActionState.message }}</span>
+              </p>
+            }
+          </article>
+        }
       </div>
       </section>
     }
@@ -1139,36 +1256,6 @@
               <dd>{{ row.value }}</dd>
             }
           </dl>
-          @if (showProductDateMaintenanceAction) {
-            <div class="product-actions">
-              <ion-button
-                type="button"
-                color="warning"
-                (click)="requestProductDateMaintenanceAction()"
-                [disabled]="!canRequestProductDateMaintenanceAction()"
-              >
-                {{ productDateMaintenanceActionLabel }}
-              </ion-button>
-            </div>
-            @if (productDateActionState.message) {
-              <p
-                class="command-state"
-                role="status"
-                aria-live="polite"
-                [attr.data-tone]="
-                  productDateActionState.status === 'failed' ||
-                  productDateActionState.status === 'partial-failed'
-                    ? 'error'
-                    : 'neutral'
-                "
-              >
-                @if (productDateActionState.status === 'executing') {
-                  <ion-spinner name="crescent"></ion-spinner>
-                }
-                <span>{{ productDateActionState.message }}</span>
-              </p>
-            }
-          }
         }
       </article>
 
