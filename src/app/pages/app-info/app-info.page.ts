@@ -8,13 +8,17 @@ import {
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonItem,
   IonLabel,
   IonList,
+  IonListHeader,
   IonNote,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { call, location, mail } from 'ionicons/icons';
 
 import {
   appInfoCopyFor,
@@ -32,9 +36,11 @@ import {
     IonButtons,
     IonContent,
     IonHeader,
+    IonIcon,
     IonItem,
     IonLabel,
     IonList,
+    IonListHeader,
     IonNote,
     IonTitle,
     IonToolbar,
@@ -47,6 +53,10 @@ export class AppInfoPage implements OnInit {
   );
 
   appVersion = '—';
+
+  constructor() {
+    addIcons({ call, location, mail });
+  }
 
   async ngOnInit(): Promise<void> {
     if (!Capacitor.isNativePlatform()) {

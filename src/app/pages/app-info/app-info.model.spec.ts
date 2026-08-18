@@ -4,10 +4,12 @@ import {
 } from './app-info.model';
 
 describe('app info model', () => {
-  it('keeps the Phase 1 support contact in the French copy', () => {
+  it('keeps the current support contact in the French copy', () => {
     const copy = appInfoCopyFor('fr');
 
     expect(copy.companyName).toBeTruthy();
+    expect(copy.supportEmail).toBe('appsupport@mantion-smt.fr');
+    expect(copy.supportEmailHref).toBe('mailto:appsupport@mantion-smt.fr');
     expect(copy.phoneLabel).toBeTruthy();
     expect(copy.phoneHref).toBe('tel:+33380378571');
     expect(copy.addressLines.length).toBeGreaterThan(0);
@@ -31,6 +33,8 @@ describe('app info model', () => {
       expect(copy.lastModificationText).toBeTruthy();
       expect(copy.contactTitle).toBeTruthy();
       expect(copy.sendMessage).toBeTruthy();
+      expect(copy.supportEmail).toBeTruthy();
+      expect(copy.supportEmailHref).toBe(`mailto:${copy.supportEmail}`);
       expect(copy.companyName).toBeTruthy();
       expect(copy.phoneLabel).toBeTruthy();
       expect(copy.phoneHref).toMatch(/^tel:\+\d+$/);

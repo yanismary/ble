@@ -8,6 +8,8 @@ export interface AppInfoCopy {
   readonly lastModificationText: string;
   readonly contactTitle: string;
   readonly sendMessage: string;
+  readonly supportEmail: string;
+  readonly supportEmailHref: string;
   readonly companyName: string;
   readonly phoneLabel: string;
   readonly phoneHref: string;
@@ -77,6 +79,8 @@ const APP_INFO_NAV_LABELS = {
     "legal": "Informacje prawne"
   }
 } as const;
+
+const PHASE2_SUPPORT_EMAIL = 'appsupport@mantion-smt.fr';
 
 const LEGACY_APP_INFO = {
   "fr": {
@@ -333,6 +337,8 @@ export function appInfoCopyFor(language: AppInfoLanguage): AppInfoCopy {
     lastModificationText: about.PARAGRAPHE1,
     contactTitle: contact.NAVBAR_TITLE,
     sendMessage: contact.SEND_A_MESSAGE,
+    supportEmail: PHASE2_SUPPORT_EMAIL,
+    supportEmailHref: `mailto:${PHASE2_SUPPORT_EMAIL}`,
     companyName: address.NAME,
     phoneLabel: contact.CONTACT_2.PHONE.USERSEE,
     phoneHref: `tel:+${contact.CONTACT_2.PHONE.SYSTEMCALL}`,

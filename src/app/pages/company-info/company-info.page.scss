@@ -1,25 +1,40 @@
+.info-navbar {
+  min-height: 56px;
+}
+
+.info-navbar ion-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: center;
+}
+
 .company-layout {
-  display: grid;
-  gap: 1.25rem;
-  max-width: 52rem;
+  background: #fff;
+  color: var(--mantion-text);
   margin: 0 auto;
+  max-width: 52rem;
+  min-height: 100%;
+  padding: 18px 14px 28px;
 }
 
-.company-layout header,
-.company-layout section {
-  display: grid;
-  gap: 0.75rem;
+.company-layout h2 {
+  color: var(--mantion-blue);
+  font-size: 1.45rem;
+  font-weight: 700;
+  margin: 0 0 12px;
 }
 
-.company-layout h1,
+.company-layout h5 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 14px;
+}
+
 .company-layout p,
-.company-layout ul,
-.company-layout figure {
-  margin: 0;
-}
-
-.subtitle {
-  font-weight: 600;
+.company-layout ul {
+  line-height: 1.45;
+  margin: 0 0 14px;
+  text-align: justify;
 }
 
 .company-layout ul {
@@ -27,12 +42,13 @@
 }
 
 .company-layout figure {
-  overflow: hidden;
-  border-radius: 0.75rem;
+  margin: 18px auto 0;
+  max-width: 36rem;
+  text-align: center;
 }
 
 .company-layout img {
   display: block;
-  width: 100%;
   height: auto;
+  width: 100%;
 }

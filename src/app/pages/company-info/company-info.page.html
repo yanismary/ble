@@ -1,52 +1,40 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
+<ion-header>
+  <ion-toolbar class="mantion-navbar info-navbar">
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/app-info"></ion-back-button>
+      <ion-back-button defaultHref="/app-info" text=""></ion-back-button>
     </ion-buttons>
     <ion-title>{{ copy.navbarTitle }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true" class="ion-padding">
+<ion-content class="mantion-page-background">
   <main class="company-layout">
-    <header>
-      <h1>{{ copy.contentTitle }}</h1>
-      <p class="subtitle">{{ copy.contentSubtitle }}</p>
-    </header>
+    <h2>{{ copy.contentTitle }}</h2>
+    <h5>{{ copy.contentSubtitle }}</h5>
 
-    <section>
-      <p>{{ copy.introduction }}</p>
-      <p>{{ copy.expertiseIntro }}</p>
+    <p>{{ copy.introduction }}</p>
+    <p>{{ copy.expertiseIntro }}</p>
 
-      <ul>
-        @for (item of copy.expertiseItems; track $index) {
-          @if (item) {
-            <li>{{ item }}</li>
-          }
+    <ul>
+      @for (item of copy.expertiseItems; track $index) {
+        @if (item) {
+          <li>{{ item }}</li>
         }
-      </ul>
+      }
+    </ul>
 
-      <p>{{ copy.paragraph3 }}</p>
-      <p>{{ copy.paragraph4 }}</p>
-    </section>
+    <p>{{ copy.paragraph3 }}</p>
+    <p>{{ copy.paragraph4 }}</p>
 
-    <section class="location">
-      <p>{{ copy.addressPresentation }}</p>
-      <p>{{ copy.addressLocalization }}</p>
-    </section>
+    <p>{{ copy.addressPresentation }}</p>
+    <p>{{ copy.addressLocalization }}</p>
 
     <figure>
-      <img
-        src="assets/img/mantionSMT_exterior.jpg"
-        alt=""
-      />
+      <img src="assets/img/mantionSMT_exterior.jpg" alt="" />
     </figure>
 
     <figure>
-      <img
-        src="assets/img/mantionSMT_manufacturing.jpg"
-        alt=""
-      />
+      <img src="assets/img/mantionSMT_manufacturing.jpg" alt="" />
     </figure>
   </main>
 </ion-content>

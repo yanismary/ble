@@ -1,61 +1,70 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
+<ion-header>
+  <ion-toolbar class="mantion-navbar info-navbar">
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/help"></ion-back-button>
+      <ion-back-button defaultHref="/help" text=""></ion-back-button>
     </ion-buttons>
     <ion-title>{{ copy.aboutTitle }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true" class="ion-padding">
+<ion-content class="mantion-page-background">
   <main class="app-info-layout">
     <section>
-      <h1>{{ copy.aboutContentTitle }}</h1>
+      <h2>{{ copy.aboutContentTitle }}</h2>
 
-      <ion-list>
+      <ion-list class="legacy-info-list">
         <ion-item>
           <ion-label>{{ copy.versionLabel }}</ion-label>
           <ion-note slot="end">{{ appVersion }}</ion-note>
         </ion-item>
       </ion-list>
 
-      <h2>{{ copy.lastModification }}</h2>
+      <h3>{{ copy.lastModification }}</h3>
       <p>{{ copy.lastModificationText }}</p>
     </section>
 
     <section>
       <h2>{{ copy.contactTitle }}</h2>
 
-      <div class="contact-card">
-        <h3>{{ copy.companyName }}</h3>
+      <ion-list class="legacy-contact-list">
+        <ion-list-header>
+          <ion-label class="contact-company-name">{{ copy.companyName }}</ion-label>
+          <img src="assets/img/logo_wimove.png" alt="" />
+        </ion-list-header>
 
-        <p>
-          <strong>{{ copy.sendMessage }} :</strong>
-          <a href="mailto:appsupport@mantion-smt.fr">
-            appsupport@mantion-smt.fr
-          </a>
-        </p>
+        <ion-item [href]="copy.supportEmailHref" detail="false">
+          <ion-icon name="mail" slot="start" aria-hidden="true"></ion-icon>
+          <ion-label>
+            <strong>{{ copy.sendMessage }}</strong>
+            <span>{{ copy.supportEmail }}</span>
+          </ion-label>
+        </ion-item>
 
-        <p>
-          <strong>Téléphone :</strong>
-          <a [href]="copy.phoneHref">{{ copy.phoneLabel }}</a>
-        </p>
+        <ion-item [href]="copy.phoneHref" detail="false">
+          <ion-icon name="call" slot="start" aria-hidden="true"></ion-icon>
+          <ion-label>{{ copy.phoneLabel }}</ion-label>
+        </ion-item>
 
-        <address>
-          <strong>{{ copy.companyName }}</strong>
-          @for (line of copy.addressLines; track line) {
-            <span>{{ line }}</span>
-          }
-        </address>
-      </div>
+        <ion-item detail="false">
+          <ion-icon name="location" slot="start" aria-hidden="true"></ion-icon>
+          <ion-label>
+            <strong>{{ copy.companyName }}</strong>
+            @for (line of copy.addressLines; track line) {
+              <span>{{ line }}</span>
+            }
+          </ion-label>
+        </ion-item>
+      </ion-list>
     </section>
 
-    <ion-button expand="block" fill="outline" routerLink="/company-info">
-      {{ copy.companyInfoLabel }}
-    </ion-button>
+    <nav class="info-links" aria-label="Informations">
+      <ion-button expand="block" fill="outline" routerLink="/company-info">
+        {{ copy.companyInfoLabel }}
+      </ion-button>
 
-    <ion-button expand="block" fill="outline" routerLink="/legal-notice">
-      {{ copy.legalNoticeLabel }}
-    </ion-button>
+      <ion-button expand="block" fill="outline" routerLink="/legal-notice">
+        {{ copy.legalNoticeLabel }}
+      </ion-button>
+    </nav>
   </main>
 </ion-content>

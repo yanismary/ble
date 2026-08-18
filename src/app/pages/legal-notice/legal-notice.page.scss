@@ -1,33 +1,49 @@
+.info-navbar {
+  min-height: 56px;
+}
+
+.info-navbar ion-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: center;
+}
+
 .legal-layout {
-  display: grid;
-  gap: 1.25rem;
-  max-width: 52rem;
+  background: #fff;
+  color: var(--mantion-text);
   margin: 0 auto;
+  max-width: 52rem;
+  min-height: 100%;
+  padding: 18px 14px 28px;
 }
 
-.legal-layout h1 {
-  margin-top: 0;
+.legal-layout h2 {
+  color: var(--mantion-blue);
+  font-size: 1.45rem;
+  font-weight: 700;
+  margin: 0 0 16px;
 }
 
-.legal-layout section {
-  display: grid;
-  gap: 0.65rem;
+.legal-layout h5 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 8px;
 }
 
-.legal-layout h2,
+.legal-layout section,
 .legal-layout p,
 .legal-layout dl {
-  margin: 0;
+  margin: 0 0 16px;
 }
 
-.legal-layout dl {
-  display: grid;
-  gap: 1rem;
+.legal-layout p,
+.legal-layout dd {
+  line-height: 1.45;
+  text-align: justify;
 }
 
 .definition {
-  display: grid;
-  gap: 0.35rem;
+  margin-bottom: 12px;
 }
 
 .definition dt {
@@ -35,5 +51,5 @@
 }
 
 .definition dd {
-  margin: 0;
+  margin: 4px 0 0;
 }

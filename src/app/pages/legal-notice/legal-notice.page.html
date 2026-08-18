@@ -1,19 +1,19 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
+<ion-header>
+  <ion-toolbar class="mantion-navbar info-navbar">
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/app-info"></ion-back-button>
+      <ion-back-button defaultHref="/app-info" text=""></ion-back-button>
     </ion-buttons>
     <ion-title>{{ copy.navbarTitle }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true" class="ion-padding">
+<ion-content class="mantion-page-background">
   <main class="legal-layout">
-    <h1>{{ copy.title }}</h1>
+    <h2>{{ copy.title }}</h2>
 
     @for (section of copy.sections; track section.title) {
       <section>
-        <h2>{{ section.title }}</h2>
+        <h5>{{ section.title }}</h5>
         @for (paragraph of section.paragraphs; track $index) {
           <p>{{ paragraph }}</p>
         }
@@ -21,7 +21,7 @@
     }
 
     <section>
-      <h2>{{ copy.definitionsTitle }}</h2>
+      <h5>{{ copy.definitionsTitle }}</h5>
       <dl>
         @for (definition of copy.definitions; track definition.term) {
           <div class="definition">
