@@ -1,0 +1,111 @@
+.basic-settings-panel {
+  background: transparent;
+}
+
+.basic-settings-list {
+  background: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+.basic-section-header {
+  --background: #fff;
+  align-items: center;
+  border-left: 4px solid transparent;
+  color: var(--mantion-grey);
+  font-weight: 700;
+  min-height: 44px;
+  padding-left: 12px;
+}
+
+.basic-section-header.basic-unlocked {
+  border-left-color: var(--mantion-green);
+}
+
+.basic-section-header ion-label {
+  font-size: 0.98rem;
+}
+
+.basic-section-header ion-button {
+  font-size: 0;
+  margin-inline-start: 6px;
+}
+
+.basic-value-badge {
+  margin-inline-start: auto;
+  max-width: 46%;
+  min-width: 58px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:is(.basic-toggle-row, .basic-slider-row, .basic-select-row, .basic-name-row) {
+  --background: #fff;
+  --inner-padding-end: 8px;
+  --min-height: 54px;
+  --padding-start: 14px;
+  border-top: 1px solid var(--ion-color-light-shade);
+}
+
+.basic-row-icon {
+  height: 28px;
+  object-fit: contain;
+  width: 28px;
+}
+
+.basic-lock-icon {
+  height: 22px;
+  width: 22px;
+}
+
+.basic-range {
+  --bar-background-active: var(--mantion-blue);
+  --knob-background: var(--mantion-blue);
+  padding-inline: 6px;
+}
+
+.basic-precision-row {
+  align-items: center;
+  background: #fff;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 44px minmax(58px, auto) 44px auto;
+  padding: 8px 12px 12px 56px;
+}
+
+.basic-precision-row ion-button {
+  margin: 0;
+}
+
+.basic-precision-row ion-button:first-child {
+  --border-color: var(--mantion-danger);
+  --color: var(--mantion-danger);
+}
+
+.basic-precision-row ion-button:nth-child(3) {
+  --border-color: var(--mantion-green);
+  --color: var(--mantion-green);
+}
+
+.basic-precision-row strong {
+  color: var(--mantion-grey);
+  text-align: center;
+}
+
+.basic-current-value {
+  background: #fff;
+  color: var(--mantion-grey);
+  font-size: 0.9rem;
+  margin: 0;
+  padding: 0 12px 12px 56px;
+}
+
+.basic-room-row {
+  --padding-start: 56px;
+}
+
+.basic-technical-details {
+  margin-top: 14px;
+}

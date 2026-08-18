@@ -8,11 +8,16 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   AlertController,
+  IonBadge,
   IonButton,
   IonButtons,
   IonContent,
   IonHeader,
   IonInput,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonListHeader,
   IonRange,
   IonSegment,
   IonSegmentButton,
@@ -199,11 +204,16 @@ type ProductShellSettingsTab = 'basic' | 'advanced';
   styleUrls: ['./product.page.scss'],
   standalone: true,
   imports: [
+    IonBadge,
     IonButton,
     IonButtons,
     IonContent,
     IonHeader,
     IonInput,
+    IonItem,
+    IonLabel,
+    IonList,
+    IonListHeader,
     IonRange,
     IonSegment,
     IonSegmentButton,
@@ -710,6 +720,16 @@ export class ProductPage implements OnDestroy {
     return this.pageContextCurrent &&
       this.weightRangeControls.length > 0 &&
       this.viewModel.reads.professionalParameters.status === 'available';
+  }
+
+  get showBasicWeightRangeControls(): boolean {
+    return this.showWeightRangeControls &&
+      (this.config.profile === 'moventiv-60' ||
+        this.config.profile === 'moventiv-80');
+  }
+
+  get showAdvancedWeightRangeControls(): boolean {
+    return this.showWeightRangeControls && !this.showBasicWeightRangeControls;
   }
 
   get showProfessionalInputControls(): boolean {

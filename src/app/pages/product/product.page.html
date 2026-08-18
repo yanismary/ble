@@ -359,315 +359,430 @@
         <p>{{ text.readonlyNotice }}</p>
 
       <div [hidden]="activeSettingsTab !== 'basic'">
-      <article class="product-subsection">
-        <h3>{{ text.sections.userSettings }}</h3>
-        @if (showNameRoomControls) {
-          <div class="name-room-controls">
-            <div class="user-speed-control-header">
-              <h4>{{ text.nameRoomControls.title }}</h4>
-              <ion-button
-                type="button"
-                size="small"
-                fill="clear"
-                [attr.aria-label]="nameRoomControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-                (click)="toggleNameRoomControlLock()"
-              >
-                {{ nameRoomControlUnlocked ? '🔓' : '🔒' }}
-              </ion-button>
-            </div>
-            <div class="name-room-grid">
-              <ion-input
-                class="name-room-name-input"
-                [label]="text.nameRoomControls.nameLabel"
-                label-placement="stacked"
-                [maxlength]="15"
-                [value]="nameRoomDraftValue().name"
-                [disabled]="!nameRoomControlUnlocked || nameRoomWriteState.status === 'executing'"
-                (ionInput)="setNameRoomDraftName($event)"
-              ></ion-input>
-              <ion-select
-                class="name-room-select"
-                [label]="text.nameRoomControls.roomLabel"
-                label-placement="stacked"
-                interface="popover"
-                [value]="nameRoomDraftValue().roomSuffix"
-                [disabled]="!nameRoomControlUnlocked || nameRoomWriteState.status === 'executing'"
-                (ionChange)="setNameRoomDraftRoom($event)"
-              >
-                @for (room of roomOptions; track room.suffix) {
-                  <ion-select-option [value]="room.suffix">
-                    {{ text.nameRoomControls.rooms[room.textKey] }}
-                  </ion-select-option>
+        <article class="product-subsection basic-settings-panel">
+          <h3>{{ text.sections.userSettings }}</h3>
+          <ng-container
+            [ngTemplateOutlet]="readStatus"
+            [ngTemplateOutletContext]="{ $implicit: viewModel.reads.userParameters }"
+          ></ng-container>
+          @if (viewModel.reads.userParameters.status === 'available' || showNameRoomControls) {
+            <ion-list class="basic-settings-list" lines="none">
+              @if (showBasicUserPeripheralControls) {
+                <ion-list-header
+                  class="basic-section-header"
+                  [class.basic-unlocked]="userPeripheralControlUnlocked"
+                >
+                  <ion-label>{{ text.userPeripheralControls.title }}</ion-label>
+                  <ion-button
+                    type="button"
+                    fill="clear"
+                    [attr.aria-label]="userPeripheralControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                    (click)="toggleUserPeripheralControlLock()"
+                  >
+                    <img
+                      class="basic-lock-icon"
+                      [src]="userPeripheralControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                      alt=""
+                      aria-hidden="true"
+                    />
+                  </ion-button>
+                </ion-list-header>
+                @for (peripheralControl of basicUserPeripheralControls; track peripheralControl.config.field) {
+                  <ion-item class="basic-toggle-row">
+                    <img
+                      class="basic-row-icon"
+                      [src]="productPeripheralIconSrc(peripheralControl.config)"
+                      alt=""
+                      aria-hidden="true"
+                      slot="start"
+                    />
+                    <ion-label>{{ peripheralControl.text }}</ion-label>
+                    <ion-toggle
+                      class="user-peripheral-toggle"
+                      slot="end"
+                      [checked]="currentUserPeripheralState(peripheralControl.config) === true"
+                      [disabled]="!userPeripheralControlUnlocked || !canToggleUserPeripheral(peripheralControl.config)"
+                      (ionChange)="requestUserPeripheralChange(peripheralControl.config, $event)"
+                    ></ion-toggle>
+                  </ion-item>
                 }
-              </ion-select>
-            </div>
-            <div class="product-actions">
-              <span>
-                {{ text.nameRoomControls.current }}
-                {{ currentNameRoomDisplay() }}
-              </span>
-              <span>
-                {{ text.nameRoomControls.draft }}
-                {{ nameRoomDraftDisplay() }}
-              </span>
-              <ion-button
-                type="button"
-                size="small"
-                (click)="requestNameRoomChange()"
-                [disabled]="!nameRoomControlUnlocked || !canApplyNameRoom()"
-              >
-                {{ text.nameRoomControls.apply }}
-              </ion-button>
-            </div>
-            @if (nameRoomValidationMessage()) {
-              <p class="command-state" role="alert" data-tone="error">
-                <span>{{ nameRoomValidationMessage() }}</span>
-              </p>
-            }
-            @if (nameRoomWriteState.message) {
-              <p
-                class="command-state"
-                role="status"
-                aria-live="polite"
-                [attr.data-tone]="nameRoomWriteState.status === 'failed' ? 'error' : 'neutral'"
-              >
-                @if (nameRoomWriteState.status === 'executing') {
-                  <ion-spinner name="crescent"></ion-spinner>
+                @if (userPeripheralWriteState.message) {
+                  <p
+                    class="command-state"
+                    role="status"
+                    aria-live="polite"
+                    [attr.data-tone]="userPeripheralWriteState.status === 'failed' ? 'error' : 'neutral'"
+                  >
+                    @if (userPeripheralWriteState.status === 'executing') {
+                      <ion-spinner name="crescent"></ion-spinner>
+                    }
+                    <span>{{ userPeripheralWriteState.message }}</span>
+                  </p>
                 }
-                <span>{{ nameRoomWriteState.message }}</span>
-              </p>
-            }
-          </div>
-        }
-        <ng-container
-          [ngTemplateOutlet]="readStatus"
-          [ngTemplateOutletContext]="{ $implicit: viewModel.reads.userParameters }"
-        ></ng-container>
-        @if (viewModel.reads.userParameters.status === 'available') {
-          <dl class="product-readonly-grid">
-            @for (row of userRows; track row.key) {
-              <dt>{{ row.label }}</dt>
-              <dd>{{ row.value }}</dd>
-            }
-          </dl>
-          @if (showUserSpeedControls) {
-            <div class="user-speed-controls">
-              @for (speedControl of userSpeedControls; track speedControl.config.field) {
-                <div class="user-speed-control">
-                  <div class="user-speed-control-header">
-                    <strong>{{ speedControl.text }}</strong>
-                    <span>
-                      {{ text.userSpeedControls.current }}
-                      {{ currentUserSpeedValue(speedControl.config) }}
-                      %
-                    </span>
+              }
+
+              @if (showUserSpeedControls) {
+                @for (speedControl of userSpeedControls; track speedControl.config.field) {
+                  <ion-list-header
+                    class="basic-section-header"
+                    [class.basic-unlocked]="isUserSpeedUnlocked(speedControl.config)"
+                  >
+                    <ion-label>{{ speedControl.text }}</ion-label>
+                    <ion-badge class="mantion-value-badge basic-value-badge">
+                      {{ currentUserSpeedValue(speedControl.config) }} %
+                    </ion-badge>
                     <ion-button
                       type="button"
-                      size="small"
                       fill="clear"
                       [attr.aria-label]="isUserSpeedUnlocked(speedControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
                       (click)="toggleUserSpeedLock(speedControl.config)"
                     >
-                      {{ isUserSpeedUnlocked(speedControl.config) ? '🔓' : '🔒' }}
+                      <img
+                        class="basic-lock-icon"
+                        [src]="isUserSpeedUnlocked(speedControl.config) ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                        alt=""
+                        aria-hidden="true"
+                      />
                     </ion-button>
-                  </div>
-                  <ion-range
-                    class="user-speed-range"
-                    [attr.aria-label]="speedControl.text"
-                    [min]="speedControl.config.range.min"
-                    [max]="speedControl.config.range.max"
-                    [step]="1"
-                    [pin]="true"
-                    [disabled]="!isUserSpeedUnlocked(speedControl.config)"
-                    [value]="userSpeedDraftValue(speedControl.config)"
-                    (ionChange)="setUserSpeedDraftValue(speedControl.config, $event)"
-                  ></ion-range>
-                  <div class="precision-stepper" aria-label="Réglage précis">
-                    <ion-button
-                      type="button"
-                      size="small"
-                      fill="outline"
-                      aria-label="Diminuer de 1"
+                  </ion-list-header>
+                  <ion-item class="basic-slider-row">
+                    <img
+                      class="basic-row-icon"
+                      src="assets/img/icon_speed.svg"
+                      alt=""
+                      aria-hidden="true"
+                      slot="start"
+                    />
+                    <ion-range
+                      class="user-speed-range basic-range"
+                      [attr.aria-label]="speedControl.text"
+                      [min]="speedControl.config.range.min"
+                      [max]="speedControl.config.range.max"
+                      [step]="1"
+                      [pin]="true"
                       [disabled]="!isUserSpeedUnlocked(speedControl.config)"
-                      (click)="stepUserSpeedDraft(speedControl.config, -1)"
-                    >
-                      −
-                    </ion-button>
-                    <strong>{{ userSpeedDraftValue(speedControl.config) }} %</strong>
-                    <ion-button
-                      type="button"
-                      size="small"
-                      fill="outline"
-                      aria-label="Augmenter de 1"
-                      [disabled]="!isUserSpeedUnlocked(speedControl.config)"
-                      (click)="stepUserSpeedDraft(speedControl.config, 1)"
-                    >
-                      +
-                    </ion-button>
-                  </div>
-                  <div class="product-actions">
-                    <span>
-                      {{ text.userSpeedControls.draft }}
-                      {{ userSpeedDraftValue(speedControl.config) }}
-                      %
-                    </span>
-                    <ion-button
-                      type="button"
-                      size="small"
-                      (click)="requestUserSpeedChange(speedControl.config)"
-                      [disabled]="!isUserSpeedUnlocked(speedControl.config) || !canApplyUserSpeed(speedControl.config)"
-                    >
-                      {{ text.userSpeedControls.apply }}
-                    </ion-button>
-                  </div>
-                </div>
-              }
-              @if (userSpeedWriteState.message) {
-                <p
-                  class="command-state"
-                  role="status"
-                  aria-live="polite"
-                  [attr.data-tone]="userSpeedWriteState.status === 'failed' ? 'error' : 'neutral'"
-                >
-                  @if (userSpeedWriteState.status === 'executing') {
-                    <ion-spinner name="crescent"></ion-spinner>
+                      [value]="userSpeedDraftValue(speedControl.config)"
+                      (ionChange)="setUserSpeedDraftValue(speedControl.config, $event)"
+                    ></ion-range>
+                  </ion-item>
+                  @if (isUserSpeedUnlocked(speedControl.config)) {
+                    <div class="basic-precision-row" aria-label="Réglage précis">
+                      <ion-button
+                        type="button"
+                        fill="outline"
+                        aria-label="Diminuer de 1"
+                        [disabled]="!isUserSpeedUnlocked(speedControl.config)"
+                        (click)="stepUserSpeedDraft(speedControl.config, -1)"
+                      >
+                        -
+                      </ion-button>
+                      <strong>{{ userSpeedDraftValue(speedControl.config) }} %</strong>
+                      <ion-button
+                        type="button"
+                        fill="outline"
+                        aria-label="Augmenter de 1"
+                        [disabled]="!isUserSpeedUnlocked(speedControl.config)"
+                        (click)="stepUserSpeedDraft(speedControl.config, 1)"
+                      >
+                        +
+                      </ion-button>
+                      <ion-button
+                        type="button"
+                        size="small"
+                        (click)="requestUserSpeedChange(speedControl.config)"
+                        [disabled]="!canApplyUserSpeed(speedControl.config)"
+                      >
+                        {{ text.userSpeedControls.apply }}
+                      </ion-button>
+                    </div>
                   }
-                  <span>{{ userSpeedWriteState.message }}</span>
-                </p>
+                }
+                @if (userSpeedWriteState.message) {
+                  <p
+                    class="command-state"
+                    role="status"
+                    aria-live="polite"
+                    [attr.data-tone]="userSpeedWriteState.status === 'failed' ? 'error' : 'neutral'"
+                  >
+                    @if (userSpeedWriteState.status === 'executing') {
+                      <ion-spinner name="crescent"></ion-spinner>
+                    }
+                    <span>{{ userSpeedWriteState.message }}</span>
+                  </p>
+                }
               }
-            </div>
-          }
-          @if (showUserTimingControls) {
-            <div class="user-timing-controls">
-              @for (timingControl of userTimingControls; track timingControl.config.field) {
-                <div class="user-timing-control">
-                  <div class="user-timing-control-header">
-                    <strong>{{ timingControl.text }}</strong>
-                    <span>
-                      {{ text.userTimingControls.current }}
+
+              @if (showUserTimingControls) {
+                @for (timingControl of userTimingControls; track timingControl.config.field) {
+                  <ion-list-header
+                    class="basic-section-header"
+                    [class.basic-unlocked]="isUserTimingUnlocked(timingControl.config)"
+                  >
+                    <ion-label>{{ timingControl.text }}</ion-label>
+                    <ion-badge class="mantion-value-badge basic-value-badge">
                       {{ currentUserTimingValue(timingControl.config) }}
                       {{ timingControl.config.unit }}
-                    </span>
+                    </ion-badge>
                     <ion-button
                       type="button"
-                      size="small"
                       fill="clear"
                       [attr.aria-label]="isUserTimingUnlocked(timingControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
                       (click)="toggleUserTimingLock(timingControl.config)"
                     >
-                      {{ isUserTimingUnlocked(timingControl.config) ? '🔓' : '🔒' }}
+                      <img
+                        class="basic-lock-icon"
+                        [src]="isUserTimingUnlocked(timingControl.config) ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                        alt=""
+                        aria-hidden="true"
+                      />
                     </ion-button>
-                  </div>
-                  <ion-range
-                    class="user-timing-range"
-                    [attr.aria-label]="timingControl.text"
-                    [min]="timingControl.config.range.min"
-                    [max]="timingControl.config.range.max"
-                    [step]="1"
-                    [pin]="true"
-                    [disabled]="!isUserTimingUnlocked(timingControl.config)"
-                    [value]="userTimingDraftValue(timingControl.config)"
-                    (ionChange)="setUserTimingDraftValue(timingControl.config, $event)"
-                  ></ion-range>
-                  <div class="precision-stepper" aria-label="Réglage précis">
-                    <ion-button
-                      type="button"
-                      size="small"
-                      fill="outline"
-                      aria-label="Diminuer de 1"
+                  </ion-list-header>
+                  <ion-item class="basic-slider-row">
+                    <img
+                      class="basic-row-icon"
+                      src="assets/img/icon_delay.svg"
+                      alt=""
+                      aria-hidden="true"
+                      slot="start"
+                    />
+                    <ion-range
+                      class="user-timing-range basic-range"
+                      [attr.aria-label]="timingControl.text"
+                      [min]="timingControl.config.range.min"
+                      [max]="timingControl.config.range.max"
+                      [step]="1"
+                      [pin]="true"
                       [disabled]="!isUserTimingUnlocked(timingControl.config)"
-                      (click)="stepUserTimingDraft(timingControl.config, -1)"
-                    >
-                      −
-                    </ion-button>
-                    <strong>
-                      {{ userTimingDraftValue(timingControl.config) }}
-                      {{ timingControl.config.unit }}
-                    </strong>
-                    <ion-button
-                      type="button"
-                      size="small"
-                      fill="outline"
-                      aria-label="Augmenter de 1"
-                      [disabled]="!isUserTimingUnlocked(timingControl.config)"
-                      (click)="stepUserTimingDraft(timingControl.config, 1)"
-                    >
-                      +
-                    </ion-button>
-                  </div>
-                  <div class="product-actions">
-                    <span>
-                      {{ text.userTimingControls.draft }}
-                      {{ userTimingDraftValue(timingControl.config) }}
-                      {{ timingControl.config.unit }}
-                    </span>
-                    <ion-button
-                      type="button"
-                      size="small"
-                      (click)="requestUserTimingChange(timingControl.config)"
-                      [disabled]="!isUserTimingUnlocked(timingControl.config) || !canApplyUserTiming(timingControl.config)"
-                    >
-                      {{ text.userTimingControls.apply }}
-                    </ion-button>
-                  </div>
-                </div>
-              }
-              @if (userTimingWriteState.message) {
-                <p
-                  class="command-state"
-                  role="status"
-                  aria-live="polite"
-                  [attr.data-tone]="userTimingWriteState.status === 'failed' ? 'error' : 'neutral'"
-                >
-                  @if (userTimingWriteState.status === 'executing') {
-                    <ion-spinner name="crescent"></ion-spinner>
+                      [value]="userTimingDraftValue(timingControl.config)"
+                      (ionChange)="setUserTimingDraftValue(timingControl.config, $event)"
+                    ></ion-range>
+                  </ion-item>
+                  @if (isUserTimingUnlocked(timingControl.config)) {
+                    <div class="basic-precision-row" aria-label="Réglage précis">
+                      <ion-button
+                        type="button"
+                        fill="outline"
+                        aria-label="Diminuer de 1"
+                        [disabled]="!isUserTimingUnlocked(timingControl.config)"
+                        (click)="stepUserTimingDraft(timingControl.config, -1)"
+                      >
+                        -
+                      </ion-button>
+                      <strong>
+                        {{ userTimingDraftValue(timingControl.config) }}
+                        {{ timingControl.config.unit }}
+                      </strong>
+                      <ion-button
+                        type="button"
+                        fill="outline"
+                        aria-label="Augmenter de 1"
+                        [disabled]="!isUserTimingUnlocked(timingControl.config)"
+                        (click)="stepUserTimingDraft(timingControl.config, 1)"
+                      >
+                        +
+                      </ion-button>
+                      <ion-button
+                        type="button"
+                        size="small"
+                        (click)="requestUserTimingChange(timingControl.config)"
+                        [disabled]="!canApplyUserTiming(timingControl.config)"
+                      >
+                        {{ text.userTimingControls.apply }}
+                      </ion-button>
+                    </div>
                   }
-                  <span>{{ userTimingWriteState.message }}</span>
+                }
+                @if (userTimingWriteState.message) {
+                  <p
+                    class="command-state"
+                    role="status"
+                    aria-live="polite"
+                    [attr.data-tone]="userTimingWriteState.status === 'failed' ? 'error' : 'neutral'"
+                  >
+                    @if (userTimingWriteState.status === 'executing') {
+                      <ion-spinner name="crescent"></ion-spinner>
+                    }
+                    <span>{{ userTimingWriteState.message }}</span>
+                  </p>
+                }
+              }
+
+              @if (showBasicWeightRangeControls) {
+                <ion-list-header
+                  class="basic-section-header"
+                  [class.basic-unlocked]="weightRangeControlUnlocked"
+                >
+                  <ion-label>{{ text.professional.weightRange }}</ion-label>
+                  <ion-badge class="mantion-value-badge basic-value-badge">
+                    {{ currentWeightRangeValue()?.lower }}-{{ currentWeightRangeValue()?.upper }} kg
+                  </ion-badge>
+                  <ion-button
+                    type="button"
+                    fill="clear"
+                    [attr.aria-label]="weightRangeControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                    (click)="toggleWeightRangeControlLock()"
+                  >
+                    <img
+                      class="basic-lock-icon"
+                      [src]="weightRangeControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                      alt=""
+                      aria-hidden="true"
+                    />
+                  </ion-button>
+                </ion-list-header>
+                <ion-item class="basic-select-row">
+                  <img
+                    class="basic-row-icon"
+                    src="assets/img/icon_force.svg"
+                    alt=""
+                    aria-hidden="true"
+                    slot="start"
+                  />
+                  <ion-select
+                    class="weight-range-select"
+                    [attr.aria-label]="text.professional.weightRange"
+                    interface="popover"
+                    [compareWith]="compareWeightRangeOptions"
+                    [value]="weightRangeDraftValue()"
+                    [disabled]="!weightRangeControlUnlocked"
+                    (ionChange)="setWeightRangeDraftValue($event)"
+                  >
+                    @for (weightControl of weightRangeControls; track weightControl.config.label) {
+                      <ion-select-option [value]="weightControl.config.range">
+                        {{ weightControl.config.label }}
+                      </ion-select-option>
+                    }
+                  </ion-select>
+                  <ion-button
+                    type="button"
+                    size="small"
+                    slot="end"
+                    (click)="requestWeightRangeChange()"
+                    [disabled]="!weightRangeControlUnlocked || !canApplyWeightRange()"
+                  >
+                    {{ text.weightRangeControls.apply }}
+                  </ion-button>
+                </ion-item>
+                @if (weightRangeWriteState.message) {
+                  <p
+                    class="command-state"
+                    role="status"
+                    aria-live="polite"
+                    [attr.data-tone]="weightRangeWriteState.status === 'failed' ? 'error' : 'neutral'"
+                  >
+                    @if (weightRangeWriteState.status === 'executing') {
+                      <ion-spinner name="crescent"></ion-spinner>
+                    }
+                    <span>{{ weightRangeWriteState.message }}</span>
+                  </p>
+                }
+              }
+
+              @if (showNameRoomControls) {
+                <ion-list-header
+                  class="basic-section-header"
+                  [class.basic-unlocked]="nameRoomControlUnlocked"
+                >
+                  <ion-label>{{ text.nameRoomControls.title }}</ion-label>
+                  <ion-badge class="mantion-value-badge basic-value-badge">
+                    {{ currentNameRoomDisplay() }}
+                  </ion-badge>
+                  <ion-button
+                    type="button"
+                    fill="clear"
+                    [attr.aria-label]="nameRoomControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                    (click)="toggleNameRoomControlLock()"
+                  >
+                    <img
+                      class="basic-lock-icon"
+                      [src]="nameRoomControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                      alt=""
+                      aria-hidden="true"
+                    />
+                  </ion-button>
+                </ion-list-header>
+                <ion-item class="basic-name-row">
+                  <img
+                    class="basic-row-icon"
+                    src="assets/img/icon_room_other.svg"
+                    alt=""
+                    aria-hidden="true"
+                    slot="start"
+                  />
+                  <ion-input
+                    class="name-room-name-input"
+                    [label]="text.nameRoomControls.nameLabel"
+                    label-placement="stacked"
+                    [maxlength]="15"
+                    [value]="nameRoomDraftValue().name"
+                    [disabled]="!nameRoomControlUnlocked || nameRoomWriteState.status === 'executing'"
+                    (ionInput)="setNameRoomDraftName($event)"
+                  ></ion-input>
+                </ion-item>
+                <ion-item class="basic-name-row basic-room-row">
+                  <ion-select
+                    class="name-room-select"
+                    [label]="text.nameRoomControls.roomLabel"
+                    label-placement="stacked"
+                    interface="popover"
+                    [value]="nameRoomDraftValue().roomSuffix"
+                    [disabled]="!nameRoomControlUnlocked || nameRoomWriteState.status === 'executing'"
+                    (ionChange)="setNameRoomDraftRoom($event)"
+                  >
+                    @for (room of roomOptions; track room.suffix) {
+                      <ion-select-option [value]="room.suffix">
+                        {{ text.nameRoomControls.rooms[room.textKey] }}
+                      </ion-select-option>
+                    }
+                  </ion-select>
+                  <ion-button
+                    type="button"
+                    size="small"
+                    slot="end"
+                    (click)="requestNameRoomChange()"
+                    [disabled]="!nameRoomControlUnlocked || !canApplyNameRoom()"
+                  >
+                    {{ text.nameRoomControls.apply }}
+                  </ion-button>
+                </ion-item>
+                <p class="basic-current-value">
+                  {{ text.nameRoomControls.draft }}
+                  {{ nameRoomDraftDisplay() }}
                 </p>
+                @if (nameRoomValidationMessage()) {
+                  <p class="command-state" role="alert" data-tone="error">
+                    <span>{{ nameRoomValidationMessage() }}</span>
+                  </p>
+                }
+                @if (nameRoomWriteState.message) {
+                  <p
+                    class="command-state"
+                    role="status"
+                    aria-live="polite"
+                    [attr.data-tone]="nameRoomWriteState.status === 'failed' ? 'error' : 'neutral'"
+                  >
+                    @if (nameRoomWriteState.status === 'executing') {
+                      <ion-spinner name="crescent"></ion-spinner>
+                    }
+                    <span>{{ nameRoomWriteState.message }}</span>
+                  </p>
+                }
               }
-            </div>
-          }
-          @if (showBasicUserPeripheralControls) {
-            <div class="user-peripheral-controls">
-              <div class="user-speed-control-header">
-                <strong>Éclairage et voyants</strong>
-                <ion-button
-                  type="button"
-                  size="small"
-                  fill="clear"
-                  [attr.aria-label]="userPeripheralControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-                  (click)="toggleUserPeripheralControlLock()"
-                >
-                  {{ userPeripheralControlUnlocked ? '🔓' : '🔒' }}
-                </ion-button>
-              </div>
-              @for (peripheralControl of basicUserPeripheralControls; track peripheralControl.config.field) {
-                <ion-toggle
-                  class="user-peripheral-toggle"
-                  [checked]="currentUserPeripheralState(peripheralControl.config) === true"
-                  [disabled]="!userPeripheralControlUnlocked || !canToggleUserPeripheral(peripheralControl.config)"
-                  (ionChange)="requestUserPeripheralChange(peripheralControl.config, $event)"
-                >
-                  {{ peripheralControl.text }}
-                </ion-toggle>
-              }
-              @if (userPeripheralWriteState.message) {
-                <p
-                  class="command-state"
-                  role="status"
-                  aria-live="polite"
-                  [attr.data-tone]="userPeripheralWriteState.status === 'failed' ? 'error' : 'neutral'"
-                >
-                  @if (userPeripheralWriteState.status === 'executing') {
-                    <ion-spinner name="crescent"></ion-spinner>
+            </ion-list>
+
+            @if (viewModel.reads.userParameters.status === 'available') {
+              <details class="technical-details basic-technical-details">
+                <summary>{{ text.technicalDetails }}</summary>
+                <dl class="product-readonly-grid">
+                  @for (row of userRows; track row.key) {
+                    <dt>{{ row.label }}</dt>
+                    <dd>{{ row.value }}</dd>
                   }
-                  <span>{{ userPeripheralWriteState.message }}</span>
-                </p>
-              }
-            </div>
+                </dl>
+              </details>
+            }
           }
-        }
-      </article>
+        </article>
       </div>
 
       <div [hidden]="activeSettingsTab !== 'advanced'">
@@ -768,7 +883,7 @@
               }
             </div>
           }
-          @if (showWeightRangeControls) {
+          @if (showAdvancedWeightRangeControls) {
             <div class="weight-range-controls">
               <div class="weight-range-control-header">
                 <strong>{{ text.professional.weightRange }}</strong>

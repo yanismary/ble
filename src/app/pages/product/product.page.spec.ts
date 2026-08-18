@@ -3305,6 +3305,119 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
     },
   );
 
+  for (const scenario of [
+    {
+      profile: 'widoor',
+      basicLighting: ['rgb'],
+      timings: ['short-timing'],
+      basicWeight: false,
+      advancedWeight: false,
+    },
+    {
+      profile: 'moventiv-60',
+      basicLighting: ['dynamic-light', 'rgb'],
+      timings: ['short-timing'],
+      basicWeight: true,
+      advancedWeight: false,
+    },
+    {
+      profile: 'moventiv-80',
+      basicLighting: ['dynamic-light', 'rgb'],
+      timings: ['short-timing'],
+      basicWeight: true,
+      advancedWeight: false,
+    },
+    {
+      profile: 'garline',
+      basicLighting: ['dynamic-light', 'rgb'],
+      timings: ['short-timing', 'long-timing'],
+      basicWeight: false,
+      advancedWeight: true,
+    },
+  ] as const) {
+    it(`should render Phase 1 basic settings affordances for ${scenario.profile}`,
+      async () => {
+        const { fixture, component, writeExecutionService, bleService } =
+          await createProductCommandsUiPage(scenario.profile);
+
+        component.setActiveMainTab('settings');
+        fixture.detectChanges();
+
+        const element = fixture.nativeElement as HTMLElement;
+        const basicPanel = element.querySelector<HTMLElement>(
+          '.basic-settings-panel',
+        );
+
+        expect(basicPanel).not.toBeNull();
+        expect(component.userSpeedControls.map((control) =>
+          control.config.field,
+        )).toEqual(['open-speed', 'close-speed']);
+        expect(component.userTimingControls.map((control) =>
+          control.config.field,
+        )).toEqual([...scenario.timings]);
+        expect(component.basicUserPeripheralControls.map((control) =>
+          control.config.field,
+        )).toEqual([...scenario.basicLighting]);
+        expect(component.showBasicWeightRangeControls)
+          .toBe(scenario.basicWeight);
+        expect(component.showAdvancedWeightRangeControls)
+          .toBe(scenario.advancedWeight);
+
+        expect(basicPanel?.querySelector<HTMLImageElement>(
+          'img[src="assets/img/icon_speed.svg"]',
+        )).not.toBeNull();
+        expect(basicPanel?.querySelector<HTMLImageElement>(
+          'img[src="assets/img/icon_delay.svg"]',
+        )).not.toBeNull();
+        expect(basicPanel?.querySelector<HTMLImageElement>(
+          'img[src="assets/img/icon_room_other.svg"]',
+        )).not.toBeNull();
+        expect(basicPanel?.querySelectorAll<HTMLImageElement>(
+          'img[src="assets/img/icon_light_off.svg"]',
+        ).length).toBe(scenario.basicLighting.length);
+        const basicToggleLabels = Array.from(
+          basicPanel?.querySelectorAll<HTMLElement>(
+            '.basic-toggle-row ion-label',
+          ) ?? [],
+        ).map((label) => label.textContent?.trim() ?? '');
+        expect(basicToggleLabels).not.toContain(
+          component.text.user.staticLight,
+        );
+
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+        expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+      },
+    );
+  }
+
+  it('should keep basic slider lock and steppers on the existing draft flow',
+    async () => {
+      const { fixture, component, writeExecutionService } =
+        await createProductCommandsUiPage('widoor');
+      const openSpeed = component.userSpeedControls[0].config;
+
+      component.setActiveMainTab('settings');
+      fixture.detectChanges();
+
+      let element = fixture.nativeElement as HTMLElement;
+      expect(element.querySelector('.basic-precision-row')).toBeNull();
+
+      component.toggleUserSpeedLock(openSpeed);
+      fixture.detectChanges();
+      element = fixture.nativeElement as HTMLElement;
+      expect(element.querySelector('.basic-precision-row')).not.toBeNull();
+
+      component.setUserSpeedDraftValue(openSpeed, openSpeed.range.min);
+      component.stepUserSpeedDraft(openSpeed, -1);
+      expect(component.userSpeedDraftValue(openSpeed)).toBe(openSpeed.range.min);
+
+      component.setUserSpeedDraftValue(openSpeed, openSpeed.range.max);
+      component.stepUserSpeedDraft(openSpeed, 1);
+      expect(component.userSpeedDraftValue(openSpeed)).toBe(openSpeed.range.max);
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
   async function createProductCommandsUiPage(
     profile: KnownProductProfile,
   ): Promise<{
