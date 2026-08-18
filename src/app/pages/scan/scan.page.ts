@@ -650,6 +650,23 @@ export class ScanPage implements OnDestroy {
     }
   }
 
+  async selectAndConnectDevice(device: ScannedDevice): Promise<void> {
+    if (
+      this.connecting ||
+      this.connectedDeviceId !== null ||
+      this.bleService.connectedDeviceId !== null
+    ) {
+      return;
+    }
+
+    this.selectDevice(device);
+    await this.connectSelectedDevice();
+  }
+
+  isConnectingDevice(device: ScannedDevice): boolean {
+    return this.connecting && this.selectedDeviceId === device.deviceId;
+  }
+
   async connectSelectedDevice(): Promise<void> {
     const device = this.selectedDevice;
 
@@ -686,6 +703,7 @@ export class ScanPage implements OnDestroy {
       this.connectedBleGeneration = nativeGeneration;
       this.connecting = false;
       await this.loadServices(device.deviceId, nativeGeneration);
+      await this.openProductPageIfReady(device.deviceId, nativeGeneration);
     } catch (error: unknown) {
       if (this.destroyed) {
         return;
@@ -731,6 +749,7 @@ export class ScanPage implements OnDestroy {
 
     this.retryingServiceDiscovery = true;
     await this.loadServices(deviceId, generation);
+    await this.openProductPageIfReady(deviceId, generation);
   }
 
   async disconnectAfterDiscoveryError(): Promise<void> {
@@ -903,6 +922,18 @@ export class ScanPage implements OnDestroy {
       [PRODUCT_PAGE_CONFIG[profile].route],
       { state },
     );
+  }
+
+  private async openProductPageIfReady(
+    deviceId: string,
+    expectedConnectionGeneration: number,
+  ): Promise<void> {
+    if (
+      this.isCurrentBleConnection(deviceId, expectedConnectionGeneration) &&
+      this.canOpenProductPage
+    ) {
+      await this.openProductPage();
+    }
   }
 
   ngOnDestroy(): void {

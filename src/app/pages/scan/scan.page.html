@@ -88,8 +88,12 @@
         <ion-item
           button
           detail="false"
-          (click)="selectDevice(device)"
-          [disabled]="connecting"
+          (click)="selectAndConnectDevice(device)"
+          [disabled]="
+            connecting ||
+            connectedDeviceId !== null ||
+            entryConnectionCleanupInProgress
+          "
           [class.selected-device]="selectedDeviceId === device.deviceId"
         >
           <div class="scan-room-icon" slot="start" aria-hidden="true">
@@ -119,6 +123,13 @@
               />
             </p>
           </ion-label>
+          @if (isConnectingDevice(device)) {
+            <ion-spinner
+              slot="end"
+              name="crescent"
+              aria-label="Connexion en cours"
+            ></ion-spinner>
+          }
         </ion-item>
       }
     </ion-list>
@@ -129,28 +140,14 @@
   }
 
   @if (selectedDevice; as device) {
-    <section class="connection-panel" aria-live="polite">
-      <p><strong>Appareil sélectionné :</strong> {{ device.name }}</p>
-      @if (showBleIdentifier) {
-        <p>{{ device.deviceId }}</p>
-      }
-
-      <ion-button
-        expand="block"
-        color="success"
-        (click)="connectSelectedDevice()"
-        [disabled]="connecting || connectedDeviceId !== null"
-      >
-        Connecter
-      </ion-button>
-
+    @if (connecting || connectionError || canRetryConnection ||
+        connectedDeviceId === device.deviceId) {
+      <section class="connection-panel" aria-live="polite">
       @if (connecting) {
         <div class="connection-status" role="status">
           <ion-spinner name="crescent"></ion-spinner>
           <span>{{ connectionStatusLabel }}</span>
         </div>
-      } @else if (connectedDeviceId === device.deviceId) {
-        <p class="connected-status" role="status">Connecté</p>
       }
 
       @if (connectionError) {
@@ -169,17 +166,6 @@
       }
 
       @if (connectedDeviceId === device.deviceId) {
-        @if (canOpenProductPage) {
-          <ion-button
-            expand="block"
-            fill="outline"
-            (click)="openProductPage()"
-            [disabled]="!canOpenProductPage"
-          >
-            {{ productPageText.openProductPage }}
-          </ion-button>
-        }
-
         <details
           class="scan-technical-details"
           [open]="discoveringServices || readingIdentification || discoveryError"
@@ -430,14 +416,6 @@
                 }
               }
               <p>{{ productReadAvailability.reason }}</p>
-              <ion-button
-                expand="block"
-                fill="outline"
-                (click)="openProductPage()"
-                [disabled]="!canOpenProductPage"
-              >
-                {{ productPageText.openProductPage }}
-              </ion-button>
               <ion-button
                 expand="block"
                 (click)="loadProductInformation()"
@@ -832,7 +810,8 @@
           </section>
         </details>
       }
-    </section>
+      </section>
+    }
   }
 
   <ion-fab class="scan-footer-fab scan-info-fab" slot="fixed" vertical="bottom" horizontal="end">

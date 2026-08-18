@@ -846,15 +846,14 @@ describe('ScanPage', () => {
     await component.stopScan();
   });
 
-  it('should stop scanning and display the connection state', fakeAsync(() => {
+  it('should stop scanning when a detected device is tapped', fakeAsync(() => {
     const stopScanSpy = spyOn(bleService, 'stopScan').and.callThrough();
     const connectSpy = spyOn(bleService, 'connect').and.callThrough();
     void component.startScan();
     flushMicrotasks();
     bleService.emit(createScanResult('device-1', -42, 'Capteur'));
-    component.selectDevice(component.devices[0]);
 
-    void component.connectSelectedDevice();
+    void component.selectAndConnectDevice(component.devices[0]);
     expect(component.connecting).toBeTrue();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Connexion en cours');
@@ -863,23 +862,74 @@ describe('ScanPage', () => {
 
     expect(stopScanSpy).toHaveBeenCalledBefore(connectSpy);
     expect(component.connectedDeviceId).toBe('device-1');
-    expect(fixture.nativeElement.textContent).toContain('Connecté');
+    expect(fixture.nativeElement.textContent).not.toContain('Connecter');
   }));
+
+  it('should automatically navigate after a successful tap connection flow',
+    async () => {
+      bleService.servicesResult = createIdentificationServices();
+      bleService.readResult = createVersionWord(0, 1);
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Produit'));
+
+      await component.selectAndConnectDevice(component.devices[0]);
+
+      expect(routerNavigate).toHaveBeenCalledOnceWith(
+        ['/product/moventiv-60'],
+        {
+          state: jasmine.objectContaining({
+            profile: 'moventiv-60',
+            deviceId: 'device-1',
+            connectionGeneration: bleService.connectionGeneration,
+            identificationConfidence: 'strong',
+          }),
+        },
+      );
+    },
+  );
 
   it('should display a readable connection error', async () => {
     await component.startScan();
     bleService.emit(createScanResult('device-1', -42, 'Capteur'));
-    component.selectDevice(component.devices[0]);
     spyOn(bleService, 'connect').and.rejectWith(
       new Error('Connexion refusée'),
     );
 
-    await component.connectSelectedDevice();
+    await component.selectAndConnectDevice(component.devices[0]);
     fixture.detectChanges();
 
     expect(component.connectionError).toContain('Connexion refusée');
     expect(fixture.nativeElement.textContent).toContain('Connexion refusée');
     expect(component.connecting).toBeFalse();
+    expect(routerNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should ignore a double tap while the connection is pending', async () => {
+    let releaseConnection!: () => void;
+    const originalConnect = bleService.connect.bind(bleService);
+    const connectSpy = spyOn(bleService, 'connect')
+      .and.callFake(async (deviceId: string) => {
+        await new Promise<void>((resolve) => {
+          releaseConnection = resolve;
+        });
+        await originalConnect(deviceId);
+      });
+    await component.startScan();
+    bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+
+    const firstTap = component.selectAndConnectDevice(component.devices[0]);
+    const secondTap = component.selectAndConnectDevice(component.devices[0]);
+
+    expect(component.connecting).toBeTrue();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(connectSpy).toHaveBeenCalledTimes(1);
+
+    releaseConnection();
+    await firstTap;
+    await secondTap;
+
+    expect(connectSpy).toHaveBeenCalledTimes(1);
   });
 
   it('should ignore a late connection failure after the page is destroyed',
@@ -966,7 +1016,7 @@ describe('ScanPage', () => {
       expect(component.connectedDeviceId).toBe('device-1');
       expect(component.connectionError).toBeNull();
       expect(component.connectionRetryDeviceId).toBeNull();
-      expect(fixture.nativeElement.textContent).toContain('Connecté');
+      expect(fixture.nativeElement.textContent).not.toContain('Connecter');
     },
   );
 
@@ -1112,14 +1162,10 @@ describe('ScanPage', () => {
     const scanButton = buttons.find((button) =>
       button.textContent?.includes('Rechercher'),
     );
-    const connectButton = buttons.find((button) =>
-      button.textContent?.includes('Connecter'),
-    );
 
     expect(scanButton).toBeDefined();
-    expect(connectButton).toBeDefined();
     expect(scanButton?.disabled).toBeFalse();
-    expect(connectButton?.disabled).toBeFalse();
+    expect(fixture.nativeElement.textContent).not.toContain('Connecter');
   });
 
   it('should discover and display services after connecting', async () => {
@@ -1181,7 +1227,6 @@ describe('ScanPage', () => {
     expect(component.canRetryServiceDiscovery).toBeTrue();
     expect(component.canDisconnectAfterDiscoveryError).toBeTrue();
     expect(discoverSpy).toHaveBeenCalledTimes(1);
-    expect(fixture.nativeElement.textContent).toContain('Connecté');
     expect(fixture.nativeElement.textContent).toContain(
       'Découverte indisponible',
     );
@@ -1952,7 +1997,6 @@ describe('ScanPage', () => {
 
     expect(component.connectedDeviceId).toBe('device-1');
     expect(component.identificationError).toContain('Lecture refusée');
-    expect(fixture.nativeElement.textContent).toContain('Connect');
     expect(fixture.nativeElement.textContent).toContain('Lecture refusée');
   });
 
@@ -2111,7 +2155,10 @@ describe('ScanPage', () => {
     expect(component.motorNotificationError).toContain(
       'Notifications refusées',
     );
-    expect(fixture.nativeElement.textContent).toContain('Connect');
+    expect(routerNavigate).toHaveBeenCalledWith(
+      ['/product/moventiv-60'],
+      jasmine.any(Object),
+    );
     expect(fixture.nativeElement.textContent).toContain(
       'Notifications refusées',
     );
@@ -2661,6 +2708,7 @@ describe('ScanPage', () => {
     bleService.emit(createScanResult('device-1', -42, 'Produit'));
     component.selectDevice(component.devices[0]);
     await component.connectSelectedDevice();
+    routerNavigate.calls.reset();
     component.productProfile = profile;
   }
 });
