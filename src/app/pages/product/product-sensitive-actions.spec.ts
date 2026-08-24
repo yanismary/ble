@@ -17,12 +17,23 @@ describe('Phase 1 sensitive product actions', () => {
           action: 'learning',
           profile,
           control: 'button',
-          requiresConfirmation: true,
+          requiresConfirmation: false,
         }),
       );
-      expect(productSensitiveActionWriteSteps(
+      const step = productSensitiveActionWriteSteps(
         productSensitiveActionConfigsFor(profile)[0],
-      )[0].write.payloadHex).toBe('00 12');
+      )[0];
+      expect(step.write.payloadHex).toBe('00 12');
+      if (profile === 'widoor') {
+        expect(step.policy.allowWidoorPhase1ImmediateWrite).toBeTrue();
+        expect(step.policy.allowMoventivPhase1ImmediateWrite).toBeUndefined();
+      } else if (profile === 'moventiv-60' || profile === 'moventiv-80') {
+        expect(step.policy.allowMoventivPhase1ImmediateWrite).toBeTrue();
+        expect(step.policy.allowWidoorPhase1ImmediateWrite).toBeUndefined();
+      } else {
+        expect(step.policy.allowWidoorPhase1ImmediateWrite).toBeUndefined();
+        expect(step.policy.allowMoventivPhase1ImmediateWrite).toBeUndefined();
+      }
     }
   });
 

@@ -37,6 +37,7 @@ import {
 } from '../../core/services/ble';
 import { BLE_UUIDS } from '../../core/services/ble-profile-catalog';
 import {
+  LEGACY_WRITE_CONSTRAINTS,
   LegacyBleWrite,
   LegacyInputMode,
   LegacyLockMode,
@@ -60,6 +61,7 @@ import {
 } from '../../core/services/ble-read.service';
 import {
   KnownProductProfile,
+  ProductDataLoadOptions,
   ProductDataLoadResult,
   ProductDataLoadStatus,
   ProductDataLoadService,
@@ -600,6 +602,9 @@ export class ProductPage implements OnDestroy {
     this.activeSettingsTab = tab;
     if (previousTab !== tab) {
       this.refreshCurrentTabData();
+      if (tab === 'advanced' && this.isMoventivProfile(this.config.profile)) {
+        void this.presentMoventivAdvancedAlert();
+      }
     }
   }
 
@@ -642,25 +647,25 @@ export class ProductPage implements OnDestroy {
     return this.pageContextCurrent &&
       this.userFieldVisible('lock-mode') &&
       this.lockModeControls.length > 0 &&
-      this.widoorPhase1ShowsUserParameterControls();
+      this.phase1ShowsUserParameterControls();
   }
 
   get showUserSpeedControls(): boolean {
     return this.pageContextCurrent &&
       this.userSpeedControls.length > 0 &&
-      this.widoorPhase1ShowsUserParameterControls();
+      this.phase1ShowsUserParameterControls();
   }
 
   get showUserTimingControls(): boolean {
     return this.pageContextCurrent &&
       this.userTimingControls.length > 0 &&
-      this.widoorPhase1ShowsUserParameterControls();
+      this.phase1ShowsUserParameterControls();
   }
 
   get showUserPeripheralControls(): boolean {
     return this.pageContextCurrent &&
       this.userPeripheralControls.length > 0 &&
-      this.widoorPhase1ShowsUserParameterControls();
+      this.phase1ShowsUserParameterControls();
   }
 
   get commandUserPeripheralControls(): typeof this.userPeripheralControls {
@@ -785,7 +790,8 @@ export class ProductPage implements OnDestroy {
   get showWeightRangeControls(): boolean {
     return this.pageContextCurrent &&
       this.weightRangeControls.length > 0 &&
-      this.viewModel.reads.professionalParameters.status === 'available';
+      (this.viewModel.reads.professionalParameters.status === 'available' ||
+        this.isMoventivProfile(this.config.profile));
   }
 
   get showBasicWeightRangeControls(): boolean {
@@ -801,13 +807,13 @@ export class ProductPage implements OnDestroy {
   get showProfessionalInputControls(): boolean {
     return this.pageContextCurrent &&
       this.professionalInputControls.length > 0 &&
-      this.widoorPhase1ShowsProfessionalParameterControls();
+      this.phase1ShowsProfessionalParameterControls();
   }
 
   get showProfessionalScalarControls(): boolean {
     return this.pageContextCurrent &&
       this.visibleProfessionalScalarControls.length > 0 &&
-      this.widoorPhase1ShowsProfessionalParameterControls();
+      this.phase1ShowsProfessionalParameterControls();
   }
 
   get showBasicSettingsControls(): boolean {
@@ -1406,7 +1412,9 @@ export class ProductPage implements OnDestroy {
     }
   }
 
-  async refreshProductData(): Promise<void> {
+  async refreshProductData(
+    options: ProductDataLoadOptions = {},
+  ): Promise<void> {
     if (!this.canRefresh || this.context === null) {
       return;
     }
@@ -1422,6 +1430,7 @@ export class ProductPage implements OnDestroy {
       const result = await this.productDataLoadService.loadProductData(
         context.profile,
         context.deviceId,
+        options,
       );
       if (!this.isCurrentLoad(cycle, context)) {
         return;
@@ -1789,10 +1798,14 @@ export class ProductPage implements OnDestroy {
   currentUserTimingValue(config: ProductUserTimingUiConfig): number | null {
     const value = this.viewModel.reads.userParameters.value;
     if (value === null) {
-      if (config.profile === 'widoor' &&
+      if ((config.profile === 'widoor' ||
+            this.isMoventivProfile(config.profile)) &&
           config.field === 'short-timing' &&
           this.pageContextCurrent) {
-        return this.widoorShortTimingFallback;
+        return config.profile === 'widoor'
+          ? this.widoorShortTimingFallback
+          : LEGACY_WRITE_CONSTRAINTS[config.profile]
+            .shortTimingInvalidReadDefault;
       }
       return null;
     }
@@ -2057,7 +2070,7 @@ export class ProductPage implements OnDestroy {
     }
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = config.profile === 'widoor'
+    const authorization = this.usesPhase1ImmediateWrite(config.profile)
       ? null
       : createProductProfessionalInputAuthorization({
           write,
@@ -2081,7 +2094,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: this.withWidoorPhase1ImmediatePolicy(config.policy),
+      policy: this.withPhase1ImmediatePolicy(config.profile, config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.professionalInputWriteState = Object.freeze({
@@ -2149,6 +2162,15 @@ export class ProductPage implements OnDestroy {
     }
   }
 
+  onWeightRangeSelectionChanged(
+    event: CustomEvent<{ readonly value?: unknown }>,
+  ): void {
+    this.setWeightRangeDraftValue(event);
+    if (this.isMoventivProfile(this.config.profile)) {
+      void this.requestWeightRangeChange();
+    }
+  }
+
   canApplyWeightRange(): boolean {
     if (!this.showWeightRangeControls ||
         !this.isCurrentContext() ||
@@ -2172,7 +2194,7 @@ export class ProductPage implements OnDestroy {
     }
     const currentValue = this.currentWeightRangeValue();
     const draftValue = this.weightRangeDraftValue();
-    if (currentValue === null ||
+    if ((currentValue === null && !this.isMoventivProfile(this.config.profile)) ||
         draftValue === null ||
         isSameProductWeightRange(currentValue, draftValue) ||
         !isValidProductWeightRange(this.weightRangeUiConfigs, draftValue)) {
@@ -2570,7 +2592,7 @@ export class ProductPage implements OnDestroy {
         authorization,
         attemptId,
         confirmationPolicy: { kind: 'gatt-only' },
-        policy: this.withWidoorPhase1ImmediatePolicy(step.policy),
+        policy: this.withPhase1ImmediatePolicy(config.profile, step.policy),
       });
 
       if (!this.isCurrentContext() ||
@@ -2651,9 +2673,10 @@ export class ProductPage implements OnDestroy {
         return;
       }
 
-      const immediateWidoorCommand = config.profile === 'widoor';
+      const immediatePhase1Command =
+        this.usesPhase1ImmediateWrite(config.profile);
       let confirmedAt = requestedAt;
-      if (!immediateWidoorCommand) {
+      if (!immediatePhase1Command) {
         this.openCommandState = Object.freeze({
           ...initialProductOpenCommandState(
             operation,
@@ -2710,7 +2733,7 @@ export class ProductPage implements OnDestroy {
 
       const attemptId = this.nextCommandIdentifier('attempt');
       const confirmationId = this.nextCommandIdentifier('confirmation');
-      const authorization = immediateWidoorCommand
+      const authorization = immediatePhase1Command
         ? null
         : createProductMotorCommandAuthorization({
             write,
@@ -2742,7 +2765,8 @@ export class ProductPage implements OnDestroy {
         authorization,
         attemptId,
         confirmationPolicy: config.confirmationPolicy,
-        policy: this.withWidoorPhase1ImmediatePolicy(
+        policy: this.withPhase1ImmediatePolicy(
+          config.profile,
           config.physicalValidationPolicy,
         ),
       });
@@ -2808,7 +2832,7 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = config.profile === 'widoor'
+    const authorization = this.usesPhase1ImmediateWrite(config.profile)
       ? null
       : createProductUserSpeedAuthorization({
           write,
@@ -2833,7 +2857,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: this.withWidoorPhase1ImmediatePolicy(config.policy),
+      policy: this.withPhase1ImmediatePolicy(config.profile, config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.userSpeedWriteState = Object.freeze({
@@ -2887,7 +2911,7 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = config.profile === 'widoor'
+    const authorization = this.usesPhase1ImmediateWrite(config.profile)
       ? null
       : createProductUserTimingAuthorization({
           write,
@@ -2912,7 +2936,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: this.withWidoorPhase1ImmediatePolicy(config.policy),
+      policy: this.withPhase1ImmediatePolicy(config.profile, config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.userTimingWriteState = Object.freeze({
@@ -2956,7 +2980,8 @@ export class ProductPage implements OnDestroy {
       ? eventOrChecked
       : eventOrChecked.detail.checked;
     const currentState = this.currentUserPeripheralState(config);
-    if ((currentState === null && config.profile !== 'widoor') ||
+    if ((currentState === null &&
+          !this.usesPhase1ImmediateWrite(config.profile)) ||
         checked === currentState ||
         !this.canToggleUserPeripheral(config) ||
         this.context === null) {
@@ -2978,7 +3003,7 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = config.profile === 'widoor'
+    const authorization = this.usesPhase1ImmediateWrite(config.profile)
       ? null
       : createProductUserPeripheralAuthorization({
           write,
@@ -3003,7 +3028,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: this.withWidoorPhase1ImmediatePolicy(config.policy),
+      policy: this.withPhase1ImmediatePolicy(config.profile, config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.userPeripheralWriteState = Object.freeze({
@@ -3039,6 +3064,11 @@ export class ProductPage implements OnDestroy {
     this.controlLocks.toggle('weight-range');
   }
 
+  weightRangeSelectDisabled(): boolean {
+    return !this.isMoventivProfile(this.config.profile) &&
+      !this.weightRangeControlUnlocked;
+  }
+
   async requestWeightRangeChange(): Promise<void> {
     if (!this.canApplyWeightRange() || this.context === null) {
       return;
@@ -3066,18 +3096,35 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = createProductWeightRangeAuthorization({
-      write,
-      deviceId: context.deviceId,
-      connectionGeneration: context.connectionGeneration,
-      attemptId,
-      confirmationId: this.nextCommandIdentifier('confirmation'),
-      confirmedAt,
-    });
+    const authorization = this.usesPhase1ImmediateWrite(config.profile)
+      ? null
+      : createProductWeightRangeAuthorization({
+          write,
+          deviceId: context.deviceId,
+          connectionGeneration: context.connectionGeneration,
+          attemptId,
+          confirmationId: this.nextCommandIdentifier('confirmation'),
+          confirmedAt,
+        });
     this.weightRangeWriteState = Object.freeze({
       status: 'executing',
       message: this.text.weightRangeControls.executing,
     });
+
+    if (this.isMoventivProfile(config.profile)) {
+      const speedResult = await this.writeMoventivWeightAssociatedSpeeds(
+        config.profile,
+        draftValue,
+        context,
+      );
+      if (!speedResult) {
+        this.weightRangeWriteState = Object.freeze({
+          status: 'failed',
+          message: this.text.weightRangeControls.failed,
+        });
+        return;
+      }
+    }
 
     const result = await this.bleWriteExecutionService.execute({
       write,
@@ -3088,7 +3135,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: config.policy,
+      policy: this.withPhase1ImmediatePolicy(config.profile, config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.weightRangeWriteState = Object.freeze({
@@ -3102,7 +3149,9 @@ export class ProductPage implements OnDestroy {
         status: 'sent',
         message: this.text.weightRangeControls.sent,
       });
-      if (this.canRefresh) {
+      if (this.isMoventivProfile(config.profile)) {
+        await this.maybeRefreshAfterMoventivWeightChange();
+      } else if (this.canRefresh) {
         await this.refreshProductData();
       }
       return;
@@ -3111,6 +3160,77 @@ export class ProductPage implements OnDestroy {
       status: 'failed',
       message: this.text.weightRangeControls.failed,
     });
+  }
+
+  private async writeMoventivWeightAssociatedSpeeds(
+    profile: 'moventiv-60' | 'moventiv-80',
+    range: ProductWeightRange,
+    context: ProductPageNavigationState,
+  ): Promise<boolean> {
+    const associated = this.moventivWeightAssociatedSpeeds(range);
+    if (associated === null) {
+      return false;
+    }
+    const writes: readonly {
+      readonly field: ProductUserSpeedField;
+      readonly value: number;
+    }[] = [
+      { field: 'open-speed', value: associated.openSpeed },
+      { field: 'close-speed', value: associated.closeSpeed },
+    ];
+
+    for (const item of writes) {
+      const control = this.userSpeedControls.find((candidate) =>
+        candidate.config.field === item.field,
+      )?.config;
+      if (control === undefined) {
+        return false;
+      }
+      const write = control.catalogFactory(item.value);
+      const contextStatus = this.writeContextStatus(context, write);
+      if (contextStatus !== null) {
+        return false;
+      }
+      const result = await this.bleWriteExecutionService.execute({
+        write,
+        deviceId: context.deviceId,
+        profile,
+        connectionGeneration: context.connectionGeneration,
+        identification: { profile, confidence: 'strong' },
+        authorization: null,
+        attemptId: this.nextCommandIdentifier('attempt'),
+        confirmationPolicy: control.confirmationPolicy,
+        policy: this.withPhase1ImmediatePolicy(profile, control.policy),
+      });
+      if (!this.isCurrentContext() ||
+          this.context !== context ||
+          result.status !== 'success') {
+        return false;
+      }
+      this.userSpeedDrafts.set(item.field, item.value);
+    }
+    return true;
+  }
+
+  private moventivWeightAssociatedSpeeds(
+    range: ProductWeightRange,
+  ): { readonly openSpeed: number; readonly closeSpeed: number } | null {
+    if (
+        (range.lower === 10 && range.upper === 20) ||
+        (range.lower === 20 && range.upper === 30)) {
+      return { openSpeed: 100, closeSpeed: 70 };
+    }
+    if (
+        (range.lower === 30 && range.upper === 40) ||
+        (range.lower === 40 && range.upper === 50)) {
+      return { openSpeed: 80, closeSpeed: 70 };
+    }
+    if (
+        (range.lower === 50 && range.upper === 60) ||
+        (range.lower === 60 && range.upper === 80)) {
+      return { openSpeed: 75, closeSpeed: 70 };
+    }
+    return null;
   }
 
   async requestProfessionalScalarChange(
@@ -3139,7 +3259,7 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = config.profile === 'widoor'
+    const authorization = this.usesPhase1ImmediateWrite(config.profile)
       ? null
       : createProductProfessionalScalarAuthorization({
           write,
@@ -3164,7 +3284,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: this.withWidoorPhase1ImmediatePolicy(config.policy),
+      policy: this.withPhase1ImmediatePolicy(config.profile, config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.professionalScalarWriteState = Object.freeze({
@@ -3410,7 +3530,9 @@ export class ProductPage implements OnDestroy {
         ? this.text.productDateActions.setupSent
         : this.text.productDateActions.maintenanceSent,
     });
-    await this.refreshAfterProductDateAction();
+    if (this.shouldRefreshAfterProductDateAction(flow.kind)) {
+      await this.refreshAfterProductDateAction();
+    }
   }
 
   async requestNameRoomChange(): Promise<void> {
@@ -3439,7 +3561,7 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = this.config.profile === 'widoor'
+    const authorization = this.usesPhase1ImmediateWrite(this.config.profile)
       ? null
       : createProductNameRoomAuthorization({
           write,
@@ -3474,7 +3596,8 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: PRODUCT_NAME_ROOM_CONFIRMATION_POLICY,
-      policy: this.withWidoorPhase1ImmediatePolicy(
+      policy: this.withPhase1ImmediatePolicy(
+        this.config.profile,
         PRODUCT_NAME_ROOM_EXECUTION_POLICY,
       ),
     });
@@ -3555,7 +3678,7 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = config.profile === 'widoor'
+    const authorization = this.usesPhase1ImmediateWrite(config.profile)
       ? null
       : createProductLockModeAuthorization({
           write,
@@ -3579,7 +3702,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: this.withWidoorPhase1ImmediatePolicy(config.policy),
+      policy: this.withPhase1ImmediatePolicy(config.profile, config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.lockModeWriteState = Object.freeze({
@@ -3735,29 +3858,94 @@ export class ProductPage implements OnDestroy {
     }
   }
 
+  private async presentMoventivAdvancedAlert(): Promise<void> {
+    const alert = await this.alertController.create({
+      header: this.text.moventivAdvancedAlert.title,
+      message: this.text.moventivAdvancedAlert.message,
+      buttons: [
+        {
+          text: this.text.moventivAdvancedAlert.no,
+          role: 'cancel',
+        },
+        {
+          text: this.text.moventivAdvancedAlert.yes,
+          role: 'confirm',
+        },
+      ],
+    });
+    await alert.present();
+    const dismissal = await alert.onDidDismiss();
+    if (dismissal.role !== 'confirm' &&
+        this.isMoventivProfile(this.config.profile) &&
+        this.activeMainTab === 'settings' &&
+        this.activeSettingsTab === 'advanced') {
+      this.activeSettingsTab = 'basic';
+    }
+  }
+
   private shouldRefreshAfterSettledWrite(): boolean {
-    return this.config.profile !== 'widoor';
+    return !this.usesPhase1ImmediateWrite(this.config.profile);
   }
 
-  private widoorPhase1ShowsUserParameterControls(): boolean {
+  private phase1ShowsUserParameterControls(): boolean {
     return this.viewModel.reads.userParameters.status === 'available' ||
-      this.config.profile === 'widoor';
+      this.config.profile === 'widoor' ||
+      this.isMoventivProfile(this.config.profile);
   }
 
-  private widoorPhase1ShowsProfessionalParameterControls(): boolean {
+  private phase1ShowsProfessionalParameterControls(): boolean {
     return this.viewModel.reads.professionalParameters.status === 'available' ||
-      this.config.profile === 'widoor';
+      this.config.profile === 'widoor' ||
+      this.isMoventivProfile(this.config.profile);
   }
 
-  private withWidoorPhase1ImmediatePolicy(
+  private withPhase1ImmediatePolicy(
+    profile: KnownProductProfile,
     policy: LegacyBleWriteExecutionPolicy | undefined,
   ): LegacyBleWriteExecutionPolicy | undefined {
-    if (this.config.profile !== 'widoor') {
-      return policy;
+    if (profile === 'widoor') {
+      return Object.freeze({
+        ...(policy ?? {}),
+        allowWidoorPhase1ImmediateWrite: true,
+      });
     }
-    return Object.freeze({
-      ...(policy ?? {}),
-      allowWidoorPhase1ImmediateWrite: true,
+    if (this.isMoventivProfile(profile)) {
+      return Object.freeze({
+        ...(policy ?? {}),
+        allowMoventivPhase1ImmediateWrite: true,
+      });
+    }
+    return policy;
+  }
+
+  private usesPhase1ImmediateWrite(profile: KnownProductProfile): boolean {
+    return profile === 'widoor' || this.isMoventivProfile(profile);
+  }
+
+  private isMoventivProfile(
+    profile: KnownProductProfile,
+  ): profile is 'moventiv-60' | 'moventiv-80' {
+    return profile === 'moventiv-60' || profile === 'moventiv-80';
+  }
+
+  private usesPhase1SliderAutoWrite(): boolean {
+    return this.usesPhase1ImmediateWrite(this.config.profile);
+  }
+
+  showApplyButtonForProfile(profile: KnownProductProfile): boolean {
+    return !this.usesPhase1ImmediateWrite(profile);
+  }
+
+  private maybeRefreshAfterMoventivWeightChange(): Promise<void> {
+    if (!this.isMoventivProfile(this.config.profile) || !this.canRefresh) {
+      return Promise.resolve();
+    }
+    return this.refreshProductData({
+      version: false,
+      datesAndCycles: false,
+      maintenance: false,
+      userParameters: false,
+      professionalParameters: true,
     });
   }
 
@@ -3765,7 +3953,7 @@ export class ProductPage implements OnDestroy {
     key: string,
     write: () => Promise<void>,
   ): void {
-    if (this.config.profile !== 'widoor') {
+    if (!this.usesPhase1SliderAutoWrite()) {
       return;
     }
     this.clearWidoorSliderWrite(key);
@@ -3780,7 +3968,7 @@ export class ProductPage implements OnDestroy {
     key: string,
     write: () => Promise<void>,
   ): void {
-    if (this.config.profile !== 'widoor') {
+    if (!this.usesPhase1SliderAutoWrite()) {
       return;
     }
     this.clearWidoorSliderWrite(key);
@@ -3859,36 +4047,47 @@ export class ProductPage implements OnDestroy {
         : result.status === 'stale'
           ? 'stale'
           : this.viewModel.connectionState;
+    const keepMissingRead = result.status !== 'disconnected' &&
+      result.status !== 'stale';
+    const fullLoad = result.notRequested.length === 0;
     this.viewModel = {
       ...this.viewModel,
       connectionState: terminalConnectionState,
       reads: {
-        version: readView(result.results.version, result.status),
-        datesAndCycles: readView(
-          result.results.datesAndCycles,
-          result.status,
-        ),
-        maintenance: readView(result.results.maintenance, result.status),
-        userParameters: readView(
-          result.results.userParameters,
-          result.status,
-        ),
-        professionalParameters: readView(
-          result.results.professionalParameters,
-          result.status,
-        ),
+        version: result.results.version === undefined && keepMissingRead
+          ? this.viewModel.reads.version
+          : readView(result.results.version, result.status),
+        datesAndCycles: result.results.datesAndCycles === undefined &&
+          keepMissingRead
+          ? this.viewModel.reads.datesAndCycles
+          : readView(result.results.datesAndCycles, result.status),
+        maintenance: result.results.maintenance === undefined &&
+          keepMissingRead
+          ? this.viewModel.reads.maintenance
+          : readView(result.results.maintenance, result.status),
+        userParameters: result.results.userParameters === undefined &&
+          keepMissingRead
+          ? this.viewModel.reads.userParameters
+          : readView(result.results.userParameters, result.status),
+        professionalParameters:
+          result.results.professionalParameters === undefined &&
+            keepMissingRead
+            ? this.viewModel.reads.professionalParameters
+            : readView(result.results.professionalParameters, result.status),
       },
       loadStatus: result.status,
       partialSuccess: result.partialSuccess,
       lastUpdatedAt: result.completedAt,
       globalError: result.error?.message ?? null,
     };
-    this.controlLocks.lockAll();
-    this.userSpeedDrafts.clear();
-    this.userTimingDrafts.clear();
-    this.resetNameRoomDraft();
-    this.weightRangeDraft = null;
-    this.professionalScalarDrafts.clear();
+    if (fullLoad) {
+      this.controlLocks.lockAll();
+      this.userSpeedDrafts.clear();
+      this.userTimingDrafts.clear();
+      this.resetNameRoomDraft();
+      this.weightRangeDraft = null;
+      this.professionalScalarDrafts.clear();
+    }
   }
 
   private handleDisconnection(event: BleDisconnectionEvent): void {
@@ -4178,6 +4377,15 @@ export class ProductPage implements OnDestroy {
     if (this.viewModel.loadStatus === 'failed') {
       this.markProductDateActionReloadFailed();
     }
+  }
+
+  private shouldRefreshAfterProductDateAction(
+    action: ProductDateMaintenanceFlowKind,
+  ): boolean {
+    return !(
+      this.isMoventivProfile(this.config.profile) &&
+      action === 'maintenance'
+    );
   }
 
   private markProductDateActionReloadFailed(): void {

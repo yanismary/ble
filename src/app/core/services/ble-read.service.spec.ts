@@ -369,7 +369,7 @@ describe('BleReadService', () => {
 
       expectNativeCharacteristic(
         BLE_UUIDS.userParametersCharacteristic,
-        BLE_UUIDS.shdoService,
+        BLE_UUIDS.moventivGarlineService,
       );
       expect(result.status).toBe('success');
       if (result.decoded?.valid) {
@@ -415,9 +415,14 @@ describe('BleReadService', () => {
         profile as ProductProfile,
       );
 
+      const expectedService = profile === 'widoor'
+        ? BLE_UUIDS.widoorService
+        : profile === 'moventiv-60' || profile === 'moventiv-80'
+          ? BLE_UUIDS.moventivGarlineService
+          : BLE_UUIDS.shdoService;
       expectNativeCharacteristic(
         BLE_UUIDS.professionalParametersCharacteristic,
-        profile === 'widoor' ? BLE_UUIDS.widoorService : BLE_UUIDS.shdoService,
+        expectedService,
       );
       expect(result.status).toBe('success');
       if (result.decoded?.valid) {
@@ -507,6 +512,16 @@ function createReadableGattServices(
     },
     {
       uuid: BLE_UUIDS.widoorService.toUpperCase(),
+      characteristics: parameterCharacteristicUuids.map((uuid) => ({
+        uuid: uuid.toUpperCase(),
+        properties: characteristicProperties({
+          read: uuid === nonReadableCharacteristic ? readable : true,
+        }),
+        descriptors: [],
+      })),
+    },
+    {
+      uuid: BLE_UUIDS.moventivGarlineService.toUpperCase(),
       characteristics: parameterCharacteristicUuids.map((uuid) => ({
         uuid: uuid.toUpperCase(),
         properties: characteristicProperties({

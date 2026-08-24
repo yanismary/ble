@@ -488,7 +488,7 @@
                       >
                         +
                       </ion-button>
-                      @if (speedControl.config.profile !== 'widoor') {
+                      @if (showApplyButtonForProfile(speedControl.config.profile)) {
                         <ion-button
                           type="button"
                           size="small"
@@ -587,7 +587,7 @@
                       >
                         +
                       </ion-button>
-                      @if (timingControl.config.profile !== 'widoor') {
+                      @if (showApplyButtonForProfile(timingControl.config.profile)) {
                         <ion-button
                           type="button"
                           size="small"
@@ -652,8 +652,8 @@
                     interface="popover"
                     [compareWith]="compareWeightRangeOptions"
                     [value]="weightRangeDraftValue()"
-                    [disabled]="!weightRangeControlUnlocked"
-                    (ionChange)="setWeightRangeDraftValue($event)"
+                    [disabled]="weightRangeSelectDisabled()"
+                    (ionChange)="onWeightRangeSelectionChanged($event)"
                   >
                     @for (weightControl of weightRangeControls; track weightControl.config.label) {
                       <ion-select-option [value]="weightControl.config.range">
@@ -661,15 +661,17 @@
                       </ion-select-option>
                     }
                   </ion-select>
-                  <ion-button
-                    type="button"
-                    size="small"
-                    slot="end"
-                    (click)="requestWeightRangeChange()"
-                    [disabled]="!weightRangeControlUnlocked || !canApplyWeightRange()"
-                  >
-                    {{ text.weightRangeControls.apply }}
-                  </ion-button>
+                  @if (showApplyButtonForProfile(config.profile)) {
+                    <ion-button
+                      type="button"
+                      size="small"
+                      slot="end"
+                      (click)="requestWeightRangeChange()"
+                      [disabled]="!weightRangeControlUnlocked || !canApplyWeightRange()"
+                    >
+                      {{ text.weightRangeControls.apply }}
+                    </ion-button>
+                  }
                 </ion-item>
                 @if (weightRangeWriteState.message) {
                   <p
@@ -934,8 +936,8 @@
                     interface="popover"
                     [compareWith]="compareWeightRangeOptions"
                     [value]="weightRangeDraftValue()"
-                    [disabled]="!weightRangeControlUnlocked"
-                    (ionChange)="setWeightRangeDraftValue($event)"
+                    [disabled]="weightRangeSelectDisabled()"
+                    (ionChange)="onWeightRangeSelectionChanged($event)"
                   >
                     @for (weightControl of weightRangeControls; track weightControl.config.label) {
                       <ion-select-option [value]="weightControl.config.range">
@@ -949,14 +951,16 @@
                     {{ weightRangeDraftValue()?.lower }}–{{ weightRangeDraftValue()?.upper }}
                     kg
                   </strong>
-                  <ion-button
-                    type="button"
-                    size="small"
-                    (click)="requestWeightRangeChange()"
-                    [disabled]="!weightRangeControlUnlocked || !canApplyWeightRange()"
-                  >
-                    {{ text.weightRangeControls.apply }}
-                  </ion-button>
+                  @if (showApplyButtonForProfile(config.profile)) {
+                    <ion-button
+                      type="button"
+                      size="small"
+                      (click)="requestWeightRangeChange()"
+                      [disabled]="!weightRangeControlUnlocked || !canApplyWeightRange()"
+                    >
+                      {{ text.weightRangeControls.apply }}
+                    </ion-button>
+                  }
                 </div>
                 @if (weightRangeWriteState.message) {
                   <p
@@ -1043,7 +1047,7 @@
                       >
                         +
                       </ion-button>
-                      @if (scalarControl.config.profile !== 'widoor') {
+                      @if (showApplyButtonForProfile(scalarControl.config.profile)) {
                         <ion-button
                           type="button"
                           size="small"

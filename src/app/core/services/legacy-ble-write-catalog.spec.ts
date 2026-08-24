@@ -195,6 +195,8 @@ describe('legacy BLE write catalog', () => {
   it('encodes only historical weight ranges allowed by profile', () => {
     expect(bytes(encodeLegacyWeightRange('moventiv-60', 50, 60)))
       .toEqual([0, 50, 60]);
+    expect(bytes(encodeLegacyWeightRange('moventiv-60', 60, 80)))
+      .toEqual([0, 60, 80]);
     expect(bytes(encodeLegacyWeightRange('moventiv-80', 60, 80)))
       .toEqual([0, 60, 80]);
     expect(bytes(encodeLegacyWeightRange('garline', 60, 80)))
@@ -205,7 +207,7 @@ describe('legacy BLE write catalog', () => {
       .toEqual([0, 100, 120]);
     expect(bytes(encodeLegacyWeightRange('garline', 120, 140)))
       .toEqual([0, 120, 140]);
-    expect(() => encodeLegacyWeightRange('moventiv-60', 60, 80)).toThrow();
+    expect(() => encodeLegacyWeightRange('moventiv-60', 80, 100)).toThrow();
     expect(() => encodeLegacyWeightRange('moventiv-80', 80, 100)).toThrow();
     expect(() => encodeLegacyWeightRange('garline', 50, 60)).toThrow();
   });

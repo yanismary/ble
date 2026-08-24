@@ -80,6 +80,7 @@ export type LegacyBleWriteConfirmationPolicy =
 export interface LegacyBleWriteExecutionPolicy {
   readonly allowPhase1ReferenceOnly?: true;
   readonly allowWidoorPhase1ImmediateWrite?: true;
+  readonly allowMoventivPhase1ImmediateWrite?: true;
   readonly allowLearning?: true;
   readonly allowReset?: true;
   readonly allowPhysicalValidationAttempt?: {
@@ -388,7 +389,8 @@ export class BleWriteExecutionService implements OnDestroy {
     const now = Date.now();
     this.pruneAuthorizations(now);
     if (authorization == null || authorization.confirmedByUser !== true) {
-      if (this.isWidoorPhase1ImmediateWrite(request)) {
+      if (this.isWidoorPhase1ImmediateWrite(request) ||
+          this.isMoventivPhase1ImmediateWrite(request)) {
         return null;
       }
       return this.result(
@@ -736,6 +738,21 @@ export class BleWriteExecutionService implements OnDestroy {
     return WIDOOR_PHASE1_IMMEDIATE_OPERATIONS.has(request.write.operation);
   }
 
+  private isMoventivPhase1ImmediateWrite(
+    request: LegacyBleWriteRequest,
+  ): boolean {
+    if (request.policy?.allowMoventivPhase1ImmediateWrite !== true ||
+        !isMoventivProfile(request.profile) ||
+        request.identification.profile !== request.profile ||
+        request.identification.confidence !== 'strong' ||
+        request.write.profile !== request.profile) {
+      return false;
+    }
+    return MOVENTIV_PHASE1_IMMEDIATE_OPERATIONS.has(
+      request.write.operation,
+    );
+  }
+
   private result(
     request: LegacyBleWriteRequest,
     startedAt: number,
@@ -837,6 +854,36 @@ const WIDOOR_PHASE1_IMMEDIATE_OPERATIONS = new Set<string>([
   'near-open-speed',
   'near-close-speed',
 ]);
+
+const MOVENTIV_PHASE1_IMMEDIATE_OPERATIONS = new Set<string>([
+  'motor-open',
+  'motor-close',
+  'motor-open-short-timed',
+  'motor-learning',
+  'lock-mode',
+  'open-speed',
+  'close-speed',
+  'short-timing',
+  'static-light',
+  'dynamic-light',
+  'rgb-indicator',
+  'name-room',
+  'weight-range',
+  'input-1-radar',
+  'input-2-radar',
+  'near-open-speed',
+  'near-close-speed',
+  'near-open-torque',
+  'near-close-torque',
+  'braking-open-power',
+  'obstacle-sensitivity',
+]);
+
+function isMoventivProfile(
+  profile: ProductProfile,
+): profile is 'moventiv-60' | 'moventiv-80' {
+  return profile === 'moventiv-60' || profile === 'moventiv-80';
+}
 
 function timedCycleStatus(
   write: LegacyBleWrite | null,

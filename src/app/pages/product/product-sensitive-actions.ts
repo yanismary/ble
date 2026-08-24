@@ -104,13 +104,18 @@ export function productSensitiveActionWriteSteps(
   enabled?: boolean,
 ): readonly ProductSensitiveActionWriteStep[] {
   if (config.action === 'learning') {
+    const immediatePolicy = config.profile === 'widoor'
+      ? { allowWidoorPhase1ImmediateWrite: true } as const
+      : config.profile === 'moventiv-60' || config.profile === 'moventiv-80'
+        ? { allowMoventivPhase1ImmediateWrite: true } as const
+        : {};
     return Object.freeze([
       step(
         encodeLegacyMotorCommand(config.profile, 'LEARNING'),
         0,
         {
           allowPhase1ReferenceOnly: true,
-          allowWidoorPhase1ImmediateWrite: true,
+          ...immediatePolicy,
           allowLearning: true,
         },
       ),

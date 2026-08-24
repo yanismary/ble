@@ -262,12 +262,14 @@ export class BleReadService implements OnDestroy {
     definition: ReadDefinition<unknown>,
   ): string {
     if (
-        profile === 'widoor' &&
-        (
-          definition.type === 'user-parameters' ||
-          definition.type === 'professional-parameters'
-        )) {
-      return BLE_UUIDS.widoorService;
+        definition.type === 'user-parameters' ||
+        definition.type === 'professional-parameters') {
+      if (profile === 'widoor') {
+        return BLE_UUIDS.widoorService;
+      }
+      if (profile === 'moventiv-60' || profile === 'moventiv-80') {
+        return BLE_UUIDS.moventivGarlineService;
+      }
     }
     return BLE_UUIDS.shdoService;
   }

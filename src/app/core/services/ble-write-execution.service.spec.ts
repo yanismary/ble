@@ -277,6 +277,34 @@ describe('BleWriteExecutionService', () => {
       expect((await service.execute(moventiv)).error?.code)
         .toBe('authorization-required');
       expect(ble.writeCharacteristic).toHaveBeenCalledTimes(1);
+
+      const moventivImmediate = requestFor(encodeLegacyUserScalar(
+        'moventiv-60',
+        'open-speed',
+        50,
+      ));
+      moventivImmediate.authorization = null;
+      moventivImmediate.policy = {
+        allowPhase1ReferenceOnly: true,
+        allowMoventivPhase1ImmediateWrite: true,
+      };
+      expect((await service.execute(moventivImmediate)).status)
+        .toBe('success');
+      expect(ble.writeCharacteristic).toHaveBeenCalledTimes(2);
+
+      const garline = requestFor(encodeLegacyUserScalar(
+        'garline',
+        'open-speed',
+        50,
+      ));
+      garline.authorization = null;
+      garline.policy = {
+        allowPhase1ReferenceOnly: true,
+        allowMoventivPhase1ImmediateWrite: true,
+      };
+      expect((await service.execute(garline)).error?.code)
+        .toBe('authorization-required');
+      expect(ble.writeCharacteristic).toHaveBeenCalledTimes(2);
     },
   );
 

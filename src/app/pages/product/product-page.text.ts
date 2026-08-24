@@ -154,6 +154,12 @@ export const PRODUCT_PAGE_TEXT = {
     unlocked: 'Réglages professionnels déverrouillés.',
     failed: 'Code professionnel incorrect.',
   },
+  moventivAdvancedAlert: {
+    title: 'Attention',
+    message: 'La modifications de ces paramètres peut affecter le bon fonctionnement du système. Veuillez lire la notice au préalable avant toute modification.',
+    no: 'Décliner',
+    yes: 'Confirmer',
+  },
   productDateActions: {
     setupLabel: 'Mise en service effectuée',
     maintenanceLabel: 'Maintenance effectuée',

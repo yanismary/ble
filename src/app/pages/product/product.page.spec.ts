@@ -278,7 +278,7 @@ describe('ProductPage', () => {
       fixture.detectChanges();
 
       expect(loadService.loadProductData)
-        .toHaveBeenCalledOnceWith('widoor', 'device-1');
+        .toHaveBeenCalledOnceWith('widoor', 'device-1', {});
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
       const element = fixture.nativeElement as HTMLElement;
       expect(element.querySelector('ion-range.user-speed-range'))
@@ -2669,12 +2669,21 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
       expect(Array.from(request.write.payload)).toEqual([0x00, 0x30]);
       expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
       expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
-      expect(request.authorization).toEqual(jasmine.objectContaining({
-        profile,
-        operation: 'motor-close',
-        payloadHex: '00 30',
-        motorMovementConfirmed: true,
-      }));
+      if (profile === 'moventiv-60') {
+        expect(alertCreate).not.toHaveBeenCalled();
+        expect(request.policy).toEqual(jasmine.objectContaining({
+          allowMoventivPhase1ImmediateWrite: true,
+        }));
+        expect(request.authorization).toBeNull();
+      } else {
+        expect(alertCreate).toHaveBeenCalledTimes(1);
+        expect(request.authorization).toEqual(jasmine.objectContaining({
+          profile,
+          operation: 'motor-close',
+          payloadHex: '00 30',
+          motorMovementConfirmed: true,
+        }));
+      }
       expect(component.openCommandState.status).toBe('confirmed');
       expect(component.openCommandState.confirmationStatus)
         .toBe('not-validated');
@@ -2734,6 +2743,59 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
       await component.requestProductCommand(WIDOOR_COMMAND_UI_CONFIGS[3]);
 
       expect(alertCreate).not.toHaveBeenCalled();
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should show the Phase 1 advanced-tab alert for Moventiv and return to basic on cancel',
+    async () => {
+      const bleService = new FakeBleService();
+      const writeExecutionService = new FakeBleWriteExecutionService();
+      const alertCreate = jasmine.createSpy('create').and.resolveTo({
+        present: async () => undefined,
+        onDidDismiss: async () => ({ role: 'cancel' }),
+      });
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          { provide: AlertController, useValue: { create: alertCreate } },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          {
+            provide: ProductDataLoadService,
+            useValue: new FakeProductDataLoadService(),
+          },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile: 'moventiv-80' } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState('moventiv-80') },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      component.setActiveMainTab('settings');
+      component.setActiveSettingsTab('advanced');
+      await waitForCondition(() => component.activeSettingsTab === 'basic');
+
+      expect(alertCreate).toHaveBeenCalledTimes(1);
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
     },
   );
@@ -2855,6 +2917,212 @@ describe('ProductPage speed controls for profile variants', () => {
       },
     );
   }
+
+  it('should keep Moventiv settings visible when user and pro reads are unavailable',
+    async () => {
+      const bleService = new FakeBleService();
+      const loadService = new FakeProductDataLoadService();
+      loadService.nextResult = moventivUnavailableParameterLoadResult(
+        'moventiv-60',
+      );
+      const writeExecutionService = new FakeBleWriteExecutionService();
+      const alertCreate = jasmine.createSpy('create').and.resolveTo({
+        present: async () => undefined,
+        onDidDismiss: async () => ({ role: 'confirm' }),
+      });
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          { provide: AlertController, useValue: { create: alertCreate } },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          { provide: ProductDataLoadService, useValue: loadService },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile: 'moventiv-60' } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState('moventiv-60') },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+      await component.refreshProductData();
+
+      expect(component.showUserSpeedControls).toBeTrue();
+      expect(component.showUserTimingControls).toBeTrue();
+      expect(component.showUserPeripheralControls).toBeTrue();
+      expect(component.showWeightRangeControls).toBeTrue();
+      expect(component.showProfessionalInputControls).toBeTrue();
+      expect(component.showProfessionalScalarControls).toBeTrue();
+      expect(component.currentUserTimingValue(
+        component.userTimingControls[0].config,
+      )).toBe(1);
+      expect(component.canChangeProfessionalInput(
+        component.professionalInputControls[0].config,
+        'radar',
+      )).toBeFalse();
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should write Moventiv speed on release and not create a false authorization',
+    async () => {
+      const bleService = new FakeBleService();
+      const loadService = new FakeProductDataLoadService();
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'moventiv-60',
+        userValueWithSpeeds(60, 70),
+      );
+      const writeExecutionService = new FakeBleWriteExecutionService();
+      writeExecutionService.nextResult = userSpeedExecutionResult(
+        'moventiv-60',
+        'open-speed',
+        '01 3d',
+      );
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          {
+            provide: AlertController,
+            useValue: {
+              create: jasmine.createSpy('create').and.resolveTo({
+                present: async () => undefined,
+                onDidDismiss: async () => ({ role: 'confirm' }),
+              }),
+            },
+          },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          { provide: ProductDataLoadService, useValue: loadService },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile: 'moventiv-60' } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState('moventiv-60') },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+      await component.refreshProductData();
+      const control = component.userSpeedControls[0].config;
+
+      component.toggleUserSpeedLock(control);
+      component.setUserSpeedDraftValue(control, 61);
+      component.onUserSpeedSliderReleased(control);
+      await waitForCondition(() =>
+        writeExecutionService.execute.calls.count() === 1,
+      );
+
+      const request = writeExecutionService.execute.calls.mostRecent()
+        .args[0] as LegacyBleWriteRequest;
+      expect(request.authorization).toBeNull();
+      expect(request.policy).toEqual(jasmine.objectContaining({
+        allowMoventivPhase1ImmediateWrite: true,
+      }));
+      expect(component.showApplyButtonForProfile('moventiv-60')).toBeFalse();
+      expect(component.showApplyButtonForProfile('garline')).toBeTrue();
+    },
+  );
+
+  it('should write Moventiv +/- slider changes after the Phase 1 delay',
+    async () => {
+      const bleService = new FakeBleService();
+      const loadService = new FakeProductDataLoadService();
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'moventiv-80',
+        userValueWithSpeeds(60, 70),
+      );
+      const writeExecutionService = new FakeBleWriteExecutionService();
+      writeExecutionService.nextResult = userSpeedExecutionResult(
+        'moventiv-80',
+        'open-speed',
+        '01 3d',
+      );
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          {
+            provide: AlertController,
+            useValue: {
+              create: jasmine.createSpy('create').and.resolveTo({
+                present: async () => undefined,
+                onDidDismiss: async () => ({ role: 'confirm' }),
+              }),
+            },
+          },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          { provide: ProductDataLoadService, useValue: loadService },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile: 'moventiv-80' } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState('moventiv-80') },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+      await component.refreshProductData();
+      const control = component.userSpeedControls[0].config;
+
+      component.toggleUserSpeedLock(control);
+      component.stepUserSpeedDraft(control, 1);
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      await new Promise((resolve) => window.setTimeout(resolve, 430));
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+    },
+  );
 });
 
 describe('ProductPage timing controls for profile variants', () => {
@@ -3745,15 +4013,16 @@ describe('ProductPage weight-range controls for profile variants', () => {
     {
       profile: 'moventiv-60',
       current: { lower: 40, upper: 50 },
-      accepted: { lower: 50, upper: 60 },
-      invalid: { lower: 60, upper: 80 },
-      payloadHex: '00 32 3c',
+      accepted: { lower: 60, upper: 80 },
+      invalid: { lower: 80, upper: 100 },
+      payloadHex: '00 3c 50',
       ranges: [
         { lower: 10, upper: 20 },
         { lower: 20, upper: 30 },
         { lower: 30, upper: 40 },
         { lower: 40, upper: 50 },
         { lower: 50, upper: 60 },
+        { lower: 60, upper: 80 },
       ],
     },
     {
@@ -3818,7 +4087,19 @@ describe('ProductPage weight-range controls for profile variants', () => {
 
         await component.requestWeightRangeChange();
 
-        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        const expectedWriteCount = scenario.profile === 'garline' ? 1 : 3;
+        expect(writeExecutionService.execute)
+          .toHaveBeenCalledTimes(expectedWriteCount);
+        if (scenario.profile !== 'garline') {
+          const requests = writeExecutionService.execute.calls.allArgs()
+            .map(([request]) => request as LegacyBleWriteRequest);
+          expect(requests.map((request) => request.write.operation))
+            .toEqual(['open-speed', 'close-speed', 'weight-range']);
+          expect(requests.map((request) => request.write.payloadHex))
+            .toEqual(['01 4b', '02 46', scenario.payloadHex]);
+          expect(requests.every((request) => request.authorization === null))
+            .toBeTrue();
+        }
         const request = writeExecutionService.execute.calls.mostRecent()
           .args[0] as LegacyBleWriteRequest;
         expect(request.profile).toBe(scenario.profile);
@@ -3830,6 +4111,12 @@ describe('ProductPage weight-range controls for profile variants', () => {
         expect(request.write.payloadHex).toBe(scenario.payloadHex);
         expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
         expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
+        if (scenario.profile !== 'garline') {
+          expect(request.policy).toEqual(jasmine.objectContaining({
+            allowMoventivPhase1ImmediateWrite: true,
+          }));
+          expect(request.authorization).toBeNull();
+        }
       },
     );
   }
@@ -3908,9 +4195,14 @@ describe('ProductPage weight-range controls for profile variants', () => {
       );
 
       component.setWeightRangeDraftValue({ lower: 60, upper: 80 });
+      writeExecutionService.nextResults = [
+        userSpeedExecutionResult('moventiv-80', 'open-speed', '01 4b'),
+        userSpeedExecutionResult('moventiv-80', 'close-speed', '02 46'),
+        weightRangeExecutionResult('moventiv-80', '00 3c 50', 'failed'),
+      ];
       await component.requestWeightRangeChange();
 
-      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(3);
       expect(component.currentWeightRangeValue())
         .toEqual({ lower: 50, upper: 60 });
       expect(component.weightRangeDraftValue())
@@ -5213,7 +5505,7 @@ describe('ProductPage product date maintenance actions', () => {
         expect(harness.component.productDateActionState.status).toBe('sent');
         expect(harness.component.productDateActionState.message)
           .toBe(harness.component.text.productDateActions.maintenanceSent);
-        expect(harness.loadService.loadProductData).toHaveBeenCalledTimes(2);
+        expect(harness.loadService.loadProductData).toHaveBeenCalledTimes(1);
       } finally {
         jasmine.clock().uninstall();
       }
@@ -5312,11 +5604,11 @@ describe('ProductPage product date maintenance actions', () => {
   it('should keep write success and report reload failure separately',
     async () => {
       const harness = await createProductDateHarness(
-        'moventiv-60',
+        'garline',
         presentHistoricalDate(),
       );
       harness.loadService.nextResult = productDateLoadResult(
-        'moventiv-60',
+        'garline',
         presentHistoricalDate(),
         'failed',
       );
@@ -6004,6 +6296,31 @@ function oldWidoorLoadResult(): ProductDataLoadResult {
   const base = completeLoadResult('partial-success');
   return {
     ...base,
+    results: {
+      version: base.results.version,
+      datesAndCycles: base.results.datesAndCycles,
+      maintenance: base.results.maintenance,
+      userParameters: unavailableRead(
+        'user-parameters',
+        BLE_UUIDS.userParametersCharacteristic,
+      ),
+      professionalParameters: unavailableRead(
+        'professional-parameters',
+        BLE_UUIDS.professionalParametersCharacteristic,
+      ),
+    },
+    unavailable: ['userParameters', 'professionalParameters'],
+    partialSuccess: true,
+  };
+}
+
+function moventivUnavailableParameterLoadResult(
+  profile: 'moventiv-60' | 'moventiv-80',
+): ProductDataLoadResult {
+  const base = completeLoadResult('partial-success', profile);
+  return {
+    ...base,
+    profile,
     results: {
       version: base.results.version,
       datesAndCycles: base.results.datesAndCycles,

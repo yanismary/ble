@@ -155,11 +155,11 @@ const MOVENTIV_60_WEIGHT_RANGES = [
   [30, 40],
   [40, 50],
   [50, 60],
+  [60, 80],
 ] as const;
 
 const MOVENTIV_80_WEIGHT_RANGES = [
   ...MOVENTIV_60_WEIGHT_RANGES,
-  [60, 80],
 ] as const;
 
 const GARLINE_WEIGHT_RANGES = [
