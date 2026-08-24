@@ -77,29 +77,8 @@
 
 <ion-content [fullscreen]="true">
   <main class="product-page-layout">
-    <section class="product-shell-status" aria-labelledby="identity-title">
-      @if (viewModel.loadStatus) {
-        <p class="product-summary" aria-live="polite">
-          {{ globalStatusLabel }}
-        </p>
-      }
-
+    <section class="product-shell-status">
       <div class="product-actions">
-        <ion-button
-          type="button"
-          (click)="refreshProductData()"
-          [disabled]="!canRefresh"
-        >
-          {{ text.refresh }}
-        </ion-button>
-        <ion-button
-          type="button"
-          fill="outline"
-          (click)="lockAllProductControls()"
-          [disabled]="!hasUnlockedProductControls"
-        >
-          Verrouiller tous les réglages
-        </ion-button>
         <ion-button
           type="button"
           fill="outline"
@@ -121,25 +100,6 @@
           <span>{{ text.loading }}</span>
         </p>
       }
-      <details class="technical-details product-identity-details">
-        <summary id="identity-title">{{ text.sections.identity }}</summary>
-        <dl class="product-readonly-grid">
-          <dt>{{ text.productName }}</dt>
-          <dd>{{ viewModel.productName }}</dd>
-          <dt>{{ text.displayedName }}</dt>
-          <dd>{{ viewModel.displayedName || text.noValue }}</dd>
-          <dt>{{ text.room }}</dt>
-          <dd>{{ viewModel.roomSuffix ?? text.noRoom }}</dd>
-          <dt>{{ text.profile }}</dt>
-          <dd>{{ viewModel.profile }}</dd>
-          <dt>{{ text.deviceId }}</dt>
-          <dd class="long-value">{{ viewModel.deviceId || text.noValue }}</dd>
-          <dt>{{ text.connection }}</dt>
-          <dd>{{ connectionStateLabel(displayedConnectionState) }}</dd>
-          <dt>{{ text.lastRefresh }}</dt>
-          <dd>{{ formatTimestamp(viewModel.lastUpdatedAt) }}</dd>
-        </dl>
-      </details>
     </section>
 
     @if (hasProductNavigationContext) {

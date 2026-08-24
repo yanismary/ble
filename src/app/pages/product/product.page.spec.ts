@@ -274,7 +274,7 @@ describe('ProductPage', () => {
     fixture.detectChanges();
   });
 
-  it('should not load automatically and should expose only manual refresh',
+  it('should not load automatically and should keep explicit refresh internal',
     async () => {
       expect(loadService.loadProductData).not.toHaveBeenCalled();
 
@@ -313,6 +313,32 @@ describe('ProductPage', () => {
       expect(informationSection?.hidden).toBeTrue();
     },
   );
+
+  it('should hide V2.1-only global shell technical controls', async () => {
+    await component.refreshProductData();
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const textContent = element.textContent ?? '';
+    const actionLabels = Array.from(
+      element.querySelectorAll<HTMLIonButtonElement>(
+        '.product-actions ion-button',
+      ),
+    ).map((button) => button.textContent?.trim() ?? '');
+
+    expect(element.querySelector('.product-summary')).toBeNull();
+    expect(element.querySelector('.product-identity-details')).toBeNull();
+    expect(element.querySelector('.product-actions')).not.toBeNull();
+    expect(actionLabels).toEqual([component.text.backToScan]);
+    expect(textContent).not.toContain(component.text.refresh);
+    expect(textContent).not.toContain('Verrouiller tous les réglages');
+    expect(textContent).not.toContain(component.text.sections.identity);
+    expect(textContent).not.toContain(component.text.profile);
+    expect(textContent).not.toContain(component.text.deviceId);
+    expect(textContent).not.toContain(component.text.connection);
+    expect(textContent).not.toContain(component.text.lastRefresh);
+    expect(textContent).not.toContain(routerNavigationState.deviceId);
+  });
 
   it('should navigate the product shell without BLE writes', () => {
     component.setActiveMainTab('settings');
@@ -2083,9 +2109,10 @@ describe('ProductPage', () => {
       const text = fixture.nativeElement.textContent as string;
 
       expect(component.viewModel.partialSuccess).toBeTrue();
-      expect(text).toContain(component.text.states.partialSuccess);
-      expect(text.match(/Succès partiel/g)?.length).toBe(1);
-      expect(text).not.toContain('Succès partiel — Succès partiel');
+      expect(component.globalStatusLabel)
+        .toBe(component.text.states.partialSuccess);
+      expect(fixture.nativeElement.querySelector('.product-summary'))
+        .toBeNull();
       expect(text).toContain(component.text.states.invalid);
       expect(text).toContain(component.text.states.unavailable);
       expect(component.readStatusLabel(component.viewModel.reads.maintenance))
@@ -2245,7 +2272,7 @@ describe('ProductPage', () => {
     },
   );
 
-  it('should display a deterministic French refresh timestamp and room label',
+  it('should format refresh timestamps internally without rendering shell data',
     async () => {
       const timestamp = new Date(2026, 6, 31, 11, 47, 3).getTime();
       loadService.nextResult = {
@@ -2258,9 +2285,10 @@ describe('ProductPage', () => {
       const text = fixture.nativeElement.textContent as string;
 
       expect(formatProductTimestamp(timestamp)).toBe('31/07/2026 11:47:03');
-      expect(text).toContain('31/07/2026 11:47:03');
+      expect(component.viewModel.lastUpdatedAt).toBe(timestamp);
+      expect(text).not.toContain('31/07/2026 11:47:03');
       expect(text).not.toMatch(/\b(?:AM|PM)\b/);
-      expect(text).toContain(component.text.room);
+      expect(text).not.toContain(component.text.lastRefresh);
       expect(text).not.toContain('suffixe Phase 1');
     },
   );
@@ -2393,7 +2421,8 @@ describe('ProductPage', () => {
     },
   );
 
-  it('should expose each global state once without inventing data', () => {
+  it('should keep each global state internally without rendering shell summary',
+    () => {
     expect(component.viewModel.loadStatus).toBeNull();
     expect(fixture.nativeElement.querySelector('.product-summary')).toBeNull();
 
@@ -2420,25 +2449,19 @@ describe('ProductPage', () => {
       const summary = fixture.nativeElement.querySelector(
         '.product-summary',
       ) as HTMLElement | null;
-      expect(summary?.textContent?.trim())
-        .withContext(status)
-        .toBe(label);
+      expect(summary).withContext(status).toBeNull();
     }
   });
 
-  it('should contain a responsive read-only layout and return to Scan',
+  it('should return to Scan from the product shell',
     async () => {
       const disconnectSpy = spyOn(bleService, 'disconnect')
         .and.callThrough();
 
-    expect(fixture.nativeElement.querySelector(
-      '.product-readonly-grid',
-    )).not.toBeNull();
-
       await component.backToScan();
 
       expect(disconnectSpy).toHaveBeenCalledTimes(1);
-    expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
       expect(bleService.connectedDeviceId).toBeNull();
       expect(bleService.connectionGeneration).toBe(5);
     },
