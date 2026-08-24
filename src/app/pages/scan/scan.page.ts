@@ -74,6 +74,9 @@ import {
   readShowBleIdentifier,
 } from '../../core/services/app-preferences';
 import {
+  readRoomCacheEntry,
+} from '../../core/services/app-room-cache';
+import {
   PRODUCT_PAGE_CONFIG,
 } from '../product/product-page.config';
 import { PRODUCT_PAGE_TEXT } from '../product/product-page.text';
@@ -278,11 +281,17 @@ export class ScanPage implements OnDestroy {
   }
 
   getScanDisplayName(device: ScannedDevice): string {
-    return splitScanDisplayName(device.name).displayName || device.name;
+    const cachedName = readRoomCacheEntry(device.deviceId)?.name;
+    return cachedName !== undefined && cachedName !== null
+      ? cachedName
+      : splitScanDisplayName(device.name).displayName || device.name;
   }
 
   getScanRoomSuffix(device: ScannedDevice): string | null {
-    return splitScanDisplayName(device.name).roomSuffix;
+    const cachedSuffix = readRoomCacheEntry(device.deviceId)?.suffix;
+    return cachedSuffix !== undefined && cachedSuffix !== null
+      ? cachedSuffix || null
+      : splitScanDisplayName(device.name).roomSuffix;
   }
 
   getScanRoomIconClass(device: ScannedDevice): string | null {

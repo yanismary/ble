@@ -47,6 +47,10 @@ import {
   LegacyBleWriteRequest,
 } from '../../core/services/ble-write-execution.service';
 import {
+  ROOM_ASSIGNMENTS_STORAGE_KEY,
+  readRoomCacheEntry,
+} from '../../core/services/app-room-cache';
+import {
   ProductPage,
   formatProductTimestamp,
   isProductPageNavigationState,
@@ -220,6 +224,7 @@ describe('ProductPage', () => {
   let routerNavigationState: ProductPageNavigationState;
 
   beforeEach(async () => {
+    localStorage.removeItem(ROOM_ASSIGNMENTS_STORAGE_KEY);
     bleService = new FakeBleService();
     loadService = new FakeProductDataLoadService();
     writeExecutionService = new FakeBleWriteExecutionService();
@@ -497,7 +502,43 @@ describe('ProductPage', () => {
     );
     expect(component.viewModel.displayedName).toBe('Garage');
     expect(component.viewModel.roomSuffix).toBe('#GAR');
+    expect(readRoomCacheEntry(' DEVICE-1 ')).toEqual(
+      jasmine.objectContaining({
+        name: 'Garage',
+        suffix: '#GAR',
+      }),
+    );
   });
+
+  it('should update the Phase 1 room cache after successful name-room writes for each migrated profile',
+    async () => {
+      for (const profile of [
+        'widoor',
+        'moventiv-60',
+        'moventiv-80',
+        'garline',
+      ] as const) {
+        localStorage.removeItem(ROOM_ASSIGNMENTS_STORAGE_KEY);
+        const harness = await createNameRoomProfileHarness(profile);
+        harness.writeExecutionService.nextResult = nameRoomExecutionResult(
+          profile,
+          '47 61 72 61 67 65 23 47 41 52',
+        );
+
+        harness.component.setNameRoomDraftName('Garage');
+        harness.component.setNameRoomDraftRoom('#GAR');
+        await harness.component.requestNameRoomChange();
+
+        expect(readRoomCacheEntry(' device-1 ')).withContext(profile).toEqual(
+          jasmine.objectContaining({
+            name: 'Garage',
+            suffix: '#GAR',
+          }),
+        );
+        harness.fixture.destroy();
+      }
+    },
+  );
 
   it('should reject invalid name and room drafts before any write', async () => {
     component.setNameRoomDraftName('Abc');
@@ -517,6 +558,9 @@ describe('ProductPage', () => {
   });
 
   it('should keep current name and room when a name write fails', async () => {
+    localStorage.setItem(ROOM_ASSIGNMENTS_STORAGE_KEY, JSON.stringify({
+      'DEVICE-1': { name: 'Ancien', suffix: '#SAL', updatedAt: 42 },
+    }));
     writeExecutionService.nextResult = {
       ...nameRoomExecutionResult(
         'widoor',
@@ -541,6 +585,11 @@ describe('ProductPage', () => {
       roomSuffix: '#CHA',
     });
     expect(component.nameRoomWriteState.status).toBe('failed');
+    expect(readRoomCacheEntry('device-1')).toEqual({
+      name: 'Ancien',
+      suffix: '#SAL',
+      updatedAt: 42,
+    });
   });
 
   it('should reset name and room drafts on reload and disconnection',
@@ -5966,6 +6015,61 @@ function navigationState(
     displayName: 'Porte#CHA',
     identificationConfidence: 'strong',
     motorState: null,
+  };
+}
+
+async function createNameRoomProfileHarness(
+  profile: KnownProductProfile,
+): Promise<{
+  readonly fixture: ComponentFixture<ProductPage>;
+  readonly component: ProductPage;
+  readonly writeExecutionService: FakeBleWriteExecutionService;
+}> {
+  const bleService = new FakeBleService();
+  const loadService = new FakeProductDataLoadService();
+  const writeExecutionService = new FakeBleWriteExecutionService();
+
+  TestBed.resetTestingModule();
+  await TestBed.configureTestingModule({
+    imports: [ProductPage],
+    providers: [
+      { provide: BleService, useValue: bleService },
+      {
+        provide: AlertController,
+        useValue: {
+          create: jasmine.createSpy('create').and.resolveTo({
+            present: async () => undefined,
+            onDidDismiss: async () => ({ role: 'confirm' }),
+          }),
+        },
+      },
+      { provide: BleWriteExecutionService, useValue: writeExecutionService },
+      { provide: ProductDataLoadService, useValue: loadService },
+      { provide: ProductDetection, useClass: ProductDetection },
+      {
+        provide: ActivatedRoute,
+        useValue: { snapshot: { data: { profile } } },
+      },
+      {
+        provide: Router,
+        useValue: {
+          getCurrentNavigation: () => ({
+            extras: { state: navigationState(profile) },
+          }),
+          navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+        },
+      },
+    ],
+  }).compileComponents();
+
+  const fixture = TestBed.createComponent(ProductPage);
+  const component = fixture.componentInstance;
+  fixture.detectChanges();
+
+  return {
+    fixture,
+    component,
+    writeExecutionService,
   };
 }
 

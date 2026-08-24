@@ -79,6 +79,9 @@ import {
   readShowProductSettings,
 } from '../../core/services/app-preferences';
 import {
+  writeRoomCacheEntry,
+} from '../../core/services/app-room-cache';
+import {
   triggerConfiguredHapticFeedback,
 } from '../../core/services/app-haptics';
 import {
@@ -3614,6 +3617,11 @@ export class ProductPage implements OnDestroy {
         displayedName: validation.baseName,
         roomSuffix: validation.roomSuffix,
       };
+      this.updateStoredRoomAssignment(
+        context.deviceId,
+        validation.baseName,
+        validation.roomSuffix ?? '',
+      );
       this.resetNameRoomDraft();
       this.nameRoomWriteState = Object.freeze({
         status: 'sent',
@@ -4188,6 +4196,18 @@ export class ProductPage implements OnDestroy {
         status: 'idle',
         message: null,
       });
+    }
+  }
+
+  private updateStoredRoomAssignment(
+    deviceId: string,
+    name: string,
+    suffix: string,
+  ): void {
+    try {
+      writeRoomCacheEntry(deviceId, { name, suffix });
+    } catch {
+      // The BLE write remains the source of truth; the cache is scan-display fallback only.
     }
   }
 

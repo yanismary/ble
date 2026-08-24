@@ -4,6 +4,15 @@ import {
   readShowBleIdentifier,
   readShowProductInformation,
   readShowProductSettings,
+  initializePhase1DefaultPreferences,
+  LEGACY_AUTO_ENABLE_BLUETOOTH_STORAGE_KEY,
+  LEGACY_DEFAULT_OPTIONAL_COMMANDS,
+  LEGACY_FIRST_LAUNCH_STORAGE_KEY,
+  LEGACY_HAPTIC_FEEDBACK_STORAGE_KEY,
+  LEGACY_OPTIONAL_COMMANDS_STORAGE_KEY,
+  LEGACY_SHOW_BLE_IDENTIFIER_STORAGE_KEY,
+  LEGACY_SHOW_PRODUCT_INFORMATION_STORAGE_KEY,
+  LEGACY_SHOW_PRODUCT_SETTINGS_STORAGE_KEY,
   storeAutoEnableBluetooth,
   storeHapticFeedback,
   storeShowBleIdentifier,
@@ -38,7 +47,7 @@ describe('app preferences', () => {
   });
 
   it('keeps BLE identifiers visible by default', () => {
-    expect(readShowBleIdentifier(new MemoryStorage())).toBeTrue();
+    expect(readShowBleIdentifier(new MemoryStorage())).toBeFalse();
   });
 
   it('stores BLE identifier visibility', () => {
@@ -82,5 +91,49 @@ describe('app preferences', () => {
     expect(storeShowProductInformation(false, storage)).toBeFalse();
     expect(readShowProductInformation(storage)).toBeFalse();
     expect(readShowProductSettings(storage)).toBeTrue();
+  });
+
+  it('initializes Phase 1 default preferences on first launch', () => {
+    const storage = new MemoryStorage();
+
+    initializePhase1DefaultPreferences(storage);
+
+    expect(readShowProductSettings(storage)).toBeTrue();
+    expect(readShowProductInformation(storage)).toBeTrue();
+    expect(readShowBleIdentifier(storage)).toBeFalse();
+    expect(readHapticFeedback(storage)).toBeFalse();
+    expect(readAutoEnableBluetooth(storage)).toBeTrue();
+    expect(storage.getItem(LEGACY_FIRST_LAUNCH_STORAGE_KEY)).toBe('true');
+    expect(JSON.parse(
+      storage.getItem(LEGACY_OPTIONAL_COMMANDS_STORAGE_KEY) ?? '[]',
+    )).toEqual([...LEGACY_DEFAULT_OPTIONAL_COMMANDS]);
+  });
+
+  it('migrates existing Phase 1 preference keys without overwriting users', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(LEGACY_SHOW_BLE_IDENTIFIER_STORAGE_KEY, 'true');
+    storage.setItem(LEGACY_HAPTIC_FEEDBACK_STORAGE_KEY, 'true');
+    storage.setItem(LEGACY_SHOW_PRODUCT_SETTINGS_STORAGE_KEY, 'false');
+    storage.setItem(LEGACY_SHOW_PRODUCT_INFORMATION_STORAGE_KEY, 'false');
+    storage.setItem(LEGACY_AUTO_ENABLE_BLUETOOTH_STORAGE_KEY, 'false');
+
+    initializePhase1DefaultPreferences(storage);
+
+    expect(readShowBleIdentifier(storage)).toBeTrue();
+    expect(readHapticFeedback(storage)).toBeTrue();
+    expect(readShowProductSettings(storage)).toBeFalse();
+    expect(readShowProductInformation(storage)).toBeFalse();
+    expect(readAutoEnableBluetooth(storage)).toBeFalse();
+  });
+
+  it('keeps modern stored preferences when initialization runs again', () => {
+    const storage = new MemoryStorage();
+    storeShowBleIdentifier(true, storage);
+    storage.setItem(LEGACY_SHOW_BLE_IDENTIFIER_STORAGE_KEY, 'false');
+
+    initializePhase1DefaultPreferences(storage);
+    initializePhase1DefaultPreferences(storage);
+
+    expect(readShowBleIdentifier(storage)).toBeTrue();
   });
 });

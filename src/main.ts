@@ -4,6 +4,11 @@ import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular/standalo
 
 import { routes } from './app/app.routes';
 import { AppComponent } from './app/app.component';
+import {
+  initializePhase1AppState,
+} from './app/core/services/app-initialization';
+
+initializePhase1AppState(navigator.language);
 
 bootstrapApplication(AppComponent, {
   providers: [

@@ -2,6 +2,7 @@ import {
   readAppLanguageMode,
   readStoredAppLanguage,
   resolveAppLanguage,
+  initializePhase1Language,
   storeAutomaticAppLanguage,
   storeManualAppLanguage,
 } from './app-language';
@@ -51,5 +52,46 @@ describe('app language', () => {
 
     expect(storeAutomaticAppLanguage('es-ES', storage)).toBe('en');
     expect(readStoredAppLanguage(storage)).toBe('en');
+  });
+
+  it('initializes automatic Phase 1 language from supported phone languages', () => {
+    const frStorage = new MemoryStorage();
+    const enStorage = new MemoryStorage();
+    const deStorage = new MemoryStorage();
+    const plStorage = new MemoryStorage();
+
+    expect(initializePhase1Language('fr-FR', frStorage)).toBe('fr');
+    expect(initializePhase1Language('en-US', enStorage)).toBe('en');
+    expect(initializePhase1Language('de-DE', deStorage)).toBe('de');
+    expect(initializePhase1Language('pl-PL', plStorage)).toBe('pl');
+  });
+
+  it('uses the Phase 1 English fallback for unsupported phone languages', () => {
+    const storage = new MemoryStorage();
+
+    expect(initializePhase1Language('es-ES', storage)).toBe('en');
+    expect(readStoredAppLanguage(storage)).toBe('en');
+    expect(readAppLanguageMode(storage)).toBe('automatic');
+    expect(storage.getItem('StoredIsLanguageAuto')).toBe('true');
+    expect(storage.getItem('appLanguage')).toBe('true');
+  });
+
+  it('does not replace an already stored user language', () => {
+    const storage = new MemoryStorage();
+    storeManualAppLanguage('de', storage);
+
+    expect(initializePhase1Language('fr-FR', storage)).toBe('de');
+    expect(readStoredAppLanguage(storage)).toBe('de');
+    expect(readAppLanguageMode(storage)).toBe('manual');
+  });
+
+  it('migrates Phase 1 manual language keys', () => {
+    const storage = new MemoryStorage();
+    storage.setItem('StoredIsLanguageAuto', 'false');
+    storage.setItem('appLanguage', '"manualLang_PL"');
+
+    expect(initializePhase1Language('fr-FR', storage)).toBe('pl');
+    expect(readStoredAppLanguage(storage)).toBe('pl');
+    expect(readAppLanguageMode(storage)).toBe('manual');
   });
 });

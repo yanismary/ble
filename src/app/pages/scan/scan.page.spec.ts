@@ -253,6 +253,7 @@ describe('ScanPage', () => {
   let routerNavigate: jasmine.Spy;
 
   beforeEach(async () => {
+    localStorage.clear();
     storeAutoEnableBluetooth(false);
     storeShowBleIdentifier(true);
     bleService = new FakeBleService();
@@ -330,6 +331,19 @@ describe('ScanPage', () => {
     expect(getScanRoomIconClass('#ENT')).toBe('ai-loc-autre');
     expect(getScanRoomIconClass(null)).toBeNull();
   });
+
+  it('should use the local room cache as the Phase 1 scan display fallback',
+    async () => {
+      localStorage.setItem('StoredRoomAssignments', JSON.stringify({
+        'DEVICE-1': { name: 'Bureau', suffix: '#ENT', updatedAt: 1 },
+      }));
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -55, 'Ancien#SAL'));
+
+      expect(component.getScanDisplayName(component.devices[0]))
+        .toBe('Bureau');
+      expect(component.getScanRoomSuffix(component.devices[0])).toBe('#ENT');
+    });
 
   it('should navigate from the Phase 1 style main menu without BLE calls',
     async () => {
