@@ -151,29 +151,6 @@ export const WIDOOR_COMMAND_UI_CONFIGS: readonly WidoorCommandUiConfig[] =
       hardwareValidationStatus: 'phase1-reference-only',
       isTimedCommand: true,
     }),
-    commandConfig({
-      profile: 'widoor',
-      command: 'OPEN_LONG_TIMED',
-      operation: 'motor-open-long-timed',
-      textKey: 'openLongTimed',
-      catalogFactory: () => encodeLegacyMotorCommand(
-        'widoor', 'OPEN_LONG_TIMED',
-      ),
-      enabled: true,
-      expectedMotorStateRaw: WIDOOR_OPENING_STARTED_STATE,
-      confirmationPolicy: {
-        kind: 'widoor-timed-opening-state',
-        command: 'OPEN_LONG_TIMED',
-      },
-      physicalValidationPolicy: {
-        allowPhysicalValidationAttempt: {
-          operation: 'motor-open-long-timed',
-          profile: 'widoor',
-        },
-      },
-      hardwareValidationStatus: 'phase1-reference-only',
-      isTimedCommand: true,
-    }),
   ]);
 
 type MoventivGarlineMotorCommand = Extract<

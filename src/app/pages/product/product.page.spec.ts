@@ -383,16 +383,12 @@ describe('ProductPage', () => {
       Array.from('Couloir#CHA', (character) => character.charCodeAt(0)),
     );
     expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
-    expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
-    expect(request.authorization).toEqual(jasmine.objectContaining({
-      profile: 'widoor',
-      operation: 'name-room',
-      payloadHex: '43 6f 75 6c 6f 69 72 23 43 48 41',
-    }));
+    expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
+    expect(request.authorization).toBeNull();
     expect(component.viewModel.displayedName).toBe('Couloir');
     expect(component.viewModel.roomSuffix).toBe('#CHA');
     expect(component.nameRoomWriteState.status).toBe('sent');
-    expect(loadService.loadProductData).toHaveBeenCalledTimes(1);
+    expect(loadService.loadProductData).not.toHaveBeenCalled();
   });
 
   it('should write a room-only change while keeping the current name',
@@ -671,13 +667,8 @@ describe('ProductPage', () => {
       expect(request.write.payloadHex).toBe(transition.payloadHex);
       expect(Array.from(request.write.payload)).toEqual(transition.payload);
       expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
-      expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
-      expect(request.authorization).toEqual(jasmine.objectContaining({
-        profile: 'widoor',
-        operation: transition.operation,
-        payloadHex: transition.payloadHex,
-      }));
-      expect(request.authorization?.motorMovementConfirmed).toBeUndefined();
+      expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
+      expect(request.authorization).toBeNull();
       expect(component.userSpeedWriteState.status).toBe('sent');
     }
   });
@@ -869,13 +860,8 @@ describe('ProductPage', () => {
       expect(request.write.payloadHex).toBe(transition.payloadHex);
       expect(Array.from(request.write.payload)).toEqual(transition.payload);
       expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
-      expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
-      expect(request.authorization).toEqual(jasmine.objectContaining({
-        profile: 'widoor',
-        operation: 'short-timing',
-        payloadHex: transition.payloadHex,
-      }));
-      expect(request.authorization?.motorMovementConfirmed).toBeUndefined();
+      expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
+      expect(request.authorization).toBeNull();
       expect(component.userTimingWriteState.status).toBe('sent');
     }
   });
@@ -1057,15 +1043,10 @@ describe('ProductPage', () => {
     expect(request.write.payloadHex).toBe('05 03 01');
     expect(Array.from(request.write.payload)).toEqual([0x05, 0x03, 0x01]);
     expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
-    expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
-    expect(request.authorization).toEqual(jasmine.objectContaining({
-      profile: 'widoor',
-      operation: 'rgb-indicator',
-      payloadHex: '05 03 01',
-    }));
-    expect(request.authorization?.motorMovementConfirmed).toBeUndefined();
+    expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
+    expect(request.authorization).toBeNull();
     expect(component.userPeripheralWriteState.status).toBe('sent');
-    expect(loadService.loadProductData).toHaveBeenCalledTimes(2);
+    expect(loadService.loadProductData).toHaveBeenCalledTimes(1);
   });
 
   it('should keep decoded user lighting state when a write fails',
@@ -1303,13 +1284,8 @@ describe('ProductPage', () => {
         expect(request.write.payloadHex).toBe(transition.payloadHex);
         expect(Array.from(request.write.payload)).toEqual(transition.payload);
         expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
-        expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
-        expect(request.authorization).toEqual(jasmine.objectContaining({
-          profile: 'widoor',
-          operation: 'lock-mode',
-          payloadHex: transition.payloadHex,
-        }));
-        expect(request.authorization?.motorMovementConfirmed).toBeUndefined();
+        expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
+        expect(request.authorization).toBeNull();
         expect(component.lockModeWriteState.status).toBe('sent');
       }
     },
@@ -1357,12 +1333,12 @@ describe('ProductPage', () => {
       for (const command of WIDOOR_COMMAND_UI_CONFIGS.filter((config) =>
         config.enabled,
       )) {
-        expect(component.canExecuteProductCommand(command)).toBeFalse();
+        expect(component.canExecuteProductCommand(command)).toBeTrue();
       }
 
       await component.requestProductCommand(WIDOOR_COMMAND_UI_CONFIGS[0]);
 
-      expect(alertCreate).not.toHaveBeenCalled();
+      expect(alertCreate).toHaveBeenCalledTimes(1);
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
 
       loadService.nextResult = completeLoadResult(
@@ -1380,30 +1356,27 @@ describe('ProductPage', () => {
     },
   );
 
-  it('should cancel user confirmation without creating an execution request',
+  it('should execute Widoor OPEN without a user confirmation alert',
     async () => {
       await component.requestWidoorOpen();
       fixture.detectChanges();
 
-      expect(alertCreate).toHaveBeenCalledTimes(1);
-      expect(alertOptions[0]['header'])
-        .toBe(component.text.widoorCommands.open.confirmTitle);
-      expect(alertOptions[0]['message'])
-        .toBe(component.text.widoorCommands.open.confirmMessage);
-      expect(writeExecutionService.execute).not.toHaveBeenCalled();
-      expect(component.openCommandState.status).toBe('cancelled');
+      expect(alertCreate).not.toHaveBeenCalled();
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(component.openCommandState.status).toBe('confirmed');
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
     },
   );
 
-  it('should treat Android back or backdrop dismissal as cancellation',
+  it('should ignore alert dismissal roles for immediate Widoor OPEN',
     async () => {
       alertRole = 'backdrop';
 
       await component.requestWidoorOpen();
 
-      expect(writeExecutionService.execute).not.toHaveBeenCalled();
-      expect(component.openCommandState.status).toBe('cancelled');
+      expect(alertCreate).not.toHaveBeenCalled();
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(component.openCommandState.status).toBe('confirmed');
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
     },
   );
@@ -1431,38 +1404,37 @@ describe('ProductPage', () => {
       expect(request.confirmationPolicy).toEqual({
         kind: 'widoor-open-state',
       });
-      expect(request.policy).toBeUndefined();
-      expect(request.authorization?.confirmedByUser).toBeTrue();
-      expect(request.authorization?.motorMovementConfirmed).toBeTrue();
-      expect(request.authorization?.attemptId).toBe(request.attemptId);
-      expect(request.authorization?.operation).toBe(request.write.operation);
-      expect(request.authorization?.payloadHex).toBe(request.write.payloadHex);
-      expect((request.authorization?.expiresAt ?? 0) -
-        (request.authorization?.confirmedAt ?? 0)).toBe(15_000);
+      expect(request.policy).toEqual({
+        allowWidoorPhase1ImmediateWrite: true,
+      });
+      expect(request.authorization).toBeNull();
       expect(component.openCommandState.status).toBe('confirmed');
       expect(component.openCommandState.confirmationStatus).toBe('confirmed');
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
     },
   );
 
-  it('should cancel CLOSE confirmation without creating authorization',
+  it('should execute CLOSE without creating a user authorization',
     async () => {
       await component.requestWidoorClose();
 
-      expect(alertOptions[0]['header'])
-        .toBe(component.text.widoorCommands.close.confirmTitle);
-      expect(writeExecutionService.execute).not.toHaveBeenCalled();
-      expect(component.openCommandState.status).toBe('cancelled');
+      expect(alertCreate).not.toHaveBeenCalled();
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      const request = writeExecutionService.execute.calls.mostRecent()
+        .args[0] as LegacyBleWriteRequest;
+      expect(request.authorization).toBeNull();
+      expect(component.openCommandState.status).toBe('confirmed');
     },
   );
 
-  it('should treat CLOSE backdrop dismissal as cancellation', async () => {
+  it('should ignore CLOSE backdrop dismissal for immediate Widoor CLOSE', async () => {
     alertRole = 'backdrop';
 
     await component.requestWidoorClose();
 
-    expect(writeExecutionService.execute).not.toHaveBeenCalled();
-    expect(component.openCommandState.status).toBe('cancelled');
+    expect(alertCreate).not.toHaveBeenCalled();
+    expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+    expect(component.openCommandState.status).toBe('confirmed');
     expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
   });
 
@@ -1492,14 +1464,10 @@ describe('ProductPage', () => {
           operation: 'motor-close',
           profile: 'widoor',
         },
+        allowWidoorPhase1ImmediateWrite: true,
       });
       expect(request.policy?.allowPhase1ReferenceOnly).toBeUndefined();
-      expect(request.authorization).toEqual(jasmine.objectContaining({
-        operation: 'motor-close',
-        profile: 'widoor',
-        payloadHex: '00 30',
-        motorMovementConfirmed: true,
-      }));
+      expect(request.authorization).toBeNull();
       expect(component.openCommandState.status).toBe('confirmed');
       expect(component.openCommandState.message)
         .toBe(component.text.widoorCommands.close.confirmed);
@@ -1609,12 +1577,12 @@ describe('ProductPage', () => {
       expect(element.textContent).toContain(
         component.text.widoorCommands.openShortTimed.label,
       );
-      expect(element.textContent).toContain(
+      expect(element.textContent).not.toContain(
         component.text.widoorCommands.openLongTimed.label,
       );
       expect(element.querySelectorAll(
         'ion-button.widoor-timed-command',
-      ).length).toBe(2);
+      ).length).toBe(1);
       expect(component.sensitiveActions.map((action) => action.action))
         .toEqual([
           'learning',
@@ -1648,9 +1616,7 @@ describe('ProductPage', () => {
       await component.requestWidoorCommand(config);
       fixture.detectChanges();
 
-      expect(alertOptions[0]['header']).toBe(
-        component.text.widoorCommands.openShortTimed.confirmTitle,
-      );
+      expect(alertCreate).not.toHaveBeenCalled();
       expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
       const request = writeExecutionService.execute.calls.mostRecent()
         .args[0] as LegacyBleWriteRequest;
@@ -1664,7 +1630,9 @@ describe('ProductPage', () => {
         operation: 'motor-open-short-timed',
         profile: 'widoor',
       });
+      expect(request.policy?.allowWidoorPhase1ImmediateWrite).toBeTrue();
       expect(request.policy?.allowPhase1ReferenceOnly).toBeUndefined();
+      expect(request.authorization).toBeNull();
       expect(component.openCommandState.movementStartConfirmed).toBeTrue();
       expect(component.openCommandState.timedCycleValidationStatus)
         .toBe('pending-physical-validation');
@@ -1685,32 +1653,14 @@ describe('ProductPage', () => {
     },
   );
 
-  it('should execute long timed opening with payload 00 22', async () => {
-    alertRole = 'confirm';
-    const config = WIDOOR_COMMAND_UI_CONFIGS[3];
-    writeExecutionService.nextResult = openExecutionResult(
-      'success',
-      'confirmed',
-      null,
-      'motor-open-long-timed',
-    );
-
-    await component.requestWidoorCommand(config);
-
-    const request = writeExecutionService.execute.calls.mostRecent()
-      .args[0] as LegacyBleWriteRequest;
-    expect(request.write.payloadHex).toBe('00 22');
-    expect(request.confirmationPolicy).toEqual({
-      kind: 'widoor-timed-opening-state',
-      command: 'OPEN_LONG_TIMED',
-    });
-    expect(request.policy?.allowPhysicalValidationAttempt?.operation)
-      .toBe('motor-open-long-timed');
-    expect(component.openCommandState.message).toBe(
-      component.text.widoorCommands.openLongTimed.confirmed,
-    );
-    expect(component.openCommandState.timedCycleValidationStatus)
-      .not.toBe('validated');
+  it('should not expose long timed opening for Widoor', async () => {
+    expect(WIDOOR_COMMAND_UI_CONFIGS.some((config) =>
+      config.operation === 'motor-open-long-timed',
+    )).toBeFalse();
+    expect(component.productCommands.some((command) =>
+      command.config.operation === 'motor-open-long-timed',
+    )).toBeFalse();
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
   });
 
   it('should map timed timeout, failure, disconnection and stale results',
@@ -1742,14 +1692,17 @@ describe('ProductPage', () => {
     },
   );
 
-  it('should cancel a timed opening without authorization or execution',
+  it('should execute a timed opening without user authorization',
     async () => {
       alertRole = 'backdrop';
 
       await component.requestWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[2]);
 
-      expect(writeExecutionService.execute).not.toHaveBeenCalled();
-      expect(component.openCommandState.status).toBe('cancelled');
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      const request = writeExecutionService.execute.calls.mostRecent()
+        .args[0] as LegacyBleWriteRequest;
+      expect(request.authorization).toBeNull();
+      expect(component.openCommandState.status).toBe('confirmed');
       expect(component.commandHistory.length).toBe(1);
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
     },
@@ -1768,17 +1721,13 @@ describe('ProductPage', () => {
         };
       });
 
-      const first = component.requestWidoorCommand(
-        WIDOOR_COMMAND_UI_CONFIGS[2],
-      );
-      await Promise.resolve();
-      await component.requestWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[3]);
+      await component.requestWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[2]);
 
-      expect(alertCreate).toHaveBeenCalledTimes(1);
-      expect(component.commandHistory).toEqual([]);
-      expect(writeExecutionService.execute).not.toHaveBeenCalled();
-      dismissAlert();
-      await first;
+      expect(alertCreate).not.toHaveBeenCalled();
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(component.commandHistory[0]).toEqual(jasmine.objectContaining({
+        label: component.text.widoorCommands.openShortTimed.label,
+      }));
     },
   );
 
@@ -1836,38 +1785,19 @@ describe('ProductPage', () => {
       };
     });
 
-    const first = component.requestWidoorOpen();
-    await Promise.resolve();
-    const second = component.requestWidoorOpen();
-    await second;
+    await component.requestWidoorOpen();
+    await component.requestWidoorOpen();
 
-    expect(alertCreate).toHaveBeenCalledTimes(1);
-    expect(writeExecutionService.execute).not.toHaveBeenCalled();
-    dismissAlert();
-    await first;
+    expect(alertCreate).not.toHaveBeenCalled();
+    expect(writeExecutionService.execute).toHaveBeenCalledTimes(2);
   });
 
   it('should reject rapid duplicate CLOSE confirmation flows', async () => {
-    let dismissAlert!: () => void;
-    alertCreate.and.callFake(async (options: Record<string, unknown>) => {
-      alertOptions.push(options);
-      return {
-        present: async () => undefined,
-        onDidDismiss: () => new Promise<{ role: string }>((resolve) => {
-          dismissAlert = () => resolve({ role: 'cancel' });
-        }),
-      };
-    });
+    await component.requestWidoorClose();
+    await component.requestWidoorClose();
 
-    const first = component.requestWidoorClose();
-    await Promise.resolve();
-    const second = component.requestWidoorClose();
-    await second;
-
-    expect(alertCreate).toHaveBeenCalledTimes(1);
-    expect(writeExecutionService.execute).not.toHaveBeenCalled();
-    dismissAlert();
-    await first;
+    expect(alertCreate).not.toHaveBeenCalled();
+    expect(writeExecutionService.execute).toHaveBeenCalledTimes(2);
   });
 
   it('should map every guarded OPEN execution result without native text',
@@ -1929,22 +1859,8 @@ describe('ProductPage', () => {
   });
 
   it('should ignore confirmation after disconnection', async () => {
-    let confirmAlert!: () => void;
-    alertCreate.and.callFake(async (options: Record<string, unknown>) => {
-      alertOptions.push(options);
-      return {
-        present: async () => undefined,
-        onDidDismiss: () => new Promise<{ role: string }>((resolve) => {
-          confirmAlert = () => resolve({ role: 'confirm' });
-        }),
-      };
-    });
-    const pending = component.requestWidoorOpen();
-    await waitForCondition(() => confirmAlert !== undefined);
-
     bleService.disconnect();
-    confirmAlert();
-    await pending;
+    await component.requestWidoorOpen();
 
     expect(writeExecutionService.execute).not.toHaveBeenCalled();
     expect(component.displayedOpenCommandStatus).toBe('disconnected');
@@ -2094,21 +2010,102 @@ describe('ProductPage', () => {
     },
   );
 
-  it('should clearly support an old Widoor with unavailable settings',
+  it('should render Widoor Phase 1 settings when parameter reads are unavailable',
     async () => {
       loadService.nextResult = oldWidoorLoadResult();
 
       await component.refreshProductData();
+      component.setActiveMainTab('settings');
+      component.setActiveSettingsTab('basic');
       fixture.detectChanges();
-      const text = fixture.nativeElement.textContent as string;
+      const element = fixture.nativeElement as HTMLElement;
+      const text = element.textContent as string;
 
       expect(component.viewModel.reads.userParameters.value).toBeNull();
       expect(component.viewModel.reads.professionalParameters.value).toBeNull();
-      expect(text.match(/Non disponible sur ce firmware/g)?.length ?? 0)
-        .toBeGreaterThan(1);
+      expect(component.showUserSpeedControls).toBeTrue();
+      expect(component.showUserTimingControls).toBeTrue();
+      expect(component.showBasicUserPeripheralControls).toBeTrue();
+      expect(component.showNameRoomControls).toBeTrue();
+      expect(element.querySelectorAll('ion-range.user-speed-range').length)
+        .toBe(2);
+      expect(element.querySelector('ion-range.user-timing-range'))
+        .not.toBeNull();
+      expect(element.querySelector('ion-toggle.user-peripheral-toggle'))
+        .not.toBeNull();
+      expect(element.querySelector('ion-input.name-room-name-input'))
+        .not.toBeNull();
+      expect(element.querySelector('ion-select.name-room-select'))
+        .not.toBeNull();
+
+      component.setActiveSettingsTab('advanced');
+      fixture.detectChanges();
+
+      expect(component.showProfessionalScalarControls).toBeTrue();
+      expect(component.showProfessionalInputControls).toBeTrue();
+      expect(element.querySelector(
+        '[data-professional-scalar-field="break-force-at-open"]',
+      )).not.toBeNull();
+      expect(element.querySelector(
+        '[data-professional-scalar-field="near-open-speed"]',
+      )).not.toBeNull();
+      expect(element.querySelector(
+        '[data-professional-scalar-field="near-close-speed"]',
+      )).not.toBeNull();
+      expect(element.querySelector(
+        '[data-professional-input-field="input-1"]',
+      )).not.toBeNull();
+      expect(element.querySelector(
+        '[data-professional-input-field="input-2"]',
+      )).not.toBeNull();
+      expect(element.querySelector('[data-sensitive-action="learning"]'))
+        .not.toBeNull();
+      expect(element.querySelector('[data-sensitive-action="reset"]'))
+        .not.toBeNull();
       expect(text).not.toContain('The required GATT characteristic');
       expect(text).toContain('27/08/2019');
       expect(text).toContain('Initialisations');
+    },
+  );
+
+  it('should keep unavailable Widoor settings visible but block writes without a writable characteristic',
+    async () => {
+      loadService.nextResult = oldWidoorLoadResult();
+      bleService.getGattCharacteristicProperties.and.returnValue(
+        writableGattProperties({
+          characteristicPresent: false,
+          propertiesAvailable: false,
+          write: false,
+        }),
+      );
+
+      await component.refreshProductData();
+      component.setActiveMainTab('settings');
+      component.setActiveSettingsTab('basic');
+      fixture.detectChanges();
+
+      const openSpeed = component.userSpeedControls[0].config;
+      component.toggleUserSpeedLock(openSpeed);
+      component.setUserSpeedDraftValue(openSpeed, 40);
+
+      expect(component.showUserSpeedControls).toBeTrue();
+      expect(component.canApplyUserSpeed(openSpeed)).toBeFalse();
+      await component.requestUserSpeedChange(openSpeed);
+
+      component.setActiveSettingsTab('advanced');
+      fixture.detectChanges();
+      const breakForce = component.professionalScalarControls.find(
+        (control) => control.config.field === 'break-force-at-open',
+      )!.config;
+      component.toggleProfessionalScalarLock(breakForce);
+      component.setProfessionalScalarDraftValue(breakForce, 6);
+
+      expect(component.showProfessionalScalarControls).toBeTrue();
+      expect(component.canApplyProfessionalScalar(breakForce)).toBeFalse();
+      await component.requestProfessionalScalarChange(breakForce);
+
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
     },
   );
 
@@ -2671,7 +2668,7 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
       expect(request.write.payloadHex).toBe('00 30');
       expect(Array.from(request.write.payload)).toEqual([0x00, 0x30]);
       expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
-      expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+      expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
       expect(request.authorization).toEqual(jasmine.objectContaining({
         profile,
         operation: 'motor-close',
@@ -3176,7 +3173,7 @@ describe('ProductPage user lighting controls for profile variants', () => {
         expect(request.write.payloadHex).toBe(scenario.payloadHex);
         expect(Array.from(request.write.payload)).toEqual(scenario.payload);
         expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
-        expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+        expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
         expect(component.userPeripheralWriteState.status).toBe('sent');
       },
     );
@@ -3191,12 +3188,11 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         'motor-open',
         'motor-close',
         'motor-open-short-timed',
-        'motor-open-long-timed',
       ],
       commandLighting: [],
       basicLighting: ['rgb'],
       locks: ['locked-open', 'locked-closed'],
-      timedAssetCount: 2,
+      timedAssetCount: 1,
     },
     {
       profile: 'moventiv-60',
@@ -3833,7 +3829,7 @@ describe('ProductPage weight-range controls for profile variants', () => {
           .toBe(BLE_UUIDS.professionalParametersCharacteristic);
         expect(request.write.payloadHex).toBe(scenario.payloadHex);
         expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
-        expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+        expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
       },
     );
   }
@@ -4378,7 +4374,7 @@ describe('ProductPage professional scalar controls',
             .toBe(BLE_UUIDS.professionalParametersCharacteristic);
           expect(request.write.payloadHex).toBe(scenario.payloadHex);
           expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
-          expect(request.policy).toEqual({ allowPhase1ReferenceOnly: true });
+          expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
         },
       );
     }
@@ -4677,7 +4673,7 @@ describe('ProductPage professional scalar controls',
         expect(element.querySelector<HTMLImageElement>(
           'img[src="assets/img/icon_lock_off.svg"]',
         )).not.toBeNull();
-        expect(component.showProfessionalAccessPrompt).toBeTrue();
+        expect(component.showProfessionalAccessPrompt).toBeFalse();
         expect(component.canExecuteSensitiveAction(
           component.sensitiveActions.find((action) =>
             action.action === 'radar-test-1',
@@ -4706,11 +4702,10 @@ describe('ProductPage professional scalar controls',
       'radar-test-2',
       'professional-peripheral-lock',
     ] as const) {
-      it(`should require professional access for Widoor ${actionName}`,
+      it(`should execute Widoor ${actionName} without professional access`,
         async () => {
           const {
             component,
-            professionalAccessService,
             writeExecutionService,
           } = await createProfessionalScalarPage(
             'widoor',
@@ -4725,28 +4720,19 @@ describe('ProductPage professional scalar controls',
           )!;
 
           expect(component.professionalAccessGranted).toBeFalse();
-          expect(component.canExecuteSensitiveAction(action)).toBeFalse();
-
-          await component.requestSensitiveAction(action, true);
-
-          expect(writeExecutionService.execute).not.toHaveBeenCalled();
-
-          expect(professionalAccessService.authenticate({
-            profile: 'widoor',
-            deviceId: 'device-1',
-            connectionGeneration: 4,
-          }, PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE)).toBeTrue();
-          expect(component.professionalAccessGranted).toBeTrue();
           expect(component.canExecuteSensitiveAction(action)).toBeTrue();
 
           await component.requestSensitiveAction(action, true);
 
           expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+          const request = writeExecutionService.execute.calls.mostRecent()
+            .args[0] as LegacyBleWriteRequest;
+          expect(request.authorization).toBeNull();
         },
       );
     }
 
-    it('should not grant Widoor sensitive access through UI locks alone',
+    it('should execute Widoor sensitive actions without professional access',
       async () => {
         const {
           component,
@@ -4770,11 +4756,14 @@ describe('ProductPage professional scalar controls',
         component.toggleProfessionalInputControlLock();
 
         expect(component.professionalAccessGranted).toBeFalse();
-        expect(component.canExecuteSensitiveAction(radarTest)).toBeFalse();
+        expect(component.canExecuteSensitiveAction(radarTest)).toBeTrue();
 
         await component.requestSensitiveAction(radarTest, true);
 
-        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        const request = writeExecutionService.execute.calls.mostRecent()
+          .args[0] as LegacyBleWriteRequest;
+        expect(request.authorization).toBeNull();
       },
     );
 

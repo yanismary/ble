@@ -367,12 +367,34 @@ describe('BleReadService', () => {
 
       const result = await service.readUserParameters('moventiv-80');
 
-      expectNativeCharacteristic(BLE_UUIDS.userParametersCharacteristic);
+      expectNativeCharacteristic(
+        BLE_UUIDS.userParametersCharacteristic,
+        BLE_UUIDS.shdoService,
+      );
       expect(result.status).toBe('success');
       if (result.decoded?.valid) {
         expect(result.decoded.value.lockMode).toBe('locked-closed');
         expect(result.decoded.value.peripheralByte1).toBe(0xa8);
         expect(result.decoded.value.peripheralByte2).toBe(0x02);
+      }
+    },
+  );
+
+  it('should read Widoor user parameters from the Widoor service',
+    async () => {
+      readSpy.and.resolveTo(dataView([0, 25, 35, 1, 5, 0x08, 0x00]));
+      await connectAndDiscover();
+
+      const result = await service.readUserParameters('widoor');
+
+      expectNativeCharacteristic(
+        BLE_UUIDS.userParametersCharacteristic,
+        BLE_UUIDS.widoorService,
+      );
+      expect(result.status).toBe('success');
+      if (result.decoded?.valid) {
+        expect(result.decoded.value.openSpeed).toBe(25);
+        expect(result.decoded.value.shortOpenTime).toBe(1);
       }
     },
   );
@@ -395,6 +417,7 @@ describe('BleReadService', () => {
 
       expectNativeCharacteristic(
         BLE_UUIDS.professionalParametersCharacteristic,
+        profile === 'widoor' ? BLE_UUIDS.widoorService : BLE_UUIDS.shdoService,
       );
       expect(result.status).toBe('success');
       if (result.decoded?.valid) {
@@ -429,10 +452,13 @@ describe('BleReadService', () => {
     getServicesSpy.and.resolveTo(services);
   }
 
-  function expectNativeCharacteristic(characteristicUuid: string): void {
+  function expectNativeCharacteristic(
+    characteristicUuid: string,
+    serviceUuid: string = BLE_UUIDS.shdoService,
+  ): void {
     expect(readSpy).toHaveBeenCalledOnceWith(
       'device-1',
-      BLE_UUIDS.shdoService,
+      serviceUuid,
       characteristicUuid,
     );
   }
@@ -455,24 +481,41 @@ function createReadableGattServices(
   nonReadableCharacteristic?: string,
   readable = true,
 ): DiscoveredBleService[] {
-  const characteristicUuids = [
+  const shdoCharacteristicUuids = [
     BLE_UUIDS.versionCharacteristic,
     BLE_UUIDS.datesAndCyclesCharacteristic,
     BLE_UUIDS.maintenanceCharacteristic,
+  ];
+  const parameterCharacteristicUuids = [
     BLE_UUIDS.userParametersCharacteristic,
     BLE_UUIDS.professionalParametersCharacteristic,
   ];
 
-  return [{
-    uuid: BLE_UUIDS.shdoService.toUpperCase(),
-    characteristics: characteristicUuids.map((uuid) => ({
-      uuid: uuid.toUpperCase(),
-      properties: characteristicProperties({
-        read: uuid === nonReadableCharacteristic ? readable : true,
-      }),
-      descriptors: [],
-    })),
-  }];
+  return [
+    {
+      uuid: BLE_UUIDS.shdoService.toUpperCase(),
+      characteristics: [
+        ...shdoCharacteristicUuids,
+        ...parameterCharacteristicUuids,
+      ].map((uuid) => ({
+        uuid: uuid.toUpperCase(),
+        properties: characteristicProperties({
+          read: uuid === nonReadableCharacteristic ? readable : true,
+        }),
+        descriptors: [],
+      })),
+    },
+    {
+      uuid: BLE_UUIDS.widoorService.toUpperCase(),
+      characteristics: parameterCharacteristicUuids.map((uuid) => ({
+        uuid: uuid.toUpperCase(),
+        properties: characteristicProperties({
+          read: uuid === nonReadableCharacteristic ? readable : true,
+        }),
+        descriptors: [],
+      })),
+    },
+  ];
 }
 
 function characteristicProperties(

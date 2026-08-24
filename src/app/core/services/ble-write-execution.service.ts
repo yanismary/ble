@@ -79,6 +79,7 @@ export type LegacyBleWriteConfirmationPolicy =
 
 export interface LegacyBleWriteExecutionPolicy {
   readonly allowPhase1ReferenceOnly?: true;
+  readonly allowWidoorPhase1ImmediateWrite?: true;
   readonly allowLearning?: true;
   readonly allowReset?: true;
   readonly allowPhysicalValidationAttempt?: {
@@ -387,6 +388,9 @@ export class BleWriteExecutionService implements OnDestroy {
     const now = Date.now();
     this.pruneAuthorizations(now);
     if (authorization == null || authorization.confirmedByUser !== true) {
+      if (this.isWidoorPhase1ImmediateWrite(request)) {
+        return null;
+      }
       return this.result(
         request, startedAt, 'invalid-request', false, 'unavailable', false,
         'authorization-required',
@@ -719,6 +723,19 @@ export class BleWriteExecutionService implements OnDestroy {
       attempt.profile === 'widoor';
   }
 
+  private isWidoorPhase1ImmediateWrite(
+    request: LegacyBleWriteRequest,
+  ): boolean {
+    if (request.policy?.allowWidoorPhase1ImmediateWrite !== true ||
+        request.profile !== 'widoor' ||
+        request.identification.profile !== 'widoor' ||
+        request.identification.confidence !== 'strong' ||
+        request.write.profile !== 'widoor') {
+      return false;
+    }
+    return WIDOOR_PHASE1_IMMEDIATE_OPERATIONS.has(request.write.operation);
+  }
+
   private result(
     request: LegacyBleWriteRequest,
     startedAt: number,
@@ -799,6 +816,27 @@ function isControlledWidoorMotorWrite(write: LegacyBleWrite): boolean {
   return isWidoorOpen(write) || isWidoorClose(write) ||
     isWidoorTimedOpen(write);
 }
+
+const WIDOOR_PHASE1_IMMEDIATE_OPERATIONS = new Set<string>([
+  'motor-open',
+  'motor-close',
+  'motor-open-short-timed',
+  'motor-learning',
+  'lock-mode',
+  'open-speed',
+  'close-speed',
+  'short-timing',
+  'rgb-indicator',
+  'name-room',
+  'input-1-radar',
+  'input-2-radar',
+  'radar-test-1',
+  'radar-test-2',
+  'lock',
+  'break-force-at-open',
+  'near-open-speed',
+  'near-close-speed',
+]);
 
 function timedCycleStatus(
   write: LegacyBleWrite | null,

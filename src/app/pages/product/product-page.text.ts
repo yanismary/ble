@@ -205,7 +205,7 @@ export const PRODUCT_PAGE_TEXT = {
   },
   widoorCommands: {
     warning:
-      'Un mouvement réel du moteur sera déclenché après confirmation.',
+      'Un mouvement réel du moteur sera déclenché.',
     physicalValidationRequired: 'Validation physique requise',
     protected: 'Fonction protégée — validation dédiée requise',
     timedCyclePending:
@@ -261,6 +261,18 @@ export const PRODUCT_PAGE_TEXT = {
       confirmAction: '',
       confirmed: '',
       notConfirmed: '',
+    },
+  },
+  widoorCommandAlerts: {
+    lock: {
+      title: 'Commande impossible',
+      subtitle: 'Désactivez le verrouillage de la porte au préalable.',
+      ok: 'OK',
+    },
+    retention: {
+      title: 'Commande impossible',
+      subtitle: 'Désactivez le maintien de la porte au préalable.',
+      ok: 'OK',
     },
   },
   commandHistory: {

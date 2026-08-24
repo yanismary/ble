@@ -239,6 +239,47 @@ describe('BleWriteExecutionService', () => {
     expect(ble.writeCharacteristic).toHaveBeenCalledTimes(1);
   });
 
+  it('allows only explicitly scoped Widoor Phase 1 immediate writes without user confirmation',
+    async () => {
+      const widoor = settingRequest();
+      widoor.authorization = null;
+      widoor.policy = {
+        allowPhase1ReferenceOnly: true,
+        allowWidoorPhase1ImmediateWrite: true,
+      };
+
+      expect((await service.execute(widoor)).status).toBe('success');
+      expect(ble.writeCharacteristic).toHaveBeenCalledTimes(1);
+
+      const longTiming = requestFor(encodeLegacyUserScalar(
+        'widoor',
+        'long-timing',
+        10,
+      ));
+      longTiming.authorization = null;
+      longTiming.policy = {
+        allowPhase1ReferenceOnly: true,
+        allowWidoorPhase1ImmediateWrite: true,
+      };
+      expect((await service.execute(longTiming)).error?.code)
+        .toBe('authorization-required');
+
+      const moventiv = requestFor(encodeLegacyUserScalar(
+        'moventiv-60',
+        'open-speed',
+        50,
+      ));
+      moventiv.authorization = null;
+      moventiv.policy = {
+        allowPhase1ReferenceOnly: true,
+        allowWidoorPhase1ImmediateWrite: true,
+      };
+      expect((await service.execute(moventiv)).error?.code)
+        .toBe('authorization-required');
+      expect(ble.writeCharacteristic).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('rejects malformed authorization dates and identifiers', async () => {
     const emptyId = settingRequest();
     emptyId.authorization = {

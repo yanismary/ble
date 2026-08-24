@@ -59,7 +59,7 @@ export function productSensitiveActionConfigsFor(
       profile,
       textKey: 'learning',
       control: 'button',
-      requiresConfirmation: true,
+      requiresConfirmation: false,
     },
   ];
 
@@ -110,6 +110,7 @@ export function productSensitiveActionWriteSteps(
         0,
         {
           allowPhase1ReferenceOnly: true,
+          allowWidoorPhase1ImmediateWrite: true,
           allowLearning: true,
         },
       ),
@@ -156,7 +157,10 @@ export function productSensitiveActionWriteSteps(
         );
 
   return Object.freeze([
-    step(write, 0, { allowPhase1ReferenceOnly: true }),
+    step(write, 0, {
+      allowPhase1ReferenceOnly: true,
+      allowWidoorPhase1ImmediateWrite: true,
+    }),
   ]);
 }
 

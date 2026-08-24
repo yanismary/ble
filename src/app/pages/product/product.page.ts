@@ -44,6 +44,7 @@ import {
   '../../core/services/legacy-ble-write-catalog';
 import {
   BleWriteExecutionService,
+  LegacyBleWriteExecutionPolicy,
   LegacyBleWriteExecutionResult,
 } from '../../core/services/ble-write-execution.service';
 import {
@@ -266,6 +267,9 @@ export class ProductPage implements OnDestroy {
     ProductProfessionalScalarField,
     number
   >();
+  private readonly widoorSliderWriteTimeouts = new Map<string, number>();
+  private readonly widoorSliderButtonWriteDelayMs = 400;
+  private readonly widoorShortTimingFallback = 1;
   private nameRoomDraft: ProductNameRoomDraft | null = null;
 
   readonly config: ProductPageConfig;
@@ -583,13 +587,20 @@ export class ProductPage implements OnDestroy {
     if (tab === 'settings' && previousTab !== 'settings') {
       this.activeSettingsTab = 'basic';
     }
+    if (previousTab !== tab) {
+      this.refreshCurrentTabData();
+    }
   }
 
   setActiveSettingsTab(tab: ProductShellSettingsTab): void {
     if (this.activeMainTab !== 'settings' || !this.showSettingsTab) {
       return;
     }
+    const previousTab = this.activeSettingsTab;
     this.activeSettingsTab = tab;
+    if (previousTab !== tab) {
+      this.refreshCurrentTabData();
+    }
   }
 
   get canRefresh(): boolean {
@@ -631,25 +642,25 @@ export class ProductPage implements OnDestroy {
     return this.pageContextCurrent &&
       this.userFieldVisible('lock-mode') &&
       this.lockModeControls.length > 0 &&
-      this.viewModel.reads.userParameters.status === 'available';
+      this.widoorPhase1ShowsUserParameterControls();
   }
 
   get showUserSpeedControls(): boolean {
     return this.pageContextCurrent &&
       this.userSpeedControls.length > 0 &&
-      this.viewModel.reads.userParameters.status === 'available';
+      this.widoorPhase1ShowsUserParameterControls();
   }
 
   get showUserTimingControls(): boolean {
     return this.pageContextCurrent &&
       this.userTimingControls.length > 0 &&
-      this.viewModel.reads.userParameters.status === 'available';
+      this.widoorPhase1ShowsUserParameterControls();
   }
 
   get showUserPeripheralControls(): boolean {
     return this.pageContextCurrent &&
       this.userPeripheralControls.length > 0 &&
-      this.viewModel.reads.userParameters.status === 'available';
+      this.widoorPhase1ShowsUserParameterControls();
   }
 
   get commandUserPeripheralControls(): typeof this.userPeripheralControls {
@@ -790,12 +801,31 @@ export class ProductPage implements OnDestroy {
   get showProfessionalInputControls(): boolean {
     return this.pageContextCurrent &&
       this.professionalInputControls.length > 0 &&
-      this.viewModel.reads.professionalParameters.status === 'available';
+      this.widoorPhase1ShowsProfessionalParameterControls();
   }
 
   get showProfessionalScalarControls(): boolean {
     return this.pageContextCurrent &&
       this.visibleProfessionalScalarControls.length > 0 &&
+      this.widoorPhase1ShowsProfessionalParameterControls();
+  }
+
+  get showBasicSettingsControls(): boolean {
+    return this.showBasicUserPeripheralControls ||
+      this.showUserSpeedControls ||
+      this.showUserTimingControls ||
+      this.showBasicWeightRangeControls ||
+      this.showNameRoomControls ||
+      this.viewModel.reads.userParameters.status === 'available';
+  }
+
+  get showAdvancedSettingsControls(): boolean {
+    return this.showProfessionalInputControls ||
+      this.showAdvancedWeightRangeControls ||
+      this.showProfessionalScalarControls ||
+      this.showProfessionalAccessPrompt ||
+      this.professionalAccessState.message !== null ||
+      this.professionalPeripheralDiagnosticRows.length > 0 ||
       this.viewModel.reads.professionalParameters.status === 'available';
   }
 
@@ -888,7 +918,6 @@ export class ProductPage implements OnDestroy {
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
-        this.motorCommandsBlockedByLockMode() ||
         this.commandInProgress) {
       return false;
     }
@@ -1702,6 +1731,15 @@ export class ProductPage implements OnDestroy {
         config.range,
       ),
     );
+    this.scheduleWidoorSliderWrite(`user-speed:${config.field}`, () =>
+      this.requestUserSpeedChange(config),
+    );
+  }
+
+  onUserSpeedSliderReleased(config: ProductUserSpeedUiConfig): void {
+    this.flushWidoorSliderWrite(`user-speed:${config.field}`, () =>
+      this.requestUserSpeedChange(config),
+    );
   }
 
   canApplyUserSpeed(config: ProductUserSpeedUiConfig): boolean {
@@ -1728,8 +1766,8 @@ export class ProductPage implements OnDestroy {
     }
     const currentValue = this.currentUserSpeedValue(config);
     const draftValue = this.userSpeedDraftValue(config);
-    if (currentValue === null ||
-        draftValue === currentValue ||
+    if ((currentValue === null && !this.userSpeedDrafts.has(config.field)) ||
+        (currentValue !== null && draftValue === currentValue) ||
         !isValidProductUserSpeedValue(config, draftValue)) {
       return false;
     }
@@ -1751,6 +1789,11 @@ export class ProductPage implements OnDestroy {
   currentUserTimingValue(config: ProductUserTimingUiConfig): number | null {
     const value = this.viewModel.reads.userParameters.value;
     if (value === null) {
+      if (config.profile === 'widoor' &&
+          config.field === 'short-timing' &&
+          this.pageContextCurrent) {
+        return this.widoorShortTimingFallback;
+      }
       return null;
     }
     return config.field === 'short-timing'
@@ -1811,6 +1854,15 @@ export class ProductPage implements OnDestroy {
         config.range,
       ),
     );
+    this.scheduleWidoorSliderWrite(`user-timing:${config.field}`, () =>
+      this.requestUserTimingChange(config),
+    );
+  }
+
+  onUserTimingSliderReleased(config: ProductUserTimingUiConfig): void {
+    this.flushWidoorSliderWrite(`user-timing:${config.field}`, () =>
+      this.requestUserTimingChange(config),
+    );
   }
 
   canApplyUserTiming(config: ProductUserTimingUiConfig): boolean {
@@ -1837,8 +1889,8 @@ export class ProductPage implements OnDestroy {
     }
     const currentValue = this.currentUserTimingValue(config);
     const draftValue = this.userTimingDraftValue(config);
-    if (currentValue === null ||
-        draftValue === currentValue ||
+    if ((currentValue === null && !this.userTimingDrafts.has(config.field)) ||
+        (currentValue !== null && draftValue === currentValue) ||
         !isValidProductUserTimingValue(config, draftValue)) {
       return false;
     }
@@ -1950,7 +2002,8 @@ export class ProductPage implements OnDestroy {
       return false;
     }
     const current = this.currentProfessionalInputMode(config);
-    if (current === null || (mode !== undefined && mode === current)) {
+    if ((current === null && config.profile !== 'widoor') ||
+        (mode !== undefined && mode === current)) {
       return false;
     }
     const write = this.professionalInputWrites.get(config.field);
@@ -2004,14 +2057,16 @@ export class ProductPage implements OnDestroy {
     }
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = createProductProfessionalInputAuthorization({
-      write,
-      deviceId: context.deviceId,
-      connectionGeneration: context.connectionGeneration,
-      attemptId,
-      confirmationId: this.nextCommandIdentifier('confirmation'),
-      confirmedAt,
-    });
+    const authorization = config.profile === 'widoor'
+      ? null
+      : createProductProfessionalInputAuthorization({
+          write,
+          deviceId: context.deviceId,
+          connectionGeneration: context.connectionGeneration,
+          attemptId,
+          confirmationId: this.nextCommandIdentifier('confirmation'),
+          confirmedAt,
+        });
     this.professionalInputWriteState = Object.freeze({
       status: 'executing',
       field: config.field,
@@ -2026,7 +2081,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: config.policy,
+      policy: this.withWidoorPhase1ImmediatePolicy(config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.professionalInputWriteState = Object.freeze({
@@ -2042,7 +2097,7 @@ export class ProductPage implements OnDestroy {
         field: config.field,
         message: this.text.professionalInputControls.sent,
       });
-      if (this.canRefresh) {
+      if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
         await this.refreshProductData();
       }
       return;
@@ -2227,6 +2282,19 @@ export class ProductPage implements OnDestroy {
         config.range,
       ),
     );
+    this.scheduleWidoorSliderWrite(
+      `professional-scalar:${config.field}`,
+      () => this.requestProfessionalScalarChange(config),
+    );
+  }
+
+  onProfessionalScalarSliderReleased(
+    config: ProductProfessionalScalarUiConfig,
+  ): void {
+    this.flushWidoorSliderWrite(
+      `professional-scalar:${config.field}`,
+      () => this.requestProfessionalScalarChange(config),
+    );
   }
 
   canApplyProfessionalScalar(
@@ -2256,8 +2324,9 @@ export class ProductPage implements OnDestroy {
     }
     const currentValue = this.currentProfessionalScalarValue(config);
     const draftValue = this.professionalScalarDraftValue(config);
-    if (currentValue === null ||
-        draftValue === currentValue ||
+    if ((currentValue === null &&
+          !this.professionalScalarDrafts.has(config.field)) ||
+        (currentValue !== null && draftValue === currentValue) ||
         !isValidProductProfessionalScalarValue(config, draftValue)) {
       return false;
     }
@@ -2377,12 +2446,17 @@ export class ProductPage implements OnDestroy {
       return false;
     }
     const current = this.sensitiveActionCurrentEnabled(config);
-    if (config.control === 'toggle' && current === null) {
+    if (config.control === 'toggle' &&
+        current === null &&
+        config.profile !== 'widoor') {
       return false;
     }
+    const targetEnabled = config.control === 'toggle'
+      ? current === null ? true : !current
+      : undefined;
     const steps = productSensitiveActionWriteSteps(
       config,
-      config.control === 'toggle' ? !current! : undefined,
+      targetEnabled,
     );
     return steps.every(({ write }) => {
       const properties = this.bleService.getGattCharacteristicProperties(
@@ -2477,14 +2551,16 @@ export class ProductPage implements OnDestroy {
 
       const attemptId = this.nextCommandIdentifier('attempt');
       const confirmedAt = Date.now();
-      const authorization = createProductSensitiveActionAuthorization({
-        write: step.write,
-        deviceId: context.deviceId,
-        connectionGeneration: context.connectionGeneration,
-        attemptId,
-        confirmationId: this.nextCommandIdentifier('confirmation'),
-        confirmedAt,
-      });
+      const authorization = config.requiresConfirmation
+        ? createProductSensitiveActionAuthorization({
+            write: step.write,
+            deviceId: context.deviceId,
+            connectionGeneration: context.connectionGeneration,
+            attemptId,
+            confirmationId: this.nextCommandIdentifier('confirmation'),
+            confirmedAt,
+          })
+        : null;
       const result = await this.bleWriteExecutionService.execute({
         write: step.write,
         deviceId: context.deviceId,
@@ -2494,7 +2570,7 @@ export class ProductPage implements OnDestroy {
         authorization,
         attemptId,
         confirmationPolicy: { kind: 'gatt-only' },
-        policy: step.policy,
+        policy: this.withWidoorPhase1ImmediatePolicy(step.policy),
       });
 
       if (!this.isCurrentContext() ||
@@ -2528,7 +2604,8 @@ export class ProductPage implements OnDestroy {
       action: config.action,
       message: this.text.sensitiveActions.sent,
     });
-    if (this.canRefresh) {
+    if ((config.action === 'reset' || this.shouldRefreshAfterSettledWrite()) &&
+        this.canRefresh) {
       await this.refreshProductData();
     }
   }
@@ -2550,48 +2627,75 @@ export class ProductPage implements OnDestroy {
     const cycle = ++this.commandCycle;
     const context = this.context;
     const requestedAt = Date.now();
-    this.openCommandState = Object.freeze({
-      ...initialProductOpenCommandState(
-        operation,
-        config.label,
-        config.expectedMotorStateRaw,
-      ),
-      status: 'awaiting-confirmation',
-      startedAt: requestedAt,
-      message: this.text.openCommand.awaitingConfirmation,
-    });
 
     try {
-      const alert = await this.alertController.create({
-        header: config.confirmationTitle,
-        message: config.confirmationMessage,
-        buttons: [
-          { text: this.text.openCommand.cancel, role: 'cancel' },
-          { text: config.confirmationButtonLabel, role: 'confirm' },
-        ],
-      });
-      if (!this.isCurrentCommandCycle(cycle)) {
+      const widoorBlock = this.widoorPhase1CommandBlock(config);
+      if (widoorBlock !== null) {
+        await this.presentWidoorCommandBlockedAlert(widoorBlock);
+        if (this.isCurrentCommandCycle(cycle)) {
+          this.openCommandState = Object.freeze({
+            ...initialProductOpenCommandState(
+              operation,
+              config.label,
+              config.expectedMotorStateRaw,
+            ),
+            status: 'unavailable',
+            startedAt: requestedAt,
+            completedAt: Date.now(),
+            message: widoorBlock === 'lock'
+              ? this.text.widoorCommandAlerts.lock.subtitle
+              : this.text.widoorCommandAlerts.retention.subtitle,
+          });
+          this.addCommandHistory(this.openCommandState);
+        }
         return;
       }
-      await alert.present();
-      const dismissal = await alert.onDidDismiss();
-      if (!this.isCurrentCommandCycle(cycle)) {
-        return;
-      }
-      if (dismissal.role !== 'confirm') {
+
+      const immediateWidoorCommand = config.profile === 'widoor';
+      let confirmedAt = requestedAt;
+      if (!immediateWidoorCommand) {
         this.openCommandState = Object.freeze({
           ...initialProductOpenCommandState(
             operation,
             config.label,
             config.expectedMotorStateRaw,
           ),
-          status: 'cancelled',
+          status: 'awaiting-confirmation',
           startedAt: requestedAt,
-          completedAt: Date.now(),
-          message: this.text.openCommand.cancelled,
+          message: this.text.openCommand.awaitingConfirmation,
         });
-        this.addCommandHistory(this.openCommandState);
-        return;
+        const alert = await this.alertController.create({
+          header: config.confirmationTitle,
+          message: config.confirmationMessage,
+          buttons: [
+            { text: this.text.openCommand.cancel, role: 'cancel' },
+            { text: config.confirmationButtonLabel, role: 'confirm' },
+          ],
+        });
+        if (!this.isCurrentCommandCycle(cycle)) {
+          return;
+        }
+        await alert.present();
+        const dismissal = await alert.onDidDismiss();
+        if (!this.isCurrentCommandCycle(cycle)) {
+          return;
+        }
+        if (dismissal.role !== 'confirm') {
+          this.openCommandState = Object.freeze({
+            ...initialProductOpenCommandState(
+              operation,
+              config.label,
+              config.expectedMotorStateRaw,
+            ),
+            status: 'cancelled',
+            startedAt: requestedAt,
+            completedAt: Date.now(),
+            message: this.text.openCommand.cancelled,
+          });
+          this.addCommandHistory(this.openCommandState);
+          return;
+        }
+        confirmedAt = Date.now();
       }
 
       const contextStatus = this.writeContextStatus(context, write);
@@ -2606,16 +2710,17 @@ export class ProductPage implements OnDestroy {
 
       const attemptId = this.nextCommandIdentifier('attempt');
       const confirmationId = this.nextCommandIdentifier('confirmation');
-      const confirmedAt = Date.now();
-      const authorization = createProductMotorCommandAuthorization({
-        write,
-        deviceId: context.deviceId,
-        connectionGeneration: context.connectionGeneration,
-        attemptId,
-        confirmationId,
-        confirmedAt,
-        validatedAt: confirmedAt,
-      });
+      const authorization = immediateWidoorCommand
+        ? null
+        : createProductMotorCommandAuthorization({
+            write,
+            deviceId: context.deviceId,
+            connectionGeneration: context.connectionGeneration,
+            attemptId,
+            confirmationId,
+            confirmedAt,
+            validatedAt: confirmedAt,
+          });
       this.openCommandState = Object.freeze({
         ...initialProductOpenCommandState(
           operation,
@@ -2637,9 +2742,9 @@ export class ProductPage implements OnDestroy {
         authorization,
         attemptId,
         confirmationPolicy: config.confirmationPolicy,
-        ...(config.physicalValidationPolicy === undefined
-          ? {}
-          : { policy: config.physicalValidationPolicy }),
+        policy: this.withWidoorPhase1ImmediatePolicy(
+          config.physicalValidationPolicy,
+        ),
       });
       if (!this.isCurrentCommandCycle(cycle)) {
         return;
@@ -2703,14 +2808,16 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = createProductUserSpeedAuthorization({
-      write,
-      deviceId: context.deviceId,
-      connectionGeneration: context.connectionGeneration,
-      attemptId,
-      confirmationId: this.nextCommandIdentifier('confirmation'),
-      confirmedAt,
-    });
+    const authorization = config.profile === 'widoor'
+      ? null
+      : createProductUserSpeedAuthorization({
+          write,
+          deviceId: context.deviceId,
+          connectionGeneration: context.connectionGeneration,
+          attemptId,
+          confirmationId: this.nextCommandIdentifier('confirmation'),
+          confirmedAt,
+        });
     this.userSpeedWriteState = Object.freeze({
       status: 'executing',
       field: config.field,
@@ -2726,7 +2833,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: config.policy,
+      policy: this.withWidoorPhase1ImmediatePolicy(config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.userSpeedWriteState = Object.freeze({
@@ -2742,7 +2849,7 @@ export class ProductPage implements OnDestroy {
         field: config.field,
         message: this.text.userSpeedControls.sent,
       });
-      if (this.canRefresh) {
+      if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
         await this.refreshProductData();
       }
       return;
@@ -2780,14 +2887,16 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = createProductUserTimingAuthorization({
-      write,
-      deviceId: context.deviceId,
-      connectionGeneration: context.connectionGeneration,
-      attemptId,
-      confirmationId: this.nextCommandIdentifier('confirmation'),
-      confirmedAt,
-    });
+    const authorization = config.profile === 'widoor'
+      ? null
+      : createProductUserTimingAuthorization({
+          write,
+          deviceId: context.deviceId,
+          connectionGeneration: context.connectionGeneration,
+          attemptId,
+          confirmationId: this.nextCommandIdentifier('confirmation'),
+          confirmedAt,
+        });
     this.userTimingWriteState = Object.freeze({
       status: 'executing',
       field: config.field,
@@ -2803,7 +2912,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: config.policy,
+      policy: this.withWidoorPhase1ImmediatePolicy(config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.userTimingWriteState = Object.freeze({
@@ -2819,7 +2928,7 @@ export class ProductPage implements OnDestroy {
         field: config.field,
         message: this.text.userTimingControls.sent,
       });
-      if (this.canRefresh) {
+      if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
         await this.refreshProductData();
       }
       return;
@@ -2847,7 +2956,7 @@ export class ProductPage implements OnDestroy {
       ? eventOrChecked
       : eventOrChecked.detail.checked;
     const currentState = this.currentUserPeripheralState(config);
-    if (currentState === null ||
+    if ((currentState === null && config.profile !== 'widoor') ||
         checked === currentState ||
         !this.canToggleUserPeripheral(config) ||
         this.context === null) {
@@ -2869,14 +2978,16 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = createProductUserPeripheralAuthorization({
-      write,
-      deviceId: context.deviceId,
-      connectionGeneration: context.connectionGeneration,
-      attemptId,
-      confirmationId: this.nextCommandIdentifier('confirmation'),
-      confirmedAt,
-    });
+    const authorization = config.profile === 'widoor'
+      ? null
+      : createProductUserPeripheralAuthorization({
+          write,
+          deviceId: context.deviceId,
+          connectionGeneration: context.connectionGeneration,
+          attemptId,
+          confirmationId: this.nextCommandIdentifier('confirmation'),
+          confirmedAt,
+        });
     this.userPeripheralWriteState = Object.freeze({
       status: 'executing',
       field: config.field,
@@ -2892,7 +3003,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: config.policy,
+      policy: this.withWidoorPhase1ImmediatePolicy(config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.userPeripheralWriteState = Object.freeze({
@@ -2908,7 +3019,7 @@ export class ProductPage implements OnDestroy {
         field: config.field,
         message: this.text.userPeripheralControls.sent,
       });
-      if (this.canRefresh) {
+      if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
         await this.refreshProductData();
       }
       return;
@@ -3028,14 +3139,16 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = createProductProfessionalScalarAuthorization({
-      write,
-      deviceId: context.deviceId,
-      connectionGeneration: context.connectionGeneration,
-      attemptId,
-      confirmationId: this.nextCommandIdentifier('confirmation'),
-      confirmedAt,
-    });
+    const authorization = config.profile === 'widoor'
+      ? null
+      : createProductProfessionalScalarAuthorization({
+          write,
+          deviceId: context.deviceId,
+          connectionGeneration: context.connectionGeneration,
+          attemptId,
+          confirmationId: this.nextCommandIdentifier('confirmation'),
+          confirmedAt,
+        });
     this.professionalScalarWriteState = Object.freeze({
       status: 'executing',
       field: config.field,
@@ -3051,7 +3164,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: config.policy,
+      policy: this.withWidoorPhase1ImmediatePolicy(config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.professionalScalarWriteState = Object.freeze({
@@ -3067,7 +3180,7 @@ export class ProductPage implements OnDestroy {
         field: config.field,
         message: this.text.professionalScalarControls.sent,
       });
-      if (this.canRefresh) {
+      if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
         await this.refreshProductData();
       }
       return;
@@ -3326,18 +3439,31 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = createProductNameRoomAuthorization({
-      write,
-      deviceId: context.deviceId,
-      connectionGeneration: context.connectionGeneration,
-      attemptId,
-      confirmationId: this.nextCommandIdentifier('confirmation'),
-      confirmedAt,
-    });
+    const authorization = this.config.profile === 'widoor'
+      ? null
+      : createProductNameRoomAuthorization({
+          write,
+          deviceId: context.deviceId,
+          connectionGeneration: context.connectionGeneration,
+          attemptId,
+          confirmationId: this.nextCommandIdentifier('confirmation'),
+          confirmedAt,
+        });
     this.nameRoomWriteState = Object.freeze({
       status: 'executing',
       message: this.text.nameRoomControls.executing,
     });
+
+    if (this.config.profile === 'widoor') {
+      await this.delay(200);
+      if (!this.isCurrentContext() || this.context !== context) {
+        this.nameRoomWriteState = Object.freeze({
+          status: 'failed',
+          message: this.text.openCommand.stale,
+        });
+        return;
+      }
+    }
 
     const result = await this.bleWriteExecutionService.execute({
       write,
@@ -3348,7 +3474,9 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: PRODUCT_NAME_ROOM_CONFIRMATION_POLICY,
-      policy: PRODUCT_NAME_ROOM_EXECUTION_POLICY,
+      policy: this.withWidoorPhase1ImmediatePolicy(
+        PRODUCT_NAME_ROOM_EXECUTION_POLICY,
+      ),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.nameRoomWriteState = Object.freeze({
@@ -3368,7 +3496,10 @@ export class ProductPage implements OnDestroy {
         status: 'sent',
         message: this.text.nameRoomControls.sent,
       });
-      if (this.canRefresh) {
+      if (this.config.profile === 'widoor') {
+        await this.delay(1800);
+      }
+      if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
         await this.refreshProductData();
       }
       return;
@@ -3424,14 +3555,16 @@ export class ProductPage implements OnDestroy {
 
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
-    const authorization = createProductLockModeAuthorization({
-      write,
-      deviceId: context.deviceId,
-      connectionGeneration: context.connectionGeneration,
-      attemptId,
-      confirmationId: this.nextCommandIdentifier('confirmation'),
-      confirmedAt,
-    });
+    const authorization = config.profile === 'widoor'
+      ? null
+      : createProductLockModeAuthorization({
+          write,
+          deviceId: context.deviceId,
+          connectionGeneration: context.connectionGeneration,
+          attemptId,
+          confirmationId: this.nextCommandIdentifier('confirmation'),
+          confirmedAt,
+        });
     this.lockModeWriteState = Object.freeze({
       status: 'executing',
       message: this.text.lockModeControls.executing,
@@ -3446,7 +3579,7 @@ export class ProductPage implements OnDestroy {
       authorization,
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
-      policy: config.policy,
+      policy: this.withWidoorPhase1ImmediatePolicy(config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.lockModeWriteState = Object.freeze({
@@ -3460,7 +3593,7 @@ export class ProductPage implements OnDestroy {
         status: 'sent',
         message: this.text.lockModeControls.sent,
       });
-      if (this.canRefresh) {
+      if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
         await this.refreshProductData();
       }
       return;
@@ -3513,6 +3646,7 @@ export class ProductPage implements OnDestroy {
     this.resetProfessionalScalarEditing();
     this.resetProfessionalAccess();
     this.resetProductDateAction();
+    this.clearWidoorSliderWrites();
     this.subscriptions.unsubscribe();
   }
 
@@ -3593,6 +3727,120 @@ export class ProductPage implements OnDestroy {
       this.viewModel.profile === context.profile &&
       this.bleService.connectedDeviceId === context.deviceId &&
       this.bleService.connectionGeneration === context.connectionGeneration;
+  }
+
+  private refreshCurrentTabData(): void {
+    if (this.canRefresh) {
+      void this.refreshProductData();
+    }
+  }
+
+  private shouldRefreshAfterSettledWrite(): boolean {
+    return this.config.profile !== 'widoor';
+  }
+
+  private widoorPhase1ShowsUserParameterControls(): boolean {
+    return this.viewModel.reads.userParameters.status === 'available' ||
+      this.config.profile === 'widoor';
+  }
+
+  private widoorPhase1ShowsProfessionalParameterControls(): boolean {
+    return this.viewModel.reads.professionalParameters.status === 'available' ||
+      this.config.profile === 'widoor';
+  }
+
+  private withWidoorPhase1ImmediatePolicy(
+    policy: LegacyBleWriteExecutionPolicy | undefined,
+  ): LegacyBleWriteExecutionPolicy | undefined {
+    if (this.config.profile !== 'widoor') {
+      return policy;
+    }
+    return Object.freeze({
+      ...(policy ?? {}),
+      allowWidoorPhase1ImmediateWrite: true,
+    });
+  }
+
+  private scheduleWidoorSliderWrite(
+    key: string,
+    write: () => Promise<void>,
+  ): void {
+    if (this.config.profile !== 'widoor') {
+      return;
+    }
+    this.clearWidoorSliderWrite(key);
+    const timeout = window.setTimeout(() => {
+      this.widoorSliderWriteTimeouts.delete(key);
+      void write();
+    }, this.widoorSliderButtonWriteDelayMs);
+    this.widoorSliderWriteTimeouts.set(key, timeout);
+  }
+
+  private flushWidoorSliderWrite(
+    key: string,
+    write: () => Promise<void>,
+  ): void {
+    if (this.config.profile !== 'widoor') {
+      return;
+    }
+    this.clearWidoorSliderWrite(key);
+    void write();
+  }
+
+  private clearWidoorSliderWrite(key: string): void {
+    const timeout = this.widoorSliderWriteTimeouts.get(key);
+    if (timeout !== undefined) {
+      window.clearTimeout(timeout);
+      this.widoorSliderWriteTimeouts.delete(key);
+    }
+  }
+
+  private clearWidoorSliderWrites(): void {
+    for (const timeout of this.widoorSliderWriteTimeouts.values()) {
+      window.clearTimeout(timeout);
+    }
+    this.widoorSliderWriteTimeouts.clear();
+  }
+
+  private async delay(milliseconds: number): Promise<void> {
+    await new Promise<void>((resolve) =>
+      window.setTimeout(resolve, milliseconds),
+    );
+  }
+
+  private widoorPhase1CommandBlock(
+    config: WidoorCommandUiConfig,
+  ): 'lock' | 'retention' | null {
+    if (config.profile !== 'widoor') {
+      return null;
+    }
+    const lockMode = this.currentLockMode();
+    if (
+        (config.operation === 'motor-open' ||
+          config.operation === 'motor-open-short-timed') &&
+        lockMode === 'locked-closed') {
+      return 'lock';
+    }
+    if (
+        (config.operation === 'motor-open' ||
+          config.operation === 'motor-open-short-timed' ||
+          config.operation === 'motor-close') &&
+        lockMode === 'locked-open') {
+      return 'retention';
+    }
+    return null;
+  }
+
+  private async presentWidoorCommandBlockedAlert(
+    reason: 'lock' | 'retention',
+  ): Promise<void> {
+    const text = this.text.widoorCommandAlerts[reason];
+    const alert = await this.alertController.create({
+      header: text.title,
+      message: text.subtitle,
+      buttons: [text.ok],
+    });
+    await alert.present();
   }
 
   private isCurrentLoad(
@@ -3968,12 +4216,8 @@ export class ProductPage implements OnDestroy {
   private sensitiveActionRequiresProfessionalAccess(
     config: ProductSensitiveActionUiConfig,
   ): boolean {
-    return config.profile === 'widoor' &&
-      (
-        config.action === 'radar-test-1' ||
-        config.action === 'radar-test-2' ||
-        config.action === 'professional-peripheral-lock'
-      );
+    void config;
+    return false;
   }
 
   private currentProfessionalAccessContext():

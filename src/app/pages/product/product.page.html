@@ -365,7 +365,7 @@
             [ngTemplateOutlet]="readStatus"
             [ngTemplateOutletContext]="{ $implicit: viewModel.reads.userParameters }"
           ></ng-container>
-          @if (viewModel.reads.userParameters.status === 'available' || showNameRoomControls) {
+          @if (showBasicSettingsControls) {
             <ion-list class="basic-settings-list" lines="none">
               @if (showBasicUserPeripheralControls) {
                 <ion-list-header
@@ -463,6 +463,8 @@
                       [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                       [value]="userSpeedDraftValue(speedControl.config)"
                       (ionChange)="setUserSpeedDraftValue(speedControl.config, $event)"
+                      (ionKnobMoveEnd)="onUserSpeedSliderReleased(speedControl.config)"
+                      (ionBlur)="onUserSpeedSliderReleased(speedControl.config)"
                     ></ion-range>
                   </ion-item>
                   @if (isUserSpeedUnlocked(speedControl.config)) {
@@ -486,14 +488,16 @@
                       >
                         +
                       </ion-button>
-                      <ion-button
-                        type="button"
-                        size="small"
-                        (click)="requestUserSpeedChange(speedControl.config)"
-                        [disabled]="!canApplyUserSpeed(speedControl.config)"
-                      >
-                        {{ text.userSpeedControls.apply }}
-                      </ion-button>
+                      @if (speedControl.config.profile !== 'widoor') {
+                        <ion-button
+                          type="button"
+                          size="small"
+                          (click)="requestUserSpeedChange(speedControl.config)"
+                          [disabled]="!canApplyUserSpeed(speedControl.config)"
+                        >
+                          {{ text.userSpeedControls.apply }}
+                        </ion-button>
+                      }
                     </div>
                   }
                 }
@@ -555,6 +559,8 @@
                       [disabled]="!isUserTimingUnlocked(timingControl.config)"
                       [value]="userTimingDraftValue(timingControl.config)"
                       (ionChange)="setUserTimingDraftValue(timingControl.config, $event)"
+                      (ionKnobMoveEnd)="onUserTimingSliderReleased(timingControl.config)"
+                      (ionBlur)="onUserTimingSliderReleased(timingControl.config)"
                     ></ion-range>
                   </ion-item>
                   @if (isUserTimingUnlocked(timingControl.config)) {
@@ -581,14 +587,16 @@
                       >
                         +
                       </ion-button>
-                      <ion-button
-                        type="button"
-                        size="small"
-                        (click)="requestUserTimingChange(timingControl.config)"
-                        [disabled]="!canApplyUserTiming(timingControl.config)"
-                      >
-                        {{ text.userTimingControls.apply }}
-                      </ion-button>
+                      @if (timingControl.config.profile !== 'widoor') {
+                        <ion-button
+                          type="button"
+                          size="small"
+                          (click)="requestUserTimingChange(timingControl.config)"
+                          [disabled]="!canApplyUserTiming(timingControl.config)"
+                        >
+                          {{ text.userTimingControls.apply }}
+                        </ion-button>
+                      }
                     </div>
                   }
                 }
@@ -794,7 +802,7 @@
               $implicit: viewModel.reads.professionalParameters
             }"
           ></ng-container>
-          @if (viewModel.reads.professionalParameters.status === 'available') {
+          @if (showAdvancedSettingsControls) {
             <ion-list class="advanced-settings-list" lines="none">
               @if (showProfessionalAccessPrompt) {
                 <ion-item class="advanced-access-row">
@@ -1007,6 +1015,8 @@
                       [disabled]="!isProfessionalScalarUnlocked(scalarControl.config)"
                       [value]="professionalScalarDraftValue(scalarControl.config)"
                       (ionChange)="setProfessionalScalarDraftValue(scalarControl.config, $event)"
+                      (ionKnobMoveEnd)="onProfessionalScalarSliderReleased(scalarControl.config)"
+                      (ionBlur)="onProfessionalScalarSliderReleased(scalarControl.config)"
                     ></ion-range>
                   </ion-item>
                   @if (isProfessionalScalarUnlocked(scalarControl.config)) {
@@ -1033,14 +1043,16 @@
                       >
                         +
                       </ion-button>
-                      <ion-button
-                        type="button"
-                        size="small"
-                        (click)="requestProfessionalScalarChange(scalarControl.config)"
-                        [disabled]="!canApplyProfessionalScalar(scalarControl.config)"
-                      >
-                        {{ text.professionalScalarControls.apply }}
-                      </ion-button>
+                      @if (scalarControl.config.profile !== 'widoor') {
+                        <ion-button
+                          type="button"
+                          size="small"
+                          (click)="requestProfessionalScalarChange(scalarControl.config)"
+                          [disabled]="!canApplyProfessionalScalar(scalarControl.config)"
+                        >
+                          {{ text.professionalScalarControls.apply }}
+                        </ion-button>
+                      }
                     </div>
                   }
                 }

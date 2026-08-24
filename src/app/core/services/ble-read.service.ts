@@ -163,7 +163,7 @@ export class BleReadService implements OnDestroy {
       type: definition.type,
       profile,
       deviceId: targetDeviceId || null,
-      serviceUuid: BLE_UUIDS.shdoService,
+      serviceUuid: this.serviceUuidForRead(profile, definition),
       characteristicUuid: definition.characteristicUuid,
       startedAt,
     } as const;
@@ -191,7 +191,7 @@ export class BleReadService implements OnDestroy {
 
     const gattAvailability =
       this.bleService.getGattCharacteristicAvailability(
-        BLE_UUIDS.shdoService,
+        base.serviceUuid,
         definition.characteristicUuid,
         targetDeviceId,
       );
@@ -212,7 +212,7 @@ export class BleReadService implements OnDestroy {
 
     try {
       const value = await this.bleService.readCharacteristic(
-        BLE_UUIDS.shdoService,
+        base.serviceUuid,
         definition.characteristicUuid,
         targetDeviceId,
       );
@@ -255,6 +255,21 @@ export class BleReadService implements OnDestroy {
     } finally {
       this.activeRead = false;
     }
+  }
+
+  private serviceUuidForRead(
+    profile: ProductProfile,
+    definition: ReadDefinition<unknown>,
+  ): string {
+    if (
+        profile === 'widoor' &&
+        (
+          definition.type === 'user-parameters' ||
+          definition.type === 'professional-parameters'
+        )) {
+      return BLE_UUIDS.widoorService;
+    }
+    return BLE_UUIDS.shdoService;
   }
 
   private getLateStatus(
