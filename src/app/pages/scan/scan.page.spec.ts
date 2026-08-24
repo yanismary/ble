@@ -47,6 +47,7 @@ class FakeBleService {
   private scanning = false;
   private scanCallback: ((result: ScanResult) => void) | null = null;
   private notificationCallback: ((value: DataView) => void) | null = null;
+  lastScanServiceUuids: readonly string[] = [];
   isWriting = false;
   bluetoothEnabled = true;
   bluetoothEnabledError: unknown | null = null;
@@ -86,10 +87,11 @@ class FakeBleService {
 
   async startScan(
     callback: (result: ScanResult) => void,
-    _serviceUuids: readonly string[] = [],
+    serviceUuids: readonly string[] = [],
   ): Promise<void> {
     this.scanning = true;
     this.scanCallback = callback;
+    this.lastScanServiceUuids = serviceUuids;
   }
 
   async stopScan(): Promise<void> {
@@ -459,7 +461,7 @@ describe('ScanPage', () => {
     },
   );
 
-  it('should start scanning, display its state and stop after ten seconds', fakeAsync(() => {
+  it('should start scanning with Phase 1 filters and stop after eight seconds', fakeAsync(() => {
     const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
     const stopScanSpy = spyOn(bleService, 'stopScan').and.callThrough();
 
@@ -477,7 +479,13 @@ describe('ScanPage', () => {
       'Recherche d’appareils BLE',
     );
 
-    tick(10_000);
+    tick(7_999);
+    flushMicrotasks();
+
+    expect(stopScanSpy).not.toHaveBeenCalled();
+    expect(component.scanning).toBeTrue();
+
+    tick(1);
     flushMicrotasks();
 
     expect(stopScanSpy).toHaveBeenCalledTimes(1);
@@ -872,6 +880,8 @@ describe('ScanPage', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Connexion en cours');
     flushMicrotasks();
+    tick(400);
+    flushMicrotasks();
     fixture.detectChanges();
 
     expect(stopScanSpy).toHaveBeenCalledBefore(connectSpy);
@@ -881,6 +891,7 @@ describe('ScanPage', () => {
 
   it('should automatically navigate after a successful tap connection flow',
     async () => {
+      spyOn<any>(component, 'delay').and.resolveTo();
       bleService.servicesResult = createIdentificationServices();
       bleService.readResult = createVersionWord(0, 1);
       await component.startScan();
@@ -902,6 +913,128 @@ describe('ScanPage', () => {
     },
   );
 
+  it('should preserve the physically validated Widoor tap flow without an intermediate step',
+    async () => {
+      spyOn<any>(component, 'delay').and.resolveTo();
+      bleService.servicesResult = createWidoorIdentificationServices();
+      bleService.readResult = createVersionWord(1, 0);
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Widoor#CHA'));
+
+      await component.selectAndConnectDevice(component.devices[0]);
+
+      expect(routerNavigate).toHaveBeenCalledOnceWith(
+        ['/product/widoor'],
+        {
+          state: jasmine.objectContaining({
+            profile: 'widoor',
+            deviceId: 'device-1',
+            identificationConfidence: 'strong',
+          }),
+        },
+      );
+      expect(fixture.nativeElement.textContent).not.toContain('Connecter');
+    },
+  );
+
+  it('should automatically retry initial connection up to the last Phase 1 attempt',
+    fakeAsync(() => {
+      const originalConnect = bleService.connect.bind(bleService);
+      const discoverSpy = spyOn(bleService, 'discoverServices')
+        .and.callThrough();
+      let attempt = 0;
+      const connectSpy = spyOn(bleService, 'connect')
+        .and.callFake(async (deviceId: string) => {
+          attempt += 1;
+          if (attempt < 3) {
+            throw new BleOperationError(
+              'connection-failed',
+              'BLE connection failed.',
+            );
+          }
+          await originalConnect(deviceId);
+        });
+      bleService.servicesResult = createIdentificationServices();
+      bleService.readResult = createVersionWord(0, 1);
+      void component.startScan();
+      flushMicrotasks();
+      bleService.emit(createScanResult('device-1', -42, 'Produit'));
+
+      void component.selectAndConnectDevice(component.devices[0]);
+      flushMicrotasks();
+      expect(connectSpy).not.toHaveBeenCalled();
+      expect(discoverSpy).not.toHaveBeenCalled();
+
+      tick(400);
+      flushMicrotasks();
+      expect(connectSpy).toHaveBeenCalledTimes(1);
+      expect(routerNavigate).not.toHaveBeenCalled();
+
+      tick(500);
+      flushMicrotasks();
+      expect(connectSpy).toHaveBeenCalledTimes(2);
+      expect(routerNavigate).not.toHaveBeenCalled();
+
+      tick(1_000);
+      flushMicrotasks();
+      expect(connectSpy).toHaveBeenCalledTimes(3);
+      expect(discoverSpy).toHaveBeenCalledOnceWith('device-1');
+      expect(routerNavigate).toHaveBeenCalledOnceWith(
+        ['/product/moventiv-60'],
+        jasmine.any(Object),
+      );
+    }),
+  );
+
+  it('should expose manual retry only after all Phase 1 connection attempts fail',
+    async () => {
+      spyOn<any>(component, 'delay').and.resolveTo();
+      const connectSpy = spyOn(bleService, 'connect').and.rejectWith(
+        new BleOperationError(
+          'connection-timeout',
+          'BLE connection timed out.',
+        ),
+      );
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+
+      await component.selectAndConnectDevice(component.devices[0]);
+
+      expect(connectSpy).toHaveBeenCalledTimes(3);
+      expect(component.connectedDeviceId).toBeNull();
+      expect(component.connectionRetryDeviceId).toBe('device-1');
+      expect(component.canRetryConnection).toBeTrue();
+      expect(routerNavigate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should cleanup a partial failed connection before retrying',
+    async () => {
+      spyOn<any>(component, 'delay').and.resolveTo();
+      const originalConnect = bleService.connect.bind(bleService);
+      let attempt = 0;
+      spyOn(bleService, 'connect').and.callFake(async (deviceId: string) => {
+        attempt += 1;
+        if (attempt === 1) {
+          bleService.setConnectedDeviceId(deviceId);
+          throw new BleOperationError(
+            'connection-failed',
+            'BLE connection failed.',
+          );
+        }
+        await originalConnect(deviceId);
+      });
+      bleService.servicesResult = createServices();
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+
+      await component.selectAndConnectDevice(component.devices[0]);
+
+      expect(bleService.disconnect).toHaveBeenCalledTimes(1);
+      expect(component.connectedDeviceId).toBe('device-1');
+    },
+  );
+
   it('should display a readable connection error', async () => {
     await component.startScan();
     bleService.emit(createScanResult('device-1', -42, 'Capteur'));
@@ -919,6 +1052,7 @@ describe('ScanPage', () => {
   });
 
   it('should ignore a double tap while the connection is pending', async () => {
+    spyOn<any>(component, 'delay').and.resolveTo();
     let releaseConnection!: () => void;
     const originalConnect = bleService.connect.bind(bleService);
     const connectSpy = spyOn(bleService, 'connect')
@@ -935,8 +1069,7 @@ describe('ScanPage', () => {
     const secondTap = component.selectAndConnectDevice(component.devices[0]);
 
     expect(component.connecting).toBeTrue();
-    await Promise.resolve();
-    await Promise.resolve();
+    await settlePromises();
     expect(connectSpy).toHaveBeenCalledTimes(1);
 
     releaseConnection();
@@ -948,6 +1081,7 @@ describe('ScanPage', () => {
 
   it('should ignore a late connection failure after the page is destroyed',
     async () => {
+      spyOn<any>(component, 'delay').and.resolveTo();
       let rejectConnection!: (error: unknown) => void;
       spyOn(bleService, 'connect').and.returnValue(
         new Promise<void>((_resolve, reject) => {
@@ -975,12 +1109,13 @@ describe('ScanPage', () => {
     },
   );
 
-  it('should offer a manual retry after a retryable connection failure',
+  it('should keep connection retry internal after a retryable connection failure',
     async () => {
+      spyOn<any>(component, 'delay').and.resolveTo();
       await component.startScan();
       bleService.emit(createScanResult('device-1', -42, 'Capteur'));
       component.selectDevice(component.devices[0]);
-      spyOn(bleService, 'connect').and.rejectWith(
+      const connectSpy = spyOn(bleService, 'connect').and.rejectWith(
         new BleOperationError(
           'connection-timeout',
           'BLE connection timed out.',
@@ -990,16 +1125,18 @@ describe('ScanPage', () => {
       await component.connectSelectedDevice();
       fixture.detectChanges();
 
+      expect(connectSpy).toHaveBeenCalledTimes(3);
       expect(component.connectionRetryDeviceId).toBe('device-1');
       expect(component.canRetryConnection).toBeTrue();
-      expect(fixture.nativeElement.textContent).toContain(
+      expect(fixture.nativeElement.textContent).not.toContain(
         'Réessayer la connexion',
       );
     },
   );
 
-  it('should retry the same device through the normal connection flow',
+  it('should automatically retry and connect after one failed attempt',
     async () => {
+      spyOn<any>(component, 'delay').and.resolveTo();
       const originalConnect = bleService.connect.bind(bleService);
       let attempt = 0;
       const connectSpy = spyOn(bleService, 'connect')
@@ -1018,8 +1155,6 @@ describe('ScanPage', () => {
       bleService.emit(createScanResult('device-1', -42, 'Capteur'));
       component.selectDevice(component.devices[0]);
       await component.connectSelectedDevice();
-
-      await component.retryConnection();
       fixture.detectChanges();
 
       expect(connectSpy).toHaveBeenCalledTimes(2);
@@ -1034,9 +1169,10 @@ describe('ScanPage', () => {
     },
   );
 
-  it('should keep the manual retry available after a second retryable failure',
+  it('should keep the manual retry available after exhausted automatic retries',
     async () => {
-      spyOn(bleService, 'connect').and.rejectWith(
+      spyOn<any>(component, 'delay').and.resolveTo();
+      const connectSpy = spyOn(bleService, 'connect').and.rejectWith(
         new BleOperationError(
           'service-discovery-failed',
           'BLE service discovery failed during connection.',
@@ -1047,9 +1183,7 @@ describe('ScanPage', () => {
       component.selectDevice(component.devices[0]);
       await component.connectSelectedDevice();
 
-      await component.retryConnection();
-
-      expect(bleService.connect).toHaveBeenCalledTimes(2);
+      expect(connectSpy).toHaveBeenCalledTimes(3);
       expect(component.connectedDeviceId).toBeNull();
       expect(component.connectionRetryDeviceId).toBe('device-1');
       expect(component.canRetryConnection).toBeTrue();
@@ -1058,13 +1192,14 @@ describe('ScanPage', () => {
 
   it('should ignore a double manual retry while one connection is pending',
     async () => {
+      spyOn<any>(component, 'delay').and.resolveTo();
       let releaseRetry!: () => void;
       const originalConnect = bleService.connect.bind(bleService);
       let attempt = 0;
       const connectSpy = spyOn(bleService, 'connect')
         .and.callFake(async (deviceId: string) => {
           attempt += 1;
-          if (attempt === 1) {
+          if (attempt <= 3) {
             throw new BleOperationError(
               'connection-failed',
               'BLE connection failed.',
@@ -1079,12 +1214,13 @@ describe('ScanPage', () => {
       bleService.emit(createScanResult('device-1', -42, 'Capteur'));
       component.selectDevice(component.devices[0]);
       await component.connectSelectedDevice();
+      expect(component.canRetryConnection).toBeTrue();
 
       const retry = component.retryConnection();
       const ignoredRetry = component.retryConnection();
-      await Promise.resolve();
+      await settlePromises();
 
-      expect(connectSpy).toHaveBeenCalledTimes(2);
+      expect(connectSpy).toHaveBeenCalledTimes(4);
       expect(component.connecting).toBeTrue();
       expect(component.connectionStatusLabel).toContain('Nouvelle tentative');
 
@@ -1097,13 +1233,14 @@ describe('ScanPage', () => {
 
   it('should disconnect if a retry succeeds after the page is destroyed',
     async () => {
+      spyOn<any>(component, 'delay').and.resolveTo();
       let releaseRetry!: () => void;
       const originalConnect = bleService.connect.bind(bleService);
       let attempt = 0;
       spyOn(bleService, 'connect')
         .and.callFake(async (deviceId: string) => {
           attempt += 1;
-          if (attempt === 1) {
+          if (attempt <= 3) {
             throw new BleOperationError(
               'connection-failed',
               'BLE connection failed.',
@@ -1121,7 +1258,7 @@ describe('ScanPage', () => {
       bleService.disconnect.calls.reset();
 
       const retry = component.retryConnection();
-      await Promise.resolve();
+      await settlePromises();
       fixture.destroy();
       releaseRetry();
       await retry;
@@ -1182,7 +1319,7 @@ describe('ScanPage', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Connecter');
   });
 
-  it('should discover and display services after connecting', async () => {
+  it('should discover services after connecting without rendering them', async () => {
     bleService.servicesResult = createServices();
     const discoverSpy = spyOn(bleService, 'discoverServices').and.callThrough();
     await component.startScan();
@@ -1193,10 +1330,12 @@ describe('ScanPage', () => {
     fixture.detectChanges();
 
     expect(discoverSpy).toHaveBeenCalledOnceWith('device-1');
-    expect(fixture.nativeElement.textContent).toContain('service-uuid');
-    expect(fixture.nativeElement.textContent).toContain('characteristic-uuid');
-    expect(fixture.nativeElement.textContent).toContain('Lecture');
-    expect(fixture.nativeElement.textContent).toContain('Notification');
+    expect(component.services).toEqual(createServices());
+    expect(fixture.nativeElement.textContent).not.toContain('service-uuid');
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'characteristic-uuid',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain('Notification');
   });
 
   it('should display the service discovery state', fakeAsync(() => {
@@ -1212,11 +1351,22 @@ describe('ScanPage', () => {
 
     void component.connectSelectedDevice();
     flushMicrotasks();
+    tick(400);
+    flushMicrotasks();
     fixture.detectChanges();
 
     expect(component.discoveringServices).toBeTrue();
     expect(fixture.nativeElement.textContent).toContain(
+      'Connexion en cours...',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain(
       'Découverte des services',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Services BLE',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Informations techniques',
     );
 
     resolveServices([]);
@@ -1244,10 +1394,10 @@ describe('ScanPage', () => {
     expect(fixture.nativeElement.textContent).toContain(
       'Découverte indisponible',
     );
-    expect(fixture.nativeElement.textContent).toContain(
+    expect(fixture.nativeElement.textContent).not.toContain(
       'Connexion BLE toujours active',
     );
-    expect(fixture.nativeElement.textContent).toContain(
+    expect(fixture.nativeElement.textContent).not.toContain(
       'Réessayer le chargement',
     );
     expect(fixture.nativeElement.textContent).not.toContain(
@@ -1469,9 +1619,7 @@ describe('ScanPage', () => {
       spyOn(bleService, 'discoverServices').and.rejectWith(
         new Error('Découverte indisponible'),
       );
-      bleService.disconnectResult = Promise.reject(
-        new Error('Déconnexion refusée'),
-      );
+      bleService.disconnect.and.rejectWith(new Error('Déconnexion refusée'));
       await component.startScan();
       bleService.emit(createScanResult('device-1', -42, 'Capteur'));
       component.selectDevice(component.devices[0]);
@@ -1500,7 +1648,7 @@ describe('ScanPage', () => {
     expect(component.discoveringServices).toBeFalse();
   });
 
-  it('should read and display identification after service discovery', async () => {
+  it('should read identification after service discovery without rendering raw details', async () => {
     bleService.servicesResult = createIdentificationServices();
     bleService.readResult = createVersionWord(2, 4);
     const readSpy = spyOn(
@@ -1522,14 +1670,20 @@ describe('ScanPage', () => {
     expect(component.identification?.rawHex).toContain('02 04');
     expect(component.identification?.detectedType).toBe('Garline');
     expect(component.productProfile).toBe('garline');
-    expect(fixture.nativeElement.textContent).toContain('02 04');
-    expect(fixture.nativeElement.textContent).toContain('Garline');
-    expect(fixture.nativeElement.textContent).toContain(
+    expect(fixture.nativeElement.textContent).not.toContain('02 04');
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Identification du produit',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Mot de version brut',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain(
       'Service Moventiv/Garline + octet produit 2',
     );
   });
 
-  it('should display the Widoor detection reason for an old product name', async () => {
+  it('should keep the Widoor detection reason internal for an old product name', async () => {
+    spyOn<any>(component, 'delay').and.resolveTo();
     bleService.servicesResult = createWidoorIdentificationServices();
     bleService.readResult = createVersionWord(1, 0);
     await component.startScan();
@@ -1546,10 +1700,99 @@ describe('ScanPage', () => {
     );
     expect(component.identification?.detectionConfidence).toBe('Forte');
     expect(component.productProfile).toBe('widoor');
-    expect(fixture.nativeElement.textContent).toContain(
+    expect(fixture.nativeElement.textContent).not.toContain(
       'Service secondaire Widoor détecté',
     );
   });
+
+  it('should use the Phase 1 Widoor name fallback when version read fails',
+    async () => {
+      spyOn<any>(component, 'delay').and.resolveTo();
+      bleService.servicesResult = createWidoorIdentificationServices();
+      spyOn(bleService, 'readCharacteristic').and.rejectWith(
+        new Error('Version read refused'),
+      );
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'WI-001#CHA'));
+      component.selectDevice(component.devices[0]);
+
+      await component.connectSelectedDevice();
+
+      expect(component.identification?.detectedType).toBe('Widoor');
+      expect(component.identification?.detectionConfidence).toBe('Forte');
+      expect(component.identification?.detectionReason).toBe(
+        'Nom Bluetooth WI + service secondaire Widoor après échec de lecture du mot de version',
+      );
+      expect(component.productProfile).toBe('widoor');
+      expect(routerNavigate).toHaveBeenCalledOnceWith(
+        ['/product/widoor'],
+        jasmine.any(Object),
+      );
+    },
+  );
+
+  it('should use the Phase 1 Widoor name fallback when version characteristic is absent',
+    async () => {
+      spyOn<any>(component, 'delay').and.resolveTo();
+      bleService.servicesResult = [
+        {
+          uuid: BLE_UUIDS.shdoService,
+          characteristics: [
+            {
+              uuid: BLE_UUIDS.motorStateCharacteristic,
+              descriptors: [],
+              properties: {
+                authenticatedSignedWrites: false,
+                broadcast: false,
+                indicate: false,
+                notify: true,
+                read: true,
+                write: false,
+                writeWithoutResponse: false,
+              },
+            },
+          ],
+        },
+        {
+          uuid: BLE_UUIDS.widoorService,
+          characteristics: [],
+        },
+      ];
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'WI-002'));
+      component.selectDevice(component.devices[0]);
+
+      await component.connectSelectedDevice();
+
+      expect(component.identification?.detectedType).toBe('Widoor');
+      expect(component.identificationError).toBeNull();
+      expect(component.productProfile).toBe('widoor');
+      expect(routerNavigate).toHaveBeenCalledOnceWith(
+        ['/product/widoor'],
+        jasmine.any(Object),
+      );
+    },
+  );
+
+  it('should not turn a WI-named Moventiv/Garline service into Widoor when version read fails',
+    async () => {
+      spyOn<any>(component, 'delay').and.resolveTo();
+      bleService.servicesResult = createIdentificationServices();
+      spyOn(bleService, 'readCharacteristic').and.rejectWith(
+        new Error('Version read refused'),
+      );
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'WI-FAUX'));
+      component.selectDevice(component.devices[0]);
+
+      await component.connectSelectedDevice();
+
+      expect(component.productProfile).toBe('unknown');
+      expect(component.identification).toBeNull();
+      expect(component.identificationError).toContain('Version read refused');
+      expect(routerNavigate).not.toHaveBeenCalled();
+    },
+  );
 
   it('should hide the motor test without a known connected profile', () => {
     fixture.detectChanges();
@@ -1591,14 +1834,15 @@ describe('ScanPage', () => {
   });
 
   ['widoor', 'moventiv-60', 'moventiv-80', 'garline'].forEach((profile) => {
-    it(`should show the motor test for ${profile}`, () => {
+    it(`should keep the motor test internal for ${profile}`, () => {
       configureMotorTest(
         profile as 'widoor' | 'moventiv-60' | 'moventiv-80' | 'garline',
       );
       fixture.detectChanges();
 
+      expect(component.showMotorTestPanel).toBeTrue();
       expect(fixture.nativeElement.querySelector('.motor-test-panel'))
-        .not.toBeNull();
+        .toBeNull();
     });
   });
 
@@ -1816,7 +2060,7 @@ describe('ScanPage', () => {
       expected: 'Connexion perdue pendant la commande',
     },
   ].forEach(({ status, expected }) => {
-    it(`should display the ${status} motor result`, async () => {
+    it(`should keep the ${status} motor result internal`, async () => {
       configureMotorTest('widoor');
       sendMotorCommandWithConfirmation.and.resolveTo(
         motorCommandResult(
@@ -1827,12 +2071,15 @@ describe('ScanPage', () => {
       fixture.detectChanges();
 
       expect(component.motorTestStatus).toBe(status);
-      expect(fixture.nativeElement.textContent).toContain(expected);
+      expect(component.motorTestResult?.status).toBe(
+        status as 'confirmed' | 'timeout' | 'disconnected',
+      );
+      expect(fixture.nativeElement.textContent).not.toContain(expected);
       expect(fixture.nativeElement.querySelector('ion-spinner')).toBeNull();
     });
   });
 
-  it('should display the raw Widoor confirmation state instead of a position',
+  it('should keep the raw Widoor confirmation state internal',
     async () => {
       configureMotorTest('widoor');
       sendMotorCommandWithConfirmation.and.resolveTo(
@@ -1842,8 +2089,9 @@ describe('ScanPage', () => {
       await confirmOpen();
       fixture.detectChanges();
 
-      expect(fixture.nativeElement.textContent).toContain('0x21');
-      expect(fixture.nativeElement.textContent).toContain('(33)');
+      expect(component.motorTestResult?.notification?.state).toBe(0x21);
+      expect(fixture.nativeElement.textContent).not.toContain('0x21');
+      expect(fixture.nativeElement.textContent).not.toContain('(33)');
       expect(fixture.nativeElement.textContent).not.toContain(
         component.motorTestText.newPosition,
       );
@@ -1862,7 +2110,10 @@ describe('ScanPage', () => {
       fixture.detectChanges();
 
       expect(component.motorTestStatus).toBe('failed');
-      expect(fixture.nativeElement.textContent).toContain(
+      expect(component.motorTestFailureReason).toBe(
+        'Native GATT write failed',
+      );
+      expect(fixture.nativeElement.textContent).not.toContain(
         'Native GATT write failed',
       );
       expect(component.motorCommandAvailability.enabled).toBeTrue();
@@ -1972,7 +2223,8 @@ describe('ScanPage', () => {
     expect(component.productProfile).toBe('ambiguous');
   });
 
-  it('should display the identification reading state', fakeAsync(() => {
+  it('should keep a simple connection state while reading identification',
+    fakeAsync(() => {
     bleService.servicesResult = createIdentificationServices();
     let resolveRead!: (value: DataView) => void;
     const pendingRead = new Promise<DataView>((resolve) => {
@@ -1986,11 +2238,19 @@ describe('ScanPage', () => {
 
     void component.connectSelectedDevice();
     flushMicrotasks();
+    tick(400);
+    flushMicrotasks();
     fixture.detectChanges();
 
     expect(component.readingIdentification).toBeTrue();
     expect(fixture.nativeElement.textContent).toContain(
+      'Connexion en cours...',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain(
       'Lecture de l’identification',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Identification du produit',
     );
 
     resolveRead(createVersionWord(0, 1));
@@ -2053,7 +2313,7 @@ describe('ScanPage', () => {
     );
   });
 
-  it('should display motor state notifications and increment their count', async () => {
+  it('should keep motor state notifications internal and increment their count', async () => {
     bleService.servicesResult = createIdentificationServices();
     bleService.readResult = createVersionWord(0, 1);
     await component.startScan();
@@ -2070,11 +2330,11 @@ describe('ScanPage', () => {
     expect(component.motorState?.currentPosition).toBe(258);
     expect(component.motorState?.maximumPosition).toBe(772);
     expect(component.lastMotorStateReceivedAt).not.toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('État moteur');
-    expect(fixture.nativeElement.textContent).toContain(
+    expect(fixture.nativeElement.textContent).not.toContain('État moteur');
+    expect(fixture.nativeElement.textContent).not.toContain(
       '03 01 02 03 04 05 1d',
     );
-    expect(fixture.nativeElement.textContent).toContain(
+    expect(fixture.nativeElement.textContent).not.toContain(
       'Notifications reçues : 2',
     );
     expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
@@ -2173,7 +2433,7 @@ describe('ScanPage', () => {
       ['/product/moventiv-60'],
       jasmine.any(Object),
     );
-    expect(fixture.nativeElement.textContent).toContain(
+    expect(fixture.nativeElement.textContent).not.toContain(
       'Notifications refusées',
     );
   });
@@ -2197,7 +2457,7 @@ describe('ScanPage', () => {
     expect(component.showProductReadPanel).toBeFalse();
   });
 
-  it('should passively display cached historical GATT properties', async () => {
+  it('should keep cached historical GATT properties internal', async () => {
     const readSpy = spyOn(bleService, 'readCharacteristic').and.callThrough();
     const startSpy = spyOn(bleService, 'startNotifications').and.callThrough();
     const stopSpy = spyOn(bleService, 'stopNotifications').and.callThrough();
@@ -2213,17 +2473,17 @@ describe('ScanPage', () => {
     const loadCalls = productDataLoadService.loadProductData.calls.count();
 
     fixture.detectChanges();
-    const text = fixture.nativeElement.querySelector(
-      '.historical-gatt-diagnostic',
-    )?.textContent ?? '';
 
     expect(component.showHistoricalGattDiagnostic).toBeTrue();
-    expect(text).toContain(BLE_UUIDS.completeParametersCharacteristic);
-    expect(text).toContain(component.productReadText.passiveGattNotice);
-    expect(text).toContain('Descripteurs');
-    expect(text).toContain('2');
-    expect(text).toContain(component.productReadText.yes);
-    expect(text).toContain(component.productReadText.no);
+    expect(component.historicalGattDiagnostic.characteristicUuid)
+      .toBe(BLE_UUIDS.completeParametersCharacteristic);
+    expect(component.historicalGattDiagnostic.descriptorUuids.length).toBe(2);
+    expect(fixture.nativeElement.querySelector(
+      '.historical-gatt-diagnostic',
+    )).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain(
+      BLE_UUIDS.completeParametersCharacteristic,
+    );
     expect(readSpy.calls.count()).toBe(readCalls);
     expect(startSpy.calls.count()).toBe(startCalls);
     expect(stopSpy.calls.count()).toBe(stopCalls);
@@ -2286,7 +2546,10 @@ describe('ScanPage', () => {
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector(
         '.historical-gatt-diagnostic',
-      )?.textContent).toContain(component.productReadText.unknown);
+      )).toBeNull();
+      expect(fixture.nativeElement.textContent).not.toContain(
+        component.productReadText.unknown,
+      );
     },
   );
 
@@ -2305,7 +2568,7 @@ describe('ScanPage', () => {
     },
   );
 
-  it('should show the historical GATT diagnostic only for known Widoor',
+  it('should expose the historical GATT diagnostic internally only for known Widoor',
     async () => {
       for (const profile of [
         'moventiv-60',
@@ -2602,7 +2865,7 @@ describe('ScanPage', () => {
     })).toBe(component.productReadText.invalidDate);
   });
 
-  it('should render the physical dates on the responsive diagnostic grid',
+  it('should decode physical dates without rendering the diagnostic grid',
     async () => {
       await configureProductReadPanel('widoor');
       const decoded = decodeBleDatesAndCycles(new Uint8Array([
@@ -2630,17 +2893,14 @@ describe('ScanPage', () => {
       const details = fixture.nativeElement.querySelector(
         '.product-read-details',
       ) as HTMLElement | null;
-      const text = details?.textContent ?? '';
 
-      expect(details).not.toBeNull();
-      expect(text).toContain('00 00 00');
-      expect(text).toContain('27/08/2019');
-      expect(text).toContain(component.productReadText.notInitialized);
-      expect(text).toContain('26580');
-      expect(text).toMatch(/Cycles depuis maintenance\s*0/);
-      expect(text).not.toContain('[object Object]');
-      expect(text).not.toContain('0/0/0');
-      expect(text).not.toContain('27/7/19');
+      expect(component.productReadResult?.results.datesAndCycles?.decoded)
+        .toBe(decoded);
+      expect(details).toBeNull();
+      expect(fixture.nativeElement.textContent).not.toContain('00 00 00');
+      expect(fixture.nativeElement.textContent).not.toContain('27/08/2019');
+      expect(fixture.nativeElement.textContent).not.toContain('26580');
+      expect(fixture.nativeElement.textContent).not.toContain('[object Object]');
     },
   );
 

@@ -1,4 +1,3 @@
-import { NgTemplateOutlet } from '@angular/common';
 import { Component, NgZone, OnDestroy, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { addIcons } from 'ionicons';
@@ -151,6 +150,10 @@ interface MotorNotificationDiagnostic {
 }
 
 const MOTOR_DIAGNOSTIC_HISTORY_LIMIT = 20;
+const PHASE1_SCAN_TIMEOUT_MS = 8_000;
+const PHASE1_CONNECT_STABILIZATION_DELAY_MS = 400;
+const PHASE1_CONNECT_ATTEMPTS = 3;
+const PHASE1_CONNECT_RETRY_DELAYS_MS = [500, 1_000] as const;
 
 @Component({
   selector: 'app-scan',
@@ -172,7 +175,6 @@ const MOTOR_DIAGNOSTIC_HISTORY_LIMIT = 20;
     IonSpinner,
     IonTitle,
     IonToolbar,
-    NgTemplateOutlet,
   ],
 })
 export class ScanPage implements OnDestroy {
@@ -582,7 +584,7 @@ export class ScanPage implements OnDestroy {
 
       this.scanTimeout = setTimeout(() => {
         void this.stopScan();
-      }, 10_000);
+      }, PHASE1_SCAN_TIMEOUT_MS);
     } catch (error: unknown) {
       if (!this.destroyed) {
         this.scanning = false;
@@ -696,7 +698,8 @@ export class ScanPage implements OnDestroy {
 
     try {
       await this.stopScan();
-      await this.bleService.connect(device.deviceId);
+      await this.delay(PHASE1_CONNECT_STABILIZATION_DELAY_MS);
+      await this.connectDeviceWithPhase1Retries(device.deviceId);
       if (this.destroyed || this.selectedDeviceId !== device.deviceId) {
         await this.bleService.disconnect().catch(() => undefined);
         return;
@@ -1174,6 +1177,14 @@ export class ScanPage implements OnDestroy {
     );
 
     if (!versionCharacteristicExists) {
+      if (await this.applyPhase1WidoorNameFallbackIfAllowed(
+        deviceId,
+        expectedConnectionGeneration,
+        services,
+        'Nom Bluetooth WI + service secondaire Widoor sans mot de version lisible',
+      )) {
+        return;
+      }
       this.identificationError =
         'La caractéristique du mot de version BLE est absente.';
       return;
@@ -1210,6 +1221,14 @@ export class ScanPage implements OnDestroy {
       }
     } catch (error: unknown) {
       if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
+        if (await this.applyPhase1WidoorNameFallbackIfAllowed(
+          deviceId,
+          expectedConnectionGeneration,
+          services,
+          'Nom Bluetooth WI + service secondaire Widoor après échec de lecture du mot de version',
+        )) {
+          return;
+        }
         const details = error instanceof Error ? error.message : String(error);
         this.identificationError = details
           ? `Impossible de lire l’identification BLE : ${details}`
@@ -1220,6 +1239,92 @@ export class ScanPage implements OnDestroy {
         this.readingIdentification = false;
       }
     }
+  }
+
+  private async connectDeviceWithPhase1Retries(deviceId: string):
+    Promise<void> {
+    let lastError: unknown = null;
+    const manualRetryInProgress = this.retryingConnection;
+
+    for (let attempt = 1; attempt <= PHASE1_CONNECT_ATTEMPTS; attempt += 1) {
+      if (this.destroyed || this.selectedDeviceId !== deviceId) {
+        throw lastError ?? new Error('Connection flow was cancelled.');
+      }
+
+      this.retryingConnection = manualRetryInProgress || attempt > 1;
+      try {
+        await this.bleService.connect(deviceId);
+        return;
+      } catch (error: unknown) {
+        lastError = error;
+        await this.cleanupFailedPhase1ConnectionAttempt(deviceId);
+
+        if (attempt >= PHASE1_CONNECT_ATTEMPTS) {
+          break;
+        }
+
+        await this.delay(
+          PHASE1_CONNECT_RETRY_DELAYS_MS[
+            Math.min(attempt - 1, PHASE1_CONNECT_RETRY_DELAYS_MS.length - 1)
+          ],
+        );
+      }
+    }
+
+    throw lastError ?? new Error('BLE connection failed.');
+  }
+
+  private async cleanupFailedPhase1ConnectionAttempt(
+    deviceId: string,
+  ): Promise<void> {
+    if (this.bleService.connectedDeviceId === deviceId) {
+      await this.bleService.disconnect().catch(() => undefined);
+    }
+  }
+
+  private async applyPhase1WidoorNameFallbackIfAllowed(
+    deviceId: string,
+    expectedConnectionGeneration: number,
+    services: readonly DiscoveredBleService[],
+    reason: string,
+  ): Promise<boolean> {
+    if (!this.isCurrentBleConnection(deviceId, expectedConnectionGeneration) ||
+        this.detectedSecondaryProfile !== 'Widoor' ||
+        !this.isPhase1WidoorBluetoothName(this.selectedDevice?.name)) {
+      return false;
+    }
+
+    this.identification = {
+      rawHex: '',
+      length: 0,
+      productByte: null,
+      subtypeByte: null,
+      detectedType: 'Widoor',
+      ambiguous: false,
+      detectionReason: reason,
+      detectionConfidence: 'Forte',
+    };
+    this.productProfile = 'widoor';
+    this.secondaryProfile =
+      `${this.detectedSecondaryProfile} — ${reason} ` +
+      '(confiance forte)';
+    this.identificationError = null;
+    await this.startMotorStateNotifications(
+      deviceId,
+      expectedConnectionGeneration,
+      services,
+    );
+    return true;
+  }
+
+  private isPhase1WidoorBluetoothName(
+    name: string | null | undefined,
+  ): boolean {
+    return (name ?? '').trim().toUpperCase().startsWith('WI');
+  }
+
+  private delay(milliseconds: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, milliseconds));
   }
 
   private async startMotorStateNotifications(
