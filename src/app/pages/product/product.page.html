@@ -269,15 +269,10 @@
         [hidden]="activeMainTab !== 'settings'"
       >
         <h2 id="settings-title">{{ text.sections.settings }}</h2>
-        <p>{{ text.readonlyNotice }}</p>
 
       <div [hidden]="activeSettingsTab !== 'basic'">
         <article class="product-subsection basic-settings-panel">
           <h3>{{ text.sections.userSettings }}</h3>
-          <ng-container
-            [ngTemplateOutlet]="readStatus"
-            [ngTemplateOutletContext]="{ $implicit: viewModel.reads.userParameters }"
-          ></ng-container>
           @if (showBasicSettingsControls) {
             <ion-list class="basic-settings-list" lines="none">
               @if (showBasicUserPeripheralControls) {
@@ -692,18 +687,6 @@
                 }
               }
             </ion-list>
-
-            @if (viewModel.reads.userParameters.status === 'available') {
-              <details class="technical-details basic-technical-details">
-                <summary>{{ text.technicalDetails }}</summary>
-                <dl class="product-readonly-grid">
-                  @for (row of userRows; track row.key) {
-                    <dt>{{ row.label }}</dt>
-                    <dd>{{ row.value }}</dd>
-                  }
-                </dl>
-              </details>
-            }
           }
         </article>
       </div>
@@ -711,12 +694,6 @@
       <div [hidden]="activeSettingsTab !== 'advanced'">
         <article class="product-subsection advanced-settings-panel">
           <h3>{{ text.sections.professionalSettings }}</h3>
-          <ng-container
-            [ngTemplateOutlet]="readStatus"
-            [ngTemplateOutletContext]="{
-              $implicit: viewModel.reads.professionalParameters
-            }"
-          ></ng-container>
           @if (showAdvancedSettingsControls) {
             <ion-list class="advanced-settings-list" lines="none">
               @if (showProfessionalAccessPrompt) {
@@ -987,21 +964,6 @@
                   </p>
                 }
               }
-
-              @if (professionalPeripheralDiagnosticRows.length > 0) {
-                <details class="technical-details advanced-technical-details">
-                  <summary>{{ text.professionalPeripheralDiagnostics.title }}</summary>
-                  <p class="advanced-notice">
-                    {{ text.professionalPeripheralDiagnostics.readonlyNotice }}
-                  </p>
-                  <dl class="product-readonly-grid">
-                    @for (row of professionalPeripheralDiagnosticRows; track row.key) {
-                      <dt>{{ row.label }}</dt>
-                      <dd>{{ row.value }}</dd>
-                    }
-                  </dl>
-                </details>
-              }
             </ion-list>
           }
         </article>
@@ -1052,8 +1014,6 @@
 
         @if (sensitiveActions.length > 0) {
           <article class="product-subsection advanced-settings-panel">
-            <h3>{{ text.sensitiveActions.title }}</h3>
-            <p class="advanced-notice">{{ text.sensitiveActions.notice }}</p>
             <ion-list class="advanced-actions-list" lines="none">
               @for (action of sensitiveActions; track action.action) {
                 @if (action.control === 'toggle') {

@@ -2114,8 +2114,11 @@ describe('ProductPage', () => {
         .toBe(component.text.states.partialSuccess);
       expect(fixture.nativeElement.querySelector('.product-summary'))
         .toBeNull();
-      expect(text).toContain(component.text.states.invalid);
-      expect(text).toContain(component.text.states.unavailable);
+      expect(component.readStatusLabel(component.viewModel.reads.userParameters))
+        .toBe(component.text.states.invalid);
+      expect(component.readStatusLabel(
+        component.viewModel.reads.professionalParameters,
+      )).toBe(component.text.errors.characteristicAbsent);
       expect(component.readStatusLabel(component.viewModel.reads.maintenance))
         .toBe(component.text.errors.unknown);
       expect(text).not.toContain('Native maintenance failure');
@@ -3923,6 +3926,19 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         expect(component.showAdvancedWeightRangeControls)
           .toBe(scenario.advancedWeight);
 
+        const basicText = basicPanel?.textContent ?? '';
+        expect(basicPanel?.querySelector('.read-state')).toBeNull();
+        expect(basicPanel?.querySelector('.read-state-detail')).toBeNull();
+        expect(basicPanel?.querySelector('.basic-technical-details')).toBeNull();
+        expect(basicText).not.toContain(component.text.readonlyNotice);
+        expect(basicText).not.toContain(component.text.technicalDetails);
+        expect(basicText).not.toContain(component.text.rawFrame);
+        expect(basicText).not.toContain(component.text.serviceUuid);
+        expect(basicText).not.toContain(component.text.characteristicUuid);
+        expect(basicText).not.toContain(
+          component.text.errors.characteristicAbsent,
+        );
+
         expect(basicPanel?.querySelector<HTMLImageElement>(
           'img[src="assets/img/icon_speed.svg"]',
         )).not.toBeNull();
@@ -3943,6 +3959,97 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         expect(basicToggleLabels).not.toContain(
           component.text.user.staticLight,
         );
+
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+        expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+      },
+    );
+  }
+
+  for (const scenario of [
+    {
+      profile: 'widoor',
+      advancedScalars: [
+        'break-force-at-open',
+        'near-open-speed',
+        'near-close-speed',
+      ],
+      sensitiveActions: ['learning', 'reset'],
+      absentActions: [],
+    },
+    {
+      profile: 'moventiv-60',
+      advancedScalars: ['near-open-speed', 'near-close-speed'],
+      sensitiveActions: ['learning'],
+      absentActions: ['reset'],
+    },
+    {
+      profile: 'moventiv-80',
+      advancedScalars: ['near-open-speed', 'near-close-speed'],
+      sensitiveActions: ['learning'],
+      absentActions: ['reset'],
+    },
+    {
+      profile: 'garline',
+      advancedScalars: ['near-open-speed', 'near-close-speed'],
+      sensitiveActions: ['learning'],
+      absentActions: ['reset'],
+    },
+  ] as const) {
+    it(`should render Phase 1 advanced settings without V2.1 diagnostics for ${scenario.profile}`,
+      async () => {
+        const { fixture, component, writeExecutionService, bleService } =
+          await createProductCommandsUiPage(scenario.profile);
+
+        component.setActiveMainTab('settings');
+        component.setActiveSettingsTab('advanced');
+        fixture.detectChanges();
+
+        const element = fixture.nativeElement as HTMLElement;
+        const settingsSection = element.querySelector<HTMLElement>(
+          'section[aria-labelledby="settings-title"]',
+        );
+        const settingsText = settingsSection?.textContent ?? '';
+
+        expect(settingsSection).not.toBeNull();
+        expect(settingsSection?.querySelector('.read-state')).toBeNull();
+        expect(settingsSection?.querySelector('.read-state-detail')).toBeNull();
+        expect(settingsSection?.querySelector('.basic-technical-details'))
+          .toBeNull();
+        expect(settingsSection?.querySelector('.advanced-technical-details'))
+          .toBeNull();
+        expect(settingsText).not.toContain(component.text.technicalDetails);
+        expect(settingsText).not.toContain(component.text.rawFrame);
+        expect(settingsText).not.toContain(component.text.serviceUuid);
+        expect(settingsText).not.toContain(component.text.characteristicUuid);
+        expect(settingsText).not.toContain(component.text.sensitiveActions.title);
+        expect(settingsText).not.toContain(
+          component.text.sensitiveActions.notice,
+        );
+        expect(settingsText).not.toContain(
+          component.text.professionalPeripheralDiagnostics.title,
+        );
+        expect(settingsText).not.toContain(
+          component.text.errors.characteristicAbsent,
+        );
+        expect(settingsText).not.toContain('Phase 1');
+        expect(settingsText).not.toContain('Phase 2');
+
+        for (const field of scenario.advancedScalars) {
+          expect(settingsSection?.querySelector(
+            `[data-professional-scalar-field="${field}"]`,
+          )).not.toBeNull();
+        }
+        for (const action of scenario.sensitiveActions) {
+          expect(settingsSection?.querySelector(
+            `[data-sensitive-action="${action}"]`,
+          )).not.toBeNull();
+        }
+        for (const action of scenario.absentActions) {
+          expect(settingsSection?.querySelector(
+            `[data-sensitive-action="${action}"]`,
+          )).toBeNull();
+        }
 
         expect(writeExecutionService.execute).not.toHaveBeenCalled();
         expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
