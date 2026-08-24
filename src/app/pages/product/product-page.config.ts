@@ -186,7 +186,6 @@ const PRODUCT_PAGE_CONFIG_DEFINITIONS = {
     maximumWeightLabel: null,
     weightRanges: legacyWeightRanges('garline'),
     userFields: [
-      'lock-mode',
       'open-speed',
       'close-speed',
       'short-timing',
@@ -196,12 +195,11 @@ const PRODUCT_PAGE_CONFIG_DEFINITIONS = {
       'rgb',
     ],
     professionalFields: [
-      'weight-range',
       'near-open-speed',
       'near-close-speed',
       'obstacle-sensitivity',
     ],
-    visibleLockModes: ['none', 'locked-open', 'unknown'],
+    visibleLockModes: [],
     hiddenMotorSwitches: [
       'push-and-go',
       'automatic-manual',

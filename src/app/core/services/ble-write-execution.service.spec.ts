@@ -305,6 +305,14 @@ describe('BleWriteExecutionService', () => {
       expect((await service.execute(garline)).error?.code)
         .toBe('authorization-required');
       expect(ble.writeCharacteristic).toHaveBeenCalledTimes(2);
+
+      garline.policy = {
+        allowPhase1ReferenceOnly: true,
+        allowGarlinePhase1ImmediateWrite: true,
+      };
+      expect((await service.execute(garline)).status)
+        .toBe('success');
+      expect(ble.writeCharacteristic).toHaveBeenCalledTimes(3);
     },
   );
 

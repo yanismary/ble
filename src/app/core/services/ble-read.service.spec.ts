@@ -399,6 +399,21 @@ describe('BleReadService', () => {
     },
   );
 
+  it('should read Garline user parameters from the Moventiv/Garline MLPC service',
+    async () => {
+      readSpy.and.resolveTo(dataView([0, 25, 35, 1, 5, 0x08, 0x00]));
+      await connectAndDiscover();
+
+      const result = await service.readUserParameters('garline');
+
+      expectNativeCharacteristic(
+        BLE_UUIDS.userParametersCharacteristic,
+        BLE_UUIDS.moventivGarlineService,
+      );
+      expect(result.status).toBe('success');
+    },
+  );
+
   [
     { profile: 'widoor', field: 'breakForceAtOpen' },
     { profile: 'moventiv-60', field: 'exactWeight' },
@@ -417,9 +432,7 @@ describe('BleReadService', () => {
 
       const expectedService = profile === 'widoor'
         ? BLE_UUIDS.widoorService
-        : profile === 'moventiv-60' || profile === 'moventiv-80'
-          ? BLE_UUIDS.moventivGarlineService
-          : BLE_UUIDS.shdoService;
+        : BLE_UUIDS.moventivGarlineService;
       expectNativeCharacteristic(
         BLE_UUIDS.professionalParametersCharacteristic,
         expectedService,

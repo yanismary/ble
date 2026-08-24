@@ -27,10 +27,13 @@ describe('Phase 1 sensitive product actions', () => {
       if (profile === 'widoor') {
         expect(step.policy.allowWidoorPhase1ImmediateWrite).toBeTrue();
         expect(step.policy.allowMoventivPhase1ImmediateWrite).toBeUndefined();
+        expect(step.policy.allowGarlinePhase1ImmediateWrite).toBeUndefined();
       } else if (profile === 'moventiv-60' || profile === 'moventiv-80') {
         expect(step.policy.allowMoventivPhase1ImmediateWrite).toBeTrue();
         expect(step.policy.allowWidoorPhase1ImmediateWrite).toBeUndefined();
+        expect(step.policy.allowGarlinePhase1ImmediateWrite).toBeUndefined();
       } else {
+        expect(step.policy.allowGarlinePhase1ImmediateWrite).toBeTrue();
         expect(step.policy.allowWidoorPhase1ImmediateWrite).toBeUndefined();
         expect(step.policy.allowMoventivPhase1ImmediateWrite).toBeUndefined();
       }
@@ -108,8 +111,10 @@ describe('Phase 1 sensitive product actions', () => {
   });
 
   it('creates one immutable authorization scoped to an exact step', () => {
-    const learning = productSensitiveActionConfigsFor('garline')[0];
-    const write = productSensitiveActionWriteSteps(learning)[0].write;
+    const reset = productSensitiveActionConfigsFor('widoor').find((config) =>
+      config.action === 'reset',
+    )!;
+    const write = productSensitiveActionWriteSteps(reset)[0].write;
 
     const authorization = createProductSensitiveActionAuthorization({
       write,
@@ -121,9 +126,9 @@ describe('Phase 1 sensitive product actions', () => {
     });
 
     expect(authorization).toEqual(jasmine.objectContaining({
-      operation: 'motor-learning',
-      payloadHex: '00 12',
-      profile: 'garline',
+      operation: 'reset-step-1',
+      payloadHex: '01 32',
+      profile: 'widoor',
       deviceId: 'device-1',
       connectionGeneration: 4,
       attemptId: 'attempt-1',

@@ -589,22 +589,19 @@ export class ProductPage implements OnDestroy {
     if (tab === 'settings' && previousTab !== 'settings') {
       this.activeSettingsTab = 'basic';
     }
-    if (previousTab !== tab) {
-      this.refreshCurrentTabData();
-    }
+    this.refreshCurrentTabData();
   }
 
   setActiveSettingsTab(tab: ProductShellSettingsTab): void {
     if (this.activeMainTab !== 'settings' || !this.showSettingsTab) {
       return;
     }
-    const previousTab = this.activeSettingsTab;
     this.activeSettingsTab = tab;
-    if (previousTab !== tab) {
-      this.refreshCurrentTabData();
-      if (tab === 'advanced' && this.isMoventivProfile(this.config.profile)) {
-        void this.presentMoventivAdvancedAlert();
-      }
+    this.refreshCurrentTabData();
+    if (tab === 'advanced' &&
+        (this.isMoventivProfile(this.config.profile) ||
+          this.config.profile === 'garline')) {
+      void this.presentMoventivAdvancedAlert();
     }
   }
 
@@ -878,7 +875,8 @@ export class ProductPage implements OnDestroy {
 
   get showProfessionalAccessPrompt(): boolean {
     return this.pageContextCurrent &&
-      this.viewModel.reads.professionalParameters.status === 'available' &&
+      (this.viewModel.reads.professionalParameters.status === 'available' ||
+        this.config.profile === 'garline') &&
       this.professionalAccessControlsAvailable &&
       !this.professionalAccessGranted;
   }
@@ -1131,8 +1129,9 @@ export class ProductPage implements OnDestroy {
         this.config.maximumWeightLabel,
       ));
     }
-    const weightRange = this.config.professionalFields.includes(
-      'weight-range',
+    const weightRange = (
+      this.config.professionalFields.includes('weight-range') ||
+      this.config.profile === 'garline'
     )
       ? this.currentWeightRangeValue()
       : null;
@@ -1799,7 +1798,8 @@ export class ProductPage implements OnDestroy {
     const value = this.viewModel.reads.userParameters.value;
     if (value === null) {
       if ((config.profile === 'widoor' ||
-            this.isMoventivProfile(config.profile)) &&
+            this.isMoventivProfile(config.profile) ||
+            config.profile === 'garline') &&
           config.field === 'short-timing' &&
           this.pageContextCurrent) {
         return config.profile === 'widoor'
@@ -3876,7 +3876,8 @@ export class ProductPage implements OnDestroy {
     await alert.present();
     const dismissal = await alert.onDidDismiss();
     if (dismissal.role !== 'confirm' &&
-        this.isMoventivProfile(this.config.profile) &&
+        (this.isMoventivProfile(this.config.profile) ||
+          this.config.profile === 'garline') &&
         this.activeMainTab === 'settings' &&
         this.activeSettingsTab === 'advanced') {
       this.activeSettingsTab = 'basic';
@@ -3890,13 +3891,15 @@ export class ProductPage implements OnDestroy {
   private phase1ShowsUserParameterControls(): boolean {
     return this.viewModel.reads.userParameters.status === 'available' ||
       this.config.profile === 'widoor' ||
-      this.isMoventivProfile(this.config.profile);
+      this.isMoventivProfile(this.config.profile) ||
+      this.config.profile === 'garline';
   }
 
   private phase1ShowsProfessionalParameterControls(): boolean {
     return this.viewModel.reads.professionalParameters.status === 'available' ||
       this.config.profile === 'widoor' ||
-      this.isMoventivProfile(this.config.profile);
+      this.isMoventivProfile(this.config.profile) ||
+      this.config.profile === 'garline';
   }
 
   private withPhase1ImmediatePolicy(
@@ -3915,11 +3918,19 @@ export class ProductPage implements OnDestroy {
         allowMoventivPhase1ImmediateWrite: true,
       });
     }
+    if (profile === 'garline') {
+      return Object.freeze({
+        ...(policy ?? {}),
+        allowGarlinePhase1ImmediateWrite: true,
+      });
+    }
     return policy;
   }
 
   private usesPhase1ImmediateWrite(profile: KnownProductProfile): boolean {
-    return profile === 'widoor' || this.isMoventivProfile(profile);
+    return profile === 'widoor' ||
+      this.isMoventivProfile(profile) ||
+      profile === 'garline';
   }
 
   private isMoventivProfile(
@@ -4383,7 +4394,8 @@ export class ProductPage implements OnDestroy {
     action: ProductDateMaintenanceFlowKind,
   ): boolean {
     return !(
-      this.isMoventivProfile(this.config.profile) &&
+      (this.isMoventivProfile(this.config.profile) ||
+        this.config.profile === 'garline') &&
       action === 'maintenance'
     );
   }

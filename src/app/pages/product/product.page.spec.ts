@@ -56,7 +56,6 @@ import {
   WIDOOR_COMMAND_UI_CONFIGS,
 } from './product-open-command';
 import { PRODUCT_PAGE_CONFIG } from './product-page.config';
-import { productLockModeConfigsFor } from './product-lock-mode';
 import { productUserSpeedConfigsFor } from './product-user-speed';
 import { productUserTimingConfigsFor } from './product-user-timing';
 import { productUserPeripheralConfigsFor } from './product-user-peripheral';
@@ -337,6 +336,43 @@ describe('ProductPage', () => {
     expect(writeExecutionService.execute).not.toHaveBeenCalled();
     expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
   });
+
+  it('should refresh on tab clicks even when the tab is already active',
+    async () => {
+      component.setActiveMainTab('commands');
+      await waitForCondition(() =>
+        loadService.loadProductData.calls.count() === 1 &&
+        !component.viewModel.loading,
+      );
+
+      component.setActiveMainTab('commands');
+      await waitForCondition(() =>
+        loadService.loadProductData.calls.count() === 2 &&
+        !component.viewModel.loading,
+      );
+
+      component.setActiveMainTab('settings');
+      await waitForCondition(() =>
+        loadService.loadProductData.calls.count() === 3 &&
+        !component.viewModel.loading,
+      );
+
+      component.setActiveMainTab('settings');
+      await waitForCondition(() =>
+        loadService.loadProductData.calls.count() === 4 &&
+        !component.viewModel.loading,
+      );
+
+      component.setActiveSettingsTab('basic');
+      await waitForCondition(() =>
+        loadService.loadProductData.calls.count() === 5 &&
+        !component.viewModel.loading,
+      );
+
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
 
   it('should expose name and room editing from the navigation display name',
     () => {
@@ -2669,21 +2705,17 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
       expect(Array.from(request.write.payload)).toEqual([0x00, 0x30]);
       expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
       expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
+      expect(alertCreate).not.toHaveBeenCalled();
       if (profile === 'moventiv-60') {
-        expect(alertCreate).not.toHaveBeenCalled();
         expect(request.policy).toEqual(jasmine.objectContaining({
           allowMoventivPhase1ImmediateWrite: true,
         }));
-        expect(request.authorization).toBeNull();
       } else {
-        expect(alertCreate).toHaveBeenCalledTimes(1);
-        expect(request.authorization).toEqual(jasmine.objectContaining({
-          profile,
-          operation: 'motor-close',
-          payloadHex: '00 30',
-          motorMovementConfirmed: true,
+        expect(request.policy).toEqual(jasmine.objectContaining({
+          allowGarlinePhase1ImmediateWrite: true,
         }));
       }
+      expect(request.authorization).toBeNull();
       expect(component.openCommandState.status).toBe('confirmed');
       expect(component.openCommandState.confirmationStatus)
         .toBe('not-validated');
@@ -2691,6 +2723,89 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
         .toBe(component.text.openCommand.sent);
     });
   }
+
+  it('should execute every visible Garline motor command immediately',
+    async () => {
+      const bleService = new FakeBleService();
+      const writeExecutionService = new FakeBleWriteExecutionService();
+      const alertCreate = jasmine.createSpy('create').and.resolveTo({
+        present: async () => undefined,
+        onDidDismiss: async () => ({ role: 'confirm' }),
+      });
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          { provide: AlertController, useValue: { create: alertCreate } },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          {
+            provide: ProductDataLoadService,
+            useValue: new FakeProductDataLoadService(),
+          },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile: 'garline' } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState('garline') },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      for (const command of MOTOR_COMMAND_UI_CONFIGS.garline) {
+        writeExecutionService.nextResult = {
+          ...openExecutionResult(
+            'success',
+            'not-validated',
+            null,
+            command.operation,
+          ),
+          profile: 'garline',
+          hardwareValidationStatus: 'phase1-reference-only',
+          policyOverrideUsed: true,
+        };
+        await component.requestProductCommand(command);
+      }
+
+      expect(MOTOR_COMMAND_UI_CONFIGS.garline.map((command) =>
+        command.operation,
+      )).toEqual([
+        'motor-open',
+        'motor-close',
+        'motor-open-short-timed',
+      ]);
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(3);
+      expect(alertCreate).not.toHaveBeenCalled();
+      const requests = writeExecutionService.execute.calls.allArgs()
+        .map(([request]) => request as LegacyBleWriteRequest);
+      expect(requests.map((request) => request.write.operation)).toEqual([
+        'motor-open',
+        'motor-close',
+        'motor-open-short-timed',
+      ]);
+      expect(requests.every((request) =>
+        request.authorization === null &&
+        request.policy?.allowGarlinePhase1ImmediateWrite === true &&
+        request.policy?.allowPhase1ReferenceOnly === true,
+      )).toBeTrue();
+    },
+  );
 
   it('should reject non-current or unsupported motor command configs',
     async () => {
@@ -2747,8 +2862,9 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
     },
   );
 
-  it('should show the Phase 1 advanced-tab alert for Moventiv and return to basic on cancel',
-    async () => {
+  for (const profile of ['moventiv-80', 'garline'] as const) {
+    it(`should show the Phase 1 advanced-tab alert for ${profile} and return to basic on cancel`,
+      async () => {
       const bleService = new FakeBleService();
       const writeExecutionService = new FakeBleWriteExecutionService();
       const alertCreate = jasmine.createSpy('create').and.resolveTo({
@@ -2773,13 +2889,13 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
           { provide: ProductDetection, useClass: ProductDetection },
           {
             provide: ActivatedRoute,
-            useValue: { snapshot: { data: { profile: 'moventiv-80' } } },
+            useValue: { snapshot: { data: { profile } } },
           },
           {
             provide: Router,
             useValue: {
               getCurrentNavigation: () => ({
-                extras: { state: navigationState('moventiv-80') },
+                extras: { state: navigationState(profile) },
               }),
               navigate: jasmine.createSpy('navigate').and.resolveTo(true),
             },
@@ -2797,8 +2913,9 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
 
       expect(alertCreate).toHaveBeenCalledTimes(1);
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
-    },
-  );
+      },
+    );
+  }
 });
 
 describe('ProductPage speed controls for profile variants', () => {
@@ -2914,6 +3031,12 @@ describe('ProductPage speed controls for profile variants', () => {
         expect(request.write.characteristicUuid)
           .toBe(BLE_UUIDS.userParametersCharacteristic);
         expect(request.write.payloadHex).toBe(scenario.payloadHex);
+        if (scenario.profile === 'garline') {
+          expect(request.policy).toEqual(jasmine.objectContaining({
+            allowGarlinePhase1ImmediateWrite: true,
+          }));
+          expect(request.authorization).toBeNull();
+        }
       },
     );
   }
@@ -2922,7 +3045,7 @@ describe('ProductPage speed controls for profile variants', () => {
     async () => {
       const bleService = new FakeBleService();
       const loadService = new FakeProductDataLoadService();
-      loadService.nextResult = moventivUnavailableParameterLoadResult(
+      loadService.nextResult = moventivGarlineUnavailableParameterLoadResult(
         'moventiv-60',
       );
       const writeExecutionService = new FakeBleWriteExecutionService();
@@ -2977,6 +3100,73 @@ describe('ProductPage speed controls for profile variants', () => {
         component.professionalInputControls[0].config,
         'radar',
       )).toBeFalse();
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should keep Garline Phase 1 settings visible when user and pro reads are unavailable',
+    async () => {
+      const bleService = new FakeBleService();
+      const loadService = new FakeProductDataLoadService();
+      loadService.nextResult = moventivGarlineUnavailableParameterLoadResult(
+        'garline',
+      );
+      const writeExecutionService = new FakeBleWriteExecutionService();
+      const alertCreate = jasmine.createSpy('create').and.resolveTo({
+        present: async () => undefined,
+        onDidDismiss: async () => ({ role: 'confirm' }),
+      });
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ProductPage],
+        providers: [
+          { provide: BleService, useValue: bleService },
+          { provide: AlertController, useValue: { create: alertCreate } },
+          {
+            provide: BleWriteExecutionService,
+            useValue: writeExecutionService,
+          },
+          { provide: ProductDataLoadService, useValue: loadService },
+          { provide: ProductDetection, useClass: ProductDetection },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { profile: 'garline' } } },
+          },
+          {
+            provide: Router,
+            useValue: {
+              getCurrentNavigation: () => ({
+                extras: { state: navigationState('garline') },
+              }),
+              navigate: jasmine.createSpy('navigate').and.resolveTo(true),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      const fixture = TestBed.createComponent(ProductPage);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+      await component.refreshProductData();
+
+      expect(component.showUserSpeedControls).toBeTrue();
+      expect(component.showUserTimingControls).toBeTrue();
+      expect(component.showUserPeripheralControls).toBeTrue();
+      expect(component.showProfessionalScalarControls).toBeTrue();
+      expect(component.showProfessionalAccessPrompt).toBeTrue();
+      expect(component.showLockModeControls).toBeFalse();
+      expect(component.showWeightRangeControls).toBeFalse();
+      expect(component.showProfessionalInputControls).toBeFalse();
+      expect(component.currentUserTimingValue(
+        component.userTimingControls[0].config,
+      )).toBe(1);
+      expect(component.userTimingControls.map((control) =>
+        control.config.field,
+      )).toEqual(['short-timing', 'long-timing']);
+      expect(component.visibleProfessionalScalarControls.map((control) =>
+        control.config.field,
+      )).toEqual(['near-open-speed', 'near-close-speed']);
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
     },
   );
@@ -3053,7 +3243,7 @@ describe('ProductPage speed controls for profile variants', () => {
         allowMoventivPhase1ImmediateWrite: true,
       }));
       expect(component.showApplyButtonForProfile('moventiv-60')).toBeFalse();
-      expect(component.showApplyButtonForProfile('garline')).toBeTrue();
+      expect(component.showApplyButtonForProfile('garline')).toBeFalse();
     },
   );
 
@@ -3256,6 +3446,12 @@ describe('ProductPage timing controls for profile variants', () => {
         expect(request.write.characteristicUuid)
           .toBe(BLE_UUIDS.userParametersCharacteristic);
         expect(request.write.payloadHex).toBe(scenario.payloadHex);
+        if (scenario.profile === 'garline') {
+          expect(request.policy).toEqual(jasmine.objectContaining({
+            allowGarlinePhase1ImmediateWrite: true,
+          }));
+          expect(request.authorization).toBeNull();
+        }
       },
     );
   }
@@ -3442,6 +3638,12 @@ describe('ProductPage user lighting controls for profile variants', () => {
         expect(Array.from(request.write.payload)).toEqual(scenario.payload);
         expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
         expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
+        if (scenario.profile === 'garline') {
+          expect(request.policy).toEqual(jasmine.objectContaining({
+            allowGarlinePhase1ImmediateWrite: true,
+          }));
+          expect(request.authorization).toBeNull();
+        }
         expect(component.userPeripheralWriteState.status).toBe('sent');
       },
     );
@@ -3495,7 +3697,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       ],
       commandLighting: ['static-light'],
       basicLighting: ['dynamic-light', 'rgb'],
-      locks: ['locked-open'],
+      locks: [],
       timedAssetCount: 1,
     },
   ] as const) {
@@ -3600,7 +3802,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       basicLighting: ['dynamic-light', 'rgb'],
       timings: ['short-timing', 'long-timing'],
       basicWeight: false,
-      advancedWeight: true,
+      advancedWeight: false,
     },
   ] as const) {
     it(`should render Phase 1 basic settings affordances for ${scenario.profile}`,
@@ -4040,19 +4242,6 @@ describe('ProductPage weight-range controls for profile variants', () => {
         { lower: 60, upper: 80 },
       ],
     },
-    {
-      profile: 'garline',
-      current: { lower: 80, upper: 100 },
-      accepted: { lower: 120, upper: 140 },
-      invalid: { lower: 50, upper: 60 },
-      payloadHex: '00 78 8c',
-      ranges: [
-        { lower: 60, upper: 80 },
-        { lower: 80, upper: 100 },
-        { lower: 100, upper: 120 },
-        { lower: 120, upper: 140 },
-      ],
-    },
   ] as const) {
     it(`should apply ${scenario.profile} weight ranges and writes`,
       async () => {
@@ -4087,19 +4276,16 @@ describe('ProductPage weight-range controls for profile variants', () => {
 
         await component.requestWeightRangeChange();
 
-        const expectedWriteCount = scenario.profile === 'garline' ? 1 : 3;
         expect(writeExecutionService.execute)
-          .toHaveBeenCalledTimes(expectedWriteCount);
-        if (scenario.profile !== 'garline') {
-          const requests = writeExecutionService.execute.calls.allArgs()
-            .map(([request]) => request as LegacyBleWriteRequest);
-          expect(requests.map((request) => request.write.operation))
-            .toEqual(['open-speed', 'close-speed', 'weight-range']);
-          expect(requests.map((request) => request.write.payloadHex))
-            .toEqual(['01 4b', '02 46', scenario.payloadHex]);
-          expect(requests.every((request) => request.authorization === null))
-            .toBeTrue();
-        }
+          .toHaveBeenCalledTimes(3);
+        const requests = writeExecutionService.execute.calls.allArgs()
+          .map(([request]) => request as LegacyBleWriteRequest);
+        expect(requests.map((request) => request.write.operation))
+          .toEqual(['open-speed', 'close-speed', 'weight-range']);
+        expect(requests.map((request) => request.write.payloadHex))
+          .toEqual(['01 4b', '02 46', scenario.payloadHex]);
+        expect(requests.every((request) => request.authorization === null))
+          .toBeTrue();
         const request = writeExecutionService.execute.calls.mostRecent()
           .args[0] as LegacyBleWriteRequest;
         expect(request.profile).toBe(scenario.profile);
@@ -4111,15 +4297,34 @@ describe('ProductPage weight-range controls for profile variants', () => {
         expect(request.write.payloadHex).toBe(scenario.payloadHex);
         expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
         expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
-        if (scenario.profile !== 'garline') {
-          expect(request.policy).toEqual(jasmine.objectContaining({
-            allowMoventivPhase1ImmediateWrite: true,
-          }));
-          expect(request.authorization).toBeNull();
-        }
+        expect(request.policy).toEqual(jasmine.objectContaining({
+          allowMoventivPhase1ImmediateWrite: true,
+        }));
+        expect(request.authorization).toBeNull();
       },
     );
   }
+
+  it('should not expose interactive Garline weight range tuning',
+    async () => {
+      const {
+        component,
+        fixture,
+        writeExecutionService,
+      } = await createWeightRangePage('garline', 80, 100);
+
+      expect(component.weightRangeControls).toEqual([]);
+      expect(component.showWeightRangeControls).toBeFalse();
+      expect(component.showBasicWeightRangeControls).toBeFalse();
+      expect(component.showAdvancedWeightRangeControls).toBeFalse();
+      expect(fixture.nativeElement.querySelector('[data-weight-range]'))
+        .toBeNull();
+
+      await component.requestWeightRangeChange();
+
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
 
   it('should keep Widoor weight range read-only and preserve other controls',
     async () => {
@@ -4667,6 +4872,12 @@ describe('ProductPage professional scalar controls',
           expect(request.write.payloadHex).toBe(scenario.payloadHex);
           expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
           expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
+          if (scenario.profile === 'garline') {
+            expect(request.policy).toEqual(jasmine.objectContaining({
+              allowGarlinePhase1ImmediateWrite: true,
+            }));
+            expect(request.authorization).toBeNull();
+          }
         },
       );
     }
@@ -4989,6 +5200,52 @@ describe('ProductPage professional scalar controls',
       },
     );
 
+    it('should execute Garline learning immediately without user authorization',
+      async () => {
+        const {
+          component,
+          fixture,
+          loadService,
+          writeExecutionService,
+        } = await createProfessionalScalarPage(
+          'garline',
+          professionalValue('garline', 80, 100, {
+            nearOpenSpeed: 25,
+            nearCloseSpeed: 35,
+            obstacleSensitivity: 2,
+          }),
+        );
+
+        component.setActiveMainTab('settings');
+        component.setActiveSettingsTab('advanced');
+        await waitForCondition(() =>
+          !component.viewModel.loading &&
+          loadService.loadProductData.calls.count() >= 2,
+        );
+        fixture.detectChanges();
+        const action = component.sensitiveActions.find((candidate) =>
+          candidate.action === 'learning',
+        )!;
+
+        expect(component.canExecuteSensitiveAction(action)).toBeTrue();
+
+        await component.requestSensitiveAction(action);
+
+        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        const request = writeExecutionService.execute.calls.mostRecent()
+          .args[0] as LegacyBleWriteRequest;
+        expect(request.profile).toBe('garline');
+        expect(request.write.operation).toBe('motor-learning');
+        expect(request.write.payloadHex).toBe('00 12');
+        expect(request.policy).toEqual(jasmine.objectContaining({
+          allowPhase1ReferenceOnly: true,
+          allowGarlinePhase1ImmediateWrite: true,
+          allowLearning: true,
+        }));
+        expect(request.authorization).toBeNull();
+      },
+    );
+
     for (const actionName of [
       'radar-test-1',
       'radar-test-2',
@@ -5230,7 +5487,7 @@ describe('ProductPage professional scalar controls',
 );
 
 describe('ProductPage lock-mode controls for profile variants', () => {
-  it('should expose Garline lock-open only and reject lock-closed',
+  it('should not expose Garline lock-mode controls',
     async () => {
       const bleService = new FakeBleService();
       const loadService = new FakeProductDataLoadService();
@@ -5282,19 +5539,14 @@ describe('ProductPage lock-mode controls for profile variants', () => {
 
       expect(component.lockModeControls.map((control) =>
         control.config.mode,
-      )).toEqual(['locked-open']);
-      expect(component.showLockModeControls).toBeTrue();
-      expect(fixture.nativeElement.textContent).toContain(
+      )).toEqual([]);
+      expect(component.showLockModeControls).toBeFalse();
+      expect(fixture.nativeElement.textContent).not.toContain(
         component.text.lockModeControls.lockedOpen.label,
       );
       expect(fixture.nativeElement.textContent).not.toContain(
         component.text.lockModeControls.lockedClosed.label,
       );
-
-      const unsupportedLockClosed = productLockModeConfigsFor(
-        PRODUCT_PAGE_CONFIG['moventiv-60'],
-      )[1];
-      await component.requestLockModeChange(unsupportedLockClosed, true);
 
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(alertCreate).not.toHaveBeenCalled();
@@ -5480,17 +5732,18 @@ describe('ProductPage product date maintenance actions', () => {
     },
   );
 
-  it('should write maintenance only when first date is already initialized',
-    async () => {
+  for (const profile of ['moventiv-60', 'garline'] as const) {
+    it(`should write ${profile} maintenance only when first date is already initialized`,
+      async () => {
       jasmine.clock().install();
       jasmine.clock().mockDate(new Date(2026, 11, 31, 23, 12, 30));
       try {
         const harness = await createProductDateHarness(
-          'moventiv-60',
+          profile,
           presentHistoricalDate(),
         );
         harness.writeExecutionService.nextResult = productDateExecutionResult(
-          'moventiv-60',
+          profile,
           'maintenance-date',
           '02 1a 0b 1f 17',
         );
@@ -5509,8 +5762,9 @@ describe('ProductPage product date maintenance actions', () => {
       } finally {
         jasmine.clock().uninstall();
       }
-    },
-  );
+      },
+    );
+  }
 
   it('should reject wrong maintenance code and cancellation before any write',
     async () => {
@@ -5601,7 +5855,7 @@ describe('ProductPage product date maintenance actions', () => {
     },
   );
 
-  it('should keep write success and report reload failure separately',
+  it('should keep Garline initialized maintenance success without final refresh',
     async () => {
       const harness = await createProductDateHarness(
         'garline',
@@ -5618,8 +5872,8 @@ describe('ProductPage product date maintenance actions', () => {
       expect(harness.writeExecutionService.execute).toHaveBeenCalledTimes(1);
       expect(harness.component.productDateActionState.status).toBe('sent');
       expect(harness.component.productDateActionState.message)
-        .toBe(harness.component.text.productDateActions
-          .maintenanceSentReloadFailed);
+        .toBe(harness.component.text.productDateActions.maintenanceSent);
+      expect(harness.loadService.loadProductData).toHaveBeenCalledTimes(1);
     },
   );
 
@@ -6314,8 +6568,8 @@ function oldWidoorLoadResult(): ProductDataLoadResult {
   };
 }
 
-function moventivUnavailableParameterLoadResult(
-  profile: 'moventiv-60' | 'moventiv-80',
+function moventivGarlineUnavailableParameterLoadResult(
+  profile: 'moventiv-60' | 'moventiv-80' | 'garline',
 ): ProductDataLoadResult {
   const base = completeLoadResult('partial-success', profile);
   return {

@@ -267,7 +267,9 @@ export class BleReadService implements OnDestroy {
       if (profile === 'widoor') {
         return BLE_UUIDS.widoorService;
       }
-      if (profile === 'moventiv-60' || profile === 'moventiv-80') {
+      if (profile === 'moventiv-60' ||
+          profile === 'moventiv-80' ||
+          profile === 'garline') {
         return BLE_UUIDS.moventivGarlineService;
       }
     }

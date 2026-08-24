@@ -81,6 +81,7 @@ export interface LegacyBleWriteExecutionPolicy {
   readonly allowPhase1ReferenceOnly?: true;
   readonly allowWidoorPhase1ImmediateWrite?: true;
   readonly allowMoventivPhase1ImmediateWrite?: true;
+  readonly allowGarlinePhase1ImmediateWrite?: true;
   readonly allowLearning?: true;
   readonly allowReset?: true;
   readonly allowPhysicalValidationAttempt?: {
@@ -390,7 +391,8 @@ export class BleWriteExecutionService implements OnDestroy {
     this.pruneAuthorizations(now);
     if (authorization == null || authorization.confirmedByUser !== true) {
       if (this.isWidoorPhase1ImmediateWrite(request) ||
-          this.isMoventivPhase1ImmediateWrite(request)) {
+          this.isMoventivPhase1ImmediateWrite(request) ||
+          this.isGarlinePhase1ImmediateWrite(request)) {
         return null;
       }
       return this.result(
@@ -753,6 +755,19 @@ export class BleWriteExecutionService implements OnDestroy {
     );
   }
 
+  private isGarlinePhase1ImmediateWrite(
+    request: LegacyBleWriteRequest,
+  ): boolean {
+    if (request.policy?.allowGarlinePhase1ImmediateWrite !== true ||
+        request.profile !== 'garline' ||
+        request.identification.profile !== 'garline' ||
+        request.identification.confidence !== 'strong' ||
+        request.write.profile !== 'garline') {
+      return false;
+    }
+    return GARLINE_PHASE1_IMMEDIATE_OPERATIONS.has(request.write.operation);
+  }
+
   private result(
     request: LegacyBleWriteRequest,
     startedAt: number,
@@ -876,6 +891,24 @@ const MOVENTIV_PHASE1_IMMEDIATE_OPERATIONS = new Set<string>([
   'near-open-torque',
   'near-close-torque',
   'braking-open-power',
+  'obstacle-sensitivity',
+]);
+
+const GARLINE_PHASE1_IMMEDIATE_OPERATIONS = new Set<string>([
+  'motor-open',
+  'motor-close',
+  'motor-open-short-timed',
+  'motor-learning',
+  'open-speed',
+  'close-speed',
+  'short-timing',
+  'long-timing',
+  'static-light',
+  'dynamic-light',
+  'rgb-indicator',
+  'name-room',
+  'near-open-speed',
+  'near-close-speed',
   'obstacle-sensitivity',
 ]);
 

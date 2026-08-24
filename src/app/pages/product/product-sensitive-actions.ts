@@ -108,7 +108,9 @@ export function productSensitiveActionWriteSteps(
       ? { allowWidoorPhase1ImmediateWrite: true } as const
       : config.profile === 'moventiv-60' || config.profile === 'moventiv-80'
         ? { allowMoventivPhase1ImmediateWrite: true } as const
-        : {};
+        : config.profile === 'garline'
+          ? { allowGarlinePhase1ImmediateWrite: true } as const
+          : {};
     return Object.freeze([
       step(
         encodeLegacyMotorCommand(config.profile, 'LEARNING'),
