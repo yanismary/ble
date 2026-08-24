@@ -146,13 +146,9 @@
                 <p class="cmd-label">
                   {{ productCommandDisplayLabel(command) }}
                 </p>
-                @if (command.disabledReason) {
-                  <p><small>{{ command.disabledReason }}</small></p>
-                }
               </div>
             }
           </div>
-          <p class="command-warning">{{ text.widoorCommands.warning }}</p>
           @if (showLockModeControls) {
             <div class="cmd-list lock-mode-controls">
               <div class="cmd-head">
@@ -187,19 +183,6 @@
                     (ionChange)="requestLockModeChange(lockControl.config, $event)"
                   ></ion-toggle>
                 </div>
-              }
-              @if (lockModeWriteState.message) {
-                <p
-                  class="command-state"
-                  role="status"
-                  aria-live="polite"
-                  [attr.data-tone]="lockModeWriteState.status === 'failed' ? 'error' : 'neutral'"
-                >
-                  @if (lockModeWriteState.status === 'executing') {
-                    <ion-spinner name="crescent"></ion-spinner>
-                  }
-                  <span>{{ lockModeWriteState.message }}</span>
-                </p>
               }
             </div>
           }
@@ -237,40 +220,9 @@
                   ></ion-toggle>
                 </div>
               }
-              @if (userPeripheralWriteState.message) {
-                <p
-                  class="command-state"
-                  role="status"
-                  aria-live="polite"
-                  [attr.data-tone]="userPeripheralWriteState.status === 'failed' ? 'error' : 'neutral'"
-                >
-                  @if (userPeripheralWriteState.status === 'executing') {
-                    <ion-spinner name="crescent"></ion-spinner>
-                  }
-                  <span>{{ userPeripheralWriteState.message }}</span>
-                </p>
-              }
             </div>
           }
-          @if (displayedOpenCommandStatus !== 'idle') {
-            <p
-              class="command-state"
-              role="status"
-              aria-live="polite"
-              [attr.data-status]="displayedOpenCommandStatus"
-              [attr.data-tone]="openCommandTone"
-            >
-              @if (displayedOpenCommandStatus === 'executing') {
-                <ion-spinner name="crescent"></ion-spinner>
-              }
-              <span>{{ displayedOpenCommandMessage }}</span>
-            </p>
-            @if (openCommandState.secondaryMessage) {
-              <p class="command-secondary-message">
-                {{ openCommandState.secondaryMessage }}
-              </p>
-            }
-          }
+          @if (false) {
           <details class="technical-details command-history">
             <summary>{{ text.commandHistory.title }}</summary>
             @if (commandHistory.length === 0) {
@@ -303,6 +255,7 @@
               </ol>
             }
           </details>
+          }
         } @else {
           <p>{{ text.commandsUnavailable }}</p>
         }

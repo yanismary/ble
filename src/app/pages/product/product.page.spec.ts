@@ -1842,7 +1842,7 @@ describe('ProductPage', () => {
     },
   );
 
-  it('should retain only five terminal commands and clear history on disconnect',
+  it('should retain command history internally without rendering it',
     async () => {
       alertRole = 'confirm';
       for (let index = 0; index < 6; index += 1) {
@@ -1864,8 +1864,9 @@ describe('ProductPage', () => {
       const details = fixture.nativeElement.querySelector(
         'details.command-history',
       ) as HTMLDetailsElement;
-      expect(details.open).toBeFalse();
-      expect(details.textContent).not.toContain('Native OPEN error');
+      expect(details).toBeNull();
+      expect((fixture.nativeElement as HTMLElement).textContent)
+        .not.toContain(component.text.commandHistory.title);
 
       bleService.disconnect();
       expect(component.commandHistory).toEqual([]);
@@ -3821,6 +3822,23 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
             '.user-peripheral-command-controls .cmd-row-icon',
           )?.getAttribute('src')).toBe('assets/img/icon_light_on.svg');
         }
+        const commandsSection = element.querySelector<HTMLElement>(
+          '[aria-labelledby="commands-title"]',
+        );
+        expect(commandsSection).not.toBeNull();
+        expect(commandsSection?.querySelector('.command-history')).toBeNull();
+        expect(commandsSection?.querySelector('.command-warning')).toBeNull();
+        expect(commandsSection?.querySelector('.command-state')).toBeNull();
+        expect(commandsSection?.querySelector('.command-secondary-message'))
+          .toBeNull();
+        expect(commandsSection?.textContent).not.toContain(
+          component.text.commandHistory.title,
+        );
+        expect(commandsSection?.textContent).not.toContain(
+          component.text.widoorCommands.warning,
+        );
+        expect(commandsSection?.textContent).not.toContain('payload');
+        expect(commandsSection?.textContent).not.toContain('Code :');
         expect(writeExecutionService.execute).not.toHaveBeenCalled();
         expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
       },
