@@ -39,8 +39,8 @@ describe('Product page configuration', () => {
     expect(moventiv80.productName).toContain('80');
     expect(moventiv60.weightRanges[moventiv60.weightRanges.length - 1])
       .toEqual({
-      lower: 50,
-      upper: 60,
+      lower: 60,
+      upper: 80,
     });
     expect(moventiv80.weightRanges[moventiv80.weightRanges.length - 1])
       .toEqual({
@@ -58,9 +58,10 @@ describe('Product page configuration', () => {
       (config.visibleLockModes as readonly string[]).includes('locked-closed'),
     ).toBeFalse();
     expect(config.userFields).toContain('long-timing');
+    expect(config.maximumWeightLabel).toBe('140 kg');
     const professionalFields =
       config.professionalFields as readonly string[];
-    expect(professionalFields.includes('weight-range')).toBeTrue();
+    expect(professionalFields.includes('weight-range')).toBeFalse();
     expect(professionalFields.includes('peripherals')).toBeFalse();
     expect(professionalFields.includes('near-open-torque')).toBeFalse();
     expect(config.weightRanges).toEqual([

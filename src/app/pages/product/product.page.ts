@@ -1,4 +1,3 @@
-import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   NgZone,
@@ -229,7 +228,6 @@ type ProductShellSettingsTab = 'basic' | 'advanced';
     IonTitle,
     IonToggle,
     IonToolbar,
-    NgTemplateOutlet,
   ],
 })
 export class ProductPage implements OnDestroy {
@@ -1100,16 +1098,21 @@ export class ProductPage implements OnDestroy {
     if (value === null) {
       return [];
     }
-    return [
+    const rows: ProductDisplayRow[] = [
       this.row('motor-version', this.text.version.motor,
         this.formatSoftwareVersion(value.motorSoftware)),
-      this.row('ble-version', this.text.version.ble,
-        this.formatSoftwareVersion(value.bleSoftware)),
       this.row('stack-version', this.text.version.stack,
         this.formatStackVersion(value.stack)),
-      this.row('motor-address', this.text.version.motorAddress,
-        value.motorAddressHex ?? this.text.noValue),
+      this.row('ble-version', this.text.version.ble,
+        this.formatSoftwareVersion(value.bleSoftware)),
+      this.row('control-hardware', this.text.version.controlHardware,
+        `${value.productType}.${value.productSubtype}`),
     ];
+    if (this.config.profile !== 'widoor') {
+      rows.push(this.row('motor-address', this.text.version.motorAddress,
+        value.motorAddressHex ?? this.text.noValue));
+    }
+    return rows;
   }
 
   get versionTechnicalRows(): readonly ProductDisplayRow[] {
@@ -1323,73 +1326,41 @@ export class ProductPage implements OnDestroy {
 
   get motorRows(): readonly ProductDisplayRow[] {
     const value = this.viewModel.motorState;
-    if (value === null) {
+    if (value === null || value.switches === null) {
       return [];
     }
-    const rows: ProductDisplayRow[] = [
-      this.row('motor-raw-state', this.text.motor.rawState,
-        value.state === null ? this.text.noValue : this.formatByte(value.state)),
-      this.row('motor-state-label', this.text.motor.stateLabel,
-        this.motorStateLabel(value.state)),
-      this.row('motor-position', this.text.motor.currentPosition,
-        this.optionalNumber(value.currentPosition)),
-      this.row('motor-maximum', this.text.motor.maximumPosition,
-        this.optionalNumber(value.maximumPosition)),
-    ];
-    if (value.currentPosition !== null &&
-        value.maximumPosition !== null &&
-        value.maximumPosition > 0) {
-      rows.push(this.row(
-        'motor-percentage',
-        this.text.motor.percentage,
-        `${Math.round(
-          (value.currentPosition / value.maximumPosition) * 100,
-        )} %`,
+    const rows: ProductDisplayRow[] = [];
+    if (!this.config.hiddenMotorSwitches.includes('push-and-go')) {
+      rows.push(this.booleanRow(
+        'push-and-go',
+        this.text.motor.pushAndGo,
+        value.switches.pushAndGo,
       ));
     }
-    rows.push(this.row(
-      'motor-error',
-      this.text.motor.error,
-      this.optionalNumber(value.error),
+    rows.push(this.booleanRow(
+      'ble-switch',
+      this.text.motor.ble,
+      value.switches.ble,
     ));
-    if (value.switches !== null) {
-      rows.push(this.row(
-        'motor-switches',
-        this.text.motor.switchesRaw,
-        this.formatByte(value.switches.raw),
-      ));
-      if (!this.config.hiddenMotorSwitches.includes('push-and-go')) {
-        rows.push(this.booleanRow(
-          'push-and-go',
-          this.text.motor.pushAndGo,
-          value.switches.pushAndGo,
-        ));
-      }
+    if (!this.config.hiddenMotorSwitches.includes('automatic-manual')) {
       rows.push(this.booleanRow(
-        'ble-switch',
-        this.text.motor.ble,
-        value.switches.ble,
-      ));
-      if (!this.config.hiddenMotorSwitches.includes('automatic-manual')) {
-        rows.push(this.booleanRow(
-          'automatic-manual',
-          this.text.motor.automaticManual,
-          value.switches.automaticManual,
-        ));
-      }
-      if (!this.config.hiddenMotorSwitches.includes('direction')) {
-        rows.push(this.booleanRow(
-          'direction',
-          this.text.motor.direction,
-          value.switches.direction,
-        ));
-      }
-      rows.push(this.booleanRow(
-        'pairing',
-        this.text.motor.pairing,
-        value.switches.pairing,
+        'automatic-manual',
+        this.text.motor.automaticManual,
+        value.switches.automaticManual,
       ));
     }
+    if (!this.config.hiddenMotorSwitches.includes('direction')) {
+      rows.push(this.booleanRow(
+        'direction',
+        this.text.motor.direction,
+        value.switches.direction,
+      ));
+    }
+    rows.push(this.booleanRow(
+      'pairing',
+      this.text.motor.pairing,
+      value.switches.pairing,
+    ));
     return rows;
   }
 

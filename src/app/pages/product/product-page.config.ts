@@ -183,7 +183,7 @@ const PRODUCT_PAGE_CONFIG_DEFINITIONS = {
     profile: 'garline',
     route: '/product/garline',
     productName: 'GARLINE',
-    maximumWeightLabel: null,
+    maximumWeightLabel: '140 kg',
     weightRanges: legacyWeightRanges('garline'),
     userFields: [
       'open-speed',

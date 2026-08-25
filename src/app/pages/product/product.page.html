@@ -1154,12 +1154,6 @@
           <ion-list-header class="mantion-list-header product-information-header">
             <ion-label>{{ text.sections.dates }}</ion-label>
           </ion-list-header>
-          <ng-container
-            [ngTemplateOutlet]="readStatus"
-            [ngTemplateOutletContext]="{
-              $implicit: viewModel.reads.datesAndCycles
-            }"
-          ></ng-container>
           @if (viewModel.reads.datesAndCycles.status === 'available') {
             @for (row of informationDateRows; track row.key) {
               <ion-item
@@ -1200,10 +1194,6 @@
           <ion-list-header class="mantion-list-header product-information-header">
             <ion-label>{{ text.sections.version }}</ion-label>
           </ion-list-header>
-          <ng-container
-            [ngTemplateOutlet]="readStatus"
-            [ngTemplateOutletContext]="{ $implicit: viewModel.reads.version }"
-          ></ng-container>
           @if (viewModel.reads.version.status === 'available') {
             @for (row of versionRows; track row.key) {
               <ion-item
@@ -1240,52 +1230,6 @@
           </ion-list>
         }
       </article>
-
-      @if (hasTechnicalDetails) {
-        <details class="technical-details product-technical-details product-information-technical">
-          <summary>{{ text.technicalDetails }}</summary>
-          <ng-container
-            [ngTemplateOutlet]="technicalRead"
-            [ngTemplateOutletContext]="{
-              $implicit: viewModel.reads.version,
-              title: text.sections.version,
-              rows: versionTechnicalRows
-            }"
-          ></ng-container>
-          <ng-container
-            [ngTemplateOutlet]="technicalRead"
-            [ngTemplateOutletContext]="{
-              $implicit: viewModel.reads.datesAndCycles,
-              title: text.sections.dates,
-              rows: datesTechnicalRows
-            }"
-          ></ng-container>
-          <ng-container
-            [ngTemplateOutlet]="technicalRead"
-            [ngTemplateOutletContext]="{
-              $implicit: viewModel.reads.maintenance,
-              title: text.sections.maintenance,
-              rows: maintenanceRows
-            }"
-          ></ng-container>
-          <ng-container
-            [ngTemplateOutlet]="technicalRead"
-            [ngTemplateOutletContext]="{
-              $implicit: viewModel.reads.userParameters,
-              title: text.sections.userSettings,
-              rows: userTechnicalRows
-            }"
-          ></ng-container>
-          <ng-container
-            [ngTemplateOutlet]="technicalRead"
-            [ngTemplateOutletContext]="{
-              $implicit: viewModel.reads.professionalParameters,
-              title: text.sections.professionalSettings,
-              rows: professionalTechnicalRows
-            }"
-          ></ng-container>
-        </details>
-      }
       </section>
     }
   </main>

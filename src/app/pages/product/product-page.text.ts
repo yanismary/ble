@@ -386,10 +386,11 @@ export const PRODUCT_PAGE_TEXT = {
     motor: 'Logiciel moteur',
     ble: 'Logiciel Bluetooth',
     stack: 'Stack BLE',
+    controlHardware: 'Matériel électronique',
     productType: 'Type produit brut',
     productSubtype: 'Sous-type',
     crc: 'CRC',
-    motorAddress: 'Adresse moteur',
+    motorAddress: 'Numéro de série',
   },
   dates: {
     firstCommissioning: 'Première mise en service',

@@ -2095,7 +2095,6 @@ describe('ProductPage', () => {
     expect(text).toContain(component.text.user.rgb);
     expect(text).not.toContain(component.text.user.staticLight);
     expect(text).not.toContain(component.text.user.dynamicLight);
-    expect(text).toContain('Non');
     expect(text).toContain('3.5.3.348');
     expect(text).toContain('Initialisations');
     expect(text).toContain('25');
@@ -2236,16 +2235,8 @@ describe('ProductPage', () => {
         'details.product-technical-details',
       );
 
-      expect(details).not.toBeNull();
-      expect(details?.open).toBeFalse();
-      expect(details?.textContent).toContain(
-        BLE_UUIDS.userParametersCharacteristic,
-      );
-      const mainPresentation = element.cloneNode(true) as HTMLElement;
-      mainPresentation.querySelectorAll('details').forEach(
-        (item) => item.remove(),
-      );
-      expect(mainPresentation.textContent).not.toContain(
+      expect(details).toBeNull();
+      expect(element.textContent).not.toContain(
         BLE_UUIDS.userParametersCharacteristic,
       );
       expect(element.textContent).not.toContain(
@@ -2263,14 +2254,8 @@ describe('ProductPage', () => {
         'details.product-technical-details',
       );
 
-      expect(details).not.toBeNull();
-      expect(details?.hasAttribute('open')).toBeFalse();
-      expect(details?.textContent).toContain(component.text.rawFrame);
-      const mainPresentation = element.cloneNode(true) as HTMLElement;
-      mainPresentation.querySelectorAll('details').forEach(
-        (item) => item.remove(),
-      );
-      expect(mainPresentation.textContent).not.toContain(
+      expect(details).toBeNull();
+      expect(element.textContent).not.toContain(
         component.text.rawFrame,
       );
     },
@@ -2417,10 +2402,19 @@ describe('ProductPage', () => {
     () => {
       bleService.emitMotorState([0x21, 0, 0, 0, 100, 0, 0x08]);
       fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
       const text = fixture.nativeElement.textContent as string;
 
-      expect(text).toContain('Début ouverture');
-      expect(text).toContain('0 %');
+      expect(text).toContain(component.text.motor.ble);
+      expect(text).toContain(component.text.motor.automaticManual);
+      expect(text).toContain(component.text.motor.direction);
+      expect(text).toContain(component.text.motor.pairing);
+      expect(element.querySelector(
+        '.product-information-row[data-info-row="motor-state-label"]',
+      )).toBeNull();
+      expect(element.querySelector(
+        '.product-information-row[data-info-row="motor-percentage"]',
+      )).toBeNull();
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
     },
   );
@@ -4141,8 +4135,8 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
     },
     {
       profile: 'garline',
-      generalRows: ['current-weight-range'],
-      absentGeneralRows: ['maximum-weight'],
+      generalRows: ['maximum-weight', 'current-weight-range'],
+      absentGeneralRows: [],
       maintenanceRows: ['last-maintenance', 'cycles-since-maintenance'],
       absentMaintenanceRows: [],
       supplementalRows: [
@@ -4174,9 +4168,21 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         const informationLists = informationSection?.querySelectorAll(
           '.product-information-list',
         );
+        const informationText = informationSection?.textContent ?? '';
 
         expect(informationSection).not.toBeNull();
         expect(informationLists?.length).toBeGreaterThanOrEqual(4);
+        expect(informationSection?.querySelector('.read-state')).toBeNull();
+        expect(informationSection?.querySelector('.read-state-detail'))
+          .toBeNull();
+        expect(informationSection?.querySelector('.product-information-technical'))
+          .toBeNull();
+        expect(informationText).not.toContain(component.text.technicalDetails);
+        expect(informationText).not.toContain(component.text.rawFrame);
+        expect(informationText).not.toContain(component.text.serviceUuid);
+        expect(informationText).not.toContain(component.text.characteristicUuid);
+        expect(informationText).not.toContain('Phase 1');
+        expect(informationText).not.toContain('Phase 2');
         for (const row of scenario.generalRows) {
           expect(informationSection?.querySelector(
             `.product-information-row[data-info-row="${row}"]`,
@@ -4225,6 +4231,21 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
           '.product-information-row[data-info-row="stack-version"]',
         )).not.toBeNull();
         expect(informationSection?.querySelector(
+          '.product-information-row[data-info-row="control-hardware"]',
+        )).not.toBeNull();
+        if (scenario.profile === 'widoor') {
+          expect(informationSection?.querySelector(
+            '.product-information-row[data-info-row="motor-address"]',
+          )).toBeNull();
+        } else {
+          expect(informationSection?.querySelector(
+            '.product-information-row[data-info-row="motor-address"]',
+          )).not.toBeNull();
+        }
+        if (scenario.profile === 'garline') {
+          expect(informationText).toContain('140 kg');
+        }
+        expect(informationSection?.querySelector(
           'ion-button',
         )).toBeNull();
         expect(writeExecutionService.execute).not.toHaveBeenCalled();
@@ -4233,7 +4254,105 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
     );
   }
 
-  it('should keep technical information collapsible without triggering writes',
+  for (const scenario of [
+    {
+      profile: 'widoor',
+      visibleSwitches: ['ble-switch', 'automatic-manual', 'direction', 'pairing'],
+      hiddenSwitches: ['push-and-go'],
+    },
+    {
+      profile: 'moventiv-60',
+      visibleSwitches: [
+        'push-and-go',
+        'ble-switch',
+        'automatic-manual',
+        'direction',
+        'pairing',
+      ],
+      hiddenSwitches: [],
+    },
+    {
+      profile: 'moventiv-80',
+      visibleSwitches: [
+        'push-and-go',
+        'ble-switch',
+        'automatic-manual',
+        'direction',
+        'pairing',
+      ],
+      hiddenSwitches: [],
+    },
+    {
+      profile: 'garline',
+      visibleSwitches: ['ble-switch', 'pairing'],
+      hiddenSwitches: ['push-and-go', 'automatic-manual', 'direction'],
+    },
+  ] as const) {
+    it(`should render only Phase 1 motor switch information for ${scenario.profile}`,
+      async () => {
+        const { fixture, component } =
+          await createProductCommandsUiPage(scenario.profile);
+
+        component.viewModel = {
+          ...component.viewModel,
+          motorState: {
+            rawHex: '01 0a 64 07 ff',
+            length: 5,
+            state: 1,
+            currentPosition: 10,
+            maximumPosition: 100,
+            error: 7,
+            switches: {
+              raw: 0xff,
+              unknownHighBits: 0xf8,
+              pushAndGo: true,
+              ble: true,
+              automaticManual: false,
+              direction: true,
+              pairing: false,
+            },
+          },
+        };
+        component.setActiveMainTab('information');
+        fixture.detectChanges();
+
+        const element = fixture.nativeElement as HTMLElement;
+        const informationSection = element.querySelector<HTMLElement>(
+          'section[aria-labelledby="information-title"]',
+        );
+        const informationText = informationSection?.textContent ?? '';
+
+        for (const row of scenario.visibleSwitches) {
+          expect(informationSection?.querySelector(
+            `.product-information-row[data-info-row="${row}"]`,
+          )).not.toBeNull();
+        }
+        for (const row of scenario.hiddenSwitches) {
+          expect(informationSection?.querySelector(
+            `.product-information-row[data-info-row="${row}"]`,
+          )).toBeNull();
+        }
+        for (const row of [
+          'motor-raw-state',
+          'motor-state-label',
+          'motor-position',
+          'motor-maximum',
+          'motor-percentage',
+          'motor-error',
+          'motor-switches',
+        ]) {
+          expect(informationSection?.querySelector(
+            `.product-information-row[data-info-row="${row}"]`,
+          )).toBeNull();
+        }
+        expect(informationText).not.toContain(component.text.motor.rawState);
+        expect(informationText).not.toContain(component.text.motor.stateLabel);
+        expect(informationText).not.toContain(component.text.motor.switchesRaw);
+      },
+    );
+  }
+
+  it('should hide V2.1 technical information without triggering writes',
     async () => {
       const { fixture, component, writeExecutionService, bleService } =
         await createProductCommandsUiPage('moventiv-80');
@@ -4246,11 +4365,13 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         '.product-information-technical',
       );
 
-      expect(technicalDetails).not.toBeNull();
-      expect(technicalDetails?.open).toBeFalse();
-      technicalDetails?.setAttribute('open', '');
-      technicalDetails?.dispatchEvent(new Event('toggle'));
-      fixture.detectChanges();
+      expect(technicalDetails).toBeNull();
+      expect(element.textContent).not.toContain(component.text.technicalDetails);
+      expect(element.textContent).not.toContain(component.text.rawFrame);
+      expect(element.textContent).not.toContain(component.text.serviceUuid);
+      expect(element.textContent).not.toContain(
+        component.text.characteristicUuid,
+      );
 
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
