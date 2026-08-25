@@ -1,5 +1,17 @@
 <ion-header>
   <ion-toolbar class="mantion-navbar product-navbar">
+    <ion-buttons slot="start">
+      <ion-button
+        type="button"
+        fill="clear"
+        class="product-navbar-button product-back-button"
+        aria-label="Retour"
+        [disabled]="returningToScan"
+        (click)="backToScan()"
+      >
+        <ion-icon name="arrow-back" aria-hidden="true"></ion-icon>
+      </ion-button>
+    </ion-buttons>
     <ion-title>{{ config.productName }}</ion-title>
     <ion-buttons slot="end">
       <ion-button
@@ -78,22 +90,6 @@
 <ion-content [fullscreen]="true">
   <main class="product-page-layout">
     <section class="product-shell-status">
-      <div class="product-actions">
-        <ion-button
-          type="button"
-          fill="outline"
-          color="medium"
-          (click)="backToScan()"
-          [disabled]="returningToScan"
-        >
-          {{ text.backToScan }}
-        </ion-button>
-      </div>
-      @if (returnToScanErrorMessage) {
-        <p class="command-state" role="alert" data-tone="error">
-          {{ returnToScanErrorMessage }}
-        </p>
-      }
       @if (viewModel.loading) {
         <p class="product-loading" role="status">
           <ion-spinner name="crescent"></ion-spinner>

@@ -23,6 +23,7 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
+  ToastController,
 } from '@ionic/angular/standalone';
 
 import {
@@ -75,6 +76,9 @@ import {
 import {
   readRoomCacheEntry,
 } from '../../core/services/app-room-cache';
+import {
+  ProductExitStateService,
+} from '../../core/services/product-exit-state.service';
 import {
   PRODUCT_PAGE_CONFIG,
 } from '../product/product-page.config';
@@ -184,7 +188,9 @@ export class ScanPage implements OnDestroy {
   private readonly ngZone = inject(NgZone);
   private readonly productDetection = inject(ProductDetection);
   private readonly productDataLoadService = inject(ProductDataLoadService);
+  private readonly productExitState = inject(ProductExitStateService);
   private readonly router = inject(Router);
+  private readonly toastController = inject(ToastController);
   private readonly disconnectionSubscription: Subscription;
   private scanTimeout: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
@@ -254,7 +260,18 @@ export class ScanPage implements OnDestroy {
         this.ngZone.run(() => this.handleDisconnection(event));
       },
     );
-    void this.disconnectExistingNativeConnectionForScanEntry();
+  }
+
+  async ionViewWillEnter(): Promise<void> {
+    const productExit = this.productExitState.consume();
+    if (productExit !== null) {
+      this.resetAfterProductExit(productExit.disconnectStatus === 'success');
+      if (productExit.disconnectStatus === 'success') {
+        await this.presentDisconnectedToast();
+      }
+      return;
+    }
+    await this.disconnectExistingNativeConnectionForScanEntry();
   }
 
   async openTutorial(): Promise<void> {
@@ -355,8 +372,7 @@ export class ScanPage implements OnDestroy {
       !this.connecting &&
       !this.bleRecoveryInProgress &&
       !this.entryConnectionCleanupInProgress &&
-      this.connectedDeviceId === null &&
-      this.bleService.connectedDeviceId === null;
+      this.connectedDeviceId === null;
   }
 
   get canRunScanBleErrorAction(): boolean {
@@ -552,6 +568,20 @@ export class ScanPage implements OnDestroy {
 
   async startScan(): Promise<void> {
     if (!this.canStartScan) {
+      return;
+    }
+
+    if (this.bleService.connectedDeviceId !== null) {
+      const disconnected =
+        await this.disconnectExistingNativeConnectionForScanEntry();
+      if (!disconnected) {
+        return;
+      }
+      this.devices = [];
+      await this.presentDisconnectedToast();
+    }
+
+    if (!this.canStartScan || this.bleService.connectedDeviceId !== null) {
       return;
     }
 
@@ -990,9 +1020,9 @@ export class ScanPage implements OnDestroy {
   }
 
   private async disconnectExistingNativeConnectionForScanEntry():
-    Promise<void> {
+    Promise<boolean> {
     if (this.bleService.connectedDeviceId === null) {
-      return;
+      return true;
     }
 
     this.entryConnectionCleanupInProgress = true;
@@ -1005,10 +1035,9 @@ export class ScanPage implements OnDestroy {
 
     try {
       await this.bleService.disconnect();
-    } catch (error: unknown) {
-      if (!this.destroyed) {
-        this.errorMessage = this.toErrorMessage(error);
-      }
+      return this.bleService.connectedDeviceId === null;
+    } catch {
+      return false;
     } finally {
       if (!this.destroyed) {
         this.connectedDeviceId = null;
@@ -1239,6 +1268,42 @@ export class ScanPage implements OnDestroy {
         this.readingIdentification = false;
       }
     }
+  }
+
+  private resetAfterProductExit(clearDevices: boolean): void {
+    this.resetProductRead(true);
+    this.resetMotorTest();
+    this.clearMotorState();
+    this.clearIdentification();
+    this.services = [];
+    this.connectedDeviceId = null;
+    this.connectedBleGeneration = null;
+    this.connecting = false;
+    this.discoveringServices = false;
+    this.retryingServiceDiscovery = false;
+    this.disconnectingAfterDiscoveryError = false;
+    this.serviceDiscoveryRetryDeviceId = null;
+    this.serviceDiscoveryRetryGeneration = null;
+    this.discoveryError = null;
+    this.connectionError = null;
+    this.selectedDeviceId = null;
+    this.scanning = false;
+    this.clearScanTimeout();
+    if (clearDevices) {
+      this.devices = [];
+    }
+  }
+
+  private async presentDisconnectedToast(): Promise<void> {
+    if (this.destroyed) {
+      return;
+    }
+    const toast = await this.toastController.create({
+      message: this.productPageText.states.disconnected,
+      duration: 500,
+      position: 'middle',
+    });
+    await toast.present();
   }
 
   private async connectDeviceWithPhase1Retries(deviceId: string):

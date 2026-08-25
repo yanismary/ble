@@ -1,7 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AlertController } from '@ionic/angular/standalone';
-import { Observable, Subject } from 'rxjs';
+import {
+  AlertController,
+  IonRouterOutlet,
+  Platform,
+} from '@ionic/angular/standalone';
+import { Observable, Subject, Subscription } from 'rxjs';
 
 import {
   BleDisconnectionEvent,
@@ -50,6 +54,9 @@ import {
   ROOM_ASSIGNMENTS_STORAGE_KEY,
   readRoomCacheEntry,
 } from '../../core/services/app-room-cache';
+import {
+  ProductExitStateService,
+} from '../../core/services/product-exit-state.service';
 import {
   ProductPage,
   formatProductTimestamp,
@@ -108,6 +115,30 @@ class FakeBleService {
       receivedAt: 20,
     });
   }
+}
+
+class FakeBackButton {
+  private handler: (() => Promise<unknown> | void) | null = null;
+  readonly subscribeWithPriority = jasmine.createSpy('subscribeWithPriority')
+    .and.callFake((
+      _priority: number,
+      handler: () => Promise<unknown> | void,
+    ): Subscription => {
+      this.handler = handler;
+      return new Subscription(() => {
+        if (this.handler === handler) {
+          this.handler = null;
+        }
+      });
+    });
+
+  async trigger(): Promise<void> {
+    await this.handler?.();
+  }
+}
+
+class FakePlatform {
+  readonly backButton = new FakeBackButton();
 }
 
 class FakeBleWriteExecutionService {
@@ -222,6 +253,9 @@ describe('ProductPage', () => {
   let alertOptions: Record<string, unknown>[];
   let routerNavigate: jasmine.Spy;
   let routerNavigationState: ProductPageNavigationState;
+  let platform: FakePlatform;
+  let routerOutlet: { swipeGesture: boolean };
+  let productExitState: ProductExitStateService;
 
   beforeEach(async () => {
     localStorage.removeItem(ROOM_ASSIGNMENTS_STORAGE_KEY);
@@ -241,6 +275,8 @@ describe('ProductPage', () => {
     );
     routerNavigate = jasmine.createSpy('navigate').and.resolveTo(true);
     routerNavigationState = navigationState('widoor');
+    platform = new FakePlatform();
+    routerOutlet = { swipeGesture: true };
 
     await TestBed.configureTestingModule({
       imports: [ProductPage],
@@ -266,11 +302,14 @@ describe('ProductPage', () => {
             navigate: routerNavigate,
           },
         },
+        { provide: Platform, useValue: platform },
+        { provide: IonRouterOutlet, useValue: routerOutlet },
       ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ProductPage);
     component = fixture.componentInstance;
+    productExitState = TestBed.inject(ProductExitStateService);
     fixture.detectChanges();
   });
 
@@ -320,16 +359,12 @@ describe('ProductPage', () => {
 
     const element = fixture.nativeElement as HTMLElement;
     const textContent = element.textContent ?? '';
-    const actionLabels = Array.from(
-      element.querySelectorAll<HTMLIonButtonElement>(
-        '.product-actions ion-button',
-      ),
-    ).map((button) => button.textContent?.trim() ?? '');
-
     expect(element.querySelector('.product-summary')).toBeNull();
     expect(element.querySelector('.product-identity-details')).toBeNull();
-    expect(element.querySelector('.product-actions')).not.toBeNull();
-    expect(actionLabels).toEqual([component.text.backToScan]);
+    expect(element.querySelector('.product-actions')).toBeNull();
+    expect(element.querySelector('.product-back-button')).not.toBeNull();
+    expect(element.querySelector('.product-navbar-icon.ai-param')).not.toBeNull();
+    expect(textContent).not.toContain(component.text.backToScan);
     expect(textContent).not.toContain(component.text.refresh);
     expect(textContent).not.toContain('Verrouiller tous les réglages');
     expect(textContent).not.toContain(component.text.sections.identity);
@@ -2375,17 +2410,47 @@ describe('ProductPage', () => {
     }
   });
 
-  it('should return to Scan from the product shell',
+  it('should return to Scan from the toolbar back control',
     async () => {
       const disconnectSpy = spyOn(bleService, 'disconnect')
         .and.callThrough();
+      const backButton = fixture.nativeElement.querySelector(
+        '.product-back-button',
+      ) as HTMLIonButtonElement;
 
-      await component.backToScan();
+      backButton.click();
+      await waitForCondition(() => routerNavigate.calls.count() === 1);
 
       expect(disconnectSpy).toHaveBeenCalledTimes(1);
       expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
       expect(bleService.connectedDeviceId).toBeNull();
       expect(bleService.connectionGeneration).toBe(5);
+      expect(productExitState.consume()).toEqual({
+        deviceId: 'device-1',
+        disconnectStatus: 'success',
+      });
+    },
+  );
+
+  it('should route Android hardware back through the same scoped workflow',
+    async () => {
+      const disconnectSpy = spyOn(bleService, 'disconnect').and.callThrough();
+
+      component.ionViewWillEnter();
+      expect(platform.backButton.subscribeWithPriority)
+        .toHaveBeenCalledOnceWith(10, jasmine.any(Function));
+      expect(routerOutlet.swipeGesture).toBeFalse();
+
+      await platform.backButton.trigger();
+
+      expect(disconnectSpy).toHaveBeenCalledTimes(1);
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
+
+      component.ionViewWillLeave();
+      expect(routerOutlet.swipeGesture).toBeTrue();
+      routerNavigate.calls.reset();
+      await platform.backButton.trigger();
+      expect(routerNavigate).not.toHaveBeenCalled();
     },
   );
 
@@ -2411,7 +2476,7 @@ describe('ProductPage', () => {
     },
   );
 
-  it('should stay on ProductPage and allow retry when disconnect fails while still connected',
+  it('should navigate to Scan after a native disconnect failure without hiding the active context',
     async () => {
       const disconnectSpy = spyOn(bleService, 'disconnect')
         .and.rejectWith(new Error('Native disconnect failed.'));
@@ -2419,12 +2484,14 @@ describe('ProductPage', () => {
       await component.backToScan();
 
       expect(disconnectSpy).toHaveBeenCalledTimes(1);
-      expect(routerNavigate).not.toHaveBeenCalled();
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
       expect(component.returningToScan).toBeFalse();
-      expect(component.returnToScanErrorMessage).toBe(
-        component.text.returnToScanFailed,
-      );
+      expect(component.returnToScanErrorMessage).toBeNull();
       expect(bleService.connectedDeviceId).toBe('device-1');
+      expect(productExitState.consume()).toEqual({
+        deviceId: 'device-1',
+        disconnectStatus: 'failed',
+      });
     },
   );
 
@@ -2470,6 +2537,36 @@ describe('ProductPage', () => {
       expect(disconnectSpy).toHaveBeenCalledTimes(1);
       expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
       expect(bleService.connectedDeviceId).toBeNull();
+    },
+  );
+
+  it('should flush one pending 400 ms slider write before disconnecting',
+    async () => {
+      const executionOrder: string[] = [];
+      writeExecutionService.execute.and.callFake(async () => {
+        executionOrder.push('write');
+        return writeExecutionService.nextResult;
+      });
+      const originalDisconnect = bleService.disconnect.bind(bleService);
+      const disconnectSpy = spyOn(bleService, 'disconnect').and.callFake(
+        async () => {
+          executionOrder.push('disconnect');
+          await originalDisconnect();
+        },
+      );
+      await component.refreshProductData();
+      const control = component.userSpeedControls[0].config;
+      component.toggleUserSpeedLock(control);
+      component.stepUserSpeedDraft(control, 1);
+
+      await component.backToScan();
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(disconnectSpy).toHaveBeenCalledTimes(1);
+      expect(executionOrder).toEqual(['write', 'disconnect']);
+
+      await new Promise((resolve) => window.setTimeout(resolve, 430));
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
     },
   );
 

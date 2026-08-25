@@ -4,7 +4,10 @@ import {
   BleService as DiscoveredBleService,
   ScanResult,
 } from '@capacitor-community/bluetooth-le';
-import { AlertController } from '@ionic/angular/standalone';
+import {
+  AlertController,
+  ToastController,
+} from '@ionic/angular/standalone';
 import { Observable, Subject } from 'rxjs';
 
 import {
@@ -17,6 +20,9 @@ import {
   storeAutoEnableBluetooth,
   storeShowBleIdentifier,
 } from '../../core/services/app-preferences';
+import {
+  ProductExitStateService,
+} from '../../core/services/product-exit-state.service';
 import { BLE_UUIDS } from '../../core/services/product-detection';
 import { MotorCommandService } from '../../core/services/motor-command.service';
 import {
@@ -253,6 +259,10 @@ describe('ScanPage', () => {
   let sendMotorCommandWithConfirmation: jasmine.Spy;
   let productDataLoadService: FakeProductDataLoadService;
   let routerNavigate: jasmine.Spy;
+  let productExitState: ProductExitStateService;
+  let toastCreate: jasmine.Spy;
+  let toastPresent: jasmine.Spy;
+  let toastOptions: Record<string, unknown>[];
 
   beforeEach(async () => {
     localStorage.clear();
@@ -261,6 +271,14 @@ describe('ScanPage', () => {
     bleService = new FakeBleService();
     productDataLoadService = new FakeProductDataLoadService();
     routerNavigate = jasmine.createSpy('navigate').and.resolveTo(true);
+    toastOptions = [];
+    toastPresent = jasmine.createSpy('present').and.resolveTo();
+    toastCreate = jasmine.createSpy('create').and.callFake(
+      async (options: Record<string, unknown>) => {
+        toastOptions.push(options);
+        return { present: toastPresent };
+      },
+    );
     alertOptions = [];
     alertCreate = jasmine.createSpy('create').and.callFake(
       async (options: TestAlertOptions) => {
@@ -285,6 +303,10 @@ describe('ScanPage', () => {
           useValue: { create: alertCreate },
         },
         {
+          provide: ToastController,
+          useValue: { create: toastCreate },
+        },
+        {
           provide: MotorCommandService,
           useValue: { sendMotorCommandWithConfirmation },
         },
@@ -301,6 +323,7 @@ describe('ScanPage', () => {
 
     fixture = TestBed.createComponent(ScanPage);
     component = fixture.componentInstance;
+    productExitState = TestBed.inject(ProductExitStateService);
     fixture.detectChanges();
   });
 
@@ -370,7 +393,7 @@ describe('ScanPage', () => {
     },
   );
 
-  it('should disconnect a native connection left alive when ScanPage is created',
+  it('should disconnect a native connection left alive when ScanPage enters',
     async () => {
       fixture.destroy();
       bleService.setConnectedDeviceId('device-previous');
@@ -379,6 +402,7 @@ describe('ScanPage', () => {
       fixture = TestBed.createComponent(ScanPage);
       component = fixture.componentInstance;
       fixture.detectChanges();
+      await component.ionViewWillEnter();
       await settlePromises();
 
       expect(bleService.disconnect).toHaveBeenCalledTimes(1);
@@ -393,7 +417,7 @@ describe('ScanPage', () => {
     },
   );
 
-  it('should not disconnect again when ScanPage is created after ProductPage cleaned the service',
+  it('should not disconnect again when ScanPage enters after ProductPage cleaned the service',
     async () => {
       fixture.destroy();
       bleService.setConnectedDeviceId(null);
@@ -402,6 +426,7 @@ describe('ScanPage', () => {
       fixture = TestBed.createComponent(ScanPage);
       component = fixture.componentInstance;
       fixture.detectChanges();
+      await component.ionViewWillEnter();
       await settlePromises();
 
       expect(bleService.disconnect).not.toHaveBeenCalled();
@@ -421,6 +446,7 @@ describe('ScanPage', () => {
       fixture = TestBed.createComponent(ScanPage);
       component = fixture.componentInstance;
       fixture.detectChanges();
+      const entry = component.ionViewWillEnter();
 
       expect(component.entryConnectionCleanupInProgress).toBeTrue();
       expect(component.canStartScan).toBeFalse();
@@ -430,6 +456,7 @@ describe('ScanPage', () => {
       expect(component.scanning).toBeFalse();
 
       releaseDisconnect();
+      await entry;
       await settlePromises();
 
       expect(component.entryConnectionCleanupInProgress).toBeFalse();
@@ -449,15 +476,77 @@ describe('ScanPage', () => {
       fixture = TestBed.createComponent(ScanPage);
       component = fixture.componentInstance;
       fixture.detectChanges();
+      const entry = component.ionViewWillEnter();
 
       bleService.emitRemoteDisconnection('device-previous');
       releaseDisconnect();
+      await entry;
       await settlePromises();
 
       expect(bleService.connectedDeviceId).toBeNull();
       expect(component.connectedDeviceId).toBeNull();
       expect(component.entryConnectionCleanupInProgress).toBeFalse();
       expect(component.canStartScan).toBeTrue();
+    },
+  );
+
+  it('should consume a successful product exit, clear the list and show the Phase 1 toast',
+    async () => {
+      component.devices = [{ deviceId: 'device-1', name: 'Salon', rssi: -50 }];
+      productExitState.record({
+        deviceId: 'device-1',
+        disconnectStatus: 'success',
+      });
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+
+      await component.ionViewWillEnter();
+
+      expect(component.devices).toEqual([]);
+      expect(component.scanning).toBeFalse();
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(toastOptions).toEqual([{
+        message: component.productPageText.states.disconnected,
+        duration: 500,
+        position: 'middle',
+      }]);
+      expect(toastPresent).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('should preserve the list after disconnect failure and retry cleanup only on manual scan',
+    async () => {
+      component.devices = [{ deviceId: 'device-1', name: 'Salon', rssi: -50 }];
+      bleService.setConnectedDeviceId('device-1');
+      productExitState.record({
+        deviceId: 'device-1',
+        disconnectStatus: 'failed',
+      });
+
+      await component.ionViewWillEnter();
+
+      expect(bleService.disconnect).not.toHaveBeenCalled();
+      expect(component.devices.length).toBe(1);
+      expect(component.canStartScan).toBeTrue();
+      expect(toastCreate).not.toHaveBeenCalled();
+
+      bleService.disconnectResult = Promise.reject(
+        new Error('Native disconnect still failed.'),
+      );
+      await component.startScan();
+
+      expect(bleService.disconnect).toHaveBeenCalledTimes(1);
+      expect(component.scanning).toBeFalse();
+      expect(component.devices.length).toBe(1);
+      expect(component.canStartScan).toBeTrue();
+      expect(toastCreate).not.toHaveBeenCalled();
+
+      bleService.disconnectResult = null;
+      await component.startScan();
+
+      expect(bleService.disconnect).toHaveBeenCalledTimes(2);
+      expect(component.devices).toEqual([]);
+      expect(component.scanning).toBeTrue();
+      expect(toastCreate).toHaveBeenCalledTimes(1);
     },
   );
 

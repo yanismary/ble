@@ -5,6 +5,8 @@ import {
   inject,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { addIcons } from 'ionicons';
+import { arrowBack } from 'ionicons/icons';
 import {
   AlertController,
   IonBadge,
@@ -12,6 +14,7 @@ import {
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonInput,
   IonItem,
   IonLabel,
@@ -26,6 +29,8 @@ import {
   IonTitle,
   IonToggle,
   IonToolbar,
+  IonRouterOutlet,
+  Platform,
 } from '@ionic/angular/standalone';
 import { Subscription } from 'rxjs';
 
@@ -83,6 +88,9 @@ import {
 import {
   triggerConfiguredHapticFeedback,
 } from '../../core/services/app-haptics';
+import {
+  ProductExitStateService,
+} from '../../core/services/product-exit-state.service';
 import {
   MotorStateFrame,
   ProductDetection,
@@ -214,6 +222,7 @@ type ProductShellSettingsTab = 'basic' | 'advanced';
     IonButtons,
     IonContent,
     IonHeader,
+    IonIcon,
     IonInput,
     IonItem,
     IonLabel,
@@ -244,7 +253,11 @@ export class ProductPage implements OnDestroy {
   private readonly productDetection = inject(ProductDetection);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly platform = inject(Platform);
+  private readonly routerOutlet = inject(IonRouterOutlet, { optional: true });
+  private readonly productExitState = inject(ProductExitStateService);
   private readonly subscriptions = new Subscription();
+  private productBackButtonSubscription: Subscription | null = null;
   private readonly controlLocks = new ProductControlLockRegistry();
   private readonly context: ProductPageNavigationState | null;
   private loadCycle = 0;
@@ -270,7 +283,10 @@ export class ProductPage implements OnDestroy {
     ProductProfessionalScalarField,
     number
   >();
-  private readonly widoorSliderWriteTimeouts = new Map<string, number>();
+  private readonly widoorSliderWriteTimeouts = new Map<string, {
+    readonly timeout: number;
+    readonly write: () => Promise<void>;
+  }>();
   private readonly widoorSliderButtonWriteDelayMs = 400;
   private readonly widoorShortTimingFallback = 1;
   private nameRoomDraft: ProductNameRoomDraft | null = null;
@@ -404,6 +420,7 @@ export class ProductPage implements OnDestroy {
   ): boolean => isSameProductWeightRange(first, second);
 
   constructor() {
+    addIcons({ arrowBack });
     const routeProfile = this.route.snapshot.data['profile'];
     const profile = isKnownProductProfile(routeProfile)
       ? routeProfile
@@ -3727,24 +3744,55 @@ export class ProductPage implements OnDestroy {
     }
     this.returningToScan = true;
     this.returnToScanErrorMessage = null;
-    this.resetOpenCommandState();
-    if (this.viewModel.loading || this.productDataLoadService.isLoading) {
-      this.productDataLoadService.cancelCurrentLoad();
-    }
+    const deviceId = this.context?.deviceId ?? this.bleService.connectedDeviceId;
+    let disconnectStatus: 'success' | 'failed' = 'success';
     try {
+      await this.flushPendingSliderWrites();
+      this.resetOpenCommandState();
+      this.loadCycle += 1;
+      if (this.viewModel.loading || this.productDataLoadService.isLoading) {
+        this.productDataLoadService.cancelCurrentLoad();
+      }
       try {
         await this.bleService.disconnect();
       } catch {
-        if (this.bleService.connectedDeviceId !== null) {
-          this.returnToScanErrorMessage = this.text.returnToScanFailed;
-          return;
-        }
+        disconnectStatus = this.bleService.connectedDeviceId === null
+          ? 'success'
+          : 'failed';
       }
-      await this.router.navigate(['/scan']);
+      this.invalidateContext(
+        disconnectStatus === 'success' ? 'disconnected' : 'stale',
+      );
+      if (deviceId !== null) {
+        this.productExitState.record({ deviceId, disconnectStatus });
+      }
+      const navigated = await this.router.navigate(['/scan']);
+      if (!navigated) {
+        this.productExitState.clear();
+      }
     } finally {
       if (!this.destroyed) {
         this.returningToScan = false;
       }
+    }
+  }
+
+  ionViewWillEnter(): void {
+    this.productBackButtonSubscription?.unsubscribe();
+    this.productBackButtonSubscription =
+      this.platform.backButton.subscribeWithPriority(10, () =>
+        this.backToScan(),
+      );
+    if (this.routerOutlet !== null) {
+      this.routerOutlet.swipeGesture = false;
+    }
+  }
+
+  ionViewWillLeave(): void {
+    this.productBackButtonSubscription?.unsubscribe();
+    this.productBackButtonSubscription = null;
+    if (this.routerOutlet !== null) {
+      this.routerOutlet.swipeGesture = true;
     }
   }
 
@@ -3764,6 +3812,8 @@ export class ProductPage implements OnDestroy {
     this.resetProfessionalAccess();
     this.resetProductDateAction();
     this.clearWidoorSliderWrites();
+    this.productBackButtonSubscription?.unsubscribe();
+    this.productBackButtonSubscription = null;
     this.subscriptions.unsubscribe();
   }
 
@@ -3963,10 +4013,14 @@ export class ProductPage implements OnDestroy {
     }
     this.clearWidoorSliderWrite(key);
     const timeout = window.setTimeout(() => {
+      const pending = this.widoorSliderWriteTimeouts.get(key);
+      if (pending?.timeout !== timeout) {
+        return;
+      }
       this.widoorSliderWriteTimeouts.delete(key);
-      void write();
+      void pending.write();
     }, this.widoorSliderButtonWriteDelayMs);
-    this.widoorSliderWriteTimeouts.set(key, timeout);
+    this.widoorSliderWriteTimeouts.set(key, { timeout, write });
   }
 
   private flushWidoorSliderWrite(
@@ -3981,18 +4035,26 @@ export class ProductPage implements OnDestroy {
   }
 
   private clearWidoorSliderWrite(key: string): void {
-    const timeout = this.widoorSliderWriteTimeouts.get(key);
-    if (timeout !== undefined) {
-      window.clearTimeout(timeout);
+    const pending = this.widoorSliderWriteTimeouts.get(key);
+    if (pending !== undefined) {
+      window.clearTimeout(pending.timeout);
       this.widoorSliderWriteTimeouts.delete(key);
     }
   }
 
   private clearWidoorSliderWrites(): void {
-    for (const timeout of this.widoorSliderWriteTimeouts.values()) {
-      window.clearTimeout(timeout);
+    for (const pending of this.widoorSliderWriteTimeouts.values()) {
+      window.clearTimeout(pending.timeout);
     }
     this.widoorSliderWriteTimeouts.clear();
+  }
+
+  private async flushPendingSliderWrites(): Promise<void> {
+    const pendingWrites = [...this.widoorSliderWriteTimeouts.values()];
+    this.clearWidoorSliderWrites();
+    for (const pending of pendingWrites) {
+      await pending.write();
+    }
   }
 
   private async delay(milliseconds: number): Promise<void> {
