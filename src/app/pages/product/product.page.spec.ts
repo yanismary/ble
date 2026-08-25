@@ -288,7 +288,7 @@ describe('ProductPage', () => {
       expect(element.querySelector('ion-range.user-speed-range'))
         .not.toBeNull();
       expect(element.querySelector('ion-toggle.lock-mode-toggle'))
-        .not.toBeNull();
+        .toBeNull();
     },
   );
 
@@ -661,7 +661,7 @@ describe('ProductPage', () => {
     },
   );
 
-  it('should expose lock controls from the decoded Widoor lock mode',
+  it('should not expose Commandes lock controls from the decoded Widoor lock mode',
     async () => {
       loadService.nextResult = completeLoadResult(
         'success',
@@ -673,13 +673,12 @@ describe('ProductPage', () => {
       fixture.detectChanges();
 
       const element = fixture.nativeElement as HTMLElement;
-      expect(component.showLockModeControls).toBeTrue();
-      expect(component.isLockModeActive(component.lockModeControls[0].config))
-        .toBeTrue();
-      expect(element.textContent).toContain(
+      expect(component.lockModeControls).toEqual([]);
+      expect(component.showLockModeControls).toBeFalse();
+      expect(element.textContent).not.toContain(
         component.text.lockModeControls.lockedOpen.label,
       );
-      expect(element.textContent).toContain(
+      expect(element.textContent).not.toContain(
         component.text.lockModeControls.lockedClosed.label,
       );
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
@@ -1333,95 +1332,25 @@ describe('ProductPage', () => {
     },
   );
 
-  it('should write Widoor supported lock-mode transitions through the executor',
+  it('should not expose Widoor Commandes lock-mode transitions',
     async () => {
-      const openControl = component.lockModeControls[0].config;
-      const closeControl = component.lockModeControls[1].config;
-      for (const transition of [
-        {
-          current: 'none',
-          control: openControl,
-          checked: true,
-          payloadHex: '00 01',
-          payload: [0x00, 0x01],
-        },
-        {
-          current: 'none',
-          control: closeControl,
-          checked: true,
-          payloadHex: '00 02',
-          payload: [0x00, 0x02],
-        },
-        {
-          current: 'locked-open',
-          control: openControl,
-          checked: false,
-          payloadHex: '00 00',
-          payload: [0x00, 0x00],
-        },
-        {
-          current: 'locked-closed',
-          control: closeControl,
-          checked: false,
-          payloadHex: '00 00',
-          payload: [0x00, 0x00],
-        },
-      ] as const) {
-        loadService.nextResult = completeLoadResult(
-          'success',
-          'widoor',
-          userValueWithLockMode(transition.current),
-        );
-        writeExecutionService.nextResult = lockModeExecutionResult(
-          'widoor',
-          transition.payloadHex,
-        );
-        writeExecutionService.execute.calls.reset();
-        await component.refreshProductData();
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithLockMode('locked-closed'),
+      );
+      await component.refreshProductData();
+      fixture.detectChanges();
 
-        await component.requestLockModeChange(
-          transition.control,
-          transition.checked,
-        );
-
-        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
-        const request = writeExecutionService.execute.calls.mostRecent()
-          .args[0] as LegacyBleWriteRequest;
-        expect(request.profile).toBe('widoor');
-        expect(request.write.operation).toBe('lock-mode');
-        expect(request.write.serviceUuid).toBe(BLE_UUIDS.widoorService);
-        expect(request.write.characteristicUuid)
-          .toBe(BLE_UUIDS.userParametersCharacteristic);
-        expect(request.write.payloadHex).toBe(transition.payloadHex);
-        expect(Array.from(request.write.payload)).toEqual(transition.payload);
-        expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
-        expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
-        expect(request.authorization).toBeNull();
-        expect(component.lockModeWriteState.status).toBe('sent');
-      }
-    },
-  );
-
-  it('should reject direct switches between active Widoor lock modes',
-    async () => {
-      const openControl = component.lockModeControls[0].config;
-      const closeControl = component.lockModeControls[1].config;
-      for (const transition of [
-        { current: 'locked-open', target: closeControl },
-        { current: 'locked-closed', target: openControl },
-      ] as const) {
-        loadService.nextResult = completeLoadResult(
-          'success',
-          'widoor',
-          userValueWithLockMode(transition.current),
-        );
-        writeExecutionService.execute.calls.reset();
-        await component.refreshProductData();
-
-        await component.requestLockModeChange(transition.target, true);
-
-        expect(writeExecutionService.execute).not.toHaveBeenCalled();
-      }
+      const element = fixture.nativeElement as HTMLElement;
+      expect(component.lockModeControls).toEqual([]);
+      expect(component.showLockModeControls).toBeFalse();
+      expect(element.querySelector('.lock-mode-controls')).toBeNull();
+      expect(element.querySelector('ion-toggle.lock-mode-toggle')).toBeNull();
+      expect(element.textContent).not.toContain(
+        component.text.lockModeControls.title,
+      );
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
     },
   );
 
@@ -1435,12 +1364,7 @@ describe('ProductPage', () => {
       alertRole = 'confirm';
       await component.refreshProductData();
 
-      expect(component.isLockModeActive(component.lockModeControls[1].config))
-        .toBeTrue();
-      expect(component.canToggleLockMode(component.lockModeControls[0].config))
-        .toBeFalse();
-      expect(component.canToggleLockMode(component.lockModeControls[1].config))
-        .toBeTrue();
+      expect(component.showLockModeControls).toBeFalse();
       for (const command of WIDOOR_COMMAND_UI_CONFIGS.filter((config) =>
         config.enabled,
       )) {
@@ -3731,7 +3655,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       ],
       commandLighting: [],
       basicLighting: ['rgb'],
-      locks: ['locked-open', 'locked-closed'],
+      locks: [],
       timedAssetCount: 1,
     },
     {
@@ -3743,7 +3667,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       ],
       commandLighting: ['static-light'],
       basicLighting: ['dynamic-light', 'rgb'],
-      locks: ['locked-open', 'locked-closed'],
+      locks: ['locked-closed'],
       timedAssetCount: 1,
     },
     {
@@ -3755,7 +3679,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       ],
       commandLighting: ['static-light'],
       basicLighting: ['dynamic-light', 'rgb'],
-      locks: ['locked-open', 'locked-closed'],
+      locks: ['locked-closed'],
       timedAssetCount: 1,
     },
     {
@@ -3814,6 +3738,29 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
             '.user-peripheral-command-controls .user-peripheral-toggle',
           ).length,
         ).toBe(scenario.commandLighting.length);
+        expect(element.querySelectorAll(
+          '.lock-mode-controls .lock-mode-toggle',
+        ).length).toBe(scenario.locks.length);
+        expect(element.textContent).not.toContain(
+          component.text.lockModeControls.lockedOpen.label,
+        );
+        if (scenario.profile === 'widoor' || scenario.profile === 'garline') {
+          expect(element.querySelector('.lock-mode-controls')).toBeNull();
+          expect(element.textContent).not.toContain(
+            component.text.lockModeControls.lockedClosed.label,
+          );
+        }
+        if (scenario.profile === 'moventiv-60' ||
+            scenario.profile === 'moventiv-80') {
+          expect(element.querySelector('.moventiv-close-lock-command'))
+            .not.toBeNull();
+          expect(element.textContent).not.toContain(
+            component.text.lockModeControls.title,
+          );
+          expect(element.textContent).toContain(
+            component.text.lockModeControls.lockedClosed.label,
+          );
+        }
         if (scenario.commandLighting.length > 0) {
           expect(element.querySelector<HTMLImageElement>(
             '.user-peripheral-command-controls .cmd-row-icon',
@@ -3861,6 +3808,77 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
     },
   );
+
+  for (const profile of ['moventiv-60', 'moventiv-80'] as const) {
+    it(`should write only the Phase 1 close lock command for ${profile}`,
+      async () => {
+        const { fixture, component, writeExecutionService, loadService } =
+          await createProductCommandsUiPage(profile);
+        const closeControl = component.lockModeControls[0].config;
+
+        expect(component.lockModeControls.map((control) =>
+          control.config.mode,
+        )).toEqual(['locked-closed']);
+        expect(component.showLockModeControls).toBeTrue();
+        expect(component.moventivCloseLockControl?.config)
+          .toBe(closeControl);
+        expect(fixture.nativeElement.textContent).not.toContain(
+          component.text.lockModeControls.lockedOpen.label,
+        );
+
+        for (const transition of [
+          {
+            checked: true,
+            payloadHex: '00 02',
+            payload: [0x00, 0x02],
+            current: 'none',
+          },
+          {
+            checked: false,
+            payloadHex: '00 00',
+            payload: [0x00, 0x00],
+            current: 'locked-closed',
+          },
+        ] as const) {
+          loadService.nextResult = completeLoadResult(
+            'success',
+            profile,
+            userValueWithLockMode(transition.current),
+          );
+          writeExecutionService.nextResult = lockModeExecutionResult(
+            profile,
+            transition.payloadHex,
+          );
+          writeExecutionService.execute.calls.reset();
+          await component.refreshProductData();
+
+          await component.requestLockModeChange(
+            closeControl,
+            transition.checked,
+          );
+
+          expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+          const request = writeExecutionService.execute.calls.mostRecent()
+            .args[0] as LegacyBleWriteRequest;
+          expect(request.profile).toBe(profile);
+          expect(request.write.operation).toBe('lock-mode');
+          expect(request.write.serviceUuid)
+            .toBe(BLE_UUIDS.moventivGarlineService);
+          expect(request.write.characteristicUuid)
+            .toBe(BLE_UUIDS.userParametersCharacteristic);
+          expect(request.write.payloadHex).toBe(transition.payloadHex);
+          expect(Array.from(request.write.payload))
+            .toEqual(transition.payload);
+          expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
+          expect(request.policy).toEqual(jasmine.objectContaining({
+            allowMoventivPhase1ImmediateWrite: true,
+          }));
+          expect(request.authorization).toBeNull();
+          expect(component.lockModeWriteState.status).toBe('sent');
+        }
+      },
+    );
+  }
 
   for (const scenario of [
     {
@@ -4384,6 +4402,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
     readonly fixture: ComponentFixture<ProductPage>;
     readonly component: ProductPage;
     readonly bleService: FakeBleService;
+    readonly loadService: FakeProductDataLoadService;
     readonly writeExecutionService: FakeBleWriteExecutionService;
   }> {
     const bleService = new FakeBleService();
@@ -4442,6 +4461,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       fixture,
       component,
       bleService,
+      loadService,
       writeExecutionService,
     };
   }
@@ -4696,7 +4716,7 @@ describe('ProductPage weight-range controls for profile variants', () => {
       expect(component.weightRangeControls).toEqual([]);
       expect(component.showUserSpeedControls).toBeTrue();
       expect(component.showUserTimingControls).toBeTrue();
-      expect(component.showLockModeControls).toBeTrue();
+      expect(component.showLockModeControls).toBeFalse();
       expect(component.showProductMotorCommands).toBeTrue();
 
       await component.requestWeightRangeChange();
@@ -5797,7 +5817,7 @@ describe('ProductPage professional scalar controls',
         expect(component.showWeightRangeControls).toBeFalse();
         expect(component.showUserSpeedControls).toBeTrue();
         expect(component.showUserTimingControls).toBeTrue();
-        expect(component.showLockModeControls).toBeTrue();
+        expect(component.showLockModeControls).toBeFalse();
         expect(component.showProductMotorCommands).toBeTrue();
       },
     );

@@ -150,7 +150,25 @@
             }
           </div>
           @if (showLockModeControls) {
-            <div class="cmd-list lock-mode-controls">
+            @if (moventivCloseLockControl; as closeLockControl) {
+              <div class="cmd-list lock-mode-controls">
+                <div class="cmd-row moventiv-close-lock-command">
+                  <img
+                    class="cmd-row-icon"
+                    [src]="productLockIconSrc(closeLockControl.config)"
+                    [alt]="closeLockControl.text.label"
+                  />
+                  <span>{{ closeLockControl.text.label }}</span>
+                  <ion-toggle
+                    class="lock-mode-toggle"
+                    [checked]="isLockModeActive(closeLockControl.config)"
+                    [disabled]="!canToggleLockMode(closeLockControl.config)"
+                    (ionChange)="requestLockModeChange(closeLockControl.config, $event)"
+                  ></ion-toggle>
+                </div>
+              </div>
+            } @else {
+              <div class="cmd-list lock-mode-controls">
               <div class="cmd-head">
                 <h3>{{ text.lockModeControls.title }}</h3>
                 <ion-button
@@ -184,7 +202,8 @@
                   ></ion-toggle>
                 </div>
               }
-            </div>
+              </div>
+            }
           }
           @if (showCommandPeripheralControls) {
             <div class="cmd-list user-peripheral-command-controls">

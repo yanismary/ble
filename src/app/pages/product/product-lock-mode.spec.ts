@@ -11,58 +11,50 @@ describe('Product lock-mode controls', () => {
   it('exposes lock modes from product page configuration', () => {
     expect(productLockModeConfigsFor(PRODUCT_PAGE_CONFIG.widoor).map(
       (config) => config.mode,
-    )).toEqual(['locked-open', 'locked-closed']);
+    )).toEqual([]);
     expect(productLockModeConfigsFor(
       PRODUCT_PAGE_CONFIG['moventiv-60'],
-    ).map((config) => config.mode)).toEqual([
-      'locked-open',
-      'locked-closed',
-    ]);
+    ).map((config) => config.mode)).toEqual(['locked-closed']);
     expect(productLockModeConfigsFor(
       PRODUCT_PAGE_CONFIG['moventiv-80'],
-    ).map((config) => config.mode)).toEqual([
-      'locked-open',
-      'locked-closed',
-    ]);
+    ).map((config) => config.mode)).toEqual(['locked-closed']);
     expect(productLockModeConfigsFor(PRODUCT_PAGE_CONFIG.garline).map(
       (config) => config.mode,
-    )).toEqual(['locked-open']);
+    )).toEqual([]);
   });
 
-  it('uses the catalogued user-parameter write for lock modes', () => {
+  it('uses the catalogued user-parameter write for Moventiv close lock', () => {
     const configs = productLockModeConfigsFor(
       PRODUCT_PAGE_CONFIG['moventiv-60'],
     );
-    const lockedOpen = configs[0].catalogFactory('locked-open');
-    const lockedClosed = configs[1].catalogFactory('locked-closed');
+    const lockedClosed = configs[0].catalogFactory('locked-closed');
     const unlocked = configs[0].catalogFactory('none');
 
-    expect(lockedOpen.serviceUuid).toBe(BLE_UUIDS.moventivGarlineService);
-    expect(lockedOpen.characteristicUuid)
+    expect(lockedClosed.serviceUuid).toBe(BLE_UUIDS.moventivGarlineService);
+    expect(lockedClosed.characteristicUuid)
       .toBe(BLE_UUIDS.userParametersCharacteristic);
-    expect(lockedOpen.payloadHex).toBe('00 01');
     expect(lockedClosed.payloadHex).toBe('00 02');
     expect(unlocked.payloadHex).toBe('00 00');
-    expect(lockedOpen.destructiveLevel).toBe('non-destructive-setting');
-    expect(lockedOpen.hardwareValidationStatus)
+    expect(lockedClosed.destructiveLevel).toBe('non-destructive-setting');
+    expect(lockedClosed.hardwareValidationStatus)
       .toBe('phase1-reference-only');
   });
 
   it('prevents controls from creating unsupported lock-mode writes', () => {
-    const garlineLockedOpen = productLockModeConfigsFor(
-      PRODUCT_PAGE_CONFIG.garline,
+    const moventivCloseLock = productLockModeConfigsFor(
+      PRODUCT_PAGE_CONFIG['moventiv-60'],
     )[0];
 
-    expect(garlineLockedOpen.catalogFactory('none').payloadHex)
+    expect(moventivCloseLock.catalogFactory('none').payloadHex)
       .toBe('00 00');
-    expect(garlineLockedOpen.catalogFactory('locked-open').payloadHex)
-      .toBe('00 01');
-    expect(() => garlineLockedOpen.catalogFactory('locked-closed'))
+    expect(moventivCloseLock.catalogFactory('locked-closed').payloadHex)
+      .toBe('00 02');
+    expect(() => moventivCloseLock.catalogFactory('locked-open'))
       .toThrowError(/not supported/);
   });
 
   it('creates scoped authorizations for catalogued lock-mode writes', () => {
-    const write = productLockModeConfigsFor(PRODUCT_PAGE_CONFIG.widoor)[1]
+    const write = productLockModeConfigsFor(PRODUCT_PAGE_CONFIG['moventiv-60'])[0]
       .catalogFactory('locked-closed');
     const authorization = createProductLockModeAuthorization({
       write,
@@ -74,7 +66,7 @@ describe('Product lock-mode controls', () => {
     });
 
     expect(authorization.confirmedByUser).toBeTrue();
-    expect(authorization.profile).toBe('widoor');
+    expect(authorization.profile).toBe('moventiv-60');
     expect(authorization.operation).toBe('lock-mode');
     expect(authorization.payloadHex).toBe('00 02');
     expect(authorization.motorMovementConfirmed).toBeUndefined();

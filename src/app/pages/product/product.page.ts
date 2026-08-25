@@ -648,6 +648,21 @@ export class ProductPage implements OnDestroy {
       this.phase1ShowsUserParameterControls();
   }
 
+  get moventivCloseLockControl(): {
+    readonly config: ProductLockModeUiConfig;
+    readonly text: typeof PRODUCT_PAGE_TEXT.lockModeControls[
+      ProductLockModeUiConfig['textKey']
+    ];
+  } | null {
+    if (!this.showLockModeControls ||
+        !this.isMoventivProfile(this.config.profile)) {
+      return null;
+    }
+    return this.lockModeControls.find((control) =>
+      control.config.mode === 'locked-closed',
+    ) ?? null;
+  }
+
   get showUserSpeedControls(): boolean {
     return this.pageContextCurrent &&
       this.userSpeedControls.length > 0 &&

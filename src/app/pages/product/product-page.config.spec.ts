@@ -21,6 +21,8 @@ describe('Product page configuration', () => {
     expect(config.userFields).not.toContain('long-timing');
     expect(config.userFields).not.toContain('static-light');
     expect(config.userFields).not.toContain('dynamic-light');
+    expect(config.userFields).not.toContain('lock-mode');
+    expect(config.visibleLockModes).toEqual([]);
     expect(config.userFields).toContain('rgb');
     expect(config.professionalFields).toContain('break-force-at-open');
     expect(config.professionalFields).toContain('near-open-proportional');
@@ -49,6 +51,8 @@ describe('Product page configuration', () => {
     });
     expect(moventiv60.userFields).not.toContain('long-timing');
     expect(moventiv80.userFields).not.toContain('long-timing');
+    expect(moventiv60.visibleLockModes).toEqual(['locked-closed']);
+    expect(moventiv80.visibleLockModes).toEqual(['locked-closed']);
   });
 
   it('should encode Garline masking rules without removing technical data', () => {
