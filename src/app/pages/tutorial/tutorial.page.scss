@@ -67,9 +67,10 @@
 .tutorial-image {
   height: auto;
   margin-bottom: 18px;
-  max-height: 56%;
-  max-width: 420px;
-  width: 82%;
+  max-height: 64%;
+  max-width: 480px;
+  object-fit: contain;
+  width: 90%;
 }
 
 .slide-title {
@@ -128,7 +129,7 @@
   }
 
   .tutorial-image {
-    max-height: 48%;
-    width: 78%;
+    max-height: 56%;
+    width: 86%;
   }
 }

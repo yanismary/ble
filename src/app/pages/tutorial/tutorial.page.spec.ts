@@ -76,6 +76,16 @@ describe('TutorialPage', () => {
       (element: Element) => element.getAttribute('data-tutorial-product'),
     );
     expect(choices).toEqual(['widoor', 'moventiv', 'garline']);
+    const buttonBackground = (product: string) => {
+      const button = query<HTMLElement>(
+        fixture,
+        `[data-tutorial-product="${product}"]`,
+      ) as HTMLElement;
+      return getComputedStyle(button).getPropertyValue('--background').trim();
+    };
+    expect(buttonBackground('widoor')).toBe('#488aff');
+    expect(buttonBackground('moventiv')).toBe('#32db64');
+    expect(buttonBackground('garline')).toBe('#a7c855');
   });
 
   it('selects Widoor and renders its first slide', async () => {
@@ -88,6 +98,9 @@ describe('TutorialPage', () => {
     expect(fixture.componentInstance.slideIndex).toBe(0);
     expect(query<HTMLImageElement>(fixture, '.tutorial-image')?.src)
       .toContain('slide1_widoor.png');
+    expect(getComputedStyle(
+      query<HTMLImageElement>(fixture, '.tutorial-image') as HTMLImageElement,
+    ).objectFit).toBe('contain');
     expect(gestureOptions?.direction).toBe('x');
     expect(gestureEnable).toHaveBeenCalled();
   });
