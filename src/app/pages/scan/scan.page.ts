@@ -78,6 +78,7 @@ import {
 import {
   ProductExitStateService,
 } from '../../core/services/product-exit-state.service';
+import { readStoredAppLanguage } from '../../core/services/app-language';
 import {
   AppMainMenuComponent,
 } from '../../shared/app-main-menu/app-main-menu.component';
@@ -88,6 +89,12 @@ import { PRODUCT_PAGE_TEXT } from '../product/product-page.text';
 import {
   ProductPageNavigationState,
 } from '../product/product-view.model';
+import {
+  PRODUCT_DEMO_CHOICES,
+  ProductDemoProfile,
+  createProductDemoNavigationState,
+  productDemoTextFor,
+} from '../product/product-demo';
 import {
   getBleSignalQualityAsset,
   getScanRoomIconClass,
@@ -279,6 +286,34 @@ export class ScanPage implements OnDestroy {
     return cachedName !== undefined && cachedName !== null
       ? cachedName
       : splitScanDisplayName(device.name).displayName || device.name;
+  }
+
+  async launchDemoMode(): Promise<void> {
+    const text = productDemoTextFor(readStoredAppLanguage());
+    const alert = await this.alertController.create({
+      header: text.title,
+      buttons: [
+        ...PRODUCT_DEMO_CHOICES.map(({ profile }) => ({
+          text: text.profileLabels[profile],
+          handler: () => {
+            void this.openDemoProduct(profile);
+          },
+        })),
+        { text: text.cancel, role: 'cancel' },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async openDemoProduct(profile: ProductDemoProfile): Promise<void> {
+    if (this.scanning || this.bleService.isScanning()) {
+      await this.stopScan();
+    }
+    const state = createProductDemoNavigationState(
+      profile,
+      readStoredAppLanguage(),
+    );
+    await this.router.navigate([`/product/${profile}`], { state });
   }
 
   getScanRoomSuffix(device: ScannedDevice): string | null {

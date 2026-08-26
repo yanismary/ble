@@ -210,6 +210,11 @@ import {
   stepProductDraftValue,
 } from './product-draft-step';
 import { ProductControlLockRegistry } from './product-control-lock';
+import {
+  ProductDemoSnapshot,
+  createProductDemoSnapshot,
+  isProductDemoProfile,
+} from './product-demo';
 
 type ProductShellMainTab = 'commands' | 'settings' | 'information';
 type ProductShellSettingsTab = 'basic' | 'advanced';
@@ -614,6 +619,10 @@ export class ProductPage implements OnDestroy {
     this.refreshCurrentTabData();
   }
 
+  get isDemoMode(): boolean {
+    return this.context?.mode === 'demo';
+  }
+
   setActiveSettingsTab(tab: ProductShellSettingsTab): void {
     if (this.activeMainTab !== 'settings' || !this.showSettingsTab) {
       return;
@@ -966,6 +975,9 @@ export class ProductPage implements OnDestroy {
     if (write === undefined) {
       return false;
     }
+    if (this.isDemoMode) {
+      return true;
+    }
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
       write.characteristicUuid,
@@ -1296,6 +1308,11 @@ export class ProductPage implements OnDestroy {
   currentProductDateMaintenanceActionKind():
     ProductDateMaintenanceFlowKind | null {
     const dates = this.viewModel.reads.datesAndCycles.value;
+    if (this.isDemoMode && dates !== null) {
+      return dates.firstCommissioningDate.status === 'not-initialized'
+        ? 'first-commissioning'
+        : 'maintenance';
+    }
     const context = this.currentProductDateActionContext();
     if (dates === null || context === null) {
       return null;
@@ -1335,6 +1352,9 @@ export class ProductPage implements OnDestroy {
         this.sensitiveActionBusy ||
         this.commandInProgress) {
       return false;
+    }
+    if (this.isDemoMode) {
+      return true;
     }
     const flow = prepareProductDateMaintenanceFlow({
       context: this.productDateActionContext(context),
@@ -1424,7 +1444,7 @@ export class ProductPage implements OnDestroy {
   async refreshProductData(
     options: ProductDataLoadOptions = {},
   ): Promise<void> {
-    if (!this.canRefresh || this.context === null) {
+    if (!this.canRefresh || this.context === null || this.isDemoMode) {
       return;
     }
     const cycle = ++this.loadCycle;
@@ -1528,6 +1548,8 @@ export class ProductPage implements OnDestroy {
     switch (state) {
       case 'connected':
         return this.text.states.connected;
+      case 'demo':
+        return 'Demo';
       case 'disconnected':
         return this.text.states.disconnected;
       case 'stale':
@@ -1675,6 +1697,9 @@ export class ProductPage implements OnDestroy {
       return false;
     }
     const write = encodeProductNameRoomWrite(this.config.profile, validation);
+    if (this.isDemoMode) {
+      return true;
+    }
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
       write.characteristicUuid,
@@ -1792,6 +1817,9 @@ export class ProductPage implements OnDestroy {
     const write = this.userSpeedWrites.get(config.field);
     if (write === undefined) {
       return false;
+    }
+    if (this.isDemoMode) {
+      return true;
     }
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
@@ -1921,6 +1949,9 @@ export class ProductPage implements OnDestroy {
     if (write === undefined) {
       return false;
     }
+    if (this.isDemoMode) {
+      return true;
+    }
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
       write.characteristicUuid,
@@ -1972,6 +2003,9 @@ export class ProductPage implements OnDestroy {
       return false;
     }
     const write = config.catalogFactory(true);
+    if (this.isDemoMode) {
+      return true;
+    }
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
       write.characteristicUuid,
@@ -2033,6 +2067,9 @@ export class ProductPage implements OnDestroy {
     if (write === undefined) {
       return false;
     }
+    if (this.isDemoMode) {
+      return true;
+    }
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
       write.characteristicUuid,
@@ -2067,6 +2104,15 @@ export class ProductPage implements OnDestroy {
     }
 
     void triggerConfiguredHapticFeedback();
+    if (this.isDemoMode) {
+      this.updateDemoProfessionalInput(config.field, mode);
+      this.professionalInputWriteState = Object.freeze({
+        status: 'sent',
+        field: config.field,
+        message: this.text.professionalInputControls.sent,
+      });
+      return;
+    }
     const write = config.catalogFactory(mode);
     const context = this.context;
     const contextStatus = this.writeContextStatus(context, write);
@@ -2215,6 +2261,9 @@ export class ProductPage implements OnDestroy {
       return false;
     }
     const write = config.catalogFactory(draftValue);
+    if (this.isDemoMode) {
+      return true;
+    }
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
       write.characteristicUuid,
@@ -2366,6 +2415,9 @@ export class ProductPage implements OnDestroy {
     if (write === undefined) {
       return false;
     }
+    if (this.isDemoMode) {
+      return true;
+    }
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
       write.characteristicUuid,
@@ -2417,6 +2469,9 @@ export class ProductPage implements OnDestroy {
     const write = this.lockModeWrites.get(nextMode);
     if (write === undefined) {
       return false;
+    }
+    if (this.isDemoMode) {
+      return true;
     }
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
@@ -2490,6 +2545,9 @@ export class ProductPage implements OnDestroy {
       config,
       targetEnabled,
     );
+    if (this.isDemoMode) {
+      return true;
+    }
     return steps.every(({ write }) => {
       const properties = this.bleService.getGattCharacteristicProperties(
         write.serviceUuid,
@@ -2523,6 +2581,18 @@ export class ProductPage implements OnDestroy {
 
     void triggerConfiguredHapticFeedback();
     const context = this.context;
+
+    if (this.isDemoMode) {
+      if (config.control === 'toggle' && enabled !== undefined) {
+        this.updateDemoSensitiveToggle(config.action, enabled);
+      }
+      this.sensitiveActionState = Object.freeze({
+        status: 'sent',
+        action: config.action,
+        message: this.text.sensitiveActions.sent,
+      });
+      return;
+    }
 
     if (config.requiresConfirmation) {
       this.sensitiveActionState = Object.freeze({
@@ -2647,6 +2717,10 @@ export class ProductPage implements OnDestroy {
         this.context === null ||
         config.confirmationPolicy === null ||
         config.operation === 'motor-learning') {
+      return;
+    }
+
+    if (this.isDemoMode) {
       return;
     }
 
@@ -2828,6 +2902,18 @@ export class ProductPage implements OnDestroy {
     if (!isValidProductUserSpeedValue(config, draftValue)) {
       return;
     }
+    if (this.isDemoMode) {
+      this.updateDemoUserParameters(config.field === 'open-speed'
+        ? { openSpeed: draftValue }
+        : { closeSpeed: draftValue });
+      this.userSpeedDrafts.delete(config.field);
+      this.userSpeedWriteState = Object.freeze({
+        status: 'sent',
+        field: config.field,
+        message: this.text.userSpeedControls.sent,
+      });
+      return;
+    }
     const write = config.catalogFactory(draftValue);
     const context = this.context;
     const contextStatus = this.writeContextStatus(context, write);
@@ -2905,6 +2991,18 @@ export class ProductPage implements OnDestroy {
     void triggerConfiguredHapticFeedback();
     const draftValue = this.userTimingDraftValue(config);
     if (!isValidProductUserTimingValue(config, draftValue)) {
+      return;
+    }
+    if (this.isDemoMode) {
+      this.updateDemoUserParameters(config.field === 'short-timing'
+        ? { shortOpenTime: draftValue }
+        : { longOpenTime: draftValue });
+      this.userTimingDrafts.delete(config.field);
+      this.userTimingWriteState = Object.freeze({
+        status: 'sent',
+        field: config.field,
+        message: this.text.userTimingControls.sent,
+      });
       return;
     }
     const write = config.catalogFactory(draftValue);
@@ -2999,6 +3097,15 @@ export class ProductPage implements OnDestroy {
     }
 
     void triggerConfiguredHapticFeedback();
+    if (this.isDemoMode) {
+      this.updateDemoUserPeripheral(config.field, checked);
+      this.userPeripheralWriteState = Object.freeze({
+        status: 'sent',
+        field: config.field,
+        message: this.text.userPeripheralControls.sent,
+      });
+      return;
+    }
     const write = config.catalogFactory(checked);
     const context = this.context;
     const contextStatus = this.writeContextStatus(context, write);
@@ -3091,6 +3198,15 @@ export class ProductPage implements OnDestroy {
     }
     const config = this.findWeightRangeControl(draftValue)?.config;
     if (config === undefined || draftValue === null) {
+      return;
+    }
+    if (this.isDemoMode) {
+      this.updateDemoWeightRange(draftValue);
+      this.weightRangeDraft = null;
+      this.weightRangeWriteState = Object.freeze({
+        status: 'sent',
+        message: this.text.weightRangeControls.sent,
+      });
       return;
     }
     const write = config.catalogFactory(draftValue);
@@ -3253,6 +3369,16 @@ export class ProductPage implements OnDestroy {
     void triggerConfiguredHapticFeedback();
     const draftValue = this.professionalScalarDraftValue(config);
     if (!isValidProductProfessionalScalarValue(config, draftValue)) {
+      return;
+    }
+    if (this.isDemoMode) {
+      this.updateDemoProfessionalScalar(config.field, draftValue);
+      this.professionalScalarDrafts.delete(config.field);
+      this.professionalScalarWriteState = Object.freeze({
+        status: 'sent',
+        field: config.field,
+        message: this.text.professionalScalarControls.sent,
+      });
       return;
     }
     const write = config.catalogFactory(draftValue);
@@ -3471,6 +3597,17 @@ export class ProductPage implements OnDestroy {
     }
     this.maintenanceAccessService.reset(accessContext);
 
+    if (this.isDemoMode) {
+      this.productDateActionState = Object.freeze({
+        status: 'sent',
+        action: actionKind,
+        message: actionKind === 'first-commissioning'
+          ? this.text.productDateActions.setupSent
+          : this.text.productDateActions.maintenanceSent,
+      });
+      return;
+    }
+
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
     const flow = prepareProductDateMaintenanceFlow({
@@ -3556,6 +3693,19 @@ export class ProductPage implements OnDestroy {
       this.nameRoomDraftValue(),
     );
     if (!validation.valid) {
+      return;
+    }
+    if (this.isDemoMode) {
+      this.viewModel = {
+        ...this.viewModel,
+        displayedName: validation.baseName,
+        roomSuffix: validation.roomSuffix,
+      };
+      this.resetNameRoomDraft();
+      this.nameRoomWriteState = Object.freeze({
+        status: 'sent',
+        message: this.text.nameRoomControls.sent,
+      });
       return;
     }
     const write = encodeProductNameRoomWrite(this.config.profile, validation);
@@ -3676,6 +3826,14 @@ export class ProductPage implements OnDestroy {
     }
 
     void triggerConfiguredHapticFeedback();
+    if (this.isDemoMode) {
+      this.updateDemoLockMode(nextMode);
+      this.lockModeWriteState = Object.freeze({
+        status: 'sent',
+        message: this.text.lockModeControls.sent,
+      });
+      return;
+    }
     const write = this.lockModeWrites.get(nextMode);
     if (write === undefined) {
       return;
@@ -3756,6 +3914,10 @@ export class ProductPage implements OnDestroy {
       this.loadCycle += 1;
       if (this.viewModel.loading || this.productDataLoadService.isLoading) {
         this.productDataLoadService.cancelCurrentLoad();
+      }
+      if (this.isDemoMode) {
+        await this.router.navigate(['/scan']);
+        return;
       }
       try {
         await this.bleService.disconnect();
@@ -3852,6 +4014,9 @@ export class ProductPage implements OnDestroy {
         context.profile !== routeProfile) {
       return 'invalid-profile';
     }
+    if (context.mode === 'demo') {
+      return 'demo';
+    }
     if (this.bleService.connectedDeviceId === null) {
       return 'disconnected';
     }
@@ -3868,6 +4033,10 @@ export class ProductPage implements OnDestroy {
   ): ProductViewModel {
     const displayName = context?.displayName.trim() || this.config.productName;
     const { name, roomSuffix } = splitProductDisplayName(displayName);
+    const demoSnapshot = context?.mode === 'demo' &&
+      isProductDemoProfile(profile)
+      ? createProductDemoSnapshot(profile)
+      : null;
     return {
       profile,
       productName: this.config.productName,
@@ -3876,15 +4045,16 @@ export class ProductPage implements OnDestroy {
       deviceId: context?.deviceId ?? '',
       connectionGeneration: context?.connectionGeneration ?? -1,
       connectionState,
-      motorState: connectionState === 'connected'
-        ? context?.motorState ?? null
-        : null,
-      reads: initialReadStates(),
+      motorState: demoSnapshot?.motorState ??
+        (connectionState === 'connected' ? context?.motorState ?? null : null),
+      reads: demoSnapshot === null
+        ? initialReadStates()
+        : demoReadStates(demoSnapshot),
       loading: false,
-      loadStatus: null,
+      loadStatus: demoSnapshot === null ? null : 'success',
       partialSuccess: false,
-      lastUpdatedAt: null,
-      globalError: connectionState === 'connected'
+      lastUpdatedAt: demoSnapshot === null ? null : Date.now(),
+      globalError: connectionState === 'connected' || connectionState === 'demo'
         ? null
         : this.connectionStateLabel(connectionState),
     };
@@ -3892,8 +4062,14 @@ export class ProductPage implements OnDestroy {
 
   private isCurrentContext(): boolean {
     const context = this.context;
-    return !this.destroyed &&
-      context !== null &&
+    if (this.destroyed || context === null ||
+        this.viewModel.profile !== context.profile) {
+      return false;
+    }
+    if (context.mode === 'demo') {
+      return this.viewModel.connectionState === 'demo';
+    }
+    return context !== null &&
       this.viewModel.connectionState === 'connected' &&
       this.viewModel.profile === context.profile &&
       this.bleService.connectedDeviceId === context.deviceId &&
@@ -4251,6 +4427,159 @@ export class ProductPage implements OnDestroy {
     }
   }
 
+  private updateDemoUserParameters(
+    patch: Partial<BleUserParameters>,
+  ): void {
+    const current = this.viewModel.reads.userParameters.value;
+    if (!this.isDemoMode || current === null) {
+      return;
+    }
+    this.viewModel = {
+      ...this.viewModel,
+      reads: {
+        ...this.viewModel.reads,
+        userParameters: {
+          status: 'available',
+          readStatus: 'success',
+          value: Object.freeze({ ...current, ...patch }),
+          result: null,
+        },
+      },
+    };
+  }
+
+  private updateDemoProfessionalParameters(
+    patch: Partial<BleProfessionalParameters>,
+  ): void {
+    const current = this.viewModel.reads.professionalParameters.value;
+    if (!this.isDemoMode || current === null) {
+      return;
+    }
+    this.viewModel = {
+      ...this.viewModel,
+      reads: {
+        ...this.viewModel.reads,
+        professionalParameters: {
+          status: 'available',
+          readStatus: 'success',
+          value: Object.freeze({
+            ...current,
+            ...patch,
+          }) as BleProfessionalParameters,
+          result: null,
+        },
+      },
+    };
+  }
+
+  private updateDemoUserPeripheral(
+    field: ProductUserPeripheralField,
+    enabled: boolean,
+  ): void {
+    const current = this.viewModel.reads.userParameters.value;
+    if (current === null) {
+      return;
+    }
+    const key = field === 'static-light'
+      ? 'staticLight'
+      : field === 'dynamic-light'
+        ? 'dynamicLight'
+        : 'rgbIndicator';
+    this.updateDemoUserParameters({
+      peripheralFlags: Object.freeze({
+        ...current.peripheralFlags,
+        [key]: enabled,
+      }),
+    });
+  }
+
+  private updateDemoProfessionalInput(
+    field: ProductProfessionalInputField,
+    mode: LegacyInputMode,
+  ): void {
+    const current = this.viewModel.reads.professionalParameters.value;
+    if (current === null) {
+      return;
+    }
+    const mask = field === 'input-1' ? 0x80 : 0x40;
+    const peripheralByte1 = mode === 'radar'
+      ? current.peripheralByte1 | mask
+      : current.peripheralByte1 & ~mask;
+    this.updateDemoProfessionalParameters({ peripheralByte1 });
+  }
+
+  private updateDemoWeightRange(range: ProductWeightRange): void {
+    this.updateDemoProfessionalParameters({
+      weightRangeLower: range.lower,
+      weightRangeUpper: range.upper,
+    });
+    const speeds = this.moventivWeightAssociatedSpeeds(range);
+    if (speeds !== null) {
+      this.updateDemoUserParameters({
+        openSpeed: speeds.openSpeed,
+        closeSpeed: speeds.closeSpeed,
+      });
+    }
+  }
+
+  private updateDemoProfessionalScalar(
+    field: ProductProfessionalScalarField,
+    value: number,
+  ): void {
+    switch (field) {
+      case 'break-force-at-open':
+        this.updateDemoProfessionalParameters({ breakForceAtOpen: value });
+        return;
+      case 'near-open-speed':
+        this.updateDemoProfessionalParameters({ nearOpenSpeed: value });
+        return;
+      case 'near-close-speed':
+        this.updateDemoProfessionalParameters({ nearCloseSpeed: value });
+        return;
+      case 'near-open-torque':
+        this.updateDemoProfessionalParameters({ nearOpenTorque: value });
+        return;
+      case 'near-close-torque':
+        this.updateDemoProfessionalParameters({ nearCloseTorque: value });
+        return;
+      case 'braking-open-power':
+        this.updateDemoProfessionalParameters({ brakingOpenPower: value });
+        return;
+      case 'obstacle-sensitivity':
+        this.updateDemoProfessionalParameters({ obstacleSensitivity: value });
+        return;
+    }
+  }
+
+  private updateDemoSensitiveToggle(
+    action: ProductSensitiveAction,
+    enabled: boolean,
+  ): void {
+    const current = this.viewModel.reads.professionalParameters.value;
+    if (current === null) {
+      return;
+    }
+    const mask = action === 'radar-test-1'
+      ? 0x20
+      : action === 'radar-test-2'
+        ? 0x10
+        : action === 'professional-peripheral-lock'
+          ? 0x08
+          : 0;
+    if (mask === 0) {
+      return;
+    }
+    this.updateDemoProfessionalParameters({
+      peripheralByte1: enabled
+        ? current.peripheralByte1 | mask
+        : current.peripheralByte1 & ~mask,
+    });
+  }
+
+  private updateDemoLockMode(mode: LegacyLockMode): void {
+    this.updateDemoUserParameters({ lockMode: mode });
+  }
+
   private updateStoredRoomAssignment(
     deviceId: string,
     name: string,
@@ -4393,11 +4722,14 @@ export class ProductPage implements OnDestroy {
   private productDateActionContext(
     context: ProductPageNavigationState,
   ): ProductDateActionContext {
+    if (context.mode === 'demo') {
+      throw new Error('Demo mode has no BLE date-action context.');
+    }
     return {
       profile: context.profile,
       deviceId: context.deviceId,
       connectionGeneration: context.connectionGeneration,
-      identificationConfidence: context.identificationConfidence,
+      identificationConfidence: 'strong',
     };
   }
 
@@ -5037,6 +5369,22 @@ function initialReadStates(): ProductReadViewStates {
   };
 }
 
+function demoReadStates(snapshot: ProductDemoSnapshot): ProductReadViewStates {
+  const available = <T>(value: T): ProductReadViewState<T> => ({
+    status: 'available',
+    readStatus: 'success',
+    value,
+    result: null,
+  });
+  return {
+    version: available(snapshot.version),
+    datesAndCycles: available(snapshot.datesAndCycles),
+    maintenance: available(snapshot.maintenance),
+    userParameters: available(snapshot.userParameters),
+    professionalParameters: available(snapshot.professionalParameters),
+  };
+}
+
 function readView<T>(
   result: BleTypedReadResult<T> | undefined,
   loadStatus: ProductDataLoadStatus,
@@ -5083,14 +5431,18 @@ export function isProductPageNavigationState(
     return false;
   }
   const candidate = value as Partial<ProductPageNavigationState>;
-  return isKnownProductProfile(candidate.profile) &&
+  const mode = candidate.mode ?? 'connected';
+  return (mode === 'connected' || mode === 'demo') &&
+    isKnownProductProfile(candidate.profile) &&
+    (mode !== 'demo' || isProductDemoProfile(candidate.profile)) &&
     typeof candidate.deviceId === 'string' &&
     candidate.deviceId.trim().length > 0 &&
     Number.isInteger(candidate.connectionGeneration) &&
     (candidate.connectionGeneration ?? -1) >= 0 &&
     typeof candidate.displayName === 'string' &&
     candidate.displayName.trim().length > 0 &&
-    candidate.identificationConfidence === 'strong' &&
+    candidate.identificationConfidence ===
+      (mode === 'demo' ? 'demo' : 'strong') &&
     (candidate.motorState === null ||
       isMotorStateFrame(candidate.motorState));
 }

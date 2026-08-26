@@ -335,6 +335,91 @@ describe('ScanPage', () => {
     expect(component).toBeTruthy();
   });
 
+  it('should expose the enabled Phase 1 Demo FAB and choices in order',
+    async () => {
+      const element = fixture.nativeElement as HTMLElement;
+      const button = element.querySelector<HTMLElement>(
+        '.scan-demo-fab ion-fab-button',
+      );
+      expect(button).not.toBeNull();
+      expect(button?.hasAttribute('disabled')).toBeFalse();
+
+      await component.launchDemoMode();
+
+      expect(alertOptions).toHaveSize(1);
+      expect(alertOptions[0].header).toBe('Demo');
+      expect(alertOptions[0].buttons.map(({ text }) => text)).toEqual([
+        'MOVENTIV exemple',
+        'GARLINE exemple',
+        'WIDOOR exemple',
+        'Annuler',
+      ]);
+      expect(alertOptions[0].buttons[3].role).toBe('cancel');
+      expect(alertOptions[0].buttons.some(({ text }) =>
+        text?.includes('80'),
+      )).toBeFalse();
+    },
+  );
+
+  it('should enter each Demo profile without BLE connection or discovery',
+    async () => {
+      const connect = spyOn(bleService, 'connect').and.callThrough();
+      const discovery = spyOn(bleService, 'discoverServices').and.callThrough();
+      const startScan = spyOn(bleService, 'startScan').and.callThrough();
+      const scenarios = [
+        { button: 0, profile: 'moventiv-60', id: 'MOVENTIV-DEMO-0001' },
+        { button: 1, profile: 'garline', id: 'GARLINE-DEMO-0001' },
+        { button: 2, profile: 'widoor', id: 'WIDOOR-DEMO-0001' },
+      ] as const;
+
+      for (const scenario of scenarios) {
+        alertOptions = [];
+        routerNavigate.calls.reset();
+        await component.launchDemoMode();
+        alertOptions[0].buttons[scenario.button].handler?.();
+        await settlePromises();
+
+        expect(routerNavigate).toHaveBeenCalledOnceWith(
+          [`/product/${scenario.profile}`],
+          {
+            state: jasmine.objectContaining({
+              mode: 'demo',
+              profile: scenario.profile,
+              deviceId: scenario.id,
+              identificationConfidence: 'demo',
+            }),
+          },
+        );
+      }
+
+      expect(connect).not.toHaveBeenCalled();
+      expect(discovery).not.toHaveBeenCalled();
+      expect(startScan).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should cancel Demo without navigation and stop only an active scan',
+    async () => {
+      await component.launchDemoMode();
+      alertOptions[0].buttons[3].handler?.();
+      await settlePromises();
+      expect(routerNavigate).not.toHaveBeenCalled();
+
+      await component.startScan();
+      const stopScan = spyOn(bleService, 'stopScan').and.callThrough();
+      alertOptions = [];
+      await component.launchDemoMode();
+      alertOptions[0].buttons[2].handler?.();
+      await settlePromises();
+
+      expect(stopScan).toHaveBeenCalledTimes(1);
+      expect(routerNavigate).toHaveBeenCalledWith(
+        ['/product/widoor'],
+        { state: jasmine.objectContaining({ mode: 'demo' }) },
+      );
+    },
+  );
+
   it('should map RSSI values to historical signal quality assets', () => {
     expect(getBleSignalQualityFromRssi(null)).toBe(0);
     expect(getBleSignalQualityFromRssi(-95)).toBe(0);
@@ -3145,8 +3230,10 @@ function typedReadResult(
 }
 
 interface TestAlertOptions {
+  readonly header?: string;
   readonly message: string;
   readonly buttons: readonly {
+    readonly text?: string;
     readonly role?: string;
     readonly handler?: () => void;
   }[];

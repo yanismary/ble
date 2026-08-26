@@ -81,6 +81,10 @@ import {
   ProductPageNavigationState,
   ProductReadViewState,
 } from './product-view.model';
+import {
+  ProductDemoProfile,
+  createProductDemoNavigationState,
+} from './product-demo';
 
 class FakeBleService {
   private readonly disconnectionSubject =
@@ -6515,6 +6519,171 @@ describe('ProductPage product date maintenance actions', () => {
     },
   );
 });
+
+describe('ProductPage Demo mode', () => {
+  it('should reject a forged Moventiv 80 Demo navigation context', () => {
+    expect(isProductPageNavigationState({
+      ...navigationState('moventiv-80'),
+      mode: 'demo',
+      identificationConfidence: 'demo',
+    })).toBeFalse();
+  });
+
+  it('should load each Phase 1 Demo profile from local data only', async () => {
+    const scenarios = [
+      { profile: 'widoor', shortTime: 4, cycles: 0 },
+      { profile: 'moventiv-60', shortTime: 4, cycles: 55989 },
+      { profile: 'garline', shortTime: 1, cycles: 55989 },
+    ] as const;
+
+    for (const scenario of scenarios) {
+      const harness = await createDemoHarness(scenario.profile);
+
+      expect(harness.component.isDemoMode).toBeTrue();
+      expect(harness.component.pageContextCurrent).toBeTrue();
+      expect(harness.component.viewModel.connectionState).toBe('demo');
+      expect(harness.component.viewModel.reads.version.status)
+        .toBe('available');
+      expect(harness.component.viewModel.reads.userParameters.value
+        ?.shortOpenTime).toBe(scenario.shortTime);
+      expect(harness.component.viewModel.reads.datesAndCycles.value
+        ?.totalCycles).toBe(scenario.cycles);
+      expect(harness.component.productCommands.length).toBeGreaterThan(0);
+      expect(harness.component.showSettingsTab).toBeTrue();
+      expect(harness.component.showInformationTab).toBeTrue();
+      expect(harness.loadService.loadProductData).not.toHaveBeenCalled();
+      expect(harness.bleService.getGattCharacteristicProperties)
+        .not.toHaveBeenCalled();
+
+      harness.fixture.destroy();
+    }
+  });
+
+  it('should keep Demo motor commands local', async () => {
+    const harness = await createDemoHarness('widoor');
+    const command = harness.component.productCommands[0].config;
+
+    expect(harness.component.canExecuteProductCommand(command)).toBeTrue();
+    await harness.component.requestProductCommand(command);
+
+    expect(harness.writeExecutionService.execute).not.toHaveBeenCalled();
+    expect(harness.bleService.writeCharacteristic).not.toHaveBeenCalled();
+  });
+
+  it('should update Demo sliders, toggles and name locally without BLE',
+    async () => {
+      const harness = await createDemoHarness('widoor');
+      const speed = harness.component.userSpeedControls[0].config;
+      const peripheral = harness.component.userPeripheralControls[0].config;
+      const originalPeripheral = harness.component.currentUserPeripheralState(
+        peripheral,
+      );
+
+      harness.component.setUserSpeedDraftValue(speed, 80);
+      await harness.component.requestUserSpeedChange(speed);
+      await harness.component.requestUserPeripheralChange(
+        peripheral,
+        !originalPeripheral,
+      );
+      harness.component.setNameRoomDraftName('Demo locale');
+      harness.component.setNameRoomDraftRoom('#SAL');
+      await harness.component.requestNameRoomChange();
+
+      expect(harness.component.currentUserSpeedValue(speed)).toBe(80);
+      expect(harness.component.currentUserPeripheralState(peripheral))
+        .toBe(!originalPeripheral);
+      expect(harness.component.currentNameRoomValue()).toEqual({
+        name: 'Demo locale',
+        roomSuffix: '#SAL',
+      });
+      expect(harness.writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(harness.bleService.writeCharacteristic).not.toHaveBeenCalled();
+      expect(localStorage.getItem(ROOM_ASSIGNMENTS_STORAGE_KEY)).toBeNull();
+    },
+  );
+
+  it('should return from Demo without disconnect or connected exit state',
+    async () => {
+      const harness = await createDemoHarness('garline');
+      const disconnect = spyOn(harness.bleService, 'disconnect')
+        .and.callThrough();
+
+      await harness.component.backToScan();
+
+      expect(disconnect).not.toHaveBeenCalled();
+      expect(harness.routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
+      expect(harness.productExitState.consume()).toBeNull();
+      expect(harness.loadService.cancelCurrentLoad).not.toHaveBeenCalled();
+    },
+  );
+});
+
+async function createDemoHarness(profile: ProductDemoProfile): Promise<{
+  readonly fixture: ComponentFixture<ProductPage>;
+  readonly component: ProductPage;
+  readonly bleService: FakeBleService;
+  readonly loadService: FakeProductDataLoadService;
+  readonly writeExecutionService: FakeBleWriteExecutionService;
+  readonly routerNavigate: jasmine.Spy;
+  readonly productExitState: ProductExitStateService;
+}> {
+  const bleService = new FakeBleService();
+  bleService.connectedDeviceId = null;
+  bleService.connectionGeneration = 0;
+  const loadService = new FakeProductDataLoadService();
+  const writeExecutionService = new FakeBleWriteExecutionService();
+  const routerNavigate = jasmine.createSpy('navigate').and.resolveTo(true);
+  const platform = new FakePlatform();
+  const routerOutlet = { swipeGesture: true };
+  const state = createProductDemoNavigationState(profile);
+
+  TestBed.resetTestingModule();
+  await TestBed.configureTestingModule({
+    imports: [ProductPage],
+    providers: [
+      { provide: BleService, useValue: bleService },
+      {
+        provide: AlertController,
+        useValue: {
+          create: jasmine.createSpy('create').and.resolveTo({
+            present: async () => undefined,
+            onDidDismiss: async () => ({ role: 'cancel' }),
+          }),
+        },
+      },
+      { provide: BleWriteExecutionService, useValue: writeExecutionService },
+      { provide: ProductDataLoadService, useValue: loadService },
+      { provide: ProductDetection, useClass: ProductDetection },
+      {
+        provide: ActivatedRoute,
+        useValue: { snapshot: { data: { profile } } },
+      },
+      {
+        provide: Router,
+        useValue: {
+          getCurrentNavigation: () => ({ extras: { state } }),
+          navigate: routerNavigate,
+        },
+      },
+      { provide: Platform, useValue: platform },
+      { provide: IonRouterOutlet, useValue: routerOutlet },
+    ],
+  }).compileComponents();
+
+  const fixture = TestBed.createComponent(ProductPage);
+  const component = fixture.componentInstance;
+  const productExitState = TestBed.inject(ProductExitStateService);
+  fixture.detectChanges();
+  return {
+    fixture,
+    component,
+    bleService,
+    loadService,
+    writeExecutionService,
+    routerNavigate,
+    productExitState,
+  };
+}
 
 function navigationState(
   profile: KnownProductProfile,

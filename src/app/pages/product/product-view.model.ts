@@ -17,6 +17,7 @@ import { MotorStateFrame } from '../../core/services/product-detection';
 
 export type ProductConnectionState =
   | 'connected'
+  | 'demo'
   | 'disconnected'
   | 'stale'
   | 'invalid-profile';
@@ -34,7 +35,7 @@ interface ProductReadViewAvailable<T> {
   readonly status: 'available';
   readonly readStatus: 'success';
   readonly value: T;
-  readonly result: BleTypedReadResult<T>;
+  readonly result: BleTypedReadResult<T> | null;
 }
 
 interface ProductReadViewUnavailable<T> {
@@ -76,11 +77,12 @@ export interface ProductViewModel {
 }
 
 export interface ProductPageNavigationState {
+  readonly mode?: 'connected' | 'demo';
   readonly profile: KnownProductProfile;
   readonly deviceId: string;
   readonly connectionGeneration: number;
   readonly displayName: string;
-  readonly identificationConfidence: 'strong';
+  readonly identificationConfidence: 'strong' | 'demo';
   readonly motorState: MotorStateFrame | null;
 }
 
