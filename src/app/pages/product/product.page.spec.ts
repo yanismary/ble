@@ -71,6 +71,7 @@ import {
   WIDOOR_COMMAND_UI_CONFIGS,
 } from './product-open-command';
 import { PRODUCT_PAGE_CONFIG } from './product-page.config';
+import { productPageTextFor } from './product-page-legacy-localization';
 import { productUserSpeedConfigsFor } from './product-user-speed';
 import { productUserTimingConfigsFor } from './product-user-timing';
 import { productUserPeripheralConfigsFor } from './product-user-peripheral';
@@ -377,6 +378,25 @@ describe('ProductPage', () => {
     expect(textContent).not.toContain(component.text.connection);
     expect(textContent).not.toContain(component.text.lastRefresh);
     expect(textContent).not.toContain(routerNavigationState.deviceId);
+  });
+
+  it('should render the Phase 1 navbar title without replacing the product identity', () => {
+    const title = fixture.nativeElement.querySelector('ion-title');
+
+    expect(title?.textContent?.trim()).toBe('Commandes');
+    expect(component.config.productName).toBe('WIDOOR');
+    expect(component.config.profile).toBe('widoor');
+    expect(fixture.nativeElement.querySelector('.product-back-button'))
+      .not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.app-main-menu-button'))
+      .not.toBeNull();
+  });
+
+  it('should preserve the Phase 1 navbar title in every supported language', () => {
+    expect(productPageTextFor('fr').sections.navbarTitle).toBe('Commandes');
+    expect(productPageTextFor('en').sections.navbarTitle).toBe('Command');
+    expect(productPageTextFor('de').sections.navbarTitle).toBe('Befehle');
+    expect(productPageTextFor('pl').sections.navbarTitle).toBe('Sterowanie');
   });
 
   it('should open the anchored global menu without selecting product settings',

@@ -5,6 +5,7 @@ export type ProductPageLanguage = 'fr' | 'en' | 'de' | 'pl';
 const LEGACY_PRODUCT_LABELS = {
   "fr": {
     "sections": {
+      "navbarTitle": "Commandes",
       "commands": "Commandes",
       "settings": "Réglages",
       "information": "Informations",
@@ -89,6 +90,7 @@ const LEGACY_PRODUCT_LABELS = {
   },
   "en": {
     "sections": {
+      "navbarTitle": "Command",
       "commands": "Commands",
       "settings": "Tuning",
       "information": "Informations",
@@ -173,6 +175,7 @@ const LEGACY_PRODUCT_LABELS = {
   },
   "de": {
     "sections": {
+      "navbarTitle": "Befehle",
       "commands": "Befehle",
       "settings": "Einstellungen",
       "information": "Informationen",
@@ -257,6 +260,7 @@ const LEGACY_PRODUCT_LABELS = {
   },
   "pl": {
     "sections": {
+      "navbarTitle": "Sterowanie",
       "commands": "Polecenia",
       "settings": "Ustawienia",
       "information": "Informacje",
@@ -360,6 +364,7 @@ export function productPageTextFor(language: ProductPageLanguage) {
     ...PRODUCT_PAGE_TEXT,
     sections: Object.freeze({
       ...PRODUCT_PAGE_TEXT.sections,
+      navbarTitle: labels.sections.navbarTitle,
       commands: labels.sections.commands,
       settings: labels.sections.settings,
       information: labels.sections.information,

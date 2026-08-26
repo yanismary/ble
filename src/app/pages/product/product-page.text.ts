@@ -312,6 +312,7 @@ export const PRODUCT_PAGE_TEXT = {
     },
   },
   sections: {
+    navbarTitle: 'Commandes',
     commands: 'Commandes',
     settings: 'Réglages',
     information: 'Informations',

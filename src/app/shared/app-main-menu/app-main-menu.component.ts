@@ -16,7 +16,20 @@ import {
 @Component({
   selector: 'app-main-menu',
   templateUrl: './app-main-menu.component.html',
-  styles: [':host { display: contents; }'],
+  styles: [`
+    :host {
+      display: contents;
+    }
+
+    .app-main-menu-button {
+      height: 48px;
+      width: 48px;
+    }
+
+    .app-main-menu-icon {
+      font-size: 26px;
+    }
+  `],
   standalone: true,
   imports: [IonButton, IonItem, IonLabel, IonList, IonPopover],
 })

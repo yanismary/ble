@@ -74,6 +74,19 @@ describe('AppMainMenuComponent', () => {
     expect(popover.alignment).toBe('end');
   });
 
+  it('should keep the dedicated Phase 1-sized menu button classes', () => {
+    const button = fixture.nativeElement.querySelector(
+      '.app-main-menu-button',
+    ) as HTMLIonButtonElement;
+    const icon = button.querySelector('.app-main-menu-icon');
+
+    expect(button).not.toBeNull();
+    expect(icon).not.toBeNull();
+    expect(getComputedStyle(button).width).toBe('48px');
+    expect(getComputedStyle(button).height).toBe('48px');
+    expect(getComputedStyle(icon!).fontSize).toBe('26px');
+  });
+
   it('should open from the ai-param click and dismiss without navigation',
     async () => {
       const button = fixture.nativeElement.querySelector(
