@@ -100,6 +100,11 @@ import {
   getScanRoomIconClass,
   splitScanDisplayName,
 } from './scan-page-ui';
+import {
+  isTutorialFreshScanNavigation,
+  withoutTutorialFreshScanNavigation,
+} from
+  '../tutorial/tutorial-navigation';
 
 interface ScannedDevice {
   deviceId: string;
@@ -258,6 +263,18 @@ export class ScanPage implements OnDestroy {
   }
 
   async ionViewWillEnter(): Promise<void> {
+    const navigationState = this.router.getCurrentNavigation?.()?.extras.state ??
+      globalThis.history?.state;
+    if (isTutorialFreshScanNavigation(navigationState)) {
+      this.devices = [];
+      if (isTutorialFreshScanNavigation(globalThis.history?.state)) {
+        globalThis.history.replaceState(
+          withoutTutorialFreshScanNavigation(globalThis.history.state),
+          '',
+        );
+      }
+      return;
+    }
     const productExit = this.productExitState.consume();
     if (productExit !== null) {
       this.resetAfterProductExit(productExit.disconnectStatus === 'success');

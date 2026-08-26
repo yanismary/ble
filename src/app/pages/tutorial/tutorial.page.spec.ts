@@ -1,11 +1,22 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
+import { GestureController } from '@ionic/angular/standalone';
 
 import { TutorialPage } from './tutorial.page';
+import { TUTORIAL_FRESH_SCAN_STATE_KEY } from './tutorial-navigation';
 
 describe('TutorialPage', () => {
   let router: jasmine.SpyObj<Router>;
+  let gestureOptions: {
+    readonly direction?: string;
+    readonly onEnd?: (detail: {
+      readonly deltaX: number;
+      readonly deltaY: number;
+    }) => void;
+  } | null;
+  let gestureEnable: jasmine.Spy;
+  let gestureDestroy: jasmine.Spy;
 
   async function createPage(
     platform: 'android' | 'ios' | 'web' = 'android',
@@ -13,10 +24,27 @@ describe('TutorialPage', () => {
     spyOn(Capacitor, 'getPlatform').and.returnValue(platform);
     router = jasmine.createSpyObj<Router>('Router', ['navigate']);
     router.navigate.and.resolveTo(true);
+    gestureOptions = null;
+    gestureEnable = jasmine.createSpy('enable');
+    gestureDestroy = jasmine.createSpy('destroy');
 
     await TestBed.configureTestingModule({
       imports: [TutorialPage],
-      providers: [{ provide: Router, useValue: router }],
+      providers: [
+        { provide: Router, useValue: router },
+        {
+          provide: GestureController,
+          useValue: {
+            create: (options: typeof gestureOptions) => {
+              gestureOptions = options;
+              return {
+                enable: gestureEnable,
+                destroy: gestureDestroy,
+              };
+            },
+          },
+        },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(TutorialPage);
@@ -43,6 +71,11 @@ describe('TutorialPage', () => {
     expect(query(fixture, '[data-tutorial-product="moventiv"]'))
       .not.toBeNull();
     expect(query(fixture, '[data-tutorial-product="garline"]')).not.toBeNull();
+    const choices = Array.from(
+      fixture.nativeElement.querySelectorAll('[data-tutorial-product]'),
+      (element: Element) => element.getAttribute('data-tutorial-product'),
+    );
+    expect(choices).toEqual(['widoor', 'moventiv', 'garline']);
   });
 
   it('selects Widoor and renders its first slide', async () => {
@@ -55,6 +88,8 @@ describe('TutorialPage', () => {
     expect(fixture.componentInstance.slideIndex).toBe(0);
     expect(query<HTMLImageElement>(fixture, '.tutorial-image')?.src)
       .toContain('slide1_widoor.png');
+    expect(gestureOptions?.direction).toBe('x');
+    expect(gestureEnable).toHaveBeenCalled();
   });
 
   it('selects Moventiv and Garline tutorials independently', async () => {
@@ -73,7 +108,7 @@ describe('TutorialPage', () => {
     const fixture = await createPage('android');
 
     fixture.componentInstance.selectProduct('moventiv');
-    fixture.componentInstance.next();
+    fixture.componentInstance.handleSwipe(-100, 0);
     fixture.detectChanges();
 
     expect(fixture.componentInstance.currentSlide?.image)
@@ -85,36 +120,44 @@ describe('TutorialPage', () => {
     const fixture = await createPage('ios');
 
     fixture.componentInstance.selectProduct('garline');
-    fixture.componentInstance.next();
+    fixture.componentInstance.handleSwipe(-100, 0);
     fixture.detectChanges();
 
     expect(fixture.componentInstance.currentSlide?.image)
       .toContain('slide2_ios_en_garline.PNG');
   });
 
-  it('updates the pager with the current slide index', async () => {
+  it('changes slides by horizontal swipe and updates the visual pager',
+    async () => {
     const fixture = await createPage();
     const component = fixture.componentInstance;
 
     component.selectProduct('widoor');
-    component.goToSlide(3);
+    component.handleSwipe(-120, 5);
     fixture.detectChanges();
 
-    expect(component.slideIndex).toBe(3);
-    expect(query(fixture, '[data-pager-index="3"]')
+    expect(component.slideIndex).toBe(1);
+    expect(query(fixture, '[data-pager-index="1"]')
       ?.classList.contains('tutorial-pager-dot-active')).toBeTrue();
+    component.handleSwipe(120, 5);
+    expect(component.slideIndex).toBe(0);
+    component.handleSwipe(-20, 0);
+    component.handleSwipe(-120, 150);
+    expect(component.slideIndex).toBe(0);
   });
 
-  it('resets the index when changing product', async () => {
+  it('keeps the pager indicative and removes Phase 2 navigation buttons',
+    async () => {
     const fixture = await createPage();
     const component = fixture.componentInstance;
 
     component.selectProduct('widoor');
-    component.goToSlide(4);
-    component.selectProduct('moventiv');
+    fixture.detectChanges();
 
-    expect(component.slideIndex).toBe(0);
-    expect(component.selectedProduct).toBe('moventiv');
+    expect(fixture.nativeElement.querySelectorAll('.tutorial-pager-dot'))
+      .toHaveSize(9);
+    expect(query(fixture, '.tutorial-pager button')).toBeNull();
+    expect(query(fixture, '.tutorial-navigation')).toBeNull();
   });
 
   it('shows the final ready slide after the eight Phase 1 slides', async () => {
@@ -122,12 +165,16 @@ describe('TutorialPage', () => {
     const component = fixture.componentInstance;
 
     component.selectProduct('widoor');
-    component.goToSlide(component.copy.slides.length);
+    for (let index = 0; index < component.copy.slides.length; index += 1) {
+      component.handleSwipe(-120, 0);
+    }
     fixture.detectChanges();
 
     expect(component.isReadySlide).toBeTrue();
     expect(component.totalPages).toBe(9);
     expect(fixture.nativeElement.textContent).toContain(component.copy.readyTitle);
+    expect(query(fixture, '.tutorial-skip-button')).not.toBeNull();
+    expect(query(fixture, '.tutorial-continue-button')).not.toBeNull();
   });
 
   it('finishes through the Phase 2 router when Skip is used', async () => {
@@ -135,7 +182,9 @@ describe('TutorialPage', () => {
 
     await fixture.componentInstance.finish();
 
-    expect(router.navigate).toHaveBeenCalledOnceWith(['/scan']);
+    expect(router.navigate).toHaveBeenCalledOnceWith(['/scan'], {
+      state: { [TUTORIAL_FRESH_SCAN_STATE_KEY]: true },
+    });
   });
 
   it('continues to scan from the final slide', async () => {
@@ -143,11 +192,30 @@ describe('TutorialPage', () => {
     const component = fixture.componentInstance;
 
     component.selectProduct('garline');
-    component.goToSlide(component.totalPages - 1);
-    component.next();
+    for (let index = 0; index < component.totalPages - 1; index += 1) {
+      component.handleSwipe(-120, 0);
+    }
+    fixture.detectChanges();
+    query<HTMLElement>(fixture, '.tutorial-continue-button')?.click();
+    await fixture.whenStable();
 
-    expect(router.navigate).toHaveBeenCalledOnceWith(['/scan']);
+    expect(router.navigate).toHaveBeenCalledOnceWith(['/scan'], {
+      state: { [TUTORIAL_FRESH_SCAN_STATE_KEY]: true },
+    });
   });
+
+  it('lets native Back return without invoking the finish navigation',
+    async () => {
+      const fixture = await createPage();
+      fixture.componentInstance.selectProduct('moventiv');
+      fixture.detectChanges();
+
+      fixture.destroy();
+
+      expect(router.navigate).not.toHaveBeenCalled();
+      expect(gestureDestroy).toHaveBeenCalled();
+    },
+  );
 
   it('does not navigate to ProductPage or expose BLE behavior', async () => {
     const fixture = await createPage();

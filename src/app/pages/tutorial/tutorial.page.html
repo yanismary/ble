@@ -50,6 +50,7 @@
     </ion-button>
 
     <section
+      #slideSurface
       class="tutorial-slide"
       aria-live="polite"
       [attr.data-slide-index]="slideIndex"
@@ -82,31 +83,14 @@
       }
     </section>
 
-    <nav class="tutorial-navigation" aria-label="tutorial navigation">
-      <ion-button
-        fill="clear"
-        type="button"
-        [disabled]="slideIndex === 0"
-        (click)="previous()"
-      >
-        {{ copy.previousLabel }}
-      </ion-button>
-
-      <div class="tutorial-pager" aria-hidden="true">
-        @for (page of pageIndexes; track page) {
-          <button
-            class="tutorial-pager-dot"
-            type="button"
-            [class.tutorial-pager-dot-active]="page === slideIndex"
-            [attr.data-pager-index]="page"
-            (click)="goToSlide(page)"
-          ></button>
-        }
-      </div>
-
-      <ion-button fill="clear" type="button" (click)="next()">
-        {{ isLastSlide ? copy.continueLabel : copy.nextLabel }}
-      </ion-button>
-    </nav>
+    <div class="tutorial-pager" aria-hidden="true">
+      @for (page of pageIndexes; track page) {
+        <span
+          class="tutorial-pager-dot"
+          [class.tutorial-pager-dot-active]="page === slideIndex"
+          [attr.data-pager-index]="page"
+        ></span>
+      }
+    </div>
   }
 </ion-content>

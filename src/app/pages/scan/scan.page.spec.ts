@@ -50,6 +50,8 @@ import {
   getScanRoomIconClass,
   splitScanDisplayName,
 } from './scan-page-ui';
+import { TUTORIAL_FRESH_SCAN_STATE_KEY } from
+  '../tutorial/tutorial-navigation';
 
 class FakeBleService {
   private readonly disconnectionSubject = new Subject<BleDisconnectionEvent>();
@@ -68,6 +70,7 @@ class FakeBleService {
   disconnectResult: Promise<void> | null = null;
   servicesResult: DiscoveredBleService[] = [];
   readResult: DataView = new DataView(new ArrayBuffer(0));
+  readonly writeCharacteristic = jasmine.createSpy('writeCharacteristic');
   readonly requestBluetoothEnable = jasmine.createSpy(
     'requestBluetoothEnable',
   ).and.callFake(async (): Promise<void> => {
@@ -263,6 +266,7 @@ describe('ScanPage', () => {
   let sendMotorCommandWithConfirmation: jasmine.Spy;
   let productDataLoadService: FakeProductDataLoadService;
   let routerNavigate: jasmine.Spy;
+  let routerGetCurrentNavigation: jasmine.Spy;
   let productExitState: ProductExitStateService;
   let toastCreate: jasmine.Spy;
   let toastPresent: jasmine.Spy;
@@ -275,6 +279,8 @@ describe('ScanPage', () => {
     bleService = new FakeBleService();
     productDataLoadService = new FakeProductDataLoadService();
     routerNavigate = jasmine.createSpy('navigate').and.resolveTo(true);
+    routerGetCurrentNavigation = jasmine.createSpy('getCurrentNavigation')
+      .and.returnValue(null);
     toastOptions = [];
     toastPresent = jasmine.createSpy('present').and.resolveTo();
     toastCreate = jasmine.createSpy('create').and.callFake(
@@ -320,7 +326,10 @@ describe('ScanPage', () => {
         },
         {
           provide: Router,
-          useValue: { navigate: routerNavigate },
+          useValue: {
+            navigate: routerNavigate,
+            getCurrentNavigation: routerGetCurrentNavigation,
+          },
         },
       ],
     }).compileComponents();
@@ -334,6 +343,59 @@ describe('ScanPage', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('should open the active Info tutorial without any BLE operation',
+    async () => {
+      const element = fixture.nativeElement as HTMLElement;
+      const infoButton = element.querySelector<HTMLElement>(
+        '.scan-info-fab ion-fab-button',
+      );
+      const connect = spyOn(bleService, 'connect').and.callThrough();
+      const discovery = spyOn(bleService, 'discoverServices').and.callThrough();
+      const read = spyOn(bleService, 'readCharacteristic').and.callThrough();
+      const write = bleService.writeCharacteristic;
+
+      expect(infoButton).not.toBeNull();
+      expect(infoButton?.hasAttribute('disabled')).toBeFalse();
+
+      await component.openTutorial();
+
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/tutorial']);
+      expect(connect).not.toHaveBeenCalled();
+      expect(discovery).not.toHaveBeenCalled();
+      expect(read).not.toHaveBeenCalled();
+      expect(write).not.toHaveBeenCalled();
+      expect(bleService.disconnect).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should preserve scan results on natural Tutorial Back', async () => {
+    component.devices = [{ deviceId: 'device-1', name: 'Porte', rssi: -42 }];
+
+    await component.ionViewWillEnter();
+
+    expect(component.devices).toHaveSize(1);
+    expect(bleService.disconnect).not.toHaveBeenCalled();
+  });
+
+  it('should start with an empty list after Tutorial Skip or Continue',
+    async () => {
+      component.devices = [
+        { deviceId: 'device-1', name: 'Porte', rssi: -42 },
+      ];
+      routerGetCurrentNavigation.and.returnValue({
+        extras: {
+          state: { [TUTORIAL_FRESH_SCAN_STATE_KEY]: true },
+        },
+      });
+
+      await component.ionViewWillEnter();
+
+      expect(component.devices).toEqual([]);
+      expect(bleService.disconnect).not.toHaveBeenCalled();
+      expect(component.scanning).toBeFalse();
+    },
+  );
 
   it('should expose the enabled Phase 1 Demo FAB and choices in order',
     async () => {

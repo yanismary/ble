@@ -1,6 +1,9 @@
 import {
   normalizeTutorialLanguage,
   normalizeTutorialPlatform,
+  TutorialLanguage,
+  TutorialPlatform,
+  TutorialProduct,
   tutorialImagePathsFor,
   tutorialCopyFor,
 } from './tutorial.model';
@@ -15,6 +18,29 @@ describe('tutorial model', () => {
     expect(copy.slides[6].image).toBeUndefined();
     expect(copy.slides[7].image).toBeUndefined();
   });
+
+  it('keeps eight steps for every Phase 1 product, language, and platform',
+    () => {
+      const products: TutorialProduct[] = ['widoor', 'moventiv', 'garline'];
+      const languages: TutorialLanguage[] = ['fr', 'en', 'de', 'pl'];
+      const platforms: TutorialPlatform[] = ['android', 'ios'];
+
+      for (const product of products) {
+        for (const language of languages) {
+          for (const platform of platforms) {
+            const copy = tutorialCopyFor(product, language, platform);
+
+            expect(copy.slides.length)
+              .withContext(`${product}/${language}/${platform}`)
+              .toBe(8);
+            expect(copy.slides.slice(0, 6).every((slide) => Boolean(slide.image)))
+              .withContext(`${product}/${language}/${platform}`)
+              .toBeTrue();
+          }
+        }
+      }
+    },
+  );
 
   it('keeps product-specific text substitution', () => {
     const widoor = tutorialCopyFor('widoor', 'fr', 'android');

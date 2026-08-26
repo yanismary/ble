@@ -54,6 +54,7 @@
   display: flex;
   height: 100%;
   padding: 42px 0 78px;
+  touch-action: pan-y;
 }
 
 .tutorial-slide-content {
@@ -91,26 +92,19 @@
   transform: none;
 }
 
-.tutorial-continue-button,
-.tutorial-navigation ion-button {
+.tutorial-continue-button {
   --color: var(--mantion-ionic-blue);
 }
 
-.tutorial-navigation {
-  align-items: center;
+.tutorial-pager {
   bottom: calc(14px + env(safe-area-inset-bottom));
-  display: grid;
-  grid-template-columns: minmax(72px, 1fr) auto minmax(72px, 1fr);
+  display: flex;
+  gap: 7px;
+  justify-content: center;
   left: 0;
-  padding: 0 12px;
   position: fixed;
   right: 0;
   z-index: 10;
-}
-
-.tutorial-pager {
-  display: flex;
-  gap: 7px;
 }
 
 .tutorial-pager-dot {

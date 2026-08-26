@@ -23,8 +23,6 @@ export interface TutorialCopy {
   readonly choiceMoventiv: string;
   readonly choiceGarline: string;
   readonly skip: string;
-  readonly previousLabel: string;
-  readonly nextLabel: string;
   readonly continueLabel: string;
   readonly readyTitle: string;
   readonly slides: readonly TutorialSlide[];
@@ -305,8 +303,6 @@ export function tutorialCopyFor(
     choiceMoventiv: source.CHOICE.MOVENTIV,
     choiceGarline: source.CHOICE.GARLINE,
     skip: source.SKIP,
-    previousLabel: source.END.PREVIOUS,
-    nextLabel: source.END.NEXT,
     continueLabel: source.END.CONTINUE,
     readyTitle: productText(source.END.READY, product),
     slides,
