@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
-import { RouterLink, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
 
 import { AppInfoPage } from './app-info.page';
 
@@ -27,22 +26,18 @@ describe('AppInfoPage', () => {
     expect(component.appVersion).toBeTruthy();
   });
 
-  it('renders the Phase 1 style Mantion navbar and contact list', () => {
+  it('renders only the Phase 1 About content', () => {
     const element = fixture.nativeElement as HTMLElement;
+    const text = element.textContent ?? '';
 
     expect(element.querySelector('ion-toolbar.mantion-navbar')).toBeTruthy();
-    expect(element.querySelector('img[src="assets/img/logo_wimove.png"]'))
-      .toBeTruthy();
-    expect(element.textContent).toContain('appsupport@mantion-smt.fr');
-    expect(component.copy.phoneHref).toBe('tel:+33380378571');
-  });
-
-  it('keeps the company and legal destinations on the existing routes', () => {
-    const routes = fixture.debugElement
-      .queryAll(By.directive(RouterLink))
-      .map((debugElement) => debugElement.injector.get(RouterLink).href);
-
-    expect(routes).toContain('/company-info');
-    expect(routes).toContain('/legal-notice');
+    expect(text).toContain(component.copy.aboutContentTitle);
+    expect(text).toContain(component.copy.versionLabel);
+    expect(text).toContain(component.copy.lastModification);
+    expect(text).toContain(component.copy.lastModificationText);
+    expect(text).not.toContain(component.copy.contactTitle);
+    expect(text).not.toContain(component.copy.supportEmail);
+    expect(element.querySelector('.legacy-contact-list')).toBeNull();
+    expect(element.querySelector('.info-links')).toBeNull();
   });
 });

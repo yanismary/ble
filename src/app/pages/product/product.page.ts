@@ -89,6 +89,9 @@ import {
   triggerConfiguredHapticFeedback,
 } from '../../core/services/app-haptics';
 import {
+  AppMainMenuComponent,
+} from '../../shared/app-main-menu/app-main-menu.component';
+import {
   ProductExitStateService,
 } from '../../core/services/product-exit-state.service';
 import {
@@ -237,6 +240,7 @@ type ProductShellSettingsTab = 'basic' | 'advanced';
     IonTitle,
     IonToggle,
     IonToolbar,
+    AppMainMenuComponent,
   ],
 })
 export class ProductPage implements OnDestroy {

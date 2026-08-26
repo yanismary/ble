@@ -1,24 +1,18 @@
 import { Component, OnInit } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import {
   IonBackButton,
-  IonButton,
   IonButtons,
   IonContent,
   IonHeader,
-  IonIcon,
   IonItem,
   IonLabel,
   IonList,
-  IonListHeader,
   IonNote,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
-import { addIcons } from 'ionicons';
-import { call, location, mail } from 'ionicons/icons';
 
 import {
   appInfoCopyFor,
@@ -32,19 +26,15 @@ import {
   standalone: true,
   imports: [
     IonBackButton,
-    IonButton,
     IonButtons,
     IonContent,
     IonHeader,
-    IonIcon,
     IonItem,
     IonLabel,
     IonList,
-    IonListHeader,
     IonNote,
     IonTitle,
     IonToolbar,
-    RouterLink,
   ],
 })
 export class AppInfoPage implements OnInit {
@@ -53,10 +43,6 @@ export class AppInfoPage implements OnInit {
   );
 
   appVersion = '—';
-
-  constructor() {
-    addIcons({ call, location, mail });
-  }
 
   async ngOnInit(): Promise<void> {
     if (!Capacitor.isNativePlatform()) {

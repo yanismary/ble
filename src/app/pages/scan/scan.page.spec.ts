@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import {
   BleService as DiscoveredBleService,
@@ -39,6 +40,9 @@ import {
   BleDatesAndCycles,
   decodeBleDatesAndCycles,
 } from '../../core/services/ble-read-decoders';
+import {
+  AppMainMenuComponent,
+} from '../../shared/app-main-menu/app-main-menu.component';
 import { ScanPage } from './scan.page';
 import {
   getBleSignalQualityAsset,
@@ -375,19 +379,38 @@ describe('ScanPage', () => {
       const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
       const connectSpy = spyOn(bleService, 'connect').and.callThrough();
       fixture.detectChanges();
+      const menu = fixture.debugElement.query(
+        By.directive(AppMainMenuComponent),
+      ).componentInstance as AppMainMenuComponent;
+      const menuButton = fixture.nativeElement.querySelector(
+        '.app-main-menu-button',
+      ) as HTMLIonButtonElement;
+      const popover = fixture.nativeElement.querySelector(
+        'ion-popover.app-main-menu-popover',
+      ) as HTMLIonPopoverElement;
 
-      expect(component.mainMenuItems.map(({ label }) => label)).toEqual([
-        'Réglages',
+      expect(menu.items.map(({ label }) => label)).toEqual([
+        "Configuration de l'application",
         'Aide',
         'À propos',
-        'Qui sommes-nous',
-        'Contact',
+        'Qui sommes nous ?',
+        'Contacts',
         'Mentions légales',
       ]);
 
-      await component.openMainMenuRoute(component.mainMenuItems[0]);
+      const didPresent = popoverDidPresent(popover);
+      menuButton.click();
+      await didPresent;
+
+      expect(menu.menuOpen).toBeTrue();
+      expect(popover.reference).toBe('trigger');
+      expect(popover.side).toBe('bottom');
+      expect(popover.alignment).toBe('end');
+
+      await menu.select(menu.items[0]);
 
       expect(routerNavigate).toHaveBeenCalledOnceWith(['/settings']);
+      expect(menu.menuOpen).toBeFalse();
       expect(startScanSpy).not.toHaveBeenCalled();
       expect(connectSpy).not.toHaveBeenCalled();
     },
@@ -3253,6 +3276,14 @@ function createWidoorIdentificationServices(): DiscoveredBleService[] {
       characteristics: [],
     },
   ];
+}
+
+function popoverDidPresent(popover: HTMLIonPopoverElement): Promise<void> {
+  return new Promise((resolve) => {
+    popover.addEventListener('ionPopoverDidPresent', () => resolve(), {
+      once: true,
+    });
+  });
 }
 
 function addHistoricalCharacteristic(

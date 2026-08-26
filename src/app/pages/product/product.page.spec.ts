@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   AlertController,
@@ -57,6 +58,9 @@ import {
 import {
   ProductExitStateService,
 } from '../../core/services/product-exit-state.service';
+import {
+  AppMainMenuComponent,
+} from '../../shared/app-main-menu/app-main-menu.component';
 import {
   ProductPage,
   formatProductTimestamp,
@@ -374,6 +378,107 @@ describe('ProductPage', () => {
     expect(textContent).not.toContain(component.text.lastRefresh);
     expect(textContent).not.toContain(routerNavigationState.deviceId);
   });
+
+  it('should open the anchored global menu without selecting product settings',
+    async () => {
+    const menu = fixture.debugElement.query(
+      By.directive(AppMainMenuComponent),
+    ).componentInstance as AppMainMenuComponent;
+    const menuButton = fixture.nativeElement.querySelector(
+      '.app-main-menu-button',
+    ) as HTMLIonButtonElement;
+    const popover = fixture.nativeElement.querySelector(
+      'ion-popover.app-main-menu-popover',
+    ) as HTMLIonPopoverElement;
+    const backToScan = spyOn(component, 'backToScan').and.callThrough();
+    const didPresent = popoverDidPresent(popover);
+
+    expect(component.activeMainTab).toBe('commands');
+
+    menuButton.click();
+    await didPresent;
+
+    expect(menu.menuOpen).toBeTrue();
+    expect(popover.reference).toBe('trigger');
+    expect(component.activeMainTab).toBe('commands');
+    expect(routerNavigate).not.toHaveBeenCalled();
+    expect(backToScan).not.toHaveBeenCalled();
+    expect(bleService.connectedDeviceId).toBe('device-1');
+    expect(bleService.connectionGeneration).toBe(4);
+    expect(productExitState.consume()).toBeNull();
+
+    await popover.dismiss();
+
+    expect(menu.menuOpen).toBeFalse();
+    expect(component.activeMainTab).toBe('commands');
+    expect(routerNavigate).not.toHaveBeenCalled();
+    expect(backToScan).not.toHaveBeenCalled();
+    expect(bleService.connectedDeviceId).toBe('device-1');
+    expect(bleService.connectionGeneration).toBe(4);
+    },
+  );
+
+  it('should navigate from the menu without disconnecting the product',
+    async () => {
+      const disconnectSpy = spyOn(bleService, 'disconnect').and.callThrough();
+      const menu = fixture.debugElement.query(
+        By.directive(AppMainMenuComponent),
+      ).componentInstance as AppMainMenuComponent;
+      const menuButton = fixture.nativeElement.querySelector(
+        '.app-main-menu-button',
+      ) as HTMLIonButtonElement;
+      const popover = fixture.nativeElement.querySelector(
+        'ion-popover.app-main-menu-popover',
+      ) as HTMLIonPopoverElement;
+      const help = menu.items.find(({ destination }) =>
+        destination === 'help'
+      );
+      const backToScan = spyOn(component, 'backToScan').and.callThrough();
+      const didPresent = popoverDidPresent(popover);
+
+      expect(help).toBeDefined();
+      menuButton.click();
+      await didPresent;
+      await menu.select(help!);
+
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/help']);
+      expect(disconnectSpy).not.toHaveBeenCalled();
+      expect(backToScan).not.toHaveBeenCalled();
+      expect(bleService.connectedDeviceId).toBe('device-1');
+      expect(bleService.connectionGeneration).toBe(4);
+      expect(productExitState.consume()).toBeNull();
+      expect(component.activeMainTab).toBe('commands');
+      expect(menu.menuOpen).toBeFalse();
+    },
+  );
+
+  it('should scope Android Back away from an auxiliary page and restore the product context',
+    async () => {
+      const disconnectSpy = spyOn(bleService, 'disconnect').and.callThrough();
+      const menu = fixture.debugElement.query(
+        By.directive(AppMainMenuComponent),
+      ).componentInstance as AppMainMenuComponent;
+      const help = menu.items.find(({ destination }) =>
+        destination === 'help'
+      );
+
+      component.ionViewWillEnter();
+      await menu.select(help!);
+      component.ionViewWillLeave();
+      routerNavigate.calls.reset();
+
+      await platform.backButton.trigger();
+
+      expect(routerNavigate).not.toHaveBeenCalled();
+      expect(disconnectSpy).not.toHaveBeenCalled();
+      expect(bleService.connectedDeviceId).toBe('device-1');
+      expect(productExitState.consume()).toBeNull();
+
+      component.ionViewWillEnter();
+      expect(bleService.connectedDeviceId).toBe('device-1');
+      expect(routerOutlet.swipeGesture).toBeFalse();
+    },
+  );
 
   it('should navigate the product shell without BLE writes', () => {
     component.setActiveMainTab('settings');
@@ -6643,6 +6748,14 @@ function presentHistoricalDate(): BleDatesAndCycles['firstCommissioningDate'] {
     hour: 3,
     invalidReason: null,
   };
+}
+
+function popoverDidPresent(popover: HTMLIonPopoverElement): Promise<void> {
+  return new Promise((resolve) => {
+    popover.addEventListener('ionPopoverDidPresent', () => resolve(), {
+      once: true,
+    });
+  });
 }
 
 async function waitForCondition(predicate: () => boolean): Promise<void> {

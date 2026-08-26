@@ -14,16 +14,10 @@
     </ion-buttons>
     <ion-title>{{ config.productName }}</ion-title>
     <ion-buttons slot="end">
-      <ion-button
-        type="button"
-        fill="clear"
-        class="product-navbar-button"
-        [disabled]="!showSettingsTab"
-        [attr.aria-label]="text.sections.settings"
-        (click)="setActiveMainTab('settings')"
-      >
-        <span class="ai-param product-navbar-icon" aria-hidden="true"></span>
-      </ion-button>
+      <app-main-menu
+        buttonClass="product-navbar-button"
+        iconClass="product-navbar-icon"
+      ></app-main-menu>
     </ion-buttons>
   </ion-toolbar>
 

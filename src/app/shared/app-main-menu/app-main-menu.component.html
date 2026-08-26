@@ -1,0 +1,32 @@
+<ion-button
+  type="button"
+  fill="clear"
+  [class]="'app-main-menu-button ' + buttonClass"
+  aria-label="Ouvrir le menu principal"
+  (click)="openMenu($event)"
+>
+  <span
+    [class]="'ai-param app-main-menu-icon ' + iconClass"
+    aria-hidden="true"
+  ></span>
+</ion-button>
+
+<ion-popover
+  class="app-main-menu-popover"
+  reference="trigger"
+  side="bottom"
+  alignment="end"
+  [dismissOnSelect]="false"
+  (didPresent)="markMenuPresented()"
+  (didDismiss)="dismissMenu()"
+>
+  <ng-template>
+    <ion-list class="app-main-menu-list">
+      @for (item of items; track item.destination) {
+        <ion-item button detail="false" (click)="select(item)">
+          <ion-label>{{ item.label }}</ion-label>
+        </ion-item>
+      }
+    </ion-list>
+  </ng-template>
+</ion-popover>

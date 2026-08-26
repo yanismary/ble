@@ -2,14 +2,7 @@
   <ion-toolbar class="mantion-navbar scan-navbar">
     <ion-title>Sélection</ion-title>
     <ion-buttons slot="end">
-      <ion-button
-        fill="clear"
-        type="button"
-        aria-label="Ouvrir le menu principal"
-        (click)="openMainMenu()"
-      >
-        <span class="ai-param scan-menu-icon" aria-hidden="true"></span>
-      </ion-button>
+      <app-main-menu iconClass="scan-menu-icon"></app-main-menu>
     </ion-buttons>
   </ion-toolbar>
 
@@ -38,23 +31,6 @@
     </div>
   </ion-toolbar>
 </ion-header>
-
-<ion-popover
-  class="scan-main-popover"
-  [isOpen]="mainMenuOpen"
-  [dismissOnSelect]="true"
-  (didDismiss)="closeMainMenu()"
->
-  <ng-template>
-    <ion-list class="scan-main-menu-list">
-      @for (item of mainMenuItems; track item.label) {
-        <ion-item button detail="false" (click)="openMainMenuRoute(item)">
-          <ion-label>{{ item.label }}</ion-label>
-        </ion-item>
-      }
-    </ion-list>
-  </ng-template>
-</ion-popover>
 
 <ion-content [fullscreen]="true" class="scan-content mantion-page-background">
 

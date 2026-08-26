@@ -19,7 +19,6 @@ import {
   IonItem,
   IonLabel,
   IonList,
-  IonPopover,
   IonSpinner,
   IonTitle,
   IonToolbar,
@@ -80,6 +79,9 @@ import {
   ProductExitStateService,
 } from '../../core/services/product-exit-state.service';
 import {
+  AppMainMenuComponent,
+} from '../../shared/app-main-menu/app-main-menu.component';
+import {
   PRODUCT_PAGE_CONFIG,
 } from '../product/product-page.config';
 import { PRODUCT_PAGE_TEXT } from '../product/product-page.text';
@@ -96,11 +98,6 @@ interface ScannedDevice {
   deviceId: string;
   name: string;
   rssi: number | null;
-}
-
-interface MainMenuItem {
-  readonly label: string;
-  readonly route: readonly string[];
 }
 
 type MotorTestStatus =
@@ -175,10 +172,10 @@ const PHASE1_CONNECT_RETRY_DELAYS_MS = [500, 1_000] as const;
     IonItem,
     IonLabel,
     IonList,
-    IonPopover,
     IonSpinner,
     IonTitle,
     IonToolbar,
+    AppMainMenuComponent,
   ],
 })
 export class ScanPage implements OnDestroy {
@@ -214,7 +211,6 @@ export class ScanPage implements OnDestroy {
   connecting = false;
   entryConnectionCleanupInProgress = false;
   bleRecoveryInProgress = false;
-  mainMenuOpen = false;
   discoveringServices = false;
   discoveryError: string | null = null;
   errorMessage: string | null = null;
@@ -235,14 +231,6 @@ export class ScanPage implements OnDestroy {
   readonly motorTestText = SCAN_MOTOR_TEST_TEXT;
   readonly productReadText = SCAN_PRODUCT_READ_TEXT;
   readonly productPageText = PRODUCT_PAGE_TEXT;
-  readonly mainMenuItems: readonly MainMenuItem[] = Object.freeze([
-    { label: 'Réglages', route: ['/settings'] },
-    { label: 'Aide', route: ['/help'] },
-    { label: 'À propos', route: ['/app-info'] },
-    { label: 'Qui sommes-nous', route: ['/company-info'] },
-    { label: 'Contact', route: ['/app-info'] },
-    { label: 'Mentions légales', route: ['/legal-notice'] },
-  ]);
   productReadResult: ProductDataLoadResult | null = null;
   productReadStatus: 'idle' | 'loading' | ProductDataLoadStatus = 'idle';
   productProfile: ProductProfile = 'unknown';
@@ -284,19 +272,6 @@ export class ScanPage implements OnDestroy {
 
   async openSettings(): Promise<void> {
     await this.router.navigate(['/settings']);
-  }
-
-  async openMainMenuRoute(item: MainMenuItem): Promise<void> {
-    this.mainMenuOpen = false;
-    await this.router.navigate(item.route);
-  }
-
-  openMainMenu(): void {
-    this.mainMenuOpen = true;
-  }
-
-  closeMainMenu(): void {
-    this.mainMenuOpen = false;
   }
 
   getScanDisplayName(device: ScannedDevice): string {
