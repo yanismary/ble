@@ -1057,6 +1057,31 @@ describe('ScanPage', () => {
     },
   );
 
+  it('should release scan preparation after cancelling the Bluetooth-off alert',
+    async () => {
+      bleService.bluetoothEnabled = false;
+      const isBluetoothEnabledSpy = spyOn(bleService, 'isBluetoothEnabled')
+        .and.callThrough();
+      const searchButton = scanSearchButton(fixture);
+
+      searchButton.click();
+      await fixture.whenStable();
+      await alertOptions[0].buttons[0].handler?.();
+      fixture.detectChanges();
+
+      expect(scanPreparationInProgressOf(component)).toBeFalse();
+      expect(component.scanning).toBeFalse();
+      expect(component.canStartScan).toBeTrue();
+
+      searchButton.click();
+      await fixture.whenStable();
+
+      expect(isBluetoothEnabledSpy).toHaveBeenCalledTimes(2);
+      expect(alertOptions).toHaveSize(2);
+      expect(scanPreparationInProgressOf(component)).toBeFalse();
+    },
+  );
+
   it('should enable Bluetooth on Android and start one scan after confirmation',
     async () => {
       const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
@@ -1162,41 +1187,184 @@ describe('ScanPage', () => {
     },
   );
 
-  it('should show a retry action when BLE permission is denied',
+  it('should show only a Phase 1 toast after the first Android permission denial',
     async () => {
-      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
-      bleService.bluetoothEnabledError = new BleOperationError(
+      const startScanSpy = spyOn(bleService, 'startScan').and.rejectWith(
+        new BleOperationError(
+          'permission-denied',
+          'BLE permission denied.',
+        ),
+      );
+      const existingDevice = {
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      };
+      component.devices = [existingDevice];
+      component.selectedDeviceId = existingDevice.deviceId;
+
+      scanSearchButton(fixture).click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(toastOptions).toEqual([jasmine.objectContaining({
+        duration: 3_500,
+        position: 'bottom',
+      })]);
+      expect(alertOptions).toEqual([]);
+      expect(component.devices).toEqual([existingDevice]);
+      expect(component.selectedDeviceId).toBe(existingDevice.deviceId);
+      expect(component.scanning).toBeFalse();
+      expect(component.scanBleError).toBeNull();
+      expect(component.errorMessage).toBeNull();
+      expect(scanPreparationInProgressOf(component)).toBeFalse();
+      expect(component.canStartScan).toBeTrue();
+      expect(fixture.nativeElement.textContent).not.toContain('Réessayer');
+      expect(startScanSpy).toHaveBeenCalledTimes(1);
+      expect(bleService.isScanning()).toBeFalse();
+    },
+  );
+
+  it('should offer app settings after a repeated Android permission denial',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.rejectWith(
+        new BleOperationError(
+          'permission-denied',
+          'BLE permission denied.',
+        ),
+      );
+      component.devices = [{
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      }];
+
+      const searchButton = scanSearchButton(fixture);
+      searchButton.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(component.canStartScan).toBeTrue();
+
+      searchButton.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(toastCreate).toHaveBeenCalledTimes(1);
+      expect(alertOptions.length).toBe(1);
+      expect(alertOptions[0].header).toBe('Autorisations requises');
+      expect(alertOptions[0].buttons.map(({ text }) => text)).toEqual([
+        'Annuler',
+        'Ouvrir les réglages de l’application',
+      ]);
+      expect(component.devices.map(({ deviceId }) => deviceId))
+        .toEqual(['device-existing']);
+      expect(component.scanning).toBeFalse();
+      expect(component.scanBleError).toBeNull();
+      expect(scanPreparationInProgressOf(component)).toBeFalse();
+      expect(component.canStartScan).toBeTrue();
+      expect(startScanSpy).toHaveBeenCalledTimes(2);
+      expect(bleService.isScanning()).toBeFalse();
+
+      await alertOptions[0].buttons[1].handler?.();
+      expect(bleService.openAppSettings).toHaveBeenCalledTimes(1);
+      expect(startScanSpy).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('should remember a blocked permission without repeating the native check',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.rejectWith(
+        new BleOperationError(
+          'permission-settings-required',
+          'BLE permission denied.',
+        ),
+      );
+
+      await component.startScan();
+      await alertOptions[0].buttons[0].handler?.();
+      expect(scanPreparationInProgressOf(component)).toBeFalse();
+      expect(component.canStartScan).toBeTrue();
+
+      await component.startScan();
+
+      expect(startScanSpy).toHaveBeenCalledTimes(1);
+      expect(alertOptions.length).toBe(2);
+      expect(toastCreate).not.toHaveBeenCalled();
+      expect(component.scanning).toBeFalse();
+      expect(scanPreparationInProgressOf(component)).toBeFalse();
+      expect(component.canStartScan).toBeTrue();
+    },
+  );
+
+  it('should offer app settings immediately after an iOS permission denial',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.rejectWith(
+        new BleOperationError(
+          'permission-settings-required',
+          'BLE permission denied.',
+        ),
+      );
+      component.devices = [{
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      }];
+      bleService.platform = 'ios';
+      bleService.canRequestBluetoothEnable = false;
+
+      await component.startScan();
+
+      expect(toastCreate).not.toHaveBeenCalled();
+      expect(alertOptions.length).toBe(1);
+      expect(component.devices.map(({ deviceId }) => deviceId))
+        .toEqual(['device-existing']);
+      expect(component.scanning).toBeFalse();
+      expect(scanPreparationInProgressOf(component)).toBeFalse();
+      expect(component.canStartScan).toBeTrue();
+      expect(startScanSpy).toHaveBeenCalledTimes(1);
+
+      await alertOptions[0].buttons[1].handler?.();
+      expect(bleService.openAppSettings).toHaveBeenCalledTimes(1);
+      expect(startScanSpy).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('should scan after permission is granted and reset denial state',
+    async () => {
+      const permissionDenied = new BleOperationError(
         'permission-denied',
         'BLE permission denied.',
       );
-
-      await component.startScan();
-      fixture.detectChanges();
-
-      expect(startScanSpy).not.toHaveBeenCalled();
-      expect(component.scanBleError?.code).toBe('permission-denied');
-      expect(component.scanBleError?.action).toBe('retry-scan');
-      expect(fixture.nativeElement.textContent).toContain('Réessayer');
-    },
-  );
-
-  it('should show app settings when BLE permission requires settings',
-    async () => {
-      bleService.bluetoothEnabledError = new BleOperationError(
-        'permission-settings-required',
-        'BLE permission denied.',
+      const startScanSpy = spyOn(bleService, 'startScan').and.returnValues(
+        Promise.reject(permissionDenied),
+        Promise.resolve(),
+        Promise.reject(permissionDenied),
       );
+      component.devices = [{
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      }];
 
       await component.startScan();
-      await component.runScanBleErrorAction();
+      expect(component.devices).toHaveSize(1);
 
-      expect(component.scanBleError?.action).toBe('open-app-settings');
-      expect(bleService.openAppSettings).toHaveBeenCalledTimes(1);
+      await component.startScan();
+      expect(component.scanning).toBeTrue();
+      expect(component.devices).toEqual([]);
+      expect(startScanSpy).toHaveBeenCalledTimes(2);
+      await component.stopScan();
+
+      await component.startScan();
+
+      expect(toastCreate).toHaveBeenCalledTimes(2);
+      expect(alertOptions).toEqual([]);
       expect(component.scanning).toBeFalse();
+      expect(startScanSpy).toHaveBeenCalledTimes(3);
     },
   );
 
-  it('should handle app settings failure without crashing',
+  it('should keep Scan usable when opening permission settings fails',
     async () => {
       bleService.bluetoothEnabledError = new BleOperationError(
         'permission-settings-required',
@@ -1205,16 +1373,16 @@ describe('ScanPage', () => {
       bleService.openAppSettings.and.rejectWith(new BleOperationError(
         'app-settings-failed',
         'Opening app settings failed.',
-        new Error('Settings unavailable'),
       ));
 
       await component.startScan();
-      await component.runScanBleErrorAction();
+      await alertOptions[0].buttons[1].handler?.();
 
       expect(bleService.openAppSettings).toHaveBeenCalledTimes(1);
-      expect(component.scanBleError?.code).toBe('app-settings-failed');
-      expect(component.scanBleError?.action).toBe('retry-scan');
+      expect(component.scanBleError).toBeNull();
+      expect(component.errorMessage).toBeNull();
       expect(component.scanning).toBeFalse();
+      expect(component.canStartScan).toBeTrue();
     },
   );
 
@@ -3546,6 +3714,23 @@ async function settlePromises(): Promise<void> {
 
 function scanTimeoutOf(component: ScanPage): unknown {
   return (component as unknown as { scanTimeout: unknown }).scanTimeout;
+}
+
+function scanPreparationInProgressOf(component: ScanPage): boolean {
+  return (component as unknown as {
+    scanPreparationInProgress: boolean;
+  }).scanPreparationInProgress;
+}
+
+function scanSearchButton(fixture: ComponentFixture<ScanPage>): HTMLElement {
+  const element = fixture.nativeElement as HTMLElement;
+  const button = element.querySelector<HTMLElement>(
+    '.scan-search-button',
+  );
+  if (button === null) {
+    throw new Error('Scan search button is not rendered.');
+  }
+  return button;
 }
 
 function createScanResult(

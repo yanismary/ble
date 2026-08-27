@@ -108,6 +108,7 @@ import {
   ScanBluetoothText,
   scanBluetoothTextFor,
 } from './scan-bluetooth.text';
+import { scanPermissionTextFor } from './scan-permission.text';
 
 interface ScannedDevice {
   deviceId: string;
@@ -218,6 +219,9 @@ export class ScanPage implements OnDestroy {
   private scanPreparationInProgress = false;
   private bluetoothDisabledAlertOpen = false;
   private bluetoothSettingsAlertOpen = false;
+  private permissionDeniedCount = 0;
+  private permissionSettingsAlertOpen = false;
+  private permissionSettingsRequired = false;
 
   devices: ScannedDevice[] = [];
   connectedDeviceId: string | null = null;
@@ -620,6 +624,13 @@ export class ScanPage implements OnDestroy {
       return;
     }
 
+    if (this.permissionSettingsRequired) {
+      await this.presentPermissionSettingsAlert(
+        this.bleService.platform === 'android',
+      );
+      return;
+    }
+
     this.scanPreparationInProgress = true;
     try {
       const bluetoothReady = await this.ensureBluetoothReadyForScan();
@@ -628,16 +639,15 @@ export class ScanPage implements OnDestroy {
         return;
       }
 
-      this.clearScanTimeout();
-      this.devices = [];
-      this.selectedDeviceId = null;
-      this.errorMessage = null;
-      this.scanBleError = null;
-      this.hasScanned = true;
-      this.scanning = true;
+      const pendingResults: ScanResult[] = [];
+      let scanAccepted = false;
 
       await this.bleService.startScan(
         (result: ScanResult) => {
+          if (!scanAccepted) {
+            pendingResults.push(result);
+            return;
+          }
           this.ngZone.run(() => this.updateDevice(result));
         },
         BLE_SCAN_SERVICE_UUIDS,
@@ -648,6 +658,19 @@ export class ScanPage implements OnDestroy {
         return;
       }
 
+      this.resetPermissionDenialState();
+      this.clearScanTimeout();
+      this.devices = [];
+      this.selectedDeviceId = null;
+      this.errorMessage = null;
+      this.scanBleError = null;
+      this.hasScanned = true;
+      this.scanning = true;
+      scanAccepted = true;
+      for (const result of pendingResults) {
+        this.ngZone.run(() => this.updateDevice(result));
+      }
+
       this.scanTimeout = setTimeout(() => {
         void this.stopScan();
       }, PHASE1_SCAN_TIMEOUT_MS);
@@ -655,6 +678,9 @@ export class ScanPage implements OnDestroy {
       if (!this.destroyed) {
         this.scanning = false;
         this.clearScanTimeout();
+        if (await this.handlePermissionPrecheckError(error)) {
+          return;
+        }
         this.applyScanBleError(error);
       }
     } finally {
@@ -1957,6 +1983,109 @@ export class ScanPage implements OnDestroy {
       this.scanBleError = null;
       this.errorMessage = null;
     }
+  }
+
+  private async handlePermissionPrecheckError(
+    error: unknown,
+  ): Promise<boolean> {
+    if (
+      !isBleOperationError(error) ||
+      (error.code !== 'permission-denied' &&
+        error.code !== 'permission-settings-required')
+    ) {
+      return false;
+    }
+
+    this.clearPermissionInlineFeedback();
+    if (
+      error.code === 'permission-settings-required' ||
+      this.bleService.platform === 'ios'
+    ) {
+      this.permissionDeniedCount = Math.max(this.permissionDeniedCount, 1);
+      this.permissionSettingsRequired = true;
+      await this.presentPermissionSettingsAlert(
+        this.bleService.platform === 'android',
+      );
+      return true;
+    }
+
+    this.permissionDeniedCount += 1;
+    if (this.permissionDeniedCount === 1) {
+      await this.presentPermissionDeniedToast();
+      return true;
+    }
+
+    await this.presentPermissionSettingsAlert(true);
+    return true;
+  }
+
+  private async presentPermissionDeniedToast(): Promise<void> {
+    const text = scanPermissionTextFor(readStoredAppLanguage());
+    const toast = await this.toastController.create({
+      message: text.firstDenial,
+      duration: 3_500,
+      position: 'bottom',
+    });
+    await toast.present();
+  }
+
+  private async presentPermissionSettingsAlert(
+    blocked: boolean,
+  ): Promise<void> {
+    if (this.permissionSettingsAlertOpen || this.destroyed) {
+      return;
+    }
+
+    this.clearPermissionInlineFeedback();
+    this.permissionSettingsAlertOpen = true;
+    const text = scanPermissionTextFor(readStoredAppLanguage());
+    const alert = await this.alertController.create({
+      header: text.settingsTitle,
+      message: blocked ? text.blockedDenial : text.repeatedDenial,
+      backdropDismiss: false,
+      buttons: [
+        {
+          text: text.cancel,
+          role: 'cancel',
+          handler: () => {
+            this.permissionSettingsAlertOpen = false;
+          },
+        },
+        {
+          text: text.openAppSettings,
+          handler: () => {
+            this.permissionSettingsAlertOpen = false;
+            this.permissionSettingsRequired = false;
+            return this.openAppSettingsAfterPermissionDenial();
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async openAppSettingsAfterPermissionDenial(): Promise<void> {
+    try {
+      await this.bleService.openAppSettings();
+    } catch {
+      // Phase 1 did not add a second user-facing error for this failure.
+    }
+  }
+
+  private clearPermissionInlineFeedback(): void {
+    if (
+      this.scanBleError?.code === 'permission-denied' ||
+      this.scanBleError?.code === 'permission-settings-required'
+    ) {
+      this.scanBleError = null;
+      this.errorMessage = null;
+    }
+  }
+
+  private resetPermissionDenialState(): void {
+    this.permissionDeniedCount = 0;
+    this.permissionSettingsRequired = false;
+    this.permissionSettingsAlertOpen = false;
   }
 
   private applyScanBleError(error: unknown): void {
