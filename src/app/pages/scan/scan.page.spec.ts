@@ -1758,6 +1758,8 @@ describe('ScanPage', () => {
   it('should stop scanning when a detected device is tapped', fakeAsync(() => {
     const stopScanSpy = spyOn(bleService, 'stopScan').and.callThrough();
     const connectSpy = spyOn(bleService, 'connect').and.callThrough();
+    bleService.servicesResult = createIdentificationServices();
+    bleService.readResult = createVersionWord(0, 1);
     void component.startScan();
     flushMicrotasks();
     bleService.emit(createScanResult('device-1', -42, 'Capteur'));
@@ -1873,8 +1875,9 @@ describe('ScanPage', () => {
     }),
   );
 
-  it('should expose manual retry only after all Phase 1 connection attempts fail',
+  it('should recover after all Phase 1 connection attempts fail',
     async () => {
+      spyOn(console, 'warn');
       spyOn<any>(component, 'delay').and.resolveTo();
       const connectSpy = spyOn(bleService, 'connect').and.rejectWith(
         new BleOperationError(
@@ -1886,11 +1889,22 @@ describe('ScanPage', () => {
       bleService.emit(createScanResult('device-1', -42, 'Capteur'));
 
       await component.selectAndConnectDevice(component.devices[0]);
+      fixture.detectChanges();
 
       expect(connectSpy).toHaveBeenCalledTimes(3);
       expect(component.connectedDeviceId).toBeNull();
-      expect(component.connectionRetryDeviceId).toBe('device-1');
-      expect(component.canRetryConnection).toBeTrue();
+      expect(component.selectedDeviceId).toBeNull();
+      expect(component.connecting).toBeFalse();
+      expect(component.canStartScan).toBeTrue();
+      expect(component.devices).toHaveSize(1);
+      expect(toastOptions).toContain(jasmine.objectContaining({
+        message: 'Connexion Bluetooth impossible. Veuillez réessayer.',
+        duration: 3_000,
+        position: 'bottom',
+      }));
+      expect(fixture.nativeElement.textContent).not.toContain(
+        'BLE connection timed out',
+      );
       expect(routerNavigate).not.toHaveBeenCalled();
     },
   );
@@ -1911,7 +1925,8 @@ describe('ScanPage', () => {
         }
         await originalConnect(deviceId);
       });
-      bleService.servicesResult = createServices();
+      bleService.servicesResult = createIdentificationServices();
+      bleService.readResult = createVersionWord(0, 1);
       await component.startScan();
       bleService.emit(createScanResult('device-1', -42, 'Capteur'));
 
@@ -1922,7 +1937,9 @@ describe('ScanPage', () => {
     },
   );
 
-  it('should display a readable connection error', async () => {
+  it('should replace a native connection error with a simple toast', async () => {
+    spyOn(console, 'warn');
+    spyOn<any>(component, 'delay').and.resolveTo();
     await component.startScan();
     bleService.emit(createScanResult('device-1', -42, 'Capteur'));
     spyOn(bleService, 'connect').and.rejectWith(
@@ -1932,8 +1949,11 @@ describe('ScanPage', () => {
     await component.selectAndConnectDevice(component.devices[0]);
     fixture.detectChanges();
 
-    expect(component.connectionError).toContain('Connexion refusée');
-    expect(fixture.nativeElement.textContent).toContain('Connexion refusée');
+    expect(component.connectionError).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Connexion refusée');
+    expect(toastOptions).toContain(jasmine.objectContaining({
+      message: 'Connexion Bluetooth impossible. Veuillez réessayer.',
+    }));
     expect(component.connecting).toBeFalse();
     expect(routerNavigate).not.toHaveBeenCalled();
   });
@@ -1996,27 +2016,36 @@ describe('ScanPage', () => {
     },
   );
 
-  it('should keep connection retry internal after a retryable connection failure',
+  it('should allow a new device tap after exhausted automatic retries',
     async () => {
+      spyOn(console, 'warn');
       spyOn<any>(component, 'delay').and.resolveTo();
       await component.startScan();
       bleService.emit(createScanResult('device-1', -42, 'Capteur'));
-      component.selectDevice(component.devices[0]);
-      const connectSpy = spyOn(bleService, 'connect').and.rejectWith(
-        new BleOperationError(
-          'connection-timeout',
-          'BLE connection timed out.',
-        ),
+      bleService.servicesResult = createIdentificationServices();
+      bleService.readResult = createVersionWord(0, 1);
+      const originalConnect = bleService.connect.bind(bleService);
+      let attempt = 0;
+      const connectSpy = spyOn(bleService, 'connect').and.callFake(
+        async (deviceId: string) => {
+          attempt += 1;
+          if (attempt <= 3) {
+            throw new BleOperationError(
+              'connection-timeout',
+              'BLE connection timed out.',
+            );
+          }
+          await originalConnect(deviceId);
+        },
       );
 
-      await component.connectSelectedDevice();
-      fixture.detectChanges();
+      await component.selectAndConnectDevice(component.devices[0]);
+      await component.selectAndConnectDevice(component.devices[0]);
 
-      expect(connectSpy).toHaveBeenCalledTimes(3);
-      expect(component.connectionRetryDeviceId).toBe('device-1');
-      expect(component.canRetryConnection).toBeTrue();
-      expect(fixture.nativeElement.textContent).not.toContain(
-        'Réessayer la connexion',
+      expect(connectSpy).toHaveBeenCalledTimes(4);
+      expect(routerNavigate).toHaveBeenCalledOnceWith(
+        ['/product/moventiv-60'],
+        jasmine.any(Object),
       );
     },
   );
@@ -2037,7 +2066,8 @@ describe('ScanPage', () => {
           }
           await originalConnect(deviceId);
         });
-      bleService.servicesResult = createServices();
+      bleService.servicesResult = createIdentificationServices();
+      bleService.readResult = createVersionWord(0, 1);
       await component.startScan();
       bleService.emit(createScanResult('device-1', -42, 'Capteur'));
       component.selectDevice(component.devices[0]);
@@ -2053,106 +2083,6 @@ describe('ScanPage', () => {
       expect(component.connectionError).toBeNull();
       expect(component.connectionRetryDeviceId).toBeNull();
       expect(fixture.nativeElement.textContent).not.toContain('Connecter');
-    },
-  );
-
-  it('should keep the manual retry available after exhausted automatic retries',
-    async () => {
-      spyOn<any>(component, 'delay').and.resolveTo();
-      const connectSpy = spyOn(bleService, 'connect').and.rejectWith(
-        new BleOperationError(
-          'service-discovery-failed',
-          'BLE service discovery failed during connection.',
-        ),
-      );
-      await component.startScan();
-      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
-      component.selectDevice(component.devices[0]);
-      await component.connectSelectedDevice();
-
-      expect(connectSpy).toHaveBeenCalledTimes(3);
-      expect(component.connectedDeviceId).toBeNull();
-      expect(component.connectionRetryDeviceId).toBe('device-1');
-      expect(component.canRetryConnection).toBeTrue();
-    },
-  );
-
-  it('should ignore a double manual retry while one connection is pending',
-    async () => {
-      spyOn<any>(component, 'delay').and.resolveTo();
-      let releaseRetry!: () => void;
-      const originalConnect = bleService.connect.bind(bleService);
-      let attempt = 0;
-      const connectSpy = spyOn(bleService, 'connect')
-        .and.callFake(async (deviceId: string) => {
-          attempt += 1;
-          if (attempt <= 3) {
-            throw new BleOperationError(
-              'connection-failed',
-              'BLE connection failed.',
-            );
-          }
-          await new Promise<void>((resolve) => {
-            releaseRetry = resolve;
-          });
-          await originalConnect(deviceId);
-        });
-      await component.startScan();
-      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
-      component.selectDevice(component.devices[0]);
-      await component.connectSelectedDevice();
-      expect(component.canRetryConnection).toBeTrue();
-
-      const retry = component.retryConnection();
-      const ignoredRetry = component.retryConnection();
-      await settlePromises();
-
-      expect(connectSpy).toHaveBeenCalledTimes(4);
-      expect(component.connecting).toBeTrue();
-      expect(component.connectionStatusLabel).toContain('Nouvelle tentative');
-
-      releaseRetry();
-      await retry;
-      await ignoredRetry;
-      expect(component.connectedDeviceId).toBe('device-1');
-    },
-  );
-
-  it('should disconnect if a retry succeeds after the page is destroyed',
-    async () => {
-      spyOn<any>(component, 'delay').and.resolveTo();
-      let releaseRetry!: () => void;
-      const originalConnect = bleService.connect.bind(bleService);
-      let attempt = 0;
-      spyOn(bleService, 'connect')
-        .and.callFake(async (deviceId: string) => {
-          attempt += 1;
-          if (attempt <= 3) {
-            throw new BleOperationError(
-              'connection-failed',
-              'BLE connection failed.',
-            );
-          }
-          await new Promise<void>((resolve) => {
-            releaseRetry = resolve;
-          });
-          await originalConnect(deviceId);
-        });
-      await component.startScan();
-      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
-      component.selectDevice(component.devices[0]);
-      await component.connectSelectedDevice();
-      bleService.disconnect.calls.reset();
-
-      const retry = component.retryConnection();
-      await settlePromises();
-      fixture.destroy();
-      releaseRetry();
-      await retry;
-
-      expect(bleService.disconnect).toHaveBeenCalledTimes(1);
-      expect(bleService.connectedDeviceId).toBeNull();
-      expect(routerNavigate).not.toHaveBeenCalled();
     },
   );
 
@@ -2176,6 +2106,8 @@ describe('ScanPage', () => {
   );
 
   it('should leave the connected state after a remote disconnection', async () => {
+    bleService.servicesResult = createIdentificationServices();
+    bleService.readResult = createVersionWord(0, 1);
     await component.startScan();
     bleService.emit(createScanResult('device-1', -42, 'Capteur'));
     component.selectDevice(component.devices[0]);
@@ -2189,7 +2121,7 @@ describe('ScanPage', () => {
     expect(component.connectionError).toBe(
       'Connexion perdue avec l’appareil.',
     );
-    expect(fixture.nativeElement.textContent).toContain(
+    expect(fixture.nativeElement.textContent).not.toContain(
       'Connexion perdue avec l’appareil',
     );
 
@@ -2207,7 +2139,8 @@ describe('ScanPage', () => {
   });
 
   it('should discover services after connecting without rendering them', async () => {
-    bleService.servicesResult = createServices();
+    bleService.servicesResult = createIdentificationServices();
+    bleService.readResult = createVersionWord(0, 1);
     const discoverSpy = spyOn(bleService, 'discoverServices').and.callThrough();
     await component.startScan();
     bleService.emit(createScanResult('device-1', -42, 'Capteur'));
@@ -2217,7 +2150,7 @@ describe('ScanPage', () => {
     fixture.detectChanges();
 
     expect(discoverSpy).toHaveBeenCalledOnceWith('device-1');
-    expect(component.services).toEqual(createServices());
+    expect(component.services).toEqual(createIdentificationServices());
     expect(fixture.nativeElement.textContent).not.toContain('service-uuid');
     expect(fixture.nativeElement.textContent).not.toContain(
       'characteristic-uuid',
@@ -2260,7 +2193,8 @@ describe('ScanPage', () => {
     flushMicrotasks();
   }));
 
-  it('should stay connected when service discovery fails', async () => {
+  it('should disconnect and recover when service discovery fails', async () => {
+    spyOn(console, 'warn');
     const discoverSpy = spyOn(bleService, 'discoverServices').and.rejectWith(
       new Error('Découverte indisponible'),
     );
@@ -2271,263 +2205,77 @@ describe('ScanPage', () => {
     await component.connectSelectedDevice();
     fixture.detectChanges();
 
-    expect(component.connectedDeviceId).toBe('device-1');
-    expect(bleService.connectedDeviceId).toBe('device-1');
-    expect(component.discoveryError).toContain('Découverte indisponible');
-    expect(component.canRetryConnection).toBeFalse();
-    expect(component.canRetryServiceDiscovery).toBeTrue();
-    expect(component.canDisconnectAfterDiscoveryError).toBeTrue();
-    expect(discoverSpy).toHaveBeenCalledTimes(1);
-    expect(fixture.nativeElement.textContent).toContain(
-      'Découverte indisponible',
-    );
-    expect(fixture.nativeElement.textContent).not.toContain(
-      'Connexion BLE toujours active',
-    );
-    expect(fixture.nativeElement.textContent).not.toContain(
-      'Réessayer le chargement',
-    );
-    expect(fixture.nativeElement.textContent).not.toContain(
-      'Réessayer la connexion',
-    );
-  });
-
-  it('should retry service discovery on the active connection', async () => {
-    const connectSpy = spyOn(bleService, 'connect').and.callThrough();
-    let attempt = 0;
-    const discoverSpy = spyOn(bleService, 'discoverServices')
-      .and.callFake(async () => {
-        attempt += 1;
-        if (attempt === 1) {
-          throw new Error('Découverte indisponible');
-        }
-        return createIdentificationServices();
-      });
-    bleService.readResult = createVersionWord(2, 4);
-    await component.startScan();
-    bleService.emit(createScanResult('device-1', -42, 'Garline'));
-    component.selectDevice(component.devices[0]);
-    await component.connectSelectedDevice();
-
-    await component.retryLoadServices();
-    fixture.detectChanges();
-
-    expect(connectSpy).toHaveBeenCalledTimes(1);
-    expect(discoverSpy.calls.allArgs()).toEqual([
-      ['device-1'],
-      ['device-1'],
-    ]);
-    expect(component.discoveryError).toBeNull();
-    expect(component.canRetryServiceDiscovery).toBeFalse();
-    expect(component.identification?.detectedType).toBe('Garline');
-    expect(component.canOpenProductPage).toBeTrue();
-  });
-
-  it('should keep service discovery retry available after a retry failure',
-    async () => {
-      const discoverSpy = spyOn(bleService, 'discoverServices')
-        .and.rejectWith(new Error('Services indisponibles'));
-      await component.startScan();
-      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
-      component.selectDevice(component.devices[0]);
-      await component.connectSelectedDevice();
-
-      await component.retryLoadServices();
-
-      expect(discoverSpy).toHaveBeenCalledTimes(2);
-      expect(component.connectedDeviceId).toBe('device-1');
-      expect(component.discoveryError).toContain('Services indisponibles');
-      expect(component.canRetryServiceDiscovery).toBeTrue();
-    },
-  );
-
-  it('should support several manual service discovery retries', async () => {
-    let attempt = 0;
-    spyOn(bleService, 'discoverServices').and.callFake(async () => {
-      attempt += 1;
-      if (attempt < 3) {
-        throw new Error(`Découverte indisponible ${attempt}`);
-      }
-      return createIdentificationServices();
-    });
-    bleService.readResult = createVersionWord(2, 4);
-    await component.startScan();
-    bleService.emit(createScanResult('device-1', -42, 'Garline'));
-    component.selectDevice(component.devices[0]);
-    await component.connectSelectedDevice();
-
-    await component.retryLoadServices();
-    expect(component.canRetryServiceDiscovery).toBeTrue();
-    await component.retryLoadServices();
-
-    expect(component.discoveryError).toBeNull();
-    expect(component.identification?.detectedType).toBe('Garline');
-    expect(bleService.discoverServices).toHaveBeenCalledTimes(3);
-  });
-
-  it('should ignore double service discovery retries', async () => {
-    let releaseRetry!: (services: DiscoveredBleService[]) => void;
-    let attempt = 0;
-    const discoverSpy = spyOn(bleService, 'discoverServices')
-      .and.callFake(async () => {
-        attempt += 1;
-        if (attempt === 1) {
-          throw new Error('Découverte indisponible');
-        }
-        return new Promise<DiscoveredBleService[]>((resolve) => {
-          releaseRetry = resolve;
-        });
-      });
-    bleService.readResult = createVersionWord(2, 4);
-    await component.startScan();
-    bleService.emit(createScanResult('device-1', -42, 'Garline'));
-    component.selectDevice(component.devices[0]);
-    await component.connectSelectedDevice();
-
-    const retry = component.retryLoadServices();
-    const ignoredRetry = component.retryLoadServices();
-    await Promise.resolve();
-
-    expect(discoverSpy).toHaveBeenCalledTimes(2);
-    expect(component.discoveringServices).toBeTrue();
-    expect(component.serviceDiscoveryStatusLabel).toContain(
-      'Nouveau chargement',
-    );
-
-    releaseRetry(createIdentificationServices());
-    await retry;
-    await ignoredRetry;
-    expect(component.identification?.detectedType).toBe('Garline');
-  });
-
-  it('should clear service discovery recovery after a remote disconnect',
-    async () => {
-      spyOn(bleService, 'discoverServices').and.rejectWith(
-        new Error('Découverte indisponible'),
-      );
-      await component.startScan();
-      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
-      component.selectDevice(component.devices[0]);
-      await component.connectSelectedDevice();
-
-      bleService.emitRemoteDisconnection('device-1');
-
-      expect(component.connectedDeviceId).toBeNull();
-      expect(component.discoveryError).toBeNull();
-      expect(component.canRetryServiceDiscovery).toBeFalse();
-      expect(component.canStartScan).toBeTrue();
-    },
-  );
-
-  it('should ignore a stale service discovery retry result after reconnect',
-    async () => {
-      let releaseStaleRetry!: (services: DiscoveredBleService[]) => void;
-      let attempt = 0;
-      spyOn(bleService, 'discoverServices').and.callFake(async () => {
-        attempt += 1;
-        if (attempt === 1) {
-          throw new Error('Découverte indisponible');
-        }
-        if (attempt === 2) {
-          return new Promise<DiscoveredBleService[]>((resolve) => {
-            releaseStaleRetry = resolve;
-          });
-        }
-        return createWidoorIdentificationServices();
-      });
-      bleService.readResult = createVersionWord(1, 0);
-      await component.startScan();
-      bleService.emit(createScanResult('device-1', -42, 'Firma#CHA'));
-      component.selectDevice(component.devices[0]);
-      await component.connectSelectedDevice();
-
-      const staleRetry = component.retryLoadServices();
-      await Promise.resolve();
-      bleService.emitRemoteDisconnection('device-1');
-      await component.connectSelectedDevice();
-      releaseStaleRetry(createIdentificationServices());
-      await staleRetry;
-
-      expect(component.connectedDeviceId).toBe('device-1');
-      expect(component.identification?.detectedType).toBe('Widoor');
-      expect(component.services.some(({ uuid }) =>
-        uuid === BLE_UUIDS.widoorService,
-      )).toBeTrue();
-    },
-  );
-
-  it('should not update UI after destruction during service discovery retry',
-    async () => {
-      let releaseRetry!: (services: DiscoveredBleService[]) => void;
-      let attempt = 0;
-      spyOn(bleService, 'discoverServices').and.callFake(async () => {
-        attempt += 1;
-        if (attempt === 1) {
-          throw new Error('Découverte indisponible');
-        }
-        return new Promise<DiscoveredBleService[]>((resolve) => {
-          releaseRetry = resolve;
-        });
-      });
-      await component.startScan();
-      bleService.emit(createScanResult('device-1', -42, 'Garline'));
-      component.selectDevice(component.devices[0]);
-      await component.connectSelectedDevice();
-
-      const retry = component.retryLoadServices();
-      await Promise.resolve();
-      fixture.destroy();
-      releaseRetry(createIdentificationServices());
-      await retry;
-
-      expect(routerNavigate).not.toHaveBeenCalled();
-    },
-  );
-
-  it('should disconnect from a service discovery error state', async () => {
-    spyOn(bleService, 'discoverServices').and.rejectWith(
-      new Error('Découverte indisponible'),
-    );
-    await component.startScan();
-    bleService.emit(createScanResult('device-1', -42, 'Capteur'));
-    component.selectDevice(component.devices[0]);
-    await component.connectSelectedDevice();
-
-    await component.disconnectAfterDiscoveryError();
-
-    expect(bleService.disconnect).toHaveBeenCalledTimes(1);
     expect(component.connectedDeviceId).toBeNull();
+    expect(bleService.connectedDeviceId).toBeNull();
+    expect(component.selectedDeviceId).toBeNull();
     expect(component.discoveryError).toBeNull();
     expect(component.canStartScan).toBeTrue();
+    expect(discoverSpy).toHaveBeenCalledTimes(1);
+    expect(bleService.disconnect).toHaveBeenCalledTimes(1);
+    expect(component.devices).toHaveSize(1);
+    expect(toastOptions).toContain(jasmine.objectContaining({
+      message: 'Decouverte des services Bluetooth impossible.',
+      duration: 3_000,
+      position: 'bottom',
+    }));
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Découverte indisponible',
+    );
+    expect(routerNavigate).not.toHaveBeenCalled();
   });
 
-  it('should keep the connected state when disconnect after discovery error fails',
+  it('should never render stored connection pipeline diagnostics', () => {
+    component.connectionError = 'Error: native connect failure';
+    component.discoveryError = 'GATT service UUID unavailable';
+    component.identificationError = 'Native identification exception';
+
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).not.toContain('native connect failure');
+    expect(text).not.toContain('GATT');
+    expect(text).not.toContain('UUID');
+    expect(text).not.toContain('Native identification exception');
+    expect(fixture.nativeElement.querySelector('.connection-panel')).toBeNull();
+  });
+
+  it('should keep native state honest and retry cleanup before a future scan',
     async () => {
+      spyOn(console, 'warn');
       spyOn(bleService, 'discoverServices').and.rejectWith(
         new Error('Découverte indisponible'),
       );
-      bleService.disconnect.and.rejectWith(new Error('Déconnexion refusée'));
+      bleService.disconnectResult = Promise.reject(
+        new Error('Déconnexion refusée'),
+      );
       await component.startScan();
       bleService.emit(createScanResult('device-1', -42, 'Capteur'));
       component.selectDevice(component.devices[0]);
       await component.connectSelectedDevice();
 
-      await component.disconnectAfterDiscoveryError();
-
-      expect(component.connectedDeviceId).toBe('device-1');
+      expect(component.connectedDeviceId).toBeNull();
       expect(bleService.connectedDeviceId).toBe('device-1');
-      expect(component.errorMessage).toContain('Déconnexion refusée');
-      expect(component.canStartScan).toBeFalse();
+      expect(component.errorMessage).toBeNull();
+      expect(component.canStartScan).toBeTrue();
+      expect(component.devices).toHaveSize(1);
+
+      bleService.disconnectResult = null;
+      await component.startScan();
+
+      expect(bleService.disconnect).toHaveBeenCalledTimes(2);
+      expect(bleService.connectedDeviceId).toBeNull();
+      expect(component.scanning).toBeTrue();
     },
   );
 
   it('should clear discovered services after a remote disconnection', async () => {
-    bleService.servicesResult = createServices();
+    bleService.servicesResult = createIdentificationServices();
+    bleService.readResult = createVersionWord(0, 1);
     await component.startScan();
     bleService.emit(createScanResult('device-1', -42, 'Capteur'));
     component.selectDevice(component.devices[0]);
     await component.connectSelectedDevice();
-    expect(component.services.length).toBe(1);
+    expect(component.services.length).toBeGreaterThan(0);
 
     bleService.emitRemoteDisconnection('device-1');
 
@@ -2663,6 +2411,7 @@ describe('ScanPage', () => {
 
   it('should not turn a WI-named Moventiv/Garline service into Widoor when version read fails',
     async () => {
+      spyOn(console, 'warn');
       spyOn<any>(component, 'delay').and.resolveTo();
       bleService.servicesResult = createIdentificationServices();
       spyOn(bleService, 'readCharacteristic').and.rejectWith(
@@ -2676,7 +2425,14 @@ describe('ScanPage', () => {
 
       expect(component.productProfile).toBe('unknown');
       expect(component.identification).toBeNull();
-      expect(component.identificationError).toContain('Version read refused');
+      expect(component.identificationError).toBeNull();
+      expect(component.connectedDeviceId).toBeNull();
+      expect(bleService.connectedDeviceId).toBeNull();
+      expect(bleService.disconnect).toHaveBeenCalledTimes(1);
+      expect(component.canStartScan).toBeTrue();
+      expect(toastOptions).toContain(jasmine.objectContaining({
+        message: 'Produit non reconnu.',
+      }));
       expect(routerNavigate).not.toHaveBeenCalled();
     },
   );
@@ -3096,7 +2852,7 @@ describe('ScanPage', () => {
     expect(component.motorTestResult).toBeNull();
   });
 
-  it('should store ambiguous for contradictory detection clues', async () => {
+  it('should reject and recover from contradictory detection clues', async () => {
     spyOn(console, 'warn');
     bleService.servicesResult = createContradictoryIdentificationServices();
     bleService.readResult = createVersionWord(1, 0);
@@ -3106,8 +2862,16 @@ describe('ScanPage', () => {
 
     await component.connectSelectedDevice();
 
-    expect(component.identification?.detectedType).toBe('Ambigu');
-    expect(component.productProfile).toBe('ambiguous');
+    expect(component.identification).toBeNull();
+    expect(component.productProfile).toBe('unknown');
+    expect(component.connectedDeviceId).toBeNull();
+    expect(bleService.connectedDeviceId).toBeNull();
+    expect(bleService.disconnect).toHaveBeenCalledTimes(1);
+    expect(toastOptions).toContain(jasmine.objectContaining({
+      message: 'Produit non reconnu.',
+      duration: 2_000,
+    }));
+    expect(routerNavigate).not.toHaveBeenCalled();
   });
 
   it('should keep a simple connection state while reading identification',
@@ -3144,7 +2908,8 @@ describe('ScanPage', () => {
     flushMicrotasks();
   }));
 
-  it('should stay connected when identification reading fails', async () => {
+  it('should disconnect and recover when identification reading fails', async () => {
+    spyOn(console, 'warn');
     bleService.servicesResult = createIdentificationServices();
     spyOn(bleService, 'readCharacteristic').and.rejectWith(
       new Error('Lecture refusée'),
@@ -3156,9 +2921,18 @@ describe('ScanPage', () => {
     await component.connectSelectedDevice();
     fixture.detectChanges();
 
-    expect(component.connectedDeviceId).toBe('device-1');
-    expect(component.identificationError).toContain('Lecture refusée');
-    expect(fixture.nativeElement.textContent).toContain('Lecture refusée');
+    expect(component.connectedDeviceId).toBeNull();
+    expect(bleService.connectedDeviceId).toBeNull();
+    expect(component.identificationError).toBeNull();
+    expect(component.canStartScan).toBeTrue();
+    expect(component.devices).toHaveSize(1);
+    expect(bleService.disconnect).toHaveBeenCalledTimes(1);
+    expect(toastOptions).toContain(jasmine.objectContaining({
+      message: 'Produit non reconnu.',
+      duration: 3_000,
+    }));
+    expect(fixture.nativeElement.textContent).not.toContain('Lecture refusée');
+    expect(routerNavigate).not.toHaveBeenCalled();
   });
 
   it('should clear identification after a remote disconnection', async () => {

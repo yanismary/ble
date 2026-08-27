@@ -100,28 +100,13 @@
   @if (
     connecting ||
     discoveringServices ||
-    readingIdentification ||
-    connectionError ||
-    discoveryError ||
-    identificationError
+    readingIdentification
   ) {
     <section class="connection-panel" aria-live="polite">
-      @if (connecting || discoveringServices || readingIdentification) {
-        <div class="connection-status" role="status">
-          <ion-spinner name="crescent"></ion-spinner>
-          <span>Connexion en cours...</span>
-        </div>
-      }
-
-      @if (connectionError) {
-        <p class="error-message" role="alert">{{ connectionError }}</p>
-      }
-      @if (discoveryError) {
-        <p class="error-message" role="alert">{{ discoveryError }}</p>
-      }
-      @if (identificationError) {
-        <p class="error-message" role="alert">{{ identificationError }}</p>
-      }
+      <div class="connection-status" role="status">
+        <ion-spinner name="crescent"></ion-spinner>
+        <span>Connexion en cours...</span>
+      </div>
     </section>
   }
 

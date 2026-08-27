@@ -111,6 +111,9 @@ import {
 import { scanLocationTextFor } from './scan-location.text';
 import { scanPermissionTextFor } from './scan-permission.text';
 import { scanErrorTextFor } from './scan-error.text';
+import {
+  scanProductConnectionTextFor,
+} from './scan-product-connection.text';
 
 interface ScannedDevice {
   deviceId: string;
@@ -167,6 +170,12 @@ interface MotorNotificationDiagnostic {
   readonly frame: MotorStateFrame;
   readonly positionDelta: number | null;
 }
+
+type ProductConnectionFailure =
+  | 'connection'
+  | 'discovery'
+  | 'identification'
+  | 'unknown-product';
 
 const MOTOR_DIAGNOSTIC_HISTORY_LIMIT = 20;
 const PHASE1_SCAN_TIMEOUT_MS = 8_000;
@@ -825,13 +834,11 @@ export class ScanPage implements OnDestroy {
       if (this.destroyed) {
         return;
       }
-      const details = error instanceof Error ? error.message : String(error);
-      this.connectionError = details
-        ? `Impossible de se connecter : ${details}`
-        : 'Impossible de se connecter à cet appareil.';
-      if (this.isRetryableConnectionError(error)) {
-        this.connectionRetryDeviceId = device.deviceId;
-      }
+      await this.recoverFromProductConnectionFailure(
+        'connection',
+        device.deviceId,
+        error,
+      );
     } finally {
       this.connecting = false;
       this.retryingConnection = false;
@@ -1248,12 +1255,11 @@ export class ScanPage implements OnDestroy {
       }
     } catch (error: unknown) {
       if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
-        const details = error instanceof Error ? error.message : String(error);
-        this.discoveryError = details
-          ? `Impossible de découvrir les services BLE : ${details}`
-          : 'Impossible de découvrir les services BLE.';
-        this.serviceDiscoveryRetryDeviceId = deviceId;
-        this.serviceDiscoveryRetryGeneration = expectedConnectionGeneration;
+        await this.recoverFromProductConnectionFailure(
+          'discovery',
+          deviceId,
+          error,
+        );
       }
     } finally {
       if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
@@ -1290,8 +1296,10 @@ export class ScanPage implements OnDestroy {
       )) {
         return;
       }
-      this.identificationError =
-        'La caractéristique du mot de version BLE est absente.';
+      await this.recoverFromProductConnectionFailure(
+        'identification',
+        deviceId,
+      );
       return;
     }
 
@@ -1318,6 +1326,13 @@ export class ScanPage implements OnDestroy {
           `${this.detectedSecondaryProfile} — ` +
           `${identification.detectionReason} ` +
           `(confiance ${identification.detectionConfidence.toLowerCase()})`;
+        if (!this.isKnownProductProfile(this.productProfile)) {
+          await this.recoverFromProductConnectionFailure(
+            'unknown-product',
+            deviceId,
+          );
+          return;
+        }
         await this.startMotorStateNotifications(
           deviceId,
           expectedConnectionGeneration,
@@ -1334,10 +1349,11 @@ export class ScanPage implements OnDestroy {
         )) {
           return;
         }
-        const details = error instanceof Error ? error.message : String(error);
-        this.identificationError = details
-          ? `Impossible de lire l’identification BLE : ${details}`
-          : 'Impossible de lire l’identification BLE.';
+        await this.recoverFromProductConnectionFailure(
+          'identification',
+          deviceId,
+          error,
+        );
       }
     } finally {
       if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
@@ -1378,6 +1394,54 @@ export class ScanPage implements OnDestroy {
       message: this.productPageText.states.disconnected,
       duration: 500,
       position: 'middle',
+    });
+    await toast.present();
+  }
+
+  private async recoverFromProductConnectionFailure(
+    failure: ProductConnectionFailure,
+    deviceId: string,
+    technicalError?: unknown,
+  ): Promise<void> {
+    console.warn(
+      `BLE product connection recovery: ${failure}.`,
+      technicalError,
+    );
+
+    if (this.bleService.connectedDeviceId === deviceId) {
+      try {
+        await this.bleService.disconnect();
+      } catch (cleanupError: unknown) {
+        console.warn(
+          'Native BLE disconnect failed during product connection recovery.',
+          cleanupError,
+        );
+      }
+    }
+
+    if (this.destroyed) {
+      return;
+    }
+
+    this.clearConnectedState();
+    this.connectionError = null;
+    this.connectionRetryDeviceId = null;
+    this.discoveryError = null;
+    this.identificationError = null;
+    this.selectedDeviceId = null;
+    this.scanning = false;
+    this.clearScanTimeout();
+
+    const text = scanProductConnectionTextFor(readStoredAppLanguage());
+    const message = failure === 'connection'
+      ? text.connectionFailed
+      : failure === 'discovery'
+        ? text.discoveryFailed
+        : text.productNotRecognized;
+    const toast = await this.toastController.create({
+      message,
+      duration: failure === 'unknown-product' ? 2_000 : 3_000,
+      position: 'bottom',
     });
     await toast.present();
   }
