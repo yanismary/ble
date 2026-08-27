@@ -1,5 +1,6 @@
 import { Component, NgZone, OnDestroy, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { App } from '@capacitor/app';
 import { addIcons } from 'ionicons';
 import { search } from 'ionicons/icons';
 import {
@@ -19,9 +20,11 @@ import {
   IonItem,
   IonLabel,
   IonList,
+  IonRouterOutlet,
   IonSpinner,
   IonTitle,
   IonToolbar,
+  Platform,
   ToastController,
 } from '@ionic/angular/standalone';
 
@@ -69,6 +72,7 @@ import { BleReadStatus } from '../../core/services/ble-read.service';
 import { SCAN_MOTOR_TEST_TEXT } from './scan-motor-test.text';
 import { SCAN_PRODUCT_READ_TEXT } from './scan-product-read.text';
 import {
+  readAutoEnableBluetooth,
   readShowBleIdentifier,
 } from '../../core/services/app-preferences';
 import {
@@ -115,6 +119,7 @@ import {
   scanProductConnectionTextFor,
 } from './scan-product-connection.text';
 import { scanSurfaceTextFor } from './scan-surface.text';
+import { scanExitTextFor } from './scan-exit.text';
 
 interface ScannedDevice {
   deviceId: string;
@@ -185,6 +190,7 @@ const PHASE1_POST_CONNECTION_STABILIZATION_DELAY_MS = 500;
 const PHASE1_CONNECT_ATTEMPTS = 3;
 const PHASE1_CONNECT_RETRY_DELAYS_MS = [500, 1_000] as const;
 const PHASE1_BLUETOOTH_ENABLE_CHECK_DELAYS_MS = [400, 600, 800] as const;
+const EXIT_SCAN_CLEANUP_TIMEOUT_MS = 1_000;
 
 @Component({
   selector: 'app-scan',
@@ -216,7 +222,9 @@ export class ScanPage implements OnDestroy {
   private readonly productDetection = inject(ProductDetection);
   private readonly productDataLoadService = inject(ProductDataLoadService);
   private readonly productExitState = inject(ProductExitStateService);
+  private readonly platform = inject(Platform);
   private readonly router = inject(Router);
+  private readonly routerOutlet = inject(IonRouterOutlet, { optional: true });
   private readonly toastController = inject(ToastController);
   private readonly disconnectionSubscription: Subscription;
   private readonly bluetoothEnabledSubscription: Subscription;
@@ -238,6 +246,9 @@ export class ScanPage implements OnDestroy {
   private permissionSettingsAlertOpen = false;
   private permissionSettingsRequired = false;
   private bluetoothDisabledDuringScanInProgress = false;
+  private rootBackButtonSubscription: Subscription | null = null;
+  private exitConfirmationOpen = false;
+  private exitingApplication = false;
 
   devices: ScannedDevice[] = [];
   connectedDeviceId: string | null = null;
@@ -298,6 +309,7 @@ export class ScanPage implements OnDestroy {
   }
 
   async ionViewWillEnter(): Promise<void> {
+    this.registerRootBackButton();
     const navigationState = this.router.getCurrentNavigation?.()?.extras.state ??
       globalThis.history?.state;
     if (isTutorialFreshScanNavigation(navigationState)) {
@@ -319,6 +331,10 @@ export class ScanPage implements OnDestroy {
       return;
     }
     await this.disconnectExistingNativeConnectionForScanEntry();
+  }
+
+  ionViewWillLeave(): void {
+    this.unregisterRootBackButton();
   }
 
   async openTutorial(): Promise<void> {
@@ -780,6 +796,96 @@ export class ScanPage implements OnDestroy {
     }
   }
 
+  private registerRootBackButton(): void {
+    this.unregisterRootBackButton();
+    if (this.bleService.platform !== 'android') {
+      return;
+    }
+    this.rootBackButtonSubscription =
+      this.platform.backButton.subscribeWithPriority(
+        1,
+        (processNextHandler: () => void) => {
+          if (this.routerOutlet?.canGoBack()) {
+            processNextHandler();
+            return;
+          }
+          void this.presentExitConfirmation();
+        },
+      );
+  }
+
+  private unregisterRootBackButton(): void {
+    this.rootBackButtonSubscription?.unsubscribe();
+    this.rootBackButtonSubscription = null;
+    this.exitConfirmationOpen = false;
+  }
+
+  private async presentExitConfirmation(): Promise<void> {
+    if (this.exitConfirmationOpen || this.destroyed) {
+      return;
+    }
+    this.exitConfirmationOpen = true;
+    const text = scanExitTextFor(readStoredAppLanguage());
+    try {
+      const alert = await this.alertController.create({
+        message: text.message,
+        buttons: [
+          {
+            text: text.cancel,
+            role: 'cancel',
+            handler: () => {
+              this.exitConfirmationOpen = false;
+            },
+          },
+          {
+            text: text.exit,
+            handler: () => this.exitAndroidApplication(),
+          },
+        ],
+      });
+      await alert.present();
+      void alert.onDidDismiss().then(() => {
+        this.exitConfirmationOpen = false;
+      });
+    } catch (error: unknown) {
+      this.exitConfirmationOpen = false;
+      console.warn('Unable to present app exit confirmation.', error);
+    }
+  }
+
+  private async exitAndroidApplication(): Promise<void> {
+    if (this.bleService.platform !== 'android' || this.exitingApplication) {
+      return;
+    }
+    this.exitingApplication = true;
+    try {
+      if (readAutoEnableBluetooth()) {
+        await this.stopScanBeforeExit();
+      }
+      await this.exitNativeApplication();
+    } catch (error: unknown) {
+      this.exitingApplication = false;
+      console.warn('Unable to exit application.', error);
+    }
+  }
+
+  private async stopScanBeforeExit(): Promise<void> {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    await Promise.race([
+      this.stopScan(),
+      new Promise<void>((resolve) => {
+        timeout = setTimeout(resolve, EXIT_SCAN_CLEANUP_TIMEOUT_MS);
+      }),
+    ]);
+    if (timeout !== null) {
+      clearTimeout(timeout);
+    }
+  }
+
+  private exitNativeApplication(): Promise<void> {
+    return App.exitApp();
+  }
+
   selectDevice(device: ScannedDevice): void {
     if (!this.connecting) {
       this.selectedDeviceId = device.deviceId;
@@ -1091,6 +1197,7 @@ export class ScanPage implements OnDestroy {
     this.clearScanTimeout();
     this.disconnectionSubscription.unsubscribe();
     this.bluetoothEnabledSubscription.unsubscribe();
+    this.unregisterRootBackButton();
     void this.bleService.stopScan().catch(() => undefined);
     if (connectedDeviceId !== null) {
       void this.stopMotorStateNotifications(connectedDeviceId);

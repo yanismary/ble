@@ -7,9 +7,11 @@ import {
 } from '@capacitor-community/bluetooth-le';
 import {
   AlertController,
+  IonRouterOutlet,
+  Platform,
   ToastController,
 } from '@ionic/angular/standalone';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, Subscription } from 'rxjs';
 
 import {
   BleDisconnectionEvent,
@@ -254,6 +256,33 @@ class FakeBleService {
   }
 }
 
+class FakeBackButton {
+  private handler: ((processNextHandler: () => void) => void) | null = null;
+  activeSubscriptions = 0;
+  readonly subscribeWithPriority = jasmine.createSpy('subscribeWithPriority')
+    .and.callFake((
+      _priority: number,
+      handler: (processNextHandler: () => void) => void,
+    ): Subscription => {
+      this.handler = handler;
+      this.activeSubscriptions += 1;
+      return new Subscription(() => {
+        this.activeSubscriptions -= 1;
+        if (this.handler === handler) {
+          this.handler = null;
+        }
+      });
+    });
+
+  trigger(processNextHandler: () => void = () => undefined): void {
+    this.handler?.(processNextHandler);
+  }
+}
+
+class FakePlatform {
+  readonly backButton = new FakeBackButton();
+}
+
 class FakeProductDataLoadService {
   isLoading = false;
   readonly loadProductData = jasmine.createSpy('loadProductData').and.callFake(
@@ -297,6 +326,8 @@ describe('ScanPage', () => {
   let routerNavigate: jasmine.Spy;
   let routerGetCurrentNavigation: jasmine.Spy;
   let productExitState: ProductExitStateService;
+  let platform: FakePlatform;
+  let routerOutlet: { canGoBack: jasmine.Spy };
   let toastCreate: jasmine.Spy;
   let toastPresent: jasmine.Spy;
   let toastOptions: Record<string, unknown>[];
@@ -306,6 +337,10 @@ describe('ScanPage', () => {
     storeAutoEnableBluetooth(false);
     storeShowBleIdentifier(true);
     bleService = new FakeBleService();
+    platform = new FakePlatform();
+    routerOutlet = {
+      canGoBack: jasmine.createSpy('canGoBack').and.returnValue(false),
+    };
     productDataLoadService = new FakeProductDataLoadService();
     routerNavigate = jasmine.createSpy('navigate').and.resolveTo(true);
     routerGetCurrentNavigation = jasmine.createSpy('getCurrentNavigation')
@@ -360,6 +395,8 @@ describe('ScanPage', () => {
             getCurrentNavigation: routerGetCurrentNavigation,
           },
         },
+        { provide: Platform, useValue: platform },
+        { provide: IonRouterOutlet, useValue: routerOutlet },
       ],
     }).compileComponents();
 
@@ -372,6 +409,176 @@ describe('ScanPage', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('should show one Phase 1 exit prompt on Android Scan root and preserve state on cancel',
+    async () => {
+      component.devices = [{ deviceId: 'device-1', name: 'Salon', rssi: -50 }];
+      await component.ionViewWillEnter();
+
+      platform.backButton.trigger();
+      platform.backButton.trigger();
+      await settlePromises();
+
+      expect(platform.backButton.subscribeWithPriority)
+        .toHaveBeenCalledOnceWith(1, jasmine.any(Function));
+      expect(alertOptions).toHaveSize(1);
+      expect(alertOptions[0].message).toBe(
+        "Souhaitez-vous quitter l'application ?",
+      );
+      expect(alertOptions[0].buttons.map(({ text }) => text))
+        .toEqual(['Annuler', 'Quitter']);
+
+      alertOptions[0].buttons[0].handler?.();
+
+      expect(component.devices).toHaveSize(1);
+      expect(component.scanning).toBeFalse();
+
+      platform.backButton.trigger();
+      await settlePromises();
+      expect(alertOptions).toHaveSize(2);
+    },
+  );
+
+  it('should keep an active scan running when the root exit prompt is cancelled',
+    async () => {
+      await component.startScan();
+      const timeout = scanTimeoutOf(component);
+      await component.ionViewWillEnter();
+
+      platform.backButton.trigger();
+      await settlePromises();
+      alertOptions[0].buttons[0].handler?.();
+
+      expect(component.scanning).toBeTrue();
+      expect(scanTimeoutOf(component)).toBe(timeout);
+      expect(bleService.isScanning()).toBeTrue();
+    },
+  );
+
+  it('should stop an active scan and exit once when auto Bluetooth is enabled',
+    async () => {
+      storeAutoEnableBluetooth(true);
+      const exitApp = spyOn<any>(component, 'exitNativeApplication')
+        .and.resolveTo();
+      const stopScan = spyOn(bleService, 'stopScan').and.callThrough();
+      await component.startScan();
+      await component.ionViewWillEnter();
+
+      platform.backButton.trigger();
+      await settlePromises();
+      await alertOptions[0].buttons[1].handler?.();
+
+      expect(stopScan).toHaveBeenCalledTimes(1);
+      expect(component.scanning).toBeFalse();
+      expect(scanTimeoutOf(component)).toBeNull();
+      expect(exitApp).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('should preserve the Phase 1 preference role and exit without stopping when disabled',
+    async () => {
+      storeAutoEnableBluetooth(false);
+      const exitApp = spyOn<any>(component, 'exitNativeApplication')
+        .and.resolveTo();
+      const stopScan = spyOn(bleService, 'stopScan').and.callThrough();
+      await component.startScan();
+      await component.ionViewWillEnter();
+
+      platform.backButton.trigger();
+      await settlePromises();
+      await alertOptions[0].buttons[1].handler?.();
+
+      expect(stopScan).not.toHaveBeenCalled();
+      expect(exitApp).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('should still exit after a native stopScan failure', async () => {
+    storeAutoEnableBluetooth(true);
+    const exitApp = spyOn<any>(component, 'exitNativeApplication')
+      .and.resolveTo();
+    bleService.stopScanError = new Error('Native stop failed');
+    await component.startScan();
+    await component.ionViewWillEnter();
+
+    platform.backButton.trigger();
+    await settlePromises();
+    await alertOptions[0].buttons[1].handler?.();
+
+    expect(component.scanning).toBeFalse();
+    expect(scanTimeoutOf(component)).toBeNull();
+    expect(exitApp).toHaveBeenCalledTimes(1);
+  });
+
+  it('should ignore a second exit action while scan cleanup is pending',
+    async () => {
+      storeAutoEnableBluetooth(true);
+      const exitApp = spyOn<any>(component, 'exitNativeApplication')
+        .and.resolveTo();
+      let releaseStop!: () => void;
+      const pendingStop = new Promise<void>((resolve) => {
+        releaseStop = resolve;
+      });
+      const stopScan = spyOn(bleService, 'stopScan')
+        .and.returnValue(pendingStop);
+      await component.startScan();
+      await component.ionViewWillEnter();
+      platform.backButton.trigger();
+      await settlePromises();
+
+      const exitHandler = alertOptions[0].buttons[1].handler;
+      const firstExit = exitHandler?.();
+      const secondExit = exitHandler?.();
+
+      expect(stopScan).toHaveBeenCalledTimes(1);
+      expect(exitApp).not.toHaveBeenCalled();
+
+      releaseStop();
+      await Promise.all([firstExit, secondExit]);
+      expect(exitApp).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('should delegate hardware Back when the Ionic outlet can navigate back',
+    async () => {
+      const processNextHandler = jasmine.createSpy('processNextHandler');
+      routerOutlet.canGoBack.and.returnValue(true);
+      await component.ionViewWillEnter();
+
+      platform.backButton.trigger(processNextHandler);
+      await settlePromises();
+
+      expect(processNextHandler).toHaveBeenCalledTimes(1);
+      expect(alertCreate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should not register the root exit handler on iOS', async () => {
+    bleService.platform = 'ios';
+
+    await component.ionViewWillEnter();
+    platform.backButton.trigger();
+    await settlePromises();
+
+    expect(platform.backButton.subscribeWithPriority).not.toHaveBeenCalled();
+    expect(alertCreate).not.toHaveBeenCalled();
+  });
+
+  it('should keep one scoped root Back subscription across repeated Scan entries',
+    async () => {
+      await component.ionViewWillEnter();
+      await component.ionViewWillEnter();
+
+      expect(platform.backButton.activeSubscriptions).toBe(1);
+
+      component.ionViewWillLeave();
+      expect(platform.backButton.activeSubscriptions).toBe(0);
+
+      platform.backButton.trigger();
+      await settlePromises();
+      expect(alertCreate).not.toHaveBeenCalled();
+    },
+  );
 
   it('should render the Phase 1 Scan surface in FR, EN, DE and PL', () => {
     const expected = {
