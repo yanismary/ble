@@ -751,6 +751,125 @@ describe('ScanPage', () => {
     expect(component.scanning).toBeFalse();
   }));
 
+  it('should preserve existing results when Bluetooth precheck fails',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      const existingDevice = {
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      };
+      component.devices = [existingDevice];
+      component.selectedDeviceId = existingDevice.deviceId;
+      bleService.bluetoothEnabled = false;
+
+      await component.startScan();
+      fixture.detectChanges();
+
+      expect(component.devices).toEqual([existingDevice]);
+      expect(component.selectedDeviceId).toBe(existingDevice.deviceId);
+      expect(component.scanning).toBeFalse();
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(scanTimeoutOf(component)).toBeNull();
+      expect(fixture.nativeElement.querySelector('.scan-header-spinner'))
+        .toBeNull();
+    },
+  );
+
+  it('should preserve existing results when permission precheck fails',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      component.devices = [{
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      }];
+      bleService.bluetoothEnabledError = new BleOperationError(
+        'permission-denied',
+        'BLE permission denied.',
+      );
+
+      await component.startScan();
+
+      expect(component.devices.map(({ deviceId }) => deviceId))
+        .toEqual(['device-existing']);
+      expect(component.scanning).toBeFalse();
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(scanTimeoutOf(component)).toBeNull();
+      expect(component.canStartScan).toBeTrue();
+    },
+  );
+
+  it('should preserve existing results after an unexpected prepare error',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      component.devices = [{
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      }];
+      bleService.bluetoothEnabledError = new Error('Prepare failed');
+
+      await component.startScan();
+
+      expect(component.devices.map(({ deviceId }) => deviceId))
+        .toEqual(['device-existing']);
+      expect(component.scanning).toBeFalse();
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(scanTimeoutOf(component)).toBeNull();
+      expect(component.canStartScan).toBeTrue();
+    },
+  );
+
+  it('should clear existing results only after the precheck succeeds',
+    async () => {
+      let releasePrecheck!: (enabled: boolean) => void;
+      const pendingPrecheck = new Promise<boolean>((resolve) => {
+        releasePrecheck = resolve;
+      });
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      spyOn(bleService, 'isBluetoothEnabled')
+        .and.returnValue(pendingPrecheck);
+      component.devices = [{
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      }];
+
+      const scan = component.startScan();
+
+      expect(component.devices.length).toBe(1);
+      expect(component.scanning).toBeFalse();
+      expect(component.canStartScan).toBeFalse();
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(scanTimeoutOf(component)).toBeNull();
+
+      releasePrecheck(true);
+      await scan;
+
+      expect(component.devices).toEqual([]);
+      expect(component.scanning).toBeTrue();
+      expect(startScanSpy).toHaveBeenCalledTimes(1);
+      expect(scanTimeoutOf(component)).not.toBeNull();
+    },
+  );
+
+  it('should preserve new results when the eight-second scan times out',
+    fakeAsync(() => {
+      void component.startScan();
+      flushMicrotasks();
+      bleService.emit(createScanResult('device-new', -42, 'Nouveau produit'));
+
+      tick(8_000);
+      flushMicrotasks();
+
+      expect(component.scanning).toBeFalse();
+      expect(component.devices.map(({ deviceId }) => deviceId))
+        .toEqual(['device-new']);
+      expect(component.canStartScan).toBeTrue();
+    }),
+  );
+
   it('should add a detected device', async () => {
     await component.startScan();
 
@@ -3337,6 +3456,10 @@ async function settlePromises(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
   await Promise.resolve();
+}
+
+function scanTimeoutOf(component: ScanPage): unknown {
+  return (component as unknown as { scanTimeout: unknown }).scanTimeout;
 }
 
 function createScanResult(

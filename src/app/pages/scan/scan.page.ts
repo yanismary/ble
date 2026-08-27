@@ -211,6 +211,7 @@ export class ScanPage implements OnDestroy {
   private productReadInProgress = false;
   private connectedBleGeneration: number | null = null;
   private retryingConnection = false;
+  private scanPreparationInProgress = false;
 
   devices: ScannedDevice[] = [];
   connectedDeviceId: string | null = null;
@@ -396,6 +397,7 @@ export class ScanPage implements OnDestroy {
 
   get canStartScan(): boolean {
     return !this.scanning &&
+      !this.scanPreparationInProgress &&
       !this.connecting &&
       !this.bleRecoveryInProgress &&
       !this.entryConnectionCleanupInProgress &&
@@ -612,20 +614,21 @@ export class ScanPage implements OnDestroy {
       return;
     }
 
-    this.clearScanTimeout();
-    this.devices = [];
-    this.selectedDeviceId = null;
-    this.errorMessage = null;
-    this.scanBleError = null;
-    this.hasScanned = true;
-    this.scanning = true;
-
+    this.scanPreparationInProgress = true;
     try {
       await this.ensureBluetoothReadyForScan();
 
       if (this.destroyed) {
         return;
       }
+
+      this.clearScanTimeout();
+      this.devices = [];
+      this.selectedDeviceId = null;
+      this.errorMessage = null;
+      this.scanBleError = null;
+      this.hasScanned = true;
+      this.scanning = true;
 
       await this.bleService.startScan(
         (result: ScanResult) => {
@@ -648,6 +651,8 @@ export class ScanPage implements OnDestroy {
         this.clearScanTimeout();
         this.applyScanBleError(error);
       }
+    } finally {
+      this.scanPreparationInProgress = false;
     }
   }
 
