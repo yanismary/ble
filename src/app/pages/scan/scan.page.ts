@@ -110,6 +110,7 @@ import {
 } from './scan-bluetooth.text';
 import { scanLocationTextFor } from './scan-location.text';
 import { scanPermissionTextFor } from './scan-permission.text';
+import { scanErrorTextFor } from './scan-error.text';
 
 interface ScannedDevice {
   deviceId: string;
@@ -207,6 +208,7 @@ export class ScanPage implements OnDestroy {
   private readonly router = inject(Router);
   private readonly toastController = inject(ToastController);
   private readonly disconnectionSubscription: Subscription;
+  private readonly bluetoothEnabledSubscription: Subscription;
   private scanTimeout: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
   private detectedSecondaryProfile: SecondaryBleProfile = 'Inconnu';
@@ -224,6 +226,7 @@ export class ScanPage implements OnDestroy {
   private permissionDeniedCount = 0;
   private permissionSettingsAlertOpen = false;
   private permissionSettingsRequired = false;
+  private bluetoothDisabledDuringScanInProgress = false;
 
   devices: ScannedDevice[] = [];
   connectedDeviceId: string | null = null;
@@ -273,6 +276,14 @@ export class ScanPage implements OnDestroy {
         this.ngZone.run(() => this.handleDisconnection(event));
       },
     );
+    this.bluetoothEnabledSubscription =
+      this.bleService.bluetoothEnabledChanges$.subscribe((enabled: boolean) => {
+        if (!enabled) {
+          this.ngZone.run(() => {
+            void this.handleBluetoothDisabledDuringScan();
+          });
+        }
+      });
   }
 
   async ionViewWillEnter(): Promise<void> {
@@ -683,7 +694,7 @@ export class ScanPage implements OnDestroy {
         if (await this.handlePermissionPrecheckError(error)) {
           return;
         }
-        this.applyScanBleError(error);
+        await this.handleScanStartError(error);
       }
     } finally {
       this.scanPreparationInProgress = false;
@@ -744,9 +755,7 @@ export class ScanPage implements OnDestroy {
     try {
       await this.bleService.stopScan();
     } catch (error: unknown) {
-      if (!this.destroyed) {
-        this.errorMessage = this.toErrorMessage(error);
-      }
+      console.warn('Unable to stop BLE scan.', error);
     }
   }
 
@@ -1052,6 +1061,7 @@ export class ScanPage implements OnDestroy {
     this.bleRecoveryInProgress = false;
     this.clearScanTimeout();
     this.disconnectionSubscription.unsubscribe();
+    this.bluetoothEnabledSubscription.unsubscribe();
     void this.bleService.stopScan().catch(() => undefined);
     if (connectedDeviceId !== null) {
       void this.stopMotorStateNotifications(connectedDeviceId);
@@ -2135,6 +2145,52 @@ export class ScanPage implements OnDestroy {
     this.permissionDeniedCount = 0;
     this.permissionSettingsRequired = false;
     this.permissionSettingsAlertOpen = false;
+  }
+
+  private async handleScanStartError(error: unknown): Promise<void> {
+    console.warn('BLE scan failed to start.', error);
+    if (isBleOperationError(error)) {
+      if (error.code === 'bluetooth-disabled') {
+        await this.presentBluetoothDisabledAlert();
+        return;
+      }
+      if (error.code === 'initialization-failed') {
+        await this.presentScanErrorToast(true);
+        return;
+      }
+    }
+    await this.presentScanErrorToast(false);
+  }
+
+  private async presentScanErrorToast(bluetoothNotReady: boolean): Promise<void> {
+    const text = scanErrorTextFor(readStoredAppLanguage());
+    const toast = await this.toastController.create({
+      message: bluetoothNotReady
+        ? text.bluetoothNotReady
+        : text.genericFailure,
+      duration: 3_000,
+      position: 'bottom',
+    });
+    await toast.present();
+  }
+
+  private async handleBluetoothDisabledDuringScan(): Promise<void> {
+    if (
+      this.destroyed ||
+      !this.scanning ||
+      this.bluetoothDisabledDuringScanInProgress
+    ) {
+      return;
+    }
+    this.bluetoothDisabledDuringScanInProgress = true;
+    try {
+      await this.stopScan();
+      if (!this.destroyed) {
+        await this.presentBluetoothDisabledAlert();
+      }
+    } finally {
+      this.bluetoothDisabledDuringScanInProgress = false;
+    }
   }
 
   private applyScanBleError(error: unknown): void {

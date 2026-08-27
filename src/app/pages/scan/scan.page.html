@@ -40,24 +40,6 @@
     </div>
   }
 
-  @if (errorMessage) {
-    <p class="error-message" role="alert">{{ errorMessage }}</p>
-  }
-
-  @if (scanBleError) {
-    <ion-button
-      expand="block"
-      fill="outline"
-      (click)="runScanBleErrorAction()"
-      [disabled]="!canRunScanBleErrorAction"
-    >
-      @if (bleRecoveryInProgress) {
-        <ion-spinner name="crescent"></ion-spinner>
-      }
-      <span>{{ scanBleError.actionLabel }}</span>
-    </ion-button>
-  }
-
   @if (devices.length > 0) {
     <ion-list class="device-list">
       @for (device of devices; track device.deviceId) {
@@ -109,9 +91,9 @@
         </ion-item>
       }
     </ion-list>
-  } @else if (hasScanned && !scanning && !errorMessage) {
+  } @else if (hasScanned && !scanning) {
     <p class="empty-message">Aucun appareil détecté.</p>
-  } @else if (!hasScanned && !scanning && !errorMessage) {
+  } @else if (!hasScanned && !scanning) {
     <p class="empty-message">Aucun appareil détecté.</p>
   }
 

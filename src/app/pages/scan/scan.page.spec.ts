@@ -55,6 +55,7 @@ import { TUTORIAL_FRESH_SCAN_STATE_KEY } from
 
 class FakeBleService {
   private readonly disconnectionSubject = new Subject<BleDisconnectionEvent>();
+  private readonly bluetoothEnabledSubject = new Subject<boolean>();
   private connectedDeviceIdValue: string | null = null;
   private scanning = false;
   private scanCallback: ((result: ScanResult) => void) | null = null;
@@ -71,6 +72,7 @@ class FakeBleService {
   requestBluetoothEnableResult: Promise<void> | null = null;
   connectionGeneration = 0;
   disconnectResult: Promise<void> | null = null;
+  stopScanError: unknown | null = null;
   servicesResult: DiscoveredBleService[] = [];
   readResult: DataView = new DataView(new ArrayBuffer(0));
   readonly writeCharacteristic = jasmine.createSpy('writeCharacteristic');
@@ -93,6 +95,8 @@ class FakeBleService {
 
   readonly disconnections$: Observable<BleDisconnectionEvent> =
     this.disconnectionSubject.asObservable();
+  readonly bluetoothEnabledChanges$: Observable<boolean> =
+    this.bluetoothEnabledSubject.asObservable();
 
   get connectedDeviceId(): string | null {
     return this.connectedDeviceIdValue;
@@ -126,6 +130,9 @@ class FakeBleService {
 
   async stopScan(): Promise<void> {
     this.scanning = false;
+    if (this.stopScanError !== null) {
+      throw this.stopScanError;
+    }
   }
 
   isScanning(): boolean {
@@ -225,6 +232,11 @@ class FakeBleService {
 
   emit(result: ScanResult): void {
     this.scanCallback?.(result);
+  }
+
+  emitBluetoothEnabled(enabled: boolean): void {
+    this.bluetoothEnabled = enabled;
+    this.bluetoothEnabledSubject.next(enabled);
   }
 
   emitRemoteDisconnection(deviceId: string): void {
@@ -998,18 +1010,119 @@ describe('ScanPage', () => {
     expect(component.scanning).toBeFalse();
   });
 
-  it('should display a readable error when scanning fails', async () => {
-    spyOn(bleService, 'startScan').and.rejectWith(
-      new Error('Capteur indisponible'),
-    );
+  it('should preserve the previous list and show a simple toast when scan start fails',
+    async () => {
+      const existingDevice = {
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      };
+      component.devices = [existingDevice];
+      spyOn(bleService, 'startScan').and.rejectWith(
+        new Error('Capteur indisponible'),
+      );
 
-    await component.startScan();
-    fixture.detectChanges();
+      await component.startScan();
+      fixture.detectChanges();
 
-    expect(component.errorMessage).toContain('Capteur indisponible');
-    expect(fixture.nativeElement.textContent).toContain('Capteur indisponible');
-    expect(component.scanning).toBeFalse();
-  });
+      expect(component.devices).toEqual([existingDevice]);
+      expect(component.errorMessage).toBeNull();
+      expect(component.scanBleError).toBeNull();
+      expect(fixture.nativeElement.textContent)
+        .not.toContain('Capteur indisponible');
+      expect(fixture.nativeElement.textContent).not.toContain('Réessayer');
+      expect(toastOptions).toEqual([jasmine.objectContaining({
+        message: 'La recherche Bluetooth a échoué. Veuillez réessayer.',
+        duration: 3_000,
+      })]);
+      expect(component.scanning).toBeFalse();
+      expect(component.canStartScan).toBeTrue();
+      expect(scanTimeoutOf(component)).toBeNull();
+    },
+  );
+
+  it('should start a new scan from the main button after a start failure',
+    fakeAsync(() => {
+      const startScanSpy = spyOn(bleService, 'startScan');
+      startScanSpy.and.returnValues(
+        Promise.reject(new Error('Scan unavailable')),
+        Promise.resolve(),
+      );
+
+      scanSearchButton(fixture).click();
+      flushMicrotasks();
+      fixture.detectChanges();
+
+      expect(component.canStartScan).toBeTrue();
+      scanSearchButton(fixture).click();
+      flushMicrotasks();
+
+      expect(startScanSpy).toHaveBeenCalledTimes(2);
+      expect(component.scanning).toBeTrue();
+    }),
+  );
+
+  it('should show the Phase 1 not-ready toast without native details',
+    async () => {
+      spyOn(bleService, 'startScan').and.rejectWith(new BleOperationError(
+        'initialization-failed',
+        'BleClient not initialized',
+        new Error('Native status 17'),
+      ));
+
+      await component.startScan();
+      fixture.detectChanges();
+
+      expect(toastOptions).toEqual([jasmine.objectContaining({
+        message:
+          'Le Bluetooth de l’application n’est pas prêt. Veuillez relancer ' +
+          'la recherche.',
+        duration: 3_000,
+      })]);
+      expect(fixture.nativeElement.textContent).not.toContain('Native status');
+      expect(component.canStartScan).toBeTrue();
+    },
+  );
+
+  it('should keep active results and reuse Bluetooth-off feedback when Bluetooth stops',
+    async () => {
+      await component.startScan();
+      bleService.emit(createScanResult('device-new', -42, 'Nouveau produit'));
+
+      bleService.emitBluetoothEnabled(false);
+      await settlePromises();
+      fixture.detectChanges();
+
+      expect(component.scanning).toBeFalse();
+      expect(component.devices.map(({ deviceId }) => deviceId))
+        .toEqual(['device-new']);
+      expect(scanTimeoutOf(component)).toBeNull();
+      expect(alertOptions).toHaveSize(1);
+      expect(alertOptions[0].header).toBe('Bluetooth désactivé');
+      expect(toastOptions).toEqual([]);
+      expect(component.errorMessage).toBeNull();
+      expect(component.canStartScan).toBeTrue();
+    },
+  );
+
+  it('should silently leave the UI idle when native stopScan fails',
+    async () => {
+      await component.startScan();
+      bleService.emit(createScanResult('device-new', -42, 'Nouveau produit'));
+      bleService.stopScanError = new Error('Native stop failed');
+
+      await component.stopScan();
+      fixture.detectChanges();
+
+      expect(component.scanning).toBeFalse();
+      expect(component.devices.map(({ deviceId }) => deviceId))
+        .toEqual(['device-new']);
+      expect(component.errorMessage).toBeNull();
+      expect(toastOptions).toEqual([]);
+      expect(scanTimeoutOf(component)).toBeNull();
+      expect(component.canStartScan).toBeTrue();
+    },
+  );
 
   it('should show the same Bluetooth-off alert for both auto-enable preferences',
     async () => {
@@ -1527,19 +1640,20 @@ describe('ScanPage', () => {
     },
   );
 
-  it('should clear a scan error when retry succeeds', async () => {
-    const startScanSpy = spyOn(bleService, 'startScan').and.rejectWith(
-      new Error('Scan unavailable'),
-    );
-    await component.startScan();
-    expect(component.scanBleError?.action).toBe('retry-scan');
-    startScanSpy.and.callThrough();
+  it('should not render the former technical scan retry action', () => {
+    component.errorMessage = 'Native plugin error';
+    component.scanBleError = {
+      code: 'scan-failed',
+      message: 'Native scan error',
+      action: 'retry-scan',
+      actionLabel: 'Réessayer',
+    };
 
-    await component.runScanBleErrorAction();
+    fixture.detectChanges();
 
-    expect(component.scanBleError).toBeNull();
-    expect(component.errorMessage).toBeNull();
-    expect(component.scanning).toBeTrue();
+    expect(fixture.nativeElement.textContent).not.toContain('Réessayer');
+    expect(fixture.nativeElement.textContent).not.toContain('Native scan error');
+    expect(fixture.nativeElement.textContent).not.toContain('Native plugin error');
   });
 
   it('should ignore a second Bluetooth recovery action while enable is pending',

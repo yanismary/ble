@@ -95,6 +95,7 @@ interface NotificationSubscription {
 })
 export class BleService implements OnDestroy {
   private readonly disconnectionSubject = new Subject<BleDisconnectionEvent>();
+  private readonly bluetoothEnabledSubject = new Subject<boolean>();
   private readonly notificationSubject = new Subject<BleNotificationEvent>();
   private readonly notificationSubscriptions =
     new Map<string, NotificationSubscription>();
@@ -114,9 +115,12 @@ export class BleService implements OnDestroy {
   private activeConnectionToken: symbol | null = null;
   private connecting = false;
   private scanning = false;
+  private bluetoothEnabledNotificationsActive = false;
 
   readonly disconnections$: Observable<BleDisconnectionEvent> =
     this.disconnectionSubject.asObservable();
+  readonly bluetoothEnabledChanges$: Observable<boolean> =
+    this.bluetoothEnabledSubject.asObservable();
   readonly notifications$: Observable<BleNotificationEvent> =
     this.notificationSubject.asObservable();
 
@@ -198,6 +202,8 @@ export class BleService implements OnDestroy {
 
     this.scanning = true;
 
+    await this.startBluetoothEnabledMonitoring();
+
     const services = Array.from(new Set(
       serviceUuids
         .map((uuid) => uuid.trim().toLowerCase())
@@ -214,6 +220,7 @@ export class BleService implements OnDestroy {
       );
     } catch (error: unknown) {
       this.scanning = false;
+      await this.stopBluetoothEnabledMonitoring().catch(() => undefined);
       throw this.toBleOperationError(error, 'scan-failed');
     }
   }
@@ -224,12 +231,30 @@ export class BleService implements OnDestroy {
       return;
     }
 
-    if (!this.scanning) {
+    if (!this.scanning && !this.bluetoothEnabledNotificationsActive) {
       return;
     }
 
+    const scanWasActive = this.scanning;
     this.scanning = false;
-    this.stopPromise = BleClient.stopLEScan().finally(() => {
+    this.stopPromise = (async () => {
+      let stopError: unknown = null;
+      if (scanWasActive) {
+        try {
+          await BleClient.stopLEScan();
+        } catch (error: unknown) {
+          stopError = error;
+        }
+      }
+      try {
+        await this.stopBluetoothEnabledMonitoring();
+      } catch (error: unknown) {
+        stopError ??= error;
+      }
+      if (stopError !== null) {
+        throw stopError;
+      }
+    })().finally(() => {
       this.stopPromise = null;
     });
 
@@ -734,6 +759,28 @@ export class BleService implements OnDestroy {
 
   isScanning(): boolean {
     return this.scanning;
+  }
+
+  private async startBluetoothEnabledMonitoring(): Promise<void> {
+    if (this.bluetoothEnabledNotificationsActive) {
+      return;
+    }
+    try {
+      await BleClient.startEnabledNotifications((enabled: boolean) => {
+        this.bluetoothEnabledSubject.next(enabled);
+      });
+      this.bluetoothEnabledNotificationsActive = true;
+    } catch {
+      // Monitoring is supplementary; requestLEScan remains the source of truth.
+    }
+  }
+
+  private async stopBluetoothEnabledMonitoring(): Promise<void> {
+    if (!this.bluetoothEnabledNotificationsActive) {
+      return;
+    }
+    this.bluetoothEnabledNotificationsActive = false;
+    await BleClient.stopEnabledNotifications();
   }
 
   ngOnDestroy(): void {

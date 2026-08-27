@@ -28,6 +28,8 @@ describe('BleService', () => {
     spyOn(BleClient, 'stopLEScan').and.resolveTo();
     spyOn(BleClient, 'isEnabled').and.resolveTo(true);
     spyOn(BleClient, 'requestEnable').and.resolveTo();
+    spyOn(BleClient, 'startEnabledNotifications').and.resolveTo();
+    spyOn(BleClient, 'stopEnabledNotifications').and.resolveTo();
     spyOn(BleClient, 'openBluetoothSettings').and.resolveTo();
     spyOn(BleClient, 'isLocationEnabled').and.resolveTo(true);
     spyOn(BleClient, 'openLocationSettings').and.resolveTo();
@@ -329,6 +331,7 @@ describe('BleService', () => {
       { allowDuplicates: true },
       callback,
     );
+    expect(BleClient.startEnabledNotifications).toHaveBeenCalledTimes(1);
     expect(service.isScanning()).toBeTrue();
   });
 
@@ -379,7 +382,22 @@ describe('BleService', () => {
     await service.stopScan();
 
     expect(BleClient.stopLEScan).toHaveBeenCalledTimes(1);
+    expect(BleClient.stopEnabledNotifications).toHaveBeenCalledTimes(1);
     expect(service.isScanning()).toBeFalse();
+  });
+
+  it('should expose Bluetooth state changes while scanning', async () => {
+    const enabledStates: boolean[] = [];
+    service.bluetoothEnabledChanges$.subscribe((enabled) => {
+      enabledStates.push(enabled);
+    });
+    await service.startScan(() => undefined);
+    const callback = (BleClient.startEnabledNotifications as jasmine.Spy)
+      .calls.mostRecent().args[0] as (enabled: boolean) => void;
+
+    callback(false);
+
+    expect(enabledStates).toEqual([false]);
   });
 
   it('should reset its state when starting the scan fails', async () => {
@@ -398,6 +416,7 @@ describe('BleService', () => {
       expect((error as BleOperationError).cause).toBe(scanError);
     }
     expect(service.isScanning()).toBeFalse();
+    expect(BleClient.stopEnabledNotifications).toHaveBeenCalledTimes(1);
   });
 
   it('should connect to a device and expose its identifier', async () => {
