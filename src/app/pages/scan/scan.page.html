@@ -1,6 +1,6 @@
 <ion-header>
   <ion-toolbar class="mantion-navbar scan-navbar">
-    <ion-title>Sélection</ion-title>
+    <ion-title>{{ scanText.title }}</ion-title>
     <ion-buttons slot="end">
       <app-main-menu iconClass="scan-menu-icon"></app-main-menu>
     </ion-buttons>
@@ -17,7 +17,7 @@
         [disabled]="!canStartScan"
       >
         <ion-icon name="search" aria-hidden="true"></ion-icon>
-        <span>Rechercher</span>
+        <span>{{ scanText.search }}</span>
       </ion-button>
       <div class="scan-spinner-cell">
         @if (scanning) {
@@ -34,9 +34,9 @@
 
 <ion-content [fullscreen]="true" class="scan-content mantion-page-background">
 
-  @if (scanning) {
+  @if (scanning && devices.length === 0) {
     <div class="scan-status" role="status">
-      <span>Recherche d’appareils BLE…</span>
+      <span>{{ scanText.searching }}</span>
     </div>
   }
 
@@ -63,17 +63,14 @@
           </div>
           <ion-label>
             <h2>
-              <strong>Nom :</strong>
+              <strong>{{ scanText.name }}</strong>
               {{ getScanDisplayName(device) }}
             </h2>
             @if (showBleIdentifier) {
-              <p><strong>Adresse MAC :</strong> {{ device.deviceId }}</p>
-            }
-            @if (getScanRoomSuffix(device); as roomSuffix) {
-              <p><strong>Pièce :</strong> {{ roomSuffix }}</p>
+              <p><strong>{{ bleIdentifierLabel }}</strong> {{ device.deviceId }}</p>
             }
             <p class="scan-rssi-line">
-              Qualité du signal
+              {{ scanText.signalQuality }}
               <img
                 [src]="getSignalQualityAsset(device)"
                 class="scan-rssi-image"
@@ -85,16 +82,16 @@
             <ion-spinner
               slot="end"
               name="crescent"
-              aria-label="Connexion en cours"
+              [attr.aria-label]="scanText.connecting"
             ></ion-spinner>
           }
         </ion-item>
       }
     </ion-list>
   } @else if (hasScanned && !scanning) {
-    <p class="empty-message">Aucun appareil détecté.</p>
+    <p class="empty-message">{{ scanText.noMotorDetected }}</p>
   } @else if (!hasScanned && !scanning) {
-    <p class="empty-message">Aucun appareil détecté.</p>
+    <p class="empty-message">{{ scanText.noMotorDetected }}</p>
   }
 
   @if (
@@ -105,20 +102,20 @@
     <section class="connection-panel" aria-live="polite">
       <div class="connection-status" role="status">
         <ion-spinner name="crescent"></ion-spinner>
-        <span>Connexion en cours...</span>
+        <span>{{ scanText.connecting }}</span>
       </div>
     </section>
   }
 
   <ion-fab class="scan-footer-fab scan-info-fab" slot="fixed" vertical="bottom" horizontal="end">
     <ion-fab-button color="mantion-green" type="button" (click)="openTutorial()">
-      Info
+      {{ scanText.info }}
     </ion-fab-button>
   </ion-fab>
 
   <ion-fab class="scan-footer-fab scan-demo-fab" slot="fixed" vertical="bottom" horizontal="start">
     <ion-fab-button color="mantion-blue" type="button" (click)="launchDemoMode()">
-      Demo
+      {{ scanText.demo }}
     </ion-fab-button>
   </ion-fab>
 </ion-content>

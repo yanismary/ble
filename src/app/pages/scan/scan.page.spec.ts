@@ -373,6 +373,57 @@ describe('ScanPage', () => {
     expect(component).toBeTruthy();
   });
 
+  it('should render the Phase 1 Scan surface in FR, EN, DE and PL', () => {
+    const expected = {
+      fr: ['Sélection', 'Rechercher', 'Aucune motorisation détectée.', 'Démo'],
+      en: ['Selection', 'Search', 'No motor detected.', 'Demo'],
+      de: ['Auswahl', 'Suche', 'Kein Motor gefunden.', 'Demo'],
+      pl: ['Wybór napędów', 'Wyszukiwanie', 'Nie znaleziono napędu.', 'Demo'],
+    } as const;
+
+    for (const [language, labels] of Object.entries(expected)) {
+      localStorage.setItem('lang', language);
+      fixture.detectChanges();
+      const rendered = fixture.nativeElement.textContent as string;
+      for (const label of labels) {
+        expect(rendered).withContext(`${language}: ${label}`).toContain(label);
+      }
+    }
+  });
+
+  it('should show empty/searching text only while the result list is empty', () => {
+    expect(fixture.nativeElement.textContent).toContain(
+      'Aucune motorisation détectée.',
+    );
+
+    component.scanning = true;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Recherche en cours...');
+
+    component.devices = [{ deviceId: 'device-1', name: 'Produit', rssi: -42 }];
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Recherche en cours...',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Aucune motorisation détectée.',
+    );
+  });
+
+  it('should label the visible identifier as MAC on Android and UUID on iOS', () => {
+    component.devices = [{ deviceId: 'device-1', name: 'Produit', rssi: -42 }];
+
+    bleService.platform = 'android';
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('MAC: device-1');
+    expect(fixture.nativeElement.textContent).not.toContain('UUID: device-1');
+
+    bleService.platform = 'ios';
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('UUID: device-1');
+    expect(fixture.nativeElement.textContent).not.toContain('MAC: device-1');
+  });
+
   it('should open the active Info tutorial without any BLE operation',
     async () => {
       const element = fixture.nativeElement as HTMLElement;
@@ -763,9 +814,7 @@ describe('ScanPage', () => {
       [BLE_UUIDS.widoorService, BLE_UUIDS.moventivGarlineService],
     );
     expect(component.scanning).toBeTrue();
-    expect(fixture.nativeElement.textContent).toContain(
-      'Recherche d’appareils BLE',
-    );
+    expect(fixture.nativeElement.textContent).toContain('Recherche en cours...');
 
     tick(7_999);
     flushMicrotasks();
@@ -926,7 +975,7 @@ describe('ScanPage', () => {
 
       expect(item?.textContent).toContain('Nom : Salon');
       expect(item?.textContent).toContain('device-1');
-      expect(item?.textContent).toContain('Pièce : #SAL');
+      expect(item?.textContent).not.toContain('Pièce :');
       expect(item?.querySelector('.ai-loc-sal')).not.toBeNull();
       expect(signal?.getAttribute('src')).toBe(
         'assets/img/img_ble_strenght_4_4.svg',

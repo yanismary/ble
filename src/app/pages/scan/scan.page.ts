@@ -114,6 +114,7 @@ import { scanErrorTextFor } from './scan-error.text';
 import {
   scanProductConnectionTextFor,
 } from './scan-product-connection.text';
+import { scanSurfaceTextFor } from './scan-surface.text';
 
 interface ScannedDevice {
   deviceId: string;
@@ -384,6 +385,16 @@ export class ScanPage implements OnDestroy {
 
   get showBleIdentifier(): boolean {
     return readShowBleIdentifier();
+  }
+
+  get scanText() {
+    return scanSurfaceTextFor(readStoredAppLanguage());
+  }
+
+  get bleIdentifierLabel(): string {
+    return this.bleService.platform === 'ios'
+      ? this.scanText.uuidAddress
+      : this.scanText.macAddress;
   }
 
   get selectedDevice(): ScannedDevice | null {
