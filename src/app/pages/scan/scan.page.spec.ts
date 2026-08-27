@@ -1775,8 +1775,118 @@ describe('ScanPage', () => {
 
     expect(stopScanSpy).toHaveBeenCalledBefore(connectSpy);
     expect(component.connectedDeviceId).toBe('device-1');
+    tick(500);
+    flushMicrotasks();
     expect(fixture.nativeElement.textContent).not.toContain('Connecter');
   }));
+
+  it('should wait 500 ms after a first-attempt connection before discovery',
+    fakeAsync(() => {
+      const discoverSpy = spyOn(bleService, 'discoverServices')
+        .and.callThrough();
+      bleService.servicesResult = createIdentificationServices();
+      bleService.readResult = createVersionWord(0, 1);
+      void component.startScan();
+      flushMicrotasks();
+      bleService.emit(createScanResult('device-1', -42, 'Produit'));
+
+      void component.selectAndConnectDevice(component.devices[0]);
+      flushMicrotasks();
+      tick(399);
+      expect(bleService.connectedDeviceId).toBeNull();
+
+      tick(1);
+      flushMicrotasks();
+      expect(bleService.connectedDeviceId).toBe('device-1');
+      expect(discoverSpy).not.toHaveBeenCalled();
+
+      tick(499);
+      flushMicrotasks();
+      expect(discoverSpy).not.toHaveBeenCalled();
+
+      tick(1);
+      flushMicrotasks();
+      expect(discoverSpy).toHaveBeenCalledOnceWith('device-1');
+    }),
+  );
+
+  it('should keep retry and post-connection 500 ms delays distinct',
+    fakeAsync(() => {
+      const originalConnect = bleService.connect.bind(bleService);
+      let attempt = 0;
+      const connectSpy = spyOn(bleService, 'connect')
+        .and.callFake(async (deviceId: string) => {
+          attempt += 1;
+          if (attempt === 1) {
+            throw new BleOperationError(
+              'connection-failed',
+              'BLE connection failed.',
+            );
+          }
+          await originalConnect(deviceId);
+        });
+      const discoverSpy = spyOn(bleService, 'discoverServices')
+        .and.callThrough();
+      bleService.servicesResult = createIdentificationServices();
+      bleService.readResult = createVersionWord(0, 1);
+      void component.startScan();
+      flushMicrotasks();
+      bleService.emit(createScanResult('device-1', -42, 'Produit'));
+
+      void component.selectAndConnectDevice(component.devices[0]);
+      flushMicrotasks();
+      tick(400);
+      flushMicrotasks();
+      expect(connectSpy).toHaveBeenCalledTimes(1);
+
+      tick(499);
+      flushMicrotasks();
+      expect(connectSpy).toHaveBeenCalledTimes(1);
+
+      tick(1);
+      flushMicrotasks();
+      expect(connectSpy).toHaveBeenCalledTimes(2);
+      expect(discoverSpy).not.toHaveBeenCalled();
+
+      tick(499);
+      flushMicrotasks();
+      expect(discoverSpy).not.toHaveBeenCalled();
+
+      tick(1);
+      flushMicrotasks();
+      expect(discoverSpy).toHaveBeenCalledOnceWith('device-1');
+    }),
+  );
+
+  it('should skip discovery and close the winning connection if destroyed during stabilization',
+    fakeAsync(() => {
+      const discoverSpy = spyOn(bleService, 'discoverServices')
+        .and.callThrough();
+      bleService.servicesResult = createIdentificationServices();
+      bleService.readResult = createVersionWord(0, 1);
+      void component.startScan();
+      flushMicrotasks();
+      bleService.emit(createScanResult('device-1', -42, 'Produit'));
+
+      void component.selectAndConnectDevice(component.devices[0]);
+      flushMicrotasks();
+      tick(400);
+      flushMicrotasks();
+      expect(bleService.connectedDeviceId).toBe('device-1');
+
+      fixture.destroy();
+      tick(499);
+      flushMicrotasks();
+      expect(discoverSpy).not.toHaveBeenCalled();
+
+      tick(1);
+      flushMicrotasks();
+      expect(discoverSpy).not.toHaveBeenCalled();
+      expect(bleService.disconnect).toHaveBeenCalledTimes(1);
+      expect(bleService.connectedDeviceId).toBeNull();
+      expect(routerNavigate).not.toHaveBeenCalled();
+    }),
+  );
 
   it('should automatically navigate after a successful tap connection flow',
     async () => {
@@ -1867,6 +1977,14 @@ describe('ScanPage', () => {
       tick(1_000);
       flushMicrotasks();
       expect(connectSpy).toHaveBeenCalledTimes(3);
+      expect(discoverSpy).not.toHaveBeenCalled();
+
+      tick(499);
+      flushMicrotasks();
+      expect(discoverSpy).not.toHaveBeenCalled();
+
+      tick(1);
+      flushMicrotasks();
       expect(discoverSpy).toHaveBeenCalledOnceWith('device-1');
       expect(routerNavigate).toHaveBeenCalledOnceWith(
         ['/product/moventiv-60'],
@@ -1907,6 +2025,41 @@ describe('ScanPage', () => {
       );
       expect(routerNavigate).not.toHaveBeenCalled();
     },
+  );
+
+  it('should not schedule discovery stabilization after three failed attempts',
+    fakeAsync(() => {
+      spyOn(console, 'warn');
+      const connectSpy = spyOn(bleService, 'connect').and.rejectWith(
+        new BleOperationError(
+          'connection-timeout',
+          'BLE connection timed out.',
+        ),
+      );
+      const discoverSpy = spyOn(bleService, 'discoverServices')
+        .and.callThrough();
+      void component.startScan();
+      flushMicrotasks();
+      bleService.emit(createScanResult('device-1', -42, 'Capteur'));
+
+      void component.selectAndConnectDevice(component.devices[0]);
+      flushMicrotasks();
+      tick(400);
+      flushMicrotasks();
+      tick(500);
+      flushMicrotasks();
+      tick(1_000);
+      flushMicrotasks();
+
+      expect(connectSpy).toHaveBeenCalledTimes(3);
+      expect(discoverSpy).not.toHaveBeenCalled();
+      expect(component.canStartScan).toBeTrue();
+      expect(component.devices).toHaveSize(1);
+
+      tick(500);
+      flushMicrotasks();
+      expect(discoverSpy).not.toHaveBeenCalled();
+    }),
   );
 
   it('should cleanup a partial failed connection before retrying',
@@ -2172,6 +2325,8 @@ describe('ScanPage', () => {
     void component.connectSelectedDevice();
     flushMicrotasks();
     tick(400);
+    flushMicrotasks();
+    tick(500);
     flushMicrotasks();
     fixture.detectChanges();
 
@@ -2890,6 +3045,8 @@ describe('ScanPage', () => {
     void component.connectSelectedDevice();
     flushMicrotasks();
     tick(400);
+    flushMicrotasks();
+    tick(500);
     flushMicrotasks();
     fixture.detectChanges();
 
@@ -3632,6 +3789,12 @@ describe('ScanPage', () => {
   async function configureProductReadPanel(
     profile: 'widoor' | 'moventiv-60' | 'moventiv-80' | 'garline',
   ): Promise<void> {
+    const delay = (component as unknown as {
+      delay: (milliseconds: number) => Promise<void>;
+    }).delay;
+    if (!jasmine.isSpy(delay)) {
+      spyOn<any>(component, 'delay').and.resolveTo();
+    }
     bleService.servicesResult = profile === 'widoor'
       ? createWidoorIdentificationServices()
       : createIdentificationServices();

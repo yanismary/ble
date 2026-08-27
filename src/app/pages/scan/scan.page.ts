@@ -180,6 +180,7 @@ type ProductConnectionFailure =
 const MOTOR_DIAGNOSTIC_HISTORY_LIMIT = 20;
 const PHASE1_SCAN_TIMEOUT_MS = 8_000;
 const PHASE1_CONNECT_STABILIZATION_DELAY_MS = 400;
+const PHASE1_POST_CONNECTION_STABILIZATION_DELAY_MS = 500;
 const PHASE1_CONNECT_ATTEMPTS = 3;
 const PHASE1_CONNECT_RETRY_DELAYS_MS = [500, 1_000] as const;
 const PHASE1_BLUETOOTH_ENABLE_CHECK_DELAYS_MS = [400, 600, 800] as const;
@@ -827,6 +828,16 @@ export class ScanPage implements OnDestroy {
       const nativeGeneration = this.bleService.connectionGeneration;
       this.connectedDeviceId = this.bleService.connectedDeviceId;
       this.connectedBleGeneration = nativeGeneration;
+      await this.delay(PHASE1_POST_CONNECTION_STABILIZATION_DELAY_MS);
+      if (!this.isCurrentBleConnection(device.deviceId, nativeGeneration)) {
+        if (
+          this.bleService.connectedDeviceId === device.deviceId &&
+          this.bleService.connectionGeneration === nativeGeneration
+        ) {
+          await this.bleService.disconnect().catch(() => undefined);
+        }
+        return;
+      }
       this.connecting = false;
       await this.loadServices(device.deviceId, nativeGeneration);
       await this.openProductPageIfReady(device.deviceId, nativeGeneration);
