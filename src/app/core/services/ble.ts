@@ -19,6 +19,8 @@ export type BleOperationErrorCode =
   | 'service-discovery-failed'
   | 'connection-interrupted'
   | 'scan-failed'
+  | 'bluetooth-settings-unavailable'
+  | 'bluetooth-settings-failed'
   | 'app-settings-unavailable'
   | 'app-settings-failed';
 
@@ -139,6 +141,14 @@ export class BleService implements OnDestroy {
     return Capacitor.getPlatform() === 'android';
   }
 
+  get platform(): string {
+    return Capacitor.getPlatform();
+  }
+
+  get canOpenBluetoothSettings(): boolean {
+    return this.platform === 'android';
+  }
+
   get canOpenAppSettings(): boolean {
     return Capacitor.getPlatform() !== 'web';
   }
@@ -251,6 +261,24 @@ export class BleService implements OnDestroy {
       throw new BleOperationError(
         'app-settings-failed',
         'Opening app settings failed.',
+        error,
+      );
+    }
+  }
+
+  async openBluetoothSettings(): Promise<void> {
+    if (!this.canOpenBluetoothSettings) {
+      throw new BleOperationError(
+        'bluetooth-settings-unavailable',
+        'Bluetooth settings are not available on this platform.',
+      );
+    }
+    try {
+      await BleClient.openBluetoothSettings();
+    } catch (error: unknown) {
+      throw new BleOperationError(
+        'bluetooth-settings-failed',
+        'Opening Bluetooth settings failed.',
         error,
       );
     }

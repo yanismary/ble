@@ -69,7 +69,6 @@ import { BleReadStatus } from '../../core/services/ble-read.service';
 import { SCAN_MOTOR_TEST_TEXT } from './scan-motor-test.text';
 import { SCAN_PRODUCT_READ_TEXT } from './scan-product-read.text';
 import {
-  readAutoEnableBluetooth,
   readShowBleIdentifier,
 } from '../../core/services/app-preferences';
 import {
@@ -105,6 +104,10 @@ import {
   withoutTutorialFreshScanNavigation,
 } from
   '../tutorial/tutorial-navigation';
+import {
+  ScanBluetoothText,
+  scanBluetoothTextFor,
+} from './scan-bluetooth.text';
 
 interface ScannedDevice {
   deviceId: string;
@@ -167,6 +170,7 @@ const PHASE1_SCAN_TIMEOUT_MS = 8_000;
 const PHASE1_CONNECT_STABILIZATION_DELAY_MS = 400;
 const PHASE1_CONNECT_ATTEMPTS = 3;
 const PHASE1_CONNECT_RETRY_DELAYS_MS = [500, 1_000] as const;
+const PHASE1_BLUETOOTH_ENABLE_CHECK_DELAYS_MS = [400, 600, 800] as const;
 
 @Component({
   selector: 'app-scan',
@@ -212,6 +216,8 @@ export class ScanPage implements OnDestroy {
   private connectedBleGeneration: number | null = null;
   private retryingConnection = false;
   private scanPreparationInProgress = false;
+  private bluetoothDisabledAlertOpen = false;
+  private bluetoothSettingsAlertOpen = false;
 
   devices: ScannedDevice[] = [];
   connectedDeviceId: string | null = null;
@@ -616,9 +622,9 @@ export class ScanPage implements OnDestroy {
 
     this.scanPreparationInProgress = true;
     try {
-      await this.ensureBluetoothReadyForScan();
+      const bluetoothReady = await this.ensureBluetoothReadyForScan();
 
-      if (this.destroyed) {
+      if (!bluetoothReady || this.destroyed) {
         return;
       }
 
@@ -1795,26 +1801,162 @@ export class ScanPage implements OnDestroy {
     return uuid.trim().toLowerCase();
   }
 
-  private async ensureBluetoothReadyForScan(): Promise<void> {
+  private async ensureBluetoothReadyForScan(): Promise<boolean> {
     if (await this.bleService.isBluetoothEnabled()) {
+      return true;
+    }
+
+    await this.presentBluetoothDisabledAlert();
+    return false;
+  }
+
+  private async presentBluetoothDisabledAlert(): Promise<void> {
+    if (this.bluetoothDisabledAlertOpen || this.destroyed) {
       return;
     }
 
-    if (
-      readAutoEnableBluetooth() &&
-      this.bleService.canRequestBluetoothEnable
-    ) {
-      await this.bleService.requestBluetoothEnable();
+    this.clearBluetoothOffInlineFeedback();
+    this.bluetoothDisabledAlertOpen = true;
+    const text = scanBluetoothTextFor(readStoredAppLanguage());
+    const alert = await this.alertController.create({
+      header: text.disabledTitle,
+      message: text.disabledMessage,
+      backdropDismiss: false,
+      buttons: [
+        {
+          text: text.cancel,
+          role: 'cancel',
+          handler: () => {
+            this.bluetoothDisabledAlertOpen = false;
+          },
+        },
+        {
+          text: text.enable,
+          handler: () => {
+            this.bluetoothDisabledAlertOpen = false;
+            return this.handleBluetoothEnableRequest(text);
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
 
-      if (await this.bleService.isBluetoothEnabled()) {
-        return;
-      }
+  private async handleBluetoothEnableRequest(
+    text: ScanBluetoothText,
+  ): Promise<void> {
+    if (this.bleRecoveryInProgress || this.destroyed) {
+      return;
     }
 
-    throw new BleOperationError(
-      'bluetooth-disabled',
-      'Bluetooth is disabled.',
-    );
+    this.bleRecoveryInProgress = true;
+    try {
+      if (
+        this.bleService.platform !== 'android' ||
+        !this.bleService.canRequestBluetoothEnable
+      ) {
+        await this.presentBluetoothSettingsAlert(text);
+        return;
+      }
+
+      let enabled = false;
+      try {
+        await this.bleService.requestBluetoothEnable();
+        enabled = await this.waitForBluetoothEnabled();
+      } catch {
+        enabled = false;
+      }
+
+      if (!enabled || this.destroyed) {
+        if (!this.destroyed) {
+          await this.presentBluetoothSettingsAlert(text);
+        }
+        return;
+      }
+
+      this.bleRecoveryInProgress = false;
+      await this.startScan();
+    } finally {
+      this.bleRecoveryInProgress = false;
+    }
+  }
+
+  private async waitForBluetoothEnabled(): Promise<boolean> {
+    if (await this.bleService.isBluetoothEnabled()) {
+      return true;
+    }
+
+    for (const delayMs of PHASE1_BLUETOOTH_ENABLE_CHECK_DELAYS_MS) {
+      await this.delay(delayMs);
+      if (this.destroyed) {
+        return false;
+      }
+      if (await this.bleService.isBluetoothEnabled()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private async presentBluetoothSettingsAlert(
+    text: ScanBluetoothText,
+  ): Promise<void> {
+    if (this.bluetoothSettingsAlertOpen || this.destroyed) {
+      return;
+    }
+
+    const android = this.bleService.platform === 'android';
+    this.bluetoothSettingsAlertOpen = true;
+    const alert = await this.alertController.create({
+      header: text.settingsTitle,
+      message: android
+        ? text.androidSettingsMessage
+        : text.iosSettingsMessage,
+      backdropDismiss: false,
+      buttons: [
+        {
+          text: text.ok,
+          handler: () => {
+            this.bluetoothSettingsAlertOpen = false;
+          },
+        },
+        {
+          text: android
+            ? text.openBluetoothSettings
+            : text.openAppSettings,
+          handler: () => {
+            this.bluetoothSettingsAlertOpen = false;
+            return this.openBluetoothSettingsForCurrentPlatform();
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async openBluetoothSettingsForCurrentPlatform(): Promise<void> {
+    try {
+      if (this.bleService.platform === 'android') {
+        await this.bleService.openBluetoothSettings();
+      } else {
+        await this.bleService.openAppSettings();
+      }
+    } catch {
+      // Phase 1 kept ScanPage usable and did not expose settings errors.
+    }
+  }
+
+  private clearBluetoothOffInlineFeedback(): void {
+    if (
+      this.scanBleError?.code === 'bluetooth-disabled' ||
+      this.scanBleError?.code === 'bluetooth-enable-unavailable' ||
+      this.scanBleError?.code === 'bluetooth-enable-failed' ||
+      this.scanBleError?.code === 'bluetooth-settings-unavailable' ||
+      this.scanBleError?.code === 'bluetooth-settings-failed'
+    ) {
+      this.scanBleError = null;
+      this.errorMessage = null;
+    }
   }
 
   private applyScanBleError(error: unknown): void {

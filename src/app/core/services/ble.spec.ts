@@ -26,6 +26,7 @@ describe('BleService', () => {
     spyOn(BleClient, 'stopLEScan').and.resolveTo();
     spyOn(BleClient, 'isEnabled').and.resolveTo(true);
     spyOn(BleClient, 'requestEnable').and.resolveTo();
+    spyOn(BleClient, 'openBluetoothSettings').and.resolveTo();
     spyOn(BleClient, 'openAppSettings').and.resolveTo();
     connectSpy = spyOn(BleClient, 'connect').and.resolveTo();
     spyOn(BleClient, 'disconnect').and.resolveTo();
@@ -209,6 +210,42 @@ describe('BleService', () => {
       expect((error as BleOperationError).code).toBe('app-settings-failed');
       expect((error as BleOperationError).cause).toBe(settingsError);
     }
+  });
+
+  it('should open Bluetooth settings only on Android', async () => {
+    spyOn(Capacitor, 'getPlatform').and.returnValue('android');
+
+    await service.openBluetoothSettings();
+
+    expect(BleClient.openBluetoothSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('should reject Bluetooth settings on iOS without calling Android APIs',
+    async () => {
+      spyOn(Capacitor, 'getPlatform').and.returnValue('ios');
+
+      await expectAsync(service.openBluetoothSettings()).toBeRejectedWith(
+        jasmine.objectContaining({
+          code: 'bluetooth-settings-unavailable',
+        }),
+      );
+      expect(BleClient.openBluetoothSettings).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should expose Bluetooth settings failures as typed errors', async () => {
+    spyOn(Capacitor, 'getPlatform').and.returnValue('android');
+    const settingsError = new Error('Bluetooth settings unavailable');
+    (BleClient.openBluetoothSettings as jasmine.Spy<
+      typeof BleClient.openBluetoothSettings
+    >).and.rejectWith(settingsError);
+
+    await expectAsync(service.openBluetoothSettings()).toBeRejectedWith(
+      jasmine.objectContaining({
+        code: 'bluetooth-settings-failed',
+        cause: settingsError,
+      }),
+    );
   });
 
   it('should start a scan with duplicate advertisements enabled', async () => {

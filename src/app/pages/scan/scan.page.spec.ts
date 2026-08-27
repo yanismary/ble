@@ -65,6 +65,7 @@ class FakeBleService {
   bluetoothEnabledError: unknown | null = null;
   canRequestBluetoothEnable = true;
   canOpenAppSettings = true;
+  platform: 'android' | 'ios' | 'web' = 'android';
   requestBluetoothEnableResult: Promise<void> | null = null;
   connectionGeneration = 0;
   disconnectResult: Promise<void> | null = null;
@@ -81,6 +82,9 @@ class FakeBleService {
   });
   readonly openAppSettings = jasmine.createSpy('openAppSettings')
     .and.resolveTo();
+  readonly openBluetoothSettings = jasmine.createSpy(
+    'openBluetoothSettings',
+  ).and.resolveTo();
 
   readonly disconnections$: Observable<BleDisconnectionEvent> =
     this.disconnectionSubject.asObservable();
@@ -994,85 +998,167 @@ describe('ScanPage', () => {
     expect(component.scanning).toBeFalse();
   });
 
-  it('should automatically enable Bluetooth before scanning when the preference is active',
+  it('should show the same Bluetooth-off alert for both auto-enable preferences',
     async () => {
       const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
-      storeAutoEnableBluetooth(true);
+      const existingDevice = {
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      };
       bleService.bluetoothEnabled = false;
 
-      await component.startScan();
+      for (const autoEnable of [false, true]) {
+        storeAutoEnableBluetooth(autoEnable);
+        component.devices = [existingDevice];
+        await component.startScan();
 
-      expect(bleService.requestBluetoothEnable).toHaveBeenCalledTimes(1);
-      expect(startScanSpy).toHaveBeenCalledTimes(1);
-      expect(component.scanBleError).toBeNull();
-      expect(component.scanning).toBeTrue();
+        const alert = alertOptions[alertOptions.length - 1];
+        expect(alert.header).toBe('Bluetooth désactivé');
+        expect(alert.buttons.map(({ text }) => text))
+          .toEqual(['Annuler', 'Activer']);
+        expect(component.devices).toEqual([existingDevice]);
+        expect(component.scanning).toBeFalse();
+        expect(component.scanBleError).toBeNull();
+        expect(component.errorMessage).toBeNull();
+        expect(startScanSpy).not.toHaveBeenCalled();
+        expect(bleService.requestBluetoothEnable).not.toHaveBeenCalled();
+
+        await alert.buttons[0].handler?.();
+      }
     },
   );
 
-  it('should show an enable action without starting scan when Bluetooth is off',
+  it('should cancel Bluetooth activation without changing the current scan list',
     async () => {
-      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      const existingDevice = {
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      };
       bleService.bluetoothEnabled = false;
 
-      await component.startScan();
-      fixture.detectChanges();
+      for (const platform of ['android', 'ios'] as const) {
+        component.devices = [existingDevice];
+        component.selectedDeviceId = existingDevice.deviceId;
+        bleService.platform = platform;
+        bleService.canRequestBluetoothEnable = platform === 'android';
 
-      expect(startScanSpy).not.toHaveBeenCalled();
+        await component.startScan();
+        const alert = alertOptions[alertOptions.length - 1];
+        await alert.buttons[0].handler?.();
+
+        expect(component.devices).toEqual([existingDevice]);
+        expect(component.selectedDeviceId).toBe(existingDevice.deviceId);
+        expect(component.scanning).toBeFalse();
+        expect(scanTimeoutOf(component)).toBeNull();
+      }
       expect(bleService.requestBluetoothEnable).not.toHaveBeenCalled();
-      expect(component.scanning).toBeFalse();
-      expect(component.scanBleError?.code).toBe('bluetooth-disabled');
-      expect(component.scanBleError?.action).toBe('enable-bluetooth');
-      expect(fixture.nativeElement.textContent).toContain('Activer Bluetooth');
     },
   );
 
-  it('should request enabling Bluetooth once and start scanning after it is enabled',
+  it('should enable Bluetooth on Android and start one scan after confirmation',
     async () => {
       const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      component.devices = [{
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      }];
       bleService.bluetoothEnabled = false;
-      await component.startScan();
 
-      await component.runScanBleErrorAction();
+      await component.startScan();
+      await alertOptions[0].buttons[1].handler?.();
 
       expect(bleService.requestBluetoothEnable).toHaveBeenCalledTimes(1);
       expect(startScanSpy).toHaveBeenCalledTimes(1);
-      expect(component.scanBleError).toBeNull();
-      expect(component.errorMessage).toBeNull();
+      expect(component.devices).toEqual([]);
       expect(component.scanning).toBeTrue();
+      expect(component.scanBleError).toBeNull();
     },
   );
 
-  it('should show retry when Bluetooth enable is refused',
+  it('should offer Android Bluetooth settings when activation is refused',
     async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      component.devices = [{
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      }];
       bleService.bluetoothEnabled = false;
-      await component.startScan();
       bleService.requestBluetoothEnable.and.rejectWith(
         new BleOperationError(
           'bluetooth-enable-failed',
           'Bluetooth enable request failed.',
-          new Error('User cancelled'),
         ),
       );
 
-      await component.runScanBleErrorAction();
+      await component.startScan();
+      await alertOptions[0].buttons[1].handler?.();
 
-      expect(component.scanBleError?.code).toBe('bluetooth-enable-failed');
-      expect(component.scanBleError?.action).toBe('retry-scan');
+      expect(alertOptions.length).toBe(2);
+      expect(alertOptions[1].header).toBe('Activation nécessaire');
+      expect(alertOptions[1].buttons.map(({ text }) => text))
+        .toEqual(['OK', 'Ouvrir les paramètres Bluetooth']);
+      expect(component.devices.map(({ deviceId }) => deviceId))
+        .toEqual(['device-existing']);
       expect(component.scanning).toBeFalse();
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(component.scanBleError).toBeNull();
+
+      await alertOptions[1].buttons[1].handler?.();
+      expect(bleService.openBluetoothSettings).toHaveBeenCalledTimes(1);
+      expect(bleService.openAppSettings).not.toHaveBeenCalled();
     },
   );
 
-  it('should not request Android Bluetooth enable when the platform cannot support it',
+  it('should offer settings when Android Bluetooth remains disabled',
+    fakeAsync(() => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      bleService.bluetoothEnabled = false;
+      bleService.requestBluetoothEnable.and.callFake(async () => undefined);
+
+      void component.startScan();
+      flushMicrotasks();
+      void alertOptions[0].buttons[1].handler?.();
+      flushMicrotasks();
+
+      tick(400);
+      flushMicrotasks();
+      tick(600);
+      flushMicrotasks();
+      tick(800);
+      flushMicrotasks();
+
+      expect(bleService.requestBluetoothEnable).toHaveBeenCalledTimes(1);
+      expect(alertOptions.length).toBe(2);
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(component.scanning).toBeFalse();
+    }),
+  );
+
+  it('should never request Bluetooth enable on iOS and open app settings',
     async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      bleService.platform = 'ios';
       bleService.canRequestBluetoothEnable = false;
       bleService.bluetoothEnabled = false;
 
       await component.startScan();
-      await component.runScanBleErrorAction();
+      await alertOptions[0].buttons[1].handler?.();
 
       expect(bleService.requestBluetoothEnable).not.toHaveBeenCalled();
-      expect(component.scanBleError?.action).toBe('retry-scan');
+      expect(alertOptions.length).toBe(2);
+      expect(alertOptions[1].buttons.map(({ text }) => text))
+        .toEqual(['OK', 'Ouvrir les réglages']);
+      expect(startScanSpy).not.toHaveBeenCalled();
       expect(component.scanning).toBeFalse();
+
+      await alertOptions[1].buttons[1].handler?.();
+      expect(bleService.openAppSettings).toHaveBeenCalledTimes(1);
+      expect(bleService.openBluetoothSettings).not.toHaveBeenCalled();
+      expect(startScanSpy).not.toHaveBeenCalled();
     },
   );
 
@@ -1156,8 +1242,8 @@ describe('ScanPage', () => {
       });
       await component.startScan();
 
-      const firstAction = component.runScanBleErrorAction();
-      await component.runScanBleErrorAction();
+      const firstAction = alertOptions[0].buttons[1].handler?.();
+      await alertOptions[0].buttons[1].handler?.();
 
       expect(bleService.requestBluetoothEnable).toHaveBeenCalledTimes(1);
 
@@ -1213,7 +1299,7 @@ describe('ScanPage', () => {
         releaseEnable = resolve;
       });
       await component.startScan();
-      const recovery = component.runScanBleErrorAction();
+      const recovery = alertOptions[0].buttons[1].handler?.();
 
       fixture.destroy();
       releaseEnable();
@@ -3416,7 +3502,7 @@ interface TestAlertOptions {
   readonly buttons: readonly {
     readonly text?: string;
     readonly role?: string;
-    readonly handler?: () => void;
+    readonly handler?: () => void | Promise<void>;
   }[];
 }
 
