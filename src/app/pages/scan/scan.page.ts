@@ -108,6 +108,7 @@ import {
   ScanBluetoothText,
   scanBluetoothTextFor,
 } from './scan-bluetooth.text';
+import { scanLocationTextFor } from './scan-location.text';
 import { scanPermissionTextFor } from './scan-permission.text';
 
 interface ScannedDevice {
@@ -219,6 +220,7 @@ export class ScanPage implements OnDestroy {
   private scanPreparationInProgress = false;
   private bluetoothDisabledAlertOpen = false;
   private bluetoothSettingsAlertOpen = false;
+  private locationDisabledAlertOpen = false;
   private permissionDeniedCount = 0;
   private permissionSettingsAlertOpen = false;
   private permissionSettingsRequired = false;
@@ -1828,12 +1830,59 @@ export class ScanPage implements OnDestroy {
   }
 
   private async ensureBluetoothReadyForScan(): Promise<boolean> {
-    if (await this.bleService.isBluetoothEnabled()) {
-      return true;
+    if (!await this.bleService.isBluetoothEnabled()) {
+      await this.presentBluetoothDisabledAlert();
+      return false;
     }
 
-    await this.presentBluetoothDisabledAlert();
-    return false;
+    if (
+      await this.bleService.requiresLegacyAndroidLocationService() &&
+      !await this.bleService.isLocationEnabled()
+    ) {
+      await this.presentLocationDisabledAlert();
+      return false;
+    }
+
+    return true;
+  }
+
+  private async presentLocationDisabledAlert(): Promise<void> {
+    if (this.locationDisabledAlertOpen || this.destroyed) {
+      return;
+    }
+
+    this.locationDisabledAlertOpen = true;
+    const text = scanLocationTextFor(readStoredAppLanguage());
+    const alert = await this.alertController.create({
+      header: text.disabledTitle,
+      message: text.disabledMessage,
+      backdropDismiss: false,
+      buttons: [
+        {
+          text: text.cancel,
+          role: 'cancel',
+          handler: () => {
+            this.locationDisabledAlertOpen = false;
+          },
+        },
+        {
+          text: text.openSettings,
+          handler: () => {
+            this.locationDisabledAlertOpen = false;
+            return this.openLocationSettings();
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async openLocationSettings(): Promise<void> {
+    try {
+      await this.bleService.openLocationSettings();
+    } catch {
+      // Phase 1 did not add another user-facing error for this failure.
+    }
   }
 
   private async presentBluetoothDisabledAlert(): Promise<void> {

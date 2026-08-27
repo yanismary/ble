@@ -5,6 +5,7 @@ import {
   ScanResult,
 } from '@capacitor-community/bluetooth-le';
 import { Capacitor } from '@capacitor/core';
+import { Device } from '@capacitor/device';
 import { Observable, Subject } from 'rxjs';
 
 export type BleOperationErrorCode =
@@ -21,6 +22,8 @@ export type BleOperationErrorCode =
   | 'scan-failed'
   | 'bluetooth-settings-unavailable'
   | 'bluetooth-settings-failed'
+  | 'location-settings-unavailable'
+  | 'location-settings-failed'
   | 'app-settings-unavailable'
   | 'app-settings-failed';
 
@@ -153,6 +156,10 @@ export class BleService implements OnDestroy {
     return Capacitor.getPlatform() !== 'web';
   }
 
+  get canOpenLocationSettings(): boolean {
+    return this.platform === 'android';
+  }
+
   async initialize(): Promise<void> {
     if (this.initializationPromise === null) {
       this.initializationPromise = BleClient.initialize({
@@ -261,6 +268,48 @@ export class BleService implements OnDestroy {
       throw new BleOperationError(
         'app-settings-failed',
         'Opening app settings failed.',
+        error,
+      );
+    }
+  }
+
+  async requiresLegacyAndroidLocationService(): Promise<boolean> {
+    if (this.platform !== 'android') {
+      return false;
+    }
+
+    try {
+      const { androidSDKVersion } = await this.getDeviceInfo();
+      return typeof androidSDKVersion === 'number' &&
+        androidSDKVersion <= 30;
+    } catch {
+      return false;
+    }
+  }
+
+  async isLocationEnabled(): Promise<boolean> {
+    await this.initialize();
+    try {
+      return await BleClient.isLocationEnabled();
+    } catch (error: unknown) {
+      throw this.toBleOperationError(error, 'initialization-failed');
+    }
+  }
+
+  async openLocationSettings(): Promise<void> {
+    if (!this.canOpenLocationSettings) {
+      throw new BleOperationError(
+        'location-settings-unavailable',
+        'Location settings are only available on Android.',
+      );
+    }
+
+    try {
+      await BleClient.openLocationSettings();
+    } catch (error: unknown) {
+      throw new BleOperationError(
+        'location-settings-failed',
+        'Opening location settings failed.',
         error,
       );
     }
@@ -830,6 +879,10 @@ export class BleService implements OnDestroy {
         : 'BLE initialization failed.',
       error,
     );
+  }
+
+  private getDeviceInfo(): ReturnType<typeof Device.getInfo> {
+    return Device.getInfo();
   }
 
   private toBleConnectionError(error: unknown): BleOperationError {

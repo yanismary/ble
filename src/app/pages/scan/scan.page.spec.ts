@@ -63,6 +63,8 @@ class FakeBleService {
   isWriting = false;
   bluetoothEnabled = true;
   bluetoothEnabledError: unknown | null = null;
+  legacyAndroidLocationServiceRequired = false;
+  locationEnabled = true;
   canRequestBluetoothEnable = true;
   canOpenAppSettings = true;
   platform: 'android' | 'ios' | 'web' = 'android';
@@ -85,6 +87,9 @@ class FakeBleService {
   readonly openBluetoothSettings = jasmine.createSpy(
     'openBluetoothSettings',
   ).and.resolveTo();
+  readonly openLocationSettings = jasmine.createSpy(
+    'openLocationSettings',
+  ).and.resolveTo();
 
   readonly disconnections$: Observable<BleDisconnectionEvent> =
     this.disconnectionSubject.asObservable();
@@ -100,6 +105,14 @@ class FakeBleService {
       throw this.bluetoothEnabledError;
     }
     return this.bluetoothEnabled;
+  }
+
+  async requiresLegacyAndroidLocationService(): Promise<boolean> {
+    return this.legacyAndroidLocationServiceRequired;
+  }
+
+  async isLocationEnabled(): Promise<boolean> {
+    return this.locationEnabled;
   }
 
   async startScan(
@@ -1186,6 +1199,134 @@ describe('ScanPage', () => {
       expect(startScanSpy).not.toHaveBeenCalled();
     },
   );
+
+  it('should preserve the list and offer location settings on Android API 30',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      const existingDevice = {
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      };
+      component.devices = [existingDevice];
+      component.selectedDeviceId = existingDevice.deviceId;
+      bleService.legacyAndroidLocationServiceRequired = true;
+      bleService.locationEnabled = false;
+
+      await component.startScan();
+
+      expect(alertOptions).toHaveSize(1);
+      expect(alertOptions[0].header).toBe('Localisation désactivée');
+      expect(alertOptions[0].buttons.map(({ text }) => text)).toEqual([
+        'Annuler',
+        'Ouvrir les réglages de localisation',
+      ]);
+      expect(component.devices).toEqual([existingDevice]);
+      expect(component.selectedDeviceId).toBe(existingDevice.deviceId);
+      expect(component.scanning).toBeFalse();
+      expect(scanPreparationInProgressOf(component)).toBeFalse();
+      expect(scanTimeoutOf(component)).toBeNull();
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(component.scanBleError).toBeNull();
+      expect(component.errorMessage).toBeNull();
+    },
+  );
+
+  it('should open location settings once without automatically scanning',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      bleService.legacyAndroidLocationServiceRequired = true;
+      bleService.locationEnabled = false;
+
+      await component.startScan();
+      await alertOptions[0].buttons[1].handler?.();
+
+      expect(bleService.openLocationSettings).toHaveBeenCalledTimes(1);
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(component.scanning).toBeFalse();
+      expect(component.canStartScan).toBeTrue();
+    },
+  );
+
+  it('should scan on a new search after legacy Android location is enabled',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      component.devices = [{
+        deviceId: 'device-existing',
+        name: 'Produit existant',
+        rssi: -48,
+      }];
+      bleService.legacyAndroidLocationServiceRequired = true;
+      bleService.locationEnabled = false;
+
+      await component.startScan();
+      await alertOptions[0].buttons[1].handler?.();
+      bleService.locationEnabled = true;
+
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(component.devices).toHaveSize(1);
+
+      await component.startScan();
+
+      expect(startScanSpy).toHaveBeenCalledTimes(1);
+      expect(component.devices).toEqual([]);
+      expect(component.scanning).toBeTrue();
+      expect(scanTimeoutOf(component)).not.toBeNull();
+    },
+  );
+
+  it('should scan normally when legacy Android location is already enabled',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      const locationSpy = spyOn(bleService, 'isLocationEnabled')
+        .and.callThrough();
+      bleService.legacyAndroidLocationServiceRequired = true;
+      bleService.locationEnabled = true;
+
+      await component.startScan();
+
+      expect(locationSpy).toHaveBeenCalledTimes(1);
+      expect(startScanSpy).toHaveBeenCalledTimes(1);
+      expect(component.scanning).toBeTrue();
+      expect(alertOptions).toEqual([]);
+    },
+  );
+
+  it('should not check location services on Android API 31 or later',
+    async () => {
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      const locationSpy = spyOn(bleService, 'isLocationEnabled')
+        .and.callThrough();
+      bleService.legacyAndroidLocationServiceRequired = false;
+      bleService.locationEnabled = false;
+
+      await component.startScan();
+
+      expect(locationSpy).not.toHaveBeenCalled();
+      expect(startScanSpy).toHaveBeenCalledTimes(1);
+      expect(component.scanning).toBeTrue();
+    },
+  );
+
+  it('should never check Android location services on iOS', async () => {
+    const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+    const locationPolicySpy = spyOn(
+      bleService,
+      'requiresLegacyAndroidLocationService',
+    ).and.callThrough();
+    const locationSpy = spyOn(bleService, 'isLocationEnabled')
+      .and.callThrough();
+    bleService.platform = 'ios';
+    bleService.legacyAndroidLocationServiceRequired = false;
+    bleService.locationEnabled = false;
+
+    await component.startScan();
+
+    expect(locationPolicySpy).toHaveBeenCalledTimes(1);
+    expect(locationSpy).not.toHaveBeenCalled();
+    expect(startScanSpy).toHaveBeenCalledTimes(1);
+    expect(component.scanning).toBeTrue();
+  });
 
   it('should show only a Phase 1 toast after the first Android permission denial',
     async () => {

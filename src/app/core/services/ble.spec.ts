@@ -5,6 +5,7 @@ import {
   ScanResult,
 } from '@capacitor-community/bluetooth-le';
 import { Capacitor } from '@capacitor/core';
+import { DeviceInfo } from '@capacitor/device';
 
 import {
   BleDisconnectionEvent,
@@ -17,6 +18,7 @@ describe('BleService', () => {
   let requestLEScanSpy: jasmine.Spy<typeof BleClient.requestLEScan>;
   let connectSpy: jasmine.Spy<typeof BleClient.connect>;
   let writeSpy: jasmine.Spy<typeof BleClient.write>;
+  let deviceGetInfoSpy: jasmine.Spy<() => Promise<DeviceInfo>>;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
@@ -27,6 +29,8 @@ describe('BleService', () => {
     spyOn(BleClient, 'isEnabled').and.resolveTo(true);
     spyOn(BleClient, 'requestEnable').and.resolveTo();
     spyOn(BleClient, 'openBluetoothSettings').and.resolveTo();
+    spyOn(BleClient, 'isLocationEnabled').and.resolveTo(true);
+    spyOn(BleClient, 'openLocationSettings').and.resolveTo();
     spyOn(BleClient, 'openAppSettings').and.resolveTo();
     connectSpy = spyOn(BleClient, 'connect').and.resolveTo();
     spyOn(BleClient, 'disconnect').and.resolveTo();
@@ -38,6 +42,10 @@ describe('BleService', () => {
     spyOn(BleClient, 'stopNotifications').and.resolveTo();
 
     service = TestBed.inject(BleService);
+    deviceGetInfoSpy = spyOn(
+      deviceInfoReaderOf(service),
+      'getDeviceInfo',
+    ).and.resolveTo(deviceInfo(31));
   });
 
   it('should be created', () => {
@@ -210,6 +218,68 @@ describe('BleService', () => {
       expect((error as BleOperationError).code).toBe('app-settings-failed');
       expect((error as BleOperationError).cause).toBe(settingsError);
     }
+  });
+
+  it('should require location services only through Android API 30',
+    async () => {
+      spyOn(Capacitor, 'getPlatform').and.returnValue('android');
+      deviceGetInfoSpy.and.resolveTo(deviceInfo(30));
+
+      await expectAsync(service.requiresLegacyAndroidLocationService())
+        .toBeResolvedTo(true);
+
+      deviceGetInfoSpy.and.resolveTo(deviceInfo(31));
+
+      await expectAsync(service.requiresLegacyAndroidLocationService())
+        .toBeResolvedTo(false);
+    },
+  );
+
+  it('should not inspect Android SDK information on iOS', async () => {
+    spyOn(Capacitor, 'getPlatform').and.returnValue('ios');
+
+    await expectAsync(service.requiresLegacyAndroidLocationService())
+      .toBeResolvedTo(false);
+
+    expect(deviceGetInfoSpy).not.toHaveBeenCalled();
+  });
+
+  it('should skip the legacy location check when Android SDK is unavailable',
+    async () => {
+      spyOn(Capacitor, 'getPlatform').and.returnValue('android');
+      deviceGetInfoSpy.and.rejectWith(
+        new Error('Device information unavailable'),
+      );
+
+      await expectAsync(service.requiresLegacyAndroidLocationService())
+        .toBeResolvedTo(false);
+    },
+  );
+
+  it('should delegate the Android location state and settings to the BLE plugin',
+    async () => {
+      spyOn(Capacitor, 'getPlatform').and.returnValue('android');
+      (BleClient.isLocationEnabled as jasmine.Spy<
+        typeof BleClient.isLocationEnabled
+      >).and.resolveTo(false);
+
+      await expectAsync(service.isLocationEnabled()).toBeResolvedTo(false);
+      await service.openLocationSettings();
+
+      expect(BleClient.isLocationEnabled).toHaveBeenCalledTimes(1);
+      expect(BleClient.openLocationSettings).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('should not open Android location settings on iOS', async () => {
+    spyOn(Capacitor, 'getPlatform').and.returnValue('ios');
+
+    await expectAsync(service.openLocationSettings()).toBeRejectedWith(
+      jasmine.objectContaining({
+        code: 'location-settings-unavailable',
+      }),
+    );
+    expect(BleClient.openLocationSettings).not.toHaveBeenCalled();
   });
 
   it('should open Bluetooth settings only on Android', async () => {
@@ -1421,5 +1491,26 @@ function createCharacteristicProperties(
     write: false,
     writeWithoutResponse: false,
     ...overrides,
+  };
+}
+
+function deviceInfo(androidSDKVersion: number): DeviceInfo {
+  return {
+    model: 'Android test device',
+    platform: 'android',
+    operatingSystem: 'android',
+    osVersion: androidSDKVersion <= 30 ? '11' : '12',
+    androidSDKVersion,
+    manufacturer: 'Test',
+    isVirtual: false,
+    webViewVersion: '1',
+  };
+}
+
+function deviceInfoReaderOf(service: BleService): {
+  getDeviceInfo(): Promise<DeviceInfo>;
+} {
+  return service as unknown as {
+    getDeviceInfo(): Promise<DeviceInfo>;
   };
 }
