@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">V2.1</string>
-    <string name="title_activity_main">V2.1</string>
-    <string name="package_name">io.ionic.starter</string>
-    <string name="custom_url_scheme">io.ionic.starter</string>
+    <string name="app_name">MANTION Door Control</string>
+    <string name="title_activity_main">MANTION Door Control</string>
+    <string name="package_name">com.mantion.doorcontrol</string>
+    <string name="custom_url_scheme">com.mantion.doorcontrol</string>
 </resources>

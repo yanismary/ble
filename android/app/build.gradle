@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "io.ionic.starter"
+    namespace = "com.mantion.doorcontrol"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "io.ionic.starter"
+        applicationId "com.mantion.doorcontrol"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode 17
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

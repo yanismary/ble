@@ -1,4 +1,4 @@
-package io.ionic.starter;
+package com.mantion.doorcontrol;
 
 import com.getcapacitor.BridgeActivity;
 

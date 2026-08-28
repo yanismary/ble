@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
-  appName: 'V2.1',
+  appId: 'com.mantion.doorcontrol',
+  appName: 'MANTION Door Control',
   webDir: 'www'
 };
 
