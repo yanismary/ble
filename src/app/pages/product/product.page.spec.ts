@@ -57,6 +57,10 @@ import {
 } from '../../core/services/app-room-cache';
 import { storeManualAppLanguage } from '../../core/services/app-language';
 import {
+  storeShowProductInformation,
+  storeShowProductSettings,
+} from '../../core/services/app-preferences';
+import {
   ProductExitStateService,
 } from '../../core/services/product-exit-state.service';
 import {
@@ -270,6 +274,8 @@ describe('ProductPage', () => {
   beforeEach(async () => {
     localStorage.removeItem(ROOM_ASSIGNMENTS_STORAGE_KEY);
     storeManualAppLanguage('fr');
+    storeShowProductSettings(true);
+    storeShowProductInformation(true);
     bleService = new FakeBleService();
     loadService = new FakeProductDataLoadService();
     writeExecutionService = new FakeBleWriteExecutionService();
@@ -549,6 +555,128 @@ describe('ProductPage', () => {
     )?.hidden).toBeFalse();
     expect(writeExecutionService.execute).not.toHaveBeenCalled();
     expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+  });
+
+  it('should show settings and information tabs by default', () => {
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(component.showSettingsTab).toBeTrue();
+    expect(component.showInformationTab).toBeTrue();
+    expect(element.querySelector('ion-segment-button[value="settings"]'))
+      .not.toBeNull();
+    expect(element.querySelector('ion-segment-button[value="information"]'))
+      .not.toBeNull();
+  });
+
+  it('should hide inactive optional tabs while keeping commands usable', () => {
+    storeShowProductSettings(false);
+    storeShowProductInformation(false);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(component.activeMainTab).toBe('commands');
+    expect(component.showSettingsTab).toBeFalse();
+    expect(component.showInformationTab).toBeFalse();
+    expect(element.querySelector('ion-segment-button[value="commands"]'))
+      .not.toBeNull();
+    expect(element.querySelector('ion-segment-button[value="settings"]'))
+      .toBeNull();
+    expect(element.querySelector('ion-segment-button[value="information"]'))
+      .toBeNull();
+    expect(element.querySelector<HTMLElement>(
+      '[aria-labelledby="commands-title"]',
+    )?.hidden).toBeFalse();
+  });
+
+  it('should apply persisted hidden tabs to a new product page', () => {
+    fixture.destroy();
+    storeShowProductSettings(false);
+    storeShowProductInformation(false);
+
+    fixture = TestBed.createComponent(ProductPage);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(component.activeMainTab).toBe('commands');
+    expect(component.showSettingsTab).toBeFalse();
+    expect(component.showInformationTab).toBeFalse();
+    expect(element.querySelector('ion-segment-button[value="commands"]'))
+      .not.toBeNull();
+    expect(element.querySelector('ion-segment-button[value="settings"]'))
+      .toBeNull();
+    expect(element.querySelector('ion-segment-button[value="information"]'))
+      .toBeNull();
+    expect(element.querySelector<HTMLElement>(
+      '[aria-labelledby="commands-title"]',
+    )?.hidden).toBeFalse();
+  });
+
+  it('should preserve active settings content when its tab becomes hidden', () => {
+    const disconnectSpy = spyOn(bleService, 'disconnect').and.callThrough();
+    component.setActiveMainTab('settings');
+    component.setActiveSettingsTab('advanced');
+    const generation = bleService.connectionGeneration;
+
+    storeShowProductSettings(false);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(component.activeMainTab).toBe('settings');
+    expect(component.activeSettingsTab).toBe('advanced');
+    expect(component.showSettingsTab).toBeFalse();
+    expect(element.querySelector('ion-segment-button[value="settings"]'))
+      .toBeNull();
+    expect(element.querySelector('.product-sub-segment')).not.toBeNull();
+    expect(element.querySelector<HTMLElement>(
+      '[aria-labelledby="settings-title"]',
+    )?.hidden).toBeFalse();
+    expect(disconnectSpy).not.toHaveBeenCalled();
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    expect(bleService.connectedDeviceId).toBe('device-1');
+    expect(bleService.connectionGeneration).toBe(generation);
+  });
+
+  it('should preserve active information content when its tab becomes hidden', () => {
+    const disconnectSpy = spyOn(bleService, 'disconnect').and.callThrough();
+    component.setActiveMainTab('information');
+    const generation = bleService.connectionGeneration;
+
+    storeShowProductInformation(false);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(component.activeMainTab).toBe('information');
+    expect(component.showInformationTab).toBeFalse();
+    expect(element.querySelector('ion-segment-button[value="information"]'))
+      .toBeNull();
+    expect(element.querySelector<HTMLElement>(
+      '[aria-labelledby="information-title"]',
+    )?.hidden).toBeFalse();
+    expect(disconnectSpy).not.toHaveBeenCalled();
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    expect(bleService.connectedDeviceId).toBe('device-1');
+    expect(bleService.connectionGeneration).toBe(generation);
+  });
+
+  it('should restore optional tabs immediately when preferences are enabled', () => {
+    storeShowProductSettings(false);
+    storeShowProductInformation(false);
+    fixture.detectChanges();
+
+    storeShowProductSettings(true);
+    storeShowProductInformation(true);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(component.showSettingsTab).toBeTrue();
+    expect(component.showInformationTab).toBeTrue();
+    expect(element.querySelector('ion-segment-button[value="settings"]'))
+      .not.toBeNull();
+    expect(element.querySelector('ion-segment-button[value="information"]'))
+      .not.toBeNull();
   });
 
   it('should refresh on tab clicks even when the tab is already active',

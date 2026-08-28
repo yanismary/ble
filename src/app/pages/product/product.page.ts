@@ -646,7 +646,7 @@ export class ProductPage implements OnDestroy {
   }
 
   setActiveSettingsTab(tab: ProductShellSettingsTab): void {
-    if (this.activeMainTab !== 'settings' || !this.showSettingsTab) {
+    if (this.activeMainTab !== 'settings' || !this.pageContextCurrent) {
       return;
     }
     this.activeSettingsTab = tab;

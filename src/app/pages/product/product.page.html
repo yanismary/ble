@@ -53,7 +53,7 @@
       }
     </ion-segment>
 
-    @if (activeMainTab === 'settings' && showSettingsTab) {
+    @if (activeMainTab === 'settings' && pageContextCurrent) {
       <ion-segment
         class="product-sub-segment"
         mode="md"
@@ -271,7 +271,7 @@
       </section>
     }
 
-    @if (pageContextCurrent && showProductSettingsSection) {
+    @if (pageContextCurrent) {
       <section
         class="product-section"
         aria-labelledby="settings-title"
@@ -1101,7 +1101,7 @@
       </section>
     }
 
-    @if (pageContextCurrent && showProductInformationSection) {
+    @if (pageContextCurrent) {
       <section
         class="product-section"
         aria-labelledby="information-title"

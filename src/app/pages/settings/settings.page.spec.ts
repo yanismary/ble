@@ -152,6 +152,20 @@ describe('SettingsPage', () => {
       .toBe('false');
   });
 
+  it('restores persisted product tab preferences on a new settings page',
+    async () => {
+      let fixture = await createPage();
+      fixture.componentInstance.setShowProductSettings(change(false));
+      fixture.componentInstance.setShowProductInformation(change(false));
+      fixture.destroy();
+
+      fixture = TestBed.createComponent(SettingsPage);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.showProductSettings).toBeFalse();
+      expect(fixture.componentInstance.showProductInformation).toBeFalse();
+    });
+
   it('updates the existing haptics preference without BLE interaction', async () => {
     const fixture = await createPage();
     const component = fixture.componentInstance;
