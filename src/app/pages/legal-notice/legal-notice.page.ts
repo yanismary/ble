@@ -10,8 +10,8 @@ import {
 
 import {
   legalNoticeCopyFor,
-  normalizeLegalNoticeLanguage,
 } from './legal-notice.model';
+import { currentAppLanguage } from '../../core/services/app-language';
 
 @Component({
   selector: 'app-legal-notice',
@@ -28,7 +28,7 @@ import {
   ],
 })
 export class LegalNoticePage {
-  readonly copy = legalNoticeCopyFor(
-    normalizeLegalNoticeLanguage(localStorage.getItem('lang')),
-  );
+  get copy() {
+    return legalNoticeCopyFor(currentAppLanguage());
+  }
 }

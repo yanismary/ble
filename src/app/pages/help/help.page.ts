@@ -15,7 +15,7 @@ import {
   IonToolbar,
 } from '@ionic/angular/standalone';
 
-import { readStoredAppLanguage } from '../../core/services/app-language';
+import { currentAppLanguage } from '../../core/services/app-language';
 import {
   HelpPlatform,
   HelpProduct,
@@ -46,8 +46,13 @@ import {
 })
 export class HelpPage {
   readonly platform = normalizeHelpPlatform(Capacitor.getPlatform());
-  readonly language = readStoredAppLanguage();
-  readonly text = helpPageTextFor(this.language);
+  get language() {
+    return currentAppLanguage();
+  }
+
+  get text() {
+    return helpPageTextFor(this.language);
+  }
   readonly products: readonly HelpProduct[] = Object.freeze([
     'widoor',
     'moventiv',

@@ -47,7 +47,7 @@
           aria-label="manual language"
           [cancelText]="text.selectCancel"
           [okText]="text.selectOk"
-          [value]="language"
+          [value]="manualLanguage"
           (ionChange)="selectLanguage($any($event.detail.value))"
         >
           @for (option of languageOptions; track option.code) {

@@ -88,6 +88,7 @@ import {
 import {
   triggerConfiguredHapticFeedback,
 } from '../../core/services/app-haptics';
+import { currentAppLanguage } from '../../core/services/app-language';
 import {
   AppMainMenuComponent,
 } from '../../shared/app-main-menu/app-main-menu.component';
@@ -106,11 +107,7 @@ import {
   ProductUserField,
   isKnownProductProfile,
 } from './product-page.config';
-import { PRODUCT_PAGE_TEXT } from './product-page.text';
-import {
-  normalizeProductPageLanguage,
-  productPageTextFor,
-} from './product-page-legacy-localization';
+import { productPageTextFor } from './product-page-legacy-localization';
 import { productProfessionalFieldRequiresAccess } from
   './product-professional-access';
 import {
@@ -218,6 +215,7 @@ import {
 
 type ProductShellMainTab = 'commands' | 'settings' | 'information';
 type ProductShellSettingsTab = 'basic' | 'advanced';
+type LocalizedProductPageText = ReturnType<typeof productPageTextFor>;
 
 @Component({
   selector: 'app-product',
@@ -301,14 +299,14 @@ export class ProductPage implements OnDestroy {
   private nameRoomDraft: ProductNameRoomDraft | null = null;
 
   readonly config: ProductPageConfig;
-  readonly text = productPageTextFor(
-    normalizeProductPageLanguage(localStorage.getItem('lang')),
-  );
+  get text(): ReturnType<typeof productPageTextFor> {
+    return productPageTextFor(currentAppLanguage());
+  }
   readonly roomOptions = PRODUCT_ROOM_OPTIONS;
   readonly sensitiveActions: readonly ProductSensitiveActionUiConfig[];
   readonly productCommands: readonly {
     readonly config: WidoorCommandUiConfig;
-    readonly text: typeof PRODUCT_PAGE_TEXT.widoorCommands[
+    readonly text: LocalizedProductPageText['widoorCommands'][
       WidoorCommandUiConfig['textKey']
     ];
     readonly disabledReason: string | null;
@@ -316,25 +314,25 @@ export class ProductPage implements OnDestroy {
   readonly widoorCommands: typeof this.productCommands;
   readonly lockModeControls: readonly {
     readonly config: ProductLockModeUiConfig;
-    readonly text: typeof PRODUCT_PAGE_TEXT.lockModeControls[
+    readonly text: LocalizedProductPageText['lockModeControls'][
       ProductLockModeUiConfig['textKey']
     ];
   }[];
   readonly userSpeedControls: readonly {
     readonly config: ProductUserSpeedUiConfig;
-    readonly text: typeof PRODUCT_PAGE_TEXT.user[
+    readonly text: LocalizedProductPageText['user'][
       ProductUserSpeedUiConfig['textKey']
     ];
   }[];
   readonly userTimingControls: readonly {
     readonly config: ProductUserTimingUiConfig;
-    readonly text: typeof PRODUCT_PAGE_TEXT.user[
+    readonly text: LocalizedProductPageText['user'][
       ProductUserTimingUiConfig['textKey']
     ];
   }[];
   readonly userPeripheralControls: readonly {
     readonly config: ProductUserPeripheralUiConfig;
-    readonly text: typeof PRODUCT_PAGE_TEXT.user[
+    readonly text: LocalizedProductPageText['user'][
       ProductUserPeripheralUiConfig['textKey']
     ];
   }[];
@@ -347,7 +345,7 @@ export class ProductPage implements OnDestroy {
   }[];
   readonly professionalScalarControls: readonly {
     readonly config: ProductProfessionalScalarUiConfig;
-    readonly text: typeof PRODUCT_PAGE_TEXT.professional[
+    readonly text: LocalizedProductPageText['professional'][
       ProductProfessionalScalarUiConfig['textKey']
     ];
   }[];
@@ -440,12 +438,18 @@ export class ProductPage implements OnDestroy {
       MOTOR_COMMAND_UI_CONFIGS[profile].map((config) =>
       Object.freeze({
         config,
-        text: PRODUCT_PAGE_TEXT.widoorCommands[config.textKey],
-        disabledReason: config.disabledReason === 'physical-validation'
-          ? PRODUCT_PAGE_TEXT.widoorCommands.physicalValidationRequired
-          : config.disabledReason === 'protected'
-            ? PRODUCT_PAGE_TEXT.widoorCommands.protected
-            : null,
+        get text() {
+          return productPageTextFor(currentAppLanguage())
+            .widoorCommands[config.textKey];
+        },
+        get disabledReason() {
+          const text = productPageTextFor(currentAppLanguage());
+          return config.disabledReason === 'physical-validation'
+            ? text.widoorCommands.physicalValidationRequired
+            : config.disabledReason === 'protected'
+              ? text.widoorCommands.protected
+              : null;
+        },
       })),
     );
     this.widoorCommands = this.productCommands;
@@ -459,7 +463,10 @@ export class ProductPage implements OnDestroy {
       productLockModeConfigsFor(this.config).map((config) =>
         Object.freeze({
           config,
-          text: PRODUCT_PAGE_TEXT.lockModeControls[config.textKey],
+          get text() {
+            return productPageTextFor(currentAppLanguage())
+              .lockModeControls[config.textKey];
+          },
         }),
       ),
     );
@@ -478,7 +485,10 @@ export class ProductPage implements OnDestroy {
       productUserSpeedConfigsFor(this.config).map((config) =>
         Object.freeze({
           config,
-          text: PRODUCT_PAGE_TEXT.user[config.textKey],
+          get text() {
+            return productPageTextFor(currentAppLanguage())
+              .user[config.textKey];
+          },
         }),
       ),
     );
@@ -492,7 +502,10 @@ export class ProductPage implements OnDestroy {
       productUserTimingConfigsFor(this.config).map((config) =>
         Object.freeze({
           config,
-          text: PRODUCT_PAGE_TEXT.user[config.textKey],
+          get text() {
+            return productPageTextFor(currentAppLanguage())
+              .user[config.textKey];
+          },
         }),
       ),
     );
@@ -506,7 +519,10 @@ export class ProductPage implements OnDestroy {
       productUserPeripheralConfigsFor(this.config).map((config) =>
         Object.freeze({
           config,
-          text: PRODUCT_PAGE_TEXT.user[config.textKey],
+          get text() {
+            return productPageTextFor(currentAppLanguage())
+              .user[config.textKey];
+          },
         }),
       ),
     );
@@ -519,9 +535,12 @@ export class ProductPage implements OnDestroy {
       productProfessionalInputConfigsFor(this.config).map((config) =>
         Object.freeze({
           config,
-          text: config.textKey === 'input1'
-            ? PRODUCT_PAGE_TEXT.professionalInputControls.input1
-            : PRODUCT_PAGE_TEXT.professionalInputControls.input2,
+          get text() {
+            const text = productPageTextFor(currentAppLanguage());
+            return config.textKey === 'input1'
+              ? text.professionalInputControls.input1
+              : text.professionalInputControls.input2;
+          },
         }),
       ),
     );
@@ -535,7 +554,10 @@ export class ProductPage implements OnDestroy {
       productProfessionalScalarConfigsFor(this.config).map((config) =>
         Object.freeze({
           config,
-          text: PRODUCT_PAGE_TEXT.professional[config.textKey],
+          get text() {
+            return productPageTextFor(currentAppLanguage())
+              .professional[config.textKey];
+          },
         }),
       ),
     );
@@ -680,7 +702,7 @@ export class ProductPage implements OnDestroy {
 
   get moventivCloseLockControl(): {
     readonly config: ProductLockModeUiConfig;
-    readonly text: typeof PRODUCT_PAGE_TEXT.lockModeControls[
+    readonly text: LocalizedProductPageText['lockModeControls'][
       ProductLockModeUiConfig['textKey']
     ];
   } | null {

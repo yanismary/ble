@@ -2,9 +2,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 
+import { storeManualAppLanguage } from '../../core/services/app-language';
 import { HelpPage, normalizeHelpPlatform } from './help.page';
 
 describe('HelpPage', () => {
+  beforeEach(() => {
+    storeManualAppLanguage('fr');
+  });
+
   afterEach(() => {
     localStorage.clear();
   });
@@ -86,7 +91,7 @@ describe('HelpPage', () => {
   });
 
   it('uses iOS specific pairing guidance when relevant', async () => {
-    localStorage.setItem('lang', 'en');
+    storeManualAppLanguage('en');
     const fixture = await createPage('ios');
 
     fixture.componentInstance.selectProduct('widoor');

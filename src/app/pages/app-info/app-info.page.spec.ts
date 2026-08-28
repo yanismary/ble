@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { storeManualAppLanguage } from '../../core/services/app-language';
 import { AppInfoPage } from './app-info.page';
 
 describe('AppInfoPage', () => {
@@ -8,6 +9,7 @@ describe('AppInfoPage', () => {
   let component: AppInfoPage;
 
   beforeEach(async () => {
+    storeManualAppLanguage('fr');
     await TestBed.configureTestingModule({
       imports: [AppInfoPage],
       providers: [provideRouter([])],

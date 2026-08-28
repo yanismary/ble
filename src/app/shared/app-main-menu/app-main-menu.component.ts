@@ -40,7 +40,9 @@ export class AppMainMenuComponent {
   @Input() buttonClass = '';
   @Input() iconClass = '';
 
-  readonly items = appMainMenuItemsFor();
+  get items(): readonly AppMainMenuItem[] {
+    return appMainMenuItemsFor();
+  }
   menuOpen = false;
   private presenting = false;
   private navigationInProgress = false;

@@ -16,8 +16,8 @@ import {
 
 import {
   appInfoCopyFor,
-  normalizeAppInfoLanguage,
 } from './app-info.model';
+import { currentAppLanguage } from '../../core/services/app-language';
 
 @Component({
   selector: 'app-app-info',
@@ -38,9 +38,9 @@ import {
   ],
 })
 export class AppInfoPage implements OnInit {
-  readonly copy = appInfoCopyFor(
-    normalizeAppInfoLanguage(localStorage.getItem('lang')),
-  );
+  get copy() {
+    return appInfoCopyFor(currentAppLanguage());
+  }
 
   appVersion = '—';
 

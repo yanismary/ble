@@ -1,6 +1,6 @@
 import {
   AppLanguage,
-  readStoredAppLanguage,
+  currentAppLanguage,
 } from '../../core/services/app-language';
 
 export type AppMainMenuDestination =
@@ -75,7 +75,7 @@ const APP_MAIN_MENU_ORDER: readonly AppMainMenuDestination[] = Object.freeze([
 ]);
 
 export function appMainMenuItemsFor(
-  language: AppLanguage = readStoredAppLanguage(),
+  language: AppLanguage = currentAppLanguage(),
 ): readonly AppMainMenuItem[] {
   const labels = APP_MAIN_MENU_LABELS[language];
   return Object.freeze(APP_MAIN_MENU_ORDER.map((destination) => Object.freeze({

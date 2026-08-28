@@ -23,6 +23,7 @@ import {
   storeAutoEnableBluetooth,
   storeShowBleIdentifier,
 } from '../../core/services/app-preferences';
+import { storeManualAppLanguage } from '../../core/services/app-language';
 import {
   ProductExitStateService,
 } from '../../core/services/product-exit-state.service';
@@ -334,6 +335,7 @@ describe('ScanPage', () => {
 
   beforeEach(async () => {
     localStorage.clear();
+    storeManualAppLanguage('fr');
     storeAutoEnableBluetooth(false);
     storeShowBleIdentifier(true);
     bleService = new FakeBleService();
@@ -589,7 +591,7 @@ describe('ScanPage', () => {
     } as const;
 
     for (const [language, labels] of Object.entries(expected)) {
-      localStorage.setItem('lang', language);
+      storeManualAppLanguage(language as 'fr' | 'en' | 'de' | 'pl');
       fixture.detectChanges();
       const rendered = fixture.nativeElement.textContent as string;
       for (const label of labels) {

@@ -10,8 +10,8 @@ import {
 
 import {
   companyInfoCopyFor,
-  normalizeCompanyInfoLanguage,
 } from './company-info.model';
+import { currentAppLanguage } from '../../core/services/app-language';
 
 @Component({
   selector: 'app-company-info',
@@ -28,7 +28,7 @@ import {
   ],
 })
 export class CompanyInfoPage {
-  readonly copy = companyInfoCopyFor(
-    normalizeCompanyInfoLanguage(localStorage.getItem('lang')),
-  );
+  get copy() {
+    return companyInfoCopyFor(currentAppLanguage());
+  }
 }

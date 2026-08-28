@@ -38,10 +38,12 @@ import {
   APP_LANGUAGES,
   AppLanguage,
   AppLanguageMode,
+  currentAppLanguage,
   readAppLanguageMode,
-  readStoredAppLanguage,
+  readStoredManualAppLanguage,
   storeAutomaticAppLanguage,
   storeManualAppLanguage,
+  storeManualAppLanguageMode,
 } from '../../core/services/app-language';
 import {
   SettingsPageText,
@@ -77,15 +79,14 @@ interface LanguageOption {
 })
 export class SettingsPage {
   readonly languageOptions: readonly LanguageOption[] = Object.freeze([
-    { code: 'fr', label: 'Fran\u00e7ais' },
-    { code: 'en', label: 'English' },
     { code: 'de', label: 'Deutsch' },
+    { code: 'en', label: 'English' },
+    { code: 'fr', label: 'Fran\u00e7ais' },
     { code: 'pl', label: 'Polski' },
   ]);
 
-  language: AppLanguage = readStoredAppLanguage();
   mode: AppLanguageMode = readAppLanguageMode();
-  text: SettingsPageText = settingsPageTextFor(this.language);
+  manualLanguage: AppLanguage | null = readStoredManualAppLanguage();
   readonly isAndroid = Capacitor.getPlatform() === 'android';
   autoEnableBluetooth = readAutoEnableBluetooth();
   showBleIdentifier = readShowBleIdentifier();
@@ -102,6 +103,14 @@ export class SettingsPage {
     }
   }
 
+  get language(): AppLanguage {
+    return currentAppLanguage();
+  }
+
+  get text(): SettingsPageText {
+    return settingsPageTextFor(this.language);
+  }
+
   get bleIdentifierLabel(): string {
     return this.isAndroid
       ? this.text.scan.showBleIdentifierAndroid
@@ -109,16 +118,14 @@ export class SettingsPage {
   }
 
   selectLanguage(language: AppLanguage): void {
-    this.language = storeManualAppLanguage(language);
+    this.manualLanguage = storeManualAppLanguage(language);
     this.mode = 'manual';
-    this.text = settingsPageTextFor(this.language);
     this.statusMessage = this.text.status.manualLanguage;
   }
 
   usePhoneLanguage(): void {
-    this.language = storeAutomaticAppLanguage(navigator.language);
+    storeAutomaticAppLanguage(navigator.language);
     this.mode = 'automatic';
-    this.text = settingsPageTextFor(this.language);
     this.statusMessage =
       this.text.status.automaticLanguage(this.language.toUpperCase());
   }
@@ -131,9 +138,8 @@ export class SettingsPage {
       return;
     }
 
-    this.language = storeManualAppLanguage(this.language);
+    storeManualAppLanguageMode();
     this.mode = 'manual';
-    this.text = settingsPageTextFor(this.language);
     this.statusMessage = this.text.status.manualLanguage;
   }
 

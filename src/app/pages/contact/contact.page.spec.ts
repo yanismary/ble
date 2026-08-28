@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { storeManualAppLanguage } from '../../core/services/app-language';
 import { ContactPage } from './contact.page';
 
 describe('ContactPage', () => {
@@ -8,7 +9,7 @@ describe('ContactPage', () => {
   let component: ContactPage;
 
   beforeEach(async () => {
-    localStorage.setItem('lang', 'fr');
+    storeManualAppLanguage('fr');
     await TestBed.configureTestingModule({
       imports: [ContactPage],
       providers: [provideRouter([])],

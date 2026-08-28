@@ -15,7 +15,7 @@ import {
 import { addIcons } from 'ionicons';
 import { call, location, mail } from 'ionicons/icons';
 
-import { readStoredAppLanguage } from '../../core/services/app-language';
+import { currentAppLanguage } from '../../core/services/app-language';
 import { appInfoCopyFor } from '../app-info/app-info.model';
 
 @Component({
@@ -38,7 +38,9 @@ import { appInfoCopyFor } from '../app-info/app-info.model';
   ],
 })
 export class ContactPage {
-  readonly copy = appInfoCopyFor(readStoredAppLanguage());
+  get copy() {
+    return appInfoCopyFor(currentAppLanguage());
+  }
 
   constructor() {
     addIcons({ call, location, mail });

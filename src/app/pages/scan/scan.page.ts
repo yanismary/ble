@@ -81,7 +81,10 @@ import {
 import {
   ProductExitStateService,
 } from '../../core/services/product-exit-state.service';
-import { readStoredAppLanguage } from '../../core/services/app-language';
+import {
+  currentAppLanguage,
+  readStoredAppLanguage,
+} from '../../core/services/app-language';
 import {
   AppMainMenuComponent,
 } from '../../shared/app-main-menu/app-main-menu.component';
@@ -404,7 +407,7 @@ export class ScanPage implements OnDestroy {
   }
 
   get scanText() {
-    return scanSurfaceTextFor(readStoredAppLanguage());
+    return scanSurfaceTextFor(currentAppLanguage());
   }
 
   get bleIdentifierLabel(): string {

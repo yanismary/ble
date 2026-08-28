@@ -4,6 +4,8 @@ import { Capacitor } from '@capacitor/core';
 import {
   APP_LANGUAGE_MODE_STORAGE_KEY,
   APP_LANGUAGE_STORAGE_KEY,
+  currentAppLanguage,
+  storeManualAppLanguage,
 } from '../../core/services/app-language';
 import {
   AUTO_ENABLE_BLUETOOTH_STORAGE_KEY,
@@ -15,6 +17,10 @@ import {
 import { SettingsPage } from './settings.page';
 
 describe('SettingsPage', () => {
+  beforeEach(() => {
+    storeManualAppLanguage('fr');
+  });
+
   afterEach(() => {
     localStorage.clear();
   });
@@ -57,16 +63,16 @@ describe('SettingsPage', () => {
     expect(query(fixture, '.settings-row-icon.ai-vibrate')).not.toBeNull();
   });
 
-  it('shows the Phase 2 supported language options in the manual select', async () => {
+  it('shows the Phase 1 manual language order', async () => {
     const fixture = await createPage();
     const options = Array.from(
       fixture.nativeElement.querySelectorAll('ion-select-option'),
     ) as HTMLIonSelectOptionElement[];
 
     expect(options.map((option) => option.value)).toEqual([
-      'fr',
-      'en',
       'de',
+      'en',
+      'fr',
       'pl',
     ]);
   });
@@ -80,10 +86,14 @@ describe('SettingsPage', () => {
 
     expect(localStorage.getItem(APP_LANGUAGE_STORAGE_KEY)).toBe('en');
     expect(localStorage.getItem(APP_LANGUAGE_MODE_STORAGE_KEY)).toBe('manual');
+    expect(localStorage.getItem('StoredIsLanguageAuto')).toBe('false');
+    expect(localStorage.getItem('appLanguage')).toBe('"manualLang_EN"');
+    expect(currentAppLanguage()).toBe('en');
     expect(component.text.title).toBe('Settings');
   });
 
   it('stores automatic language mode through the Phase 2 language mechanism', async () => {
+    spyOnProperty(navigator, 'language').and.returnValue('de-DE');
     const fixture = await createPage();
     const component = fixture.componentInstance;
 
@@ -93,9 +103,30 @@ describe('SettingsPage', () => {
     expect(localStorage.getItem(APP_LANGUAGE_MODE_STORAGE_KEY))
       .toBe('automatic');
     expect(localStorage.getItem(APP_LANGUAGE_STORAGE_KEY)).not.toBeNull();
+    expect(localStorage.getItem(APP_LANGUAGE_STORAGE_KEY)).toBe('de');
+    expect(localStorage.getItem('StoredIsLanguageAuto')).toBe('true');
     expect(component.mode).toBe('automatic');
+    expect(component.language).toBe('de');
     expect(query(fixture, '[data-setting-row="manual-language"]')).toBeNull();
   });
+
+  it('keeps the current language and previous manual choice when auto is disabled',
+    async () => {
+      storeManualAppLanguage('pl');
+      spyOnProperty(navigator, 'language').and.returnValue('de-DE');
+      const fixture = await createPage();
+      const component = fixture.componentInstance;
+
+      component.setAutomaticLanguage(change(true));
+      component.setAutomaticLanguage(change(false));
+      fixture.detectChanges();
+
+      expect(component.language).toBe('de');
+      expect(component.manualLanguage).toBe('pl');
+      expect(component.mode).toBe('manual');
+      expect(localStorage.getItem(APP_LANGUAGE_MODE_STORAGE_KEY)).toBe('manual');
+      expect(localStorage.getItem('appLanguage')).toBe('"manualLang_PL"');
+    });
 
   it('updates the existing scan MAC/UUID preference', async () => {
     const fixture = await createPage();

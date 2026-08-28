@@ -55,6 +55,7 @@ import {
   ROOM_ASSIGNMENTS_STORAGE_KEY,
   readRoomCacheEntry,
 } from '../../core/services/app-room-cache';
+import { storeManualAppLanguage } from '../../core/services/app-language';
 import {
   ProductExitStateService,
 } from '../../core/services/product-exit-state.service';
@@ -268,6 +269,7 @@ describe('ProductPage', () => {
 
   beforeEach(async () => {
     localStorage.removeItem(ROOM_ASSIGNMENTS_STORAGE_KEY);
+    storeManualAppLanguage('fr');
     bleService = new FakeBleService();
     loadService = new FakeProductDataLoadService();
     writeExecutionService = new FakeBleWriteExecutionService();
@@ -401,6 +403,23 @@ describe('ProductPage', () => {
     expect(productPageTextFor('en').sections.navbarTitle).toBe('Command');
     expect(productPageTextFor('de').sections.navbarTitle).toBe('Befehle');
     expect(productPageTextFor('pl').sections.navbarTitle).toBe('Sterowanie');
+  });
+
+  it('should update visible product texts without changing the BLE context', () => {
+    const frenchCommand = component.productCommands[0].text.label;
+
+    storeManualAppLanguage('de');
+    fixture.detectChanges();
+
+    const title = fixture.nativeElement.querySelector('ion-title');
+    expect(title?.textContent?.trim()).toBe('Befehle');
+    expect(component.productCommands[0].text.label)
+      .not.toBe(frenchCommand);
+    expect(fixture.nativeElement.textContent)
+      .toContain(component.productCommands[0].text.label);
+    expect(bleService.connectedDeviceId).toBe('device-1');
+    expect(bleService.connectionGeneration).toBe(4);
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
   });
 
   it('should open the anchored global menu without selecting product settings',

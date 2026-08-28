@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { IonPopover } from '@ionic/angular/standalone';
 
+import { storeManualAppLanguage } from '../../core/services/app-language';
 import { AppMainMenuComponent } from './app-main-menu.component';
 import { appMainMenuItemsFor } from './app-main-menu.model';
 
@@ -11,7 +12,7 @@ describe('AppMainMenuComponent', () => {
   let routerNavigate: jasmine.Spy;
 
   beforeEach(async () => {
-    localStorage.setItem('lang', 'fr');
+    storeManualAppLanguage('fr');
     routerNavigate = jasmine.createSpy('navigate').and.resolveTo(true);
 
     await TestBed.configureTestingModule({
@@ -27,7 +28,8 @@ describe('AppMainMenuComponent', () => {
   });
 
   afterEach(() => {
-    localStorage.removeItem('lang');
+    storeManualAppLanguage('fr');
+    localStorage.clear();
   });
 
   it('should expose the six Phase 1 entries in their exact order', () => {
@@ -61,6 +63,18 @@ describe('AppMainMenuComponent', () => {
     expect(appMainMenuItemsFor('pl').map(({ label }) => label)).toEqual([
       'Konfiguracja aplikacji', 'Pomoc', 'O aplikacji', 'Kim jesteśmy?',
       'Kontakt', 'Informacje prawne',
+    ]);
+  });
+
+  it('should update all entries immediately without recreating the menu', () => {
+    expect(component.items[0].label).toBe("Configuration de l'application");
+
+    storeManualAppLanguage('de');
+    fixture.detectChanges();
+
+    expect(component.items.map(({ label }) => label)).toEqual([
+      'App Einstellungen', 'Hilfe', 'Über uns', 'Wer sind wir?', 'Kontakt',
+      'AGB',
     ]);
   });
 
