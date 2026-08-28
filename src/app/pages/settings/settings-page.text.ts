@@ -48,32 +48,32 @@ export interface SettingsPageText {
 
 const SETTINGS_TEXT: Record<AppLanguage, SettingsPageText> = {
   fr: {
-    title: 'Param\u00e8tres',
+    title: 'Configuration de l\'application',
     selectCancel: 'Annuler',
-    selectOk: 'OK',
+    selectOk: 'Valider',
     sections: {
-      language: 'Langue',
-      scan: 'Page de scan',
-      productTabs: 'Onglets produit',
-      other: 'Autres options',
+      language: 'Langage',
+      scan: 'Affichage de l\'adresse MAC',
+      productTabs: 'Affichage des onglets',
+      other: 'Option',
     },
     language: {
-      automatic: 'Utiliser la langue du t\u00e9l\u00e9phone',
-      manual: 'Choisir la langue',
+      automatic: 'D\u00e9tection automatique de la langue',
+      manual: 'S\u00e9lectionner votre langue',
       status: (language) =>
         `Mode automatique actif - langue actuelle : ${language}.`,
     },
     scan: {
-      showBleIdentifierAndroid: 'Afficher l\u2019adresse MAC',
-      showBleIdentifierIos: 'Afficher l\u2019identifiant UUID',
+      showBleIdentifierAndroid: 'Affichage de l\'adresse MAC',
+      showBleIdentifierIos: 'Affichage de l\'UUID',
     },
     productTabs: {
-      settings: 'Afficher l\u2019onglet R\u00e9glages',
-      information: 'Afficher l\u2019onglet Informations',
+      settings: 'R\u00e9glages',
+      information: 'Informations',
     },
     other: {
-      haptics: 'Activer les vibrations',
-      bluetooth: 'Demander l\u2019activation Bluetooth avant scan',
+      haptics: 'Retour vibrations',
+      bluetooth: 'Activation/d\u00e9sactivation automatique Bluetooth',
     },
     status: {
       manualLanguage:
@@ -94,32 +94,32 @@ const SETTINGS_TEXT: Record<AppLanguage, SettingsPageText> = {
     },
   },
   en: {
-    title: 'Settings',
+    title: 'App configuration',
     selectCancel: 'Cancel',
     selectOk: 'OK',
     sections: {
       language: 'Language',
       scan: 'Scan page',
-      productTabs: 'Product tabs',
-      other: 'Other options',
+      productTabs: 'Display of the tab pages',
+      other: 'Options',
     },
     language: {
-      automatic: 'Use phone language',
-      manual: 'Choose language',
+      automatic: 'Language auto-detection',
+      manual: 'Select your langage',
       status: (language) =>
         `Automatic mode active - current language: ${language}.`,
     },
     scan: {
-      showBleIdentifierAndroid: 'Show MAC address',
-      showBleIdentifierIos: 'Show UUID identifier',
+      showBleIdentifierAndroid: 'Display of MAC address',
+      showBleIdentifierIos: 'Display of UUID',
     },
     productTabs: {
-      settings: 'Show Settings tab',
-      information: 'Show Information tab',
+      settings: 'Tuning',
+      information: 'Informations',
     },
     other: {
-      haptics: 'Enable vibration',
-      bluetooth: 'Ask to enable Bluetooth before scan',
+      haptics: 'Rumble feedback',
+      bluetooth: 'Enable/disable automatic Bluetooth switch',
     },
     status: {
       manualLanguage:
@@ -138,32 +138,32 @@ const SETTINGS_TEXT: Record<AppLanguage, SettingsPageText> = {
     },
   },
   de: {
-    title: 'Einstellungen',
+    title: 'App Einstellungen',
     selectCancel: 'Abbrechen',
     selectOk: 'OK',
     sections: {
       language: 'Sprache',
-      scan: 'Scan-Seite',
-      productTabs: 'Produkt-Tabs',
-      other: 'Weitere Optionen',
+      scan: 'Anzeige der MAC Adresse',
+      productTabs: 'Ansicht der Tabs',
+      other: 'Optionen',
     },
     language: {
-      automatic: 'Telefonsprache verwenden',
+      automatic: 'Sprache automatisch ausw\u00e4hlen',
       manual: 'Sprache ausw\u00e4hlen',
       status: (language) =>
         `Automatikmodus aktiv - aktuelle Sprache: ${language}.`,
     },
     scan: {
-      showBleIdentifierAndroid: 'MAC-Adresse anzeigen',
-      showBleIdentifierIos: 'UUID anzeigen',
+      showBleIdentifierAndroid: 'Anzeige der MAC Adresse',
+      showBleIdentifierIos: 'Anzeige der UUID',
     },
     productTabs: {
-      settings: 'Tab Einstellungen anzeigen',
-      information: 'Tab Informationen anzeigen',
+      settings: 'Einstellungen',
+      information: 'Informationen',
     },
     other: {
-      haptics: 'Vibration aktivieren',
-      bluetooth: 'Bluetooth-Aktivierung vor dem Scan anfragen',
+      haptics: 'Vibration',
+      bluetooth: 'Aktiviere/deaktiviere Bluetooth automatisch',
     },
     status: {
       manualLanguage:
@@ -183,32 +183,32 @@ const SETTINGS_TEXT: Record<AppLanguage, SettingsPageText> = {
     },
   },
   pl: {
-    title: 'Ustawienia',
+    title: 'Konfiguracja aplikacji',
     selectCancel: 'Anuluj',
     selectOk: 'OK',
     sections: {
       language: 'J\u0119zyk',
-      scan: 'Ekran skanowania',
-      productTabs: 'Zak\u0142adki produktu',
-      other: 'Inne opcje',
+      scan: 'Wy\u015bwietlanie adresu MAC',
+      productTabs: 'Wy\u015bwietlanie zak\u0142adek',
+      other: 'Opcje',
     },
     language: {
-      automatic: 'U\u017cyj j\u0119zyka telefonu',
+      automatic: 'Automatyczne wykrywanie j\u0119zyka',
       manual: 'Wybierz j\u0119zyk',
       status: (language) =>
         `Tryb automatyczny aktywny - aktualny j\u0119zyk: ${language}.`,
     },
     scan: {
-      showBleIdentifierAndroid: 'Poka\u017c adres MAC',
-      showBleIdentifierIos: 'Poka\u017c identyfikator UUID',
+      showBleIdentifierAndroid: 'Wy\u015bwietlanie adresu MAC',
+      showBleIdentifierIos: 'Wy\u015bwietlanie UUID',
     },
     productTabs: {
-      settings: 'Poka\u017c zak\u0142adk\u0119 Ustawienia',
-      information: 'Poka\u017c zak\u0142adk\u0119 Informacje',
+      settings: 'Ustawienia',
+      information: 'Informacje',
     },
     other: {
-      haptics: 'W\u0142\u0105cz wibracje',
-      bluetooth: 'Popro\u015b o w\u0142\u0105czenie Bluetooth przed skanowaniem',
+      haptics: 'Wibracje',
+      bluetooth: 'W\u0142\u0105cz/wy\u0142\u0105cz automatyczne prze\u0142\u0105czanie Bluetooth',
     },
     status: {
       manualLanguage:

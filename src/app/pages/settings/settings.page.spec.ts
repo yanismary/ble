@@ -56,7 +56,8 @@ describe('SettingsPage', () => {
     expect(query(fixture, 'ion-toolbar.mantion-navbar')).not.toBeNull();
     expect(query(fixture, 'ion-back-button[defaultHref="/scan"]'))
       .not.toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Param');
+    expect(fixture.nativeElement.textContent)
+      .toContain("Configuration de l'application");
     expect(fixture.nativeElement.querySelectorAll('ion-list').length)
       .toBe(4);
     expect(query(fixture, '.settings-row-icon.ai-change-name')).not.toBeNull();
@@ -89,7 +90,7 @@ describe('SettingsPage', () => {
     expect(localStorage.getItem('StoredIsLanguageAuto')).toBe('false');
     expect(localStorage.getItem('appLanguage')).toBe('"manualLang_EN"');
     expect(currentAppLanguage()).toBe('en');
-    expect(component.text.title).toBe('Settings');
+    expect(component.text.title).toBe('App configuration');
   });
 
   it('stores automatic language mode through the Phase 2 language mechanism', async () => {
@@ -182,6 +183,8 @@ describe('SettingsPage', () => {
 
     expect(query(fixture, '[data-setting-row="auto-bluetooth"]'))
       .not.toBeNull();
+    expect(fixture.nativeElement.textContent)
+      .toContain('Activation/d\u00e9sactivation automatique Bluetooth');
 
     component.setAutoEnableBluetooth(change(false));
 
@@ -194,4 +197,117 @@ describe('SettingsPage', () => {
 
     expect(query(fixture, '[data-setting-row="auto-bluetooth"]')).toBeNull();
   });
+
+  const historicalSurfaces = [
+    {
+      language: 'fr',
+      labels: [
+        "Configuration de l'application",
+        'Langage',
+        'D\u00e9tection automatique de la langue',
+        'S\u00e9lectionner votre langue',
+        "Affichage de l'adresse MAC",
+        'Affichage des onglets',
+        'R\u00e9glages',
+        'Informations',
+        'Option',
+        'Retour vibrations',
+        'Activation/d\u00e9sactivation automatique Bluetooth',
+      ],
+    },
+    {
+      language: 'en',
+      labels: [
+        'App configuration',
+        'Language',
+        'Language auto-detection',
+        'Select your langage',
+        'Display of MAC address',
+        'Display of the tab pages',
+        'Tuning',
+        'Informations',
+        'Options',
+        'Rumble feedback',
+        'Enable/disable automatic Bluetooth switch',
+      ],
+    },
+    {
+      language: 'de',
+      labels: [
+        'App Einstellungen',
+        'Sprache',
+        'Sprache automatisch ausw\u00e4hlen',
+        'Sprache ausw\u00e4hlen',
+        'Anzeige der MAC Adresse',
+        'Ansicht der Tabs',
+        'Einstellungen',
+        'Informationen',
+        'Optionen',
+        'Vibration',
+        'Aktiviere/deaktiviere Bluetooth automatisch',
+      ],
+    },
+    {
+      language: 'pl',
+      labels: [
+        'Konfiguracja aplikacji',
+        'J\u0119zyk',
+        'Automatyczne wykrywanie j\u0119zyka',
+        'Wybierz j\u0119zyk',
+        'Wy\u015bwietlanie adresu MAC',
+        'Wy\u015bwietlanie zak\u0142adek',
+        'Ustawienia',
+        'Informacje',
+        'Opcje',
+        'Wibracje',
+        'W\u0142\u0105cz/wy\u0142\u0105cz automatyczne prze\u0142\u0105czanie Bluetooth',
+      ],
+    },
+  ] as const;
+
+  for (const surface of historicalSurfaces) {
+    it(`renders the Phase 1 ${surface.language.toUpperCase()} surface`,
+      async () => {
+        storeManualAppLanguage(surface.language);
+        const fixture = await createPage('android');
+        const text = fixture.nativeElement.textContent as string;
+
+        for (const label of surface.labels) {
+          expect(text).withContext(label).toContain(label);
+        }
+      });
+  }
+
+  it('renders seven historical controls on Android', async () => {
+    const fixture = await createPage('android');
+
+    expect(fixture.nativeElement.querySelectorAll('ion-toggle').length).toBe(6);
+    expect(fixture.nativeElement.querySelectorAll('ion-select').length).toBe(1);
+  });
+
+  it('renders six historical controls on iOS with UUID and no Bluetooth toggle',
+    async () => {
+      const fixture = await createPage('ios');
+      const text = fixture.nativeElement.textContent as string;
+
+      expect(fixture.nativeElement.querySelectorAll('ion-toggle').length).toBe(5);
+      expect(fixture.nativeElement.querySelectorAll('ion-select').length).toBe(1);
+      expect(text).toContain("Affichage de l'UUID");
+      expect(text).not.toContain(
+        'Activation/d\u00e9sactivation automatique Bluetooth',
+      );
+    });
+
+  it('does not render Phase 2 automatic or confirmation status panels',
+    async () => {
+      const fixture = await createPage();
+      const component = fixture.componentInstance;
+
+      component.setShowProductSettings(change(false));
+      fixture.detectChanges();
+
+      expect(component.statusMessage).not.toBeNull();
+      expect(query(fixture, '.settings-inline-status')).toBeNull();
+      expect(query(fixture, '.settings-status')).toBeNull();
+    });
 });

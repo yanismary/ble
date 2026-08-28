@@ -28,11 +28,7 @@
       ></ion-toggle>
     </ion-item>
 
-    @if (mode === 'automatic') {
-      <p class="settings-inline-status" role="status">
-        {{ text.language.status(language.toUpperCase()) }}
-      </p>
-    } @else {
+    @if (mode !== 'automatic') {
       <ion-item class="settings-row" data-setting-row="manual-language">
         <ion-icon
           class="settings-row-icon"
@@ -62,7 +58,7 @@
 
   <ion-list class="settings-list" lines="full">
     <ion-list-header class="mantion-list-header settings-list-header">
-      {{ text.sections.scan }}
+      {{ bleIdentifierLabel }}
     </ion-list-header>
 
     <ion-item class="settings-row" data-setting-row="ble-identifier">
@@ -146,8 +142,4 @@
       </ion-item>
     }
   </ion-list>
-
-  @if (statusMessage) {
-    <p class="settings-status" role="status">{{ statusMessage }}</p>
-  }
 </ion-content>
