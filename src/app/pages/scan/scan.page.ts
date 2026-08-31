@@ -1576,11 +1576,22 @@ export class ScanPage implements OnDestroy {
     this.clearScanTimeout();
 
     const text = scanProductConnectionTextFor(readStoredAppLanguage());
-    const message = failure === 'connection'
-      ? text.connectionFailed
-      : failure === 'discovery'
-        ? text.discoveryFailed
-        : text.productNotRecognized;
+    if (failure === 'connection') {
+      const alert = await this.alertController.create({
+        header: text.connectionFailedTitle,
+        message: text.connectionFailed,
+        buttons: [{
+          text: text.ok,
+          role: 'cancel',
+        }],
+      });
+      await alert.present();
+      return;
+    }
+
+    const message = failure === 'discovery'
+      ? text.discoveryFailed
+      : text.productNotRecognized;
     const toast = await this.toastController.create({
       message,
       duration: failure === 'unknown-product' ? 2_000 : 3_000,

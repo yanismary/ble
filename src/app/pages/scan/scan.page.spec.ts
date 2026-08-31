@@ -2296,10 +2296,21 @@ describe('ScanPage', () => {
       expect(component.connecting).toBeFalse();
       expect(component.canStartScan).toBeTrue();
       expect(component.devices).toHaveSize(1);
-      expect(toastOptions).toContain(jasmine.objectContaining({
-        message: 'Connexion Bluetooth impossible. Veuillez réessayer.',
-        duration: 3_000,
-        position: 'bottom',
+      const connectionAlert = alertOptions.find(
+        ({ header }) => header === 'Connexion impossible',
+      );
+      expect(connectionAlert).toBeDefined();
+      expect(connectionAlert?.message).toBe(
+        "Impossible de se connecter à l'appareil. Vérifiez qu'il est allumé, " +
+        'à proximité et correctement appairé avec votre téléphone, puis réessayez.',
+      );
+      expect(connectionAlert?.message)
+        .not.toContain("L'appareil n'est pas appairé");
+      expect(connectionAlert?.buttons).toEqual([
+        jasmine.objectContaining({ text: 'OK', role: 'cancel' }),
+      ]);
+      expect(toastOptions).not.toContain(jasmine.objectContaining({
+        message: jasmine.stringContaining('appairé'),
       }));
       expect(fixture.nativeElement.textContent).not.toContain(
         'BLE connection timed out',
@@ -2371,7 +2382,7 @@ describe('ScanPage', () => {
     },
   );
 
-  it('should replace a native connection error with a simple toast', async () => {
+  it('should replace a native connection error with pairing guidance', async () => {
     spyOn(console, 'warn');
     spyOn<any>(component, 'delay').and.resolveTo();
     await component.startScan();
@@ -2385,9 +2396,13 @@ describe('ScanPage', () => {
 
     expect(component.connectionError).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Connexion refusée');
-    expect(toastOptions).toContain(jasmine.objectContaining({
-      message: 'Connexion Bluetooth impossible. Veuillez réessayer.',
+    expect(alertOptions).toContain(jasmine.objectContaining({
+      header: 'Connexion impossible',
+      message:
+        "Impossible de se connecter à l'appareil. Vérifiez qu'il est allumé, " +
+        'à proximité et correctement appairé avec votre téléphone, puis réessayez.',
     }));
+    expect(toastOptions).toHaveSize(0);
     expect(component.connecting).toBeFalse();
     expect(routerNavigate).not.toHaveBeenCalled();
   });
@@ -2654,6 +2669,7 @@ describe('ScanPage', () => {
       duration: 3_000,
       position: 'bottom',
     }));
+    expect(alertOptions).toHaveSize(0);
     expect(fixture.nativeElement.textContent).not.toContain(
       'Découverte indisponible',
     );
