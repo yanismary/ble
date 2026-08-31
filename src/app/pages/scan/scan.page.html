@@ -32,11 +32,11 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true" class="scan-content mantion-page-background">
+<ion-content class="scan-content mantion-page-background">
 
   @if (scanning && devices.length === 0) {
-    <div class="scan-status" role="status">
-      <span>{{ scanText.searching }}</span>
+    <div class="scan-empty-state" role="status">
+      <p>{{ scanText.searching }}</p>
     </div>
   }
 
@@ -71,40 +71,26 @@
             }
             <p class="scan-rssi-line">
               {{ scanText.signalQuality }}
-              <img
-                [src]="getSignalQualityAsset(device)"
-                class="scan-rssi-image"
-                alt=""
-              />
+              <span>
+                <img
+                  [src]="getSignalQualityAsset(device)"
+                  class="scan-rssi-image"
+                  alt=""
+                />
+              </span>
             </p>
           </ion-label>
-          @if (isConnectingDevice(device)) {
-            <ion-spinner
-              slot="end"
-              name="crescent"
-              [attr.aria-label]="scanText.connecting"
-            ></ion-spinner>
-          }
         </ion-item>
       }
     </ion-list>
   } @else if (hasScanned && !scanning) {
-    <p class="empty-message">{{ scanText.noMotorDetected }}</p>
+    <div class="scan-empty-state">
+      <p>{{ scanText.noMotorDetected }}</p>
+    </div>
   } @else if (!hasScanned && !scanning) {
-    <p class="empty-message">{{ scanText.noMotorDetected }}</p>
-  }
-
-  @if (
-    connecting ||
-    discoveringServices ||
-    readingIdentification
-  ) {
-    <section class="connection-panel" aria-live="polite">
-      <div class="connection-status" role="status">
-        <ion-spinner name="crescent"></ion-spinner>
-        <span>{{ scanText.connecting }}</span>
-      </div>
-    </section>
+    <div class="scan-empty-state">
+      <p>{{ scanText.noMotorDetected }}</p>
+    </div>
   }
 
   <ion-fab class="scan-footer-fab scan-info-fab" slot="fixed" vertical="bottom" horizontal="end">
@@ -119,3 +105,21 @@
     </ion-fab-button>
   </ion-fab>
 </ion-content>
+
+@if (
+  connecting ||
+  discoveringServices ||
+  readingIdentification
+) {
+  <div
+    class="scan-connection-overlay"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="scanText.connecting"
+  >
+    <div class="scan-loading-wrapper" role="status" aria-live="polite">
+      <ion-spinner name="crescent"></ion-spinner>
+      <span>{{ scanText.connecting }}</span>
+    </div>
+  </div>
+}

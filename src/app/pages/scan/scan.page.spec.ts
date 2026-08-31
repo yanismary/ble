@@ -706,11 +706,34 @@ describe('ScanPage', () => {
         'Annuler',
       ]);
       expect(alertOptions[0].buttons[3].role).toBe('cancel');
+      expect(alertOptions[0].cssClass).toBe('scan-demo-product-alert');
+      expect(alertOptions[0].buttons.map(({ cssClass }) => cssClass)).toEqual([
+        ['scan-demo-product-button', 'scan-demo-product-button-moventiv'],
+        ['scan-demo-product-button', 'scan-demo-product-button-garline'],
+        ['scan-demo-product-button', 'scan-demo-product-button-widoor'],
+        'scan-demo-product-cancel-button',
+      ]);
       expect(alertOptions[0].buttons.some(({ text }) =>
         text?.includes('80'),
       )).toBeFalse();
     },
   );
+
+  it('should render connection progress as a Phase 1-style overlay', () => {
+    component.devices = [{ deviceId: 'device-1', name: 'Produit', rssi: -42 }];
+    component.selectedDeviceId = 'device-1';
+    component.connecting = true;
+
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const overlay = element.querySelector('.scan-connection-overlay');
+    const item = element.querySelector('.device-list ion-item');
+    expect(overlay).not.toBeNull();
+    expect(overlay?.textContent).toContain('Connexion en cours...');
+    expect(element.querySelector('.connection-panel')).toBeNull();
+    expect(item?.querySelector('ion-spinner')).toBeNull();
+  });
 
   it('should enter each Demo profile without BLE connection or discovery',
     async () => {
@@ -4117,9 +4140,11 @@ function typedReadResult(
 interface TestAlertOptions {
   readonly header?: string;
   readonly message: string;
+  readonly cssClass?: string | readonly string[];
   readonly buttons: readonly {
     readonly text?: string;
     readonly role?: string;
+    readonly cssClass?: string | readonly string[];
     readonly handler?: () => void | Promise<void>;
   }[];
 }

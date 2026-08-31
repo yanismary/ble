@@ -80,3 +80,86 @@
   --min-height: 48px;
   font-size: 16px;
 }
+
+ion-alert.scan-demo-product-alert {
+  --border-radius: 2px;
+  --max-width: 340px;
+  --width: calc(100% - 48px);
+}
+
+ion-alert.scan-demo-product-alert .alert-wrapper {
+  max-width: 340px;
+}
+
+ion-alert.scan-demo-product-alert .alert-button-group {
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  max-width: 320px;
+  padding: 0 24px 8px;
+  width: 100%;
+}
+
+ion-alert.scan-demo-product-alert .alert-button.scan-demo-product-button {
+  border-radius: 2px;
+  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14),
+    0 3px 1px -2px rgba(0, 0, 0, 0.2),
+    0 1px 5px 0 rgba(0, 0, 0, 0.12);
+  color: #ffffff;
+  display: block;
+  font-size: 16px;
+  font-weight: 500;
+  height: 46px;
+  line-height: 1.2;
+  margin: 0 0 14px;
+  min-height: 46px;
+  padding: 0 1.1em;
+  text-align: center;
+  width: 100%;
+}
+
+ion-alert.scan-demo-product-alert
+  .alert-button.scan-demo-product-button
+  .alert-button-inner {
+  justify-content: center;
+}
+
+ion-alert.scan-demo-product-alert
+  .alert-button.scan-demo-product-button-moventiv {
+  background: #32db64;
+}
+
+ion-alert.scan-demo-product-alert
+  .alert-button.scan-demo-product-button-garline {
+  background: #a7c855;
+}
+
+ion-alert.scan-demo-product-alert
+  .alert-button.scan-demo-product-button-widoor {
+  background: #488aff;
+}
+
+ion-alert.scan-demo-product-alert
+  .alert-button.scan-demo-product-button:active {
+  filter: brightness(0.94);
+}
+
+ion-alert.scan-demo-product-alert
+  .alert-button.scan-demo-product-cancel-button {
+  align-self: center;
+  margin: 0;
+  min-width: 0;
+  padding: 0 8px;
+  width: auto;
+}
+
+@media (max-width: 360px) {
+  ion-alert.scan-demo-product-alert .alert-button-group {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  ion-alert.scan-demo-product-alert .alert-button.scan-demo-product-button {
+    font-size: 15px;
+  }
+}

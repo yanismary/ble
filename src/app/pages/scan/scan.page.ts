@@ -363,14 +363,25 @@ export class ScanPage implements OnDestroy {
     const text = productDemoTextFor(readStoredAppLanguage());
     const alert = await this.alertController.create({
       header: text.title,
+      cssClass: 'scan-demo-product-alert',
       buttons: [
         ...PRODUCT_DEMO_CHOICES.map(({ profile }) => ({
           text: text.profileLabels[profile],
+          cssClass: [
+            'scan-demo-product-button',
+            profile === 'moventiv-60'
+              ? 'scan-demo-product-button-moventiv'
+              : `scan-demo-product-button-${profile}`,
+          ],
           handler: () => {
             void this.openDemoProduct(profile);
           },
         })),
-        { text: text.cancel, role: 'cancel' },
+        {
+          text: text.cancel,
+          role: 'cancel',
+          cssClass: 'scan-demo-product-cancel-button',
+        },
       ],
     });
     await alert.present();
