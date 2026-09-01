@@ -1,0 +1,474 @@
+/* Widoor keeps the Ionic 3 visual language without affecting shared profiles. */
+.product-profile-widoor {
+  .product-navbar {
+    --background: #0159a1;
+    --color: #fff;
+    min-height: 56px;
+  }
+
+  .product-navbar ion-title {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0;
+    padding-inline: 56px;
+    text-align: center;
+  }
+
+  .product-navbar-button {
+    --color: #fff;
+    --padding-end: 10px;
+    --padding-start: 10px;
+    height: 44px;
+    margin: 0;
+    min-width: 44px;
+  }
+
+  .product-back-button ion-icon,
+  .product-navbar-icon {
+    font-size: 24px;
+  }
+
+  .product-command-header {
+    background: #0159a1;
+    padding: 12px 10px 0;
+  }
+
+  :is(.product-main-segment, .product-sub-segment) {
+    --background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: inset 0 -1px rgba(0, 54, 105, 0.55);
+  }
+
+  :is(.product-main-segment, .product-sub-segment) ion-segment-button {
+    --background: transparent;
+    --background-activated: transparent;
+    --background-checked: transparent;
+    --background-focused: transparent;
+    --background-hover: transparent;
+    --indicator-box-shadow: none;
+    --indicator-color: transparent;
+    border: 0;
+    border-bottom: 4px solid transparent;
+    border-radius: 0;
+    flex: 1 1 0;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.2;
+    margin: 0;
+    max-width: none;
+    min-width: 0;
+    padding: 0 6px 10px;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  :is(.product-main-segment, .product-sub-segment)
+    ion-segment-button::part(indicator-background) {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .product-main-segment {
+    height: 64px;
+    min-height: 64px;
+  }
+
+  .product-main-segment ion-segment-button {
+    --color: rgba(255, 255, 255, 0.62);
+    --color-checked: #fff;
+    font-size: 13.5px;
+    height: 64px;
+  }
+
+  .product-main-segment ion-segment-button.segment-button-checked {
+    border-bottom-color: #fff;
+  }
+
+  .product-sub-segment {
+    height: 56px;
+    margin-top: 12px;
+    min-height: 56px;
+  }
+
+  .product-sub-segment ion-segment-button {
+    --color: rgba(167, 200, 85, 0.68);
+    --color-checked: #a7c855;
+    font-size: 13.5px;
+    height: 56px;
+  }
+
+  .product-sub-segment ion-segment-button.segment-button-checked {
+    border-bottom-color: #a7c855;
+  }
+
+  .product-controlled-door {
+    background: #fff;
+    color: #000;
+    font-size: 14px;
+    gap: 4px;
+    height: 56px;
+    min-height: 56px;
+    padding: 0 24px;
+  }
+
+  .product-controlled-door span {
+    color: #000;
+  }
+}
+
+ion-content.product-profile-widoor {
+  --background: #f4f4f4;
+
+  .product-page-layout {
+    margin: 0;
+    max-width: none;
+    padding: 12px 0 24px;
+    width: 100%;
+  }
+
+  .product-shell-status {
+    margin: 0;
+  }
+
+  .product-section > h2 {
+    border: 0;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  :is(.basic-settings-panel, .advanced-settings-panel) > h3 {
+    display: none;
+  }
+
+  .product-subsection {
+    border: 0;
+    box-shadow: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .cmd-grid {
+    display: grid;
+    gap: 14px 0;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    margin: 0;
+    padding: 0 5px;
+    width: 100%;
+  }
+
+  .cmd-cell {
+    min-width: 0;
+    text-align: center;
+  }
+
+  .cmd-cell:nth-child(1) {
+    grid-column: 2 / 6;
+    grid-row: 1;
+  }
+
+  .cmd-cell:nth-child(2) {
+    grid-column: 8 / 12;
+    grid-row: 1;
+  }
+
+  .cmd-cell:nth-child(3) {
+    grid-column: 5 / 9;
+    grid-row: 2;
+  }
+
+  .cmd-timed {
+    justify-self: stretch;
+    width: auto;
+  }
+
+  .cmd-motor {
+    --background: #0159a1;
+    --background-activated: #a7c855;
+    --background-focused: #0159a1;
+    --background-hover: #0159a1;
+    --border-radius: 2px;
+    --box-shadow: 0 2px 2px rgba(0, 0, 0, 0.14),
+      0 3px 1px -2px rgba(0, 0, 0, 0.2),
+      0 1px 5px rgba(0, 0, 0, 0.12);
+    height: 100px;
+    margin: 0;
+    width: 100%;
+  }
+
+  .cmd-motor img {
+    height: 64px;
+    width: 64px;
+  }
+
+  .cmd-label {
+    color: #000;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.2;
+    margin: 6px 0 0;
+    text-align: center;
+  }
+
+  :is(.basic-settings-list, .advanced-settings-list,
+    .advanced-actions-list, .product-information-list) {
+    background: transparent;
+    margin: 0;
+    padding: 0;
+  }
+
+  :is(.basic-section-header, .advanced-section-header) {
+    --background: #f4f4f4;
+    border-bottom: 1px solid #dedede;
+    color: #757575;
+    font-weight: 500;
+    min-height: 45px;
+    padding-left: 12px;
+  }
+
+  .basic-section-header {
+    border-left: 4px solid transparent;
+  }
+
+  .basic-section-header.basic-unlocked {
+    border-left-color: #32db64;
+  }
+
+  :is(.basic-section-header, .advanced-section-header) ion-label {
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+
+  :is(.basic-value-badge, .advanced-value-badge) {
+    --background: #a7c855;
+    --color: #fff;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 3px 8px;
+  }
+
+  :is(.basic-toggle-row, .basic-slider-row, .basic-select-row,
+    .basic-name-row, .advanced-access-row, .advanced-action-button-row,
+    .advanced-action-toggle-row, .advanced-input-row, .advanced-select-row,
+    .advanced-slider-row) {
+    --background: #fff;
+    --inner-padding-end: 8px;
+    --min-height: 56px;
+    --padding-start: 16px;
+    border-top: 0;
+    font-size: 14px;
+  }
+
+  :is(.basic-row-icon, .advanced-row-icon) {
+    height: 24px;
+    margin-inline-end: 16px;
+    object-fit: contain;
+    width: 24px;
+  }
+
+  :is(.basic-lock-icon, .advanced-lock-button img) {
+    height: 22px;
+    width: 22px;
+  }
+
+  :is(.basic-range, .advanced-range) {
+    --bar-background: #bdbdbd;
+    --bar-background-active: #0159a1;
+    --bar-height: 2px;
+    --knob-background: #0159a1;
+    --knob-size: 18px;
+    --pin-background: #0159a1;
+    --pin-color: #fff;
+    padding: 8px 12px;
+  }
+
+  :is(.basic-precision-row, .advanced-precision-row) {
+    background: #fff;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0 8px 12px 56px;
+  }
+
+  :is(.basic-precision-row, .advanced-precision-row) strong {
+    display: none;
+  }
+
+  :is(.basic-precision-row, .advanced-precision-row) ion-button {
+    --border-radius: 2px;
+    --border-width: 0;
+    --box-shadow: none;
+    --color: #fff;
+    height: 40px;
+    margin: 0;
+    min-width: 0;
+  }
+
+  :is(.basic-precision-row, .advanced-precision-row) ion-button:first-of-type {
+    --background: #911111;
+    --border-color: #911111;
+    --color: #fff;
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  :is(.basic-precision-row, .advanced-precision-row) ion-button:nth-of-type(2) {
+    --background: #a7c855;
+    --border-color: #a7c855;
+    --color: #fff;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .basic-current-value {
+    display: none;
+  }
+
+  ion-toggle {
+    --handle-background: #fff;
+    --handle-background-checked: #fff;
+    --handle-height: 20px;
+    --handle-spacing: 0;
+    --handle-width: 20px;
+    --track-background: #b2b2b2;
+    --track-background-checked: #a7c855;
+    height: 20px;
+    width: 36px;
+  }
+
+  ion-toggle::part(track) {
+    height: 14px;
+    overflow: visible;
+    width: 36px;
+  }
+
+  .product-information-panel {
+    background: transparent;
+    padding: 0;
+  }
+
+  .product-information-list {
+    margin-bottom: 12px;
+  }
+
+  .product-information-header {
+    --background: #f4f4f4;
+    color: #757575;
+    font-size: 14px;
+    font-weight: 500;
+    min-height: 45px;
+    padding-inline-start: 12px;
+    text-transform: none;
+  }
+
+  .product-information-row {
+    --background: #fff;
+    --inner-padding-end: 16px;
+    --min-height: 48px;
+    --padding-start: 16px;
+    color: #000;
+    font-size: 14px;
+  }
+
+  .product-information-row ion-label {
+    color: #000;
+    font-size: 14px;
+    font-weight: 400;
+    white-space: normal;
+  }
+
+  .product-information-value {
+    --background: transparent;
+    --color: #808080;
+    border-radius: 0;
+    font-size: 14px;
+    font-weight: 400;
+    max-width: 48%;
+    min-width: 0;
+    padding: 0;
+    text-align: right;
+  }
+
+  .product-information-row[data-info-row='ble-switch']
+    .product-information-value,
+  .product-information-row[data-info-row='automatic-manual']
+    .product-information-value,
+  .product-information-row[data-info-row='direction']
+    .product-information-value,
+  .product-information-row[data-info-row='pairing']
+    .product-information-value,
+  .product-information-row[data-info-row='push-and-go']
+    .product-information-value {
+    --color: #fff;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 52px;
+    padding: 3px 8px;
+    text-align: center;
+  }
+
+  .product-information-value.product-information-positive {
+    --background: #a7c855;
+  }
+
+  .product-information-value.product-information-negative {
+    --background: #911111;
+  }
+
+  .product-loading {
+    align-items: center;
+    background: rgba(0, 0, 0, 0.32);
+    color: #222;
+    flex-direction: column;
+    inset: 0;
+    justify-content: center;
+    margin: 0;
+    padding: 24px;
+    position: fixed;
+    z-index: 1000;
+  }
+
+  .product-loading::before {
+    background: #fff;
+    border-radius: 2px;
+    box-shadow: 0 16px 20px rgba(0, 0, 0, 0.22);
+    content: '';
+    height: 112px;
+    left: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 210px;
+  }
+
+  .product-loading :is(ion-spinner, span) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .product-loading ion-spinner {
+    color: #0159a1;
+  }
+}
+
+@media (max-width: 360px) {
+  ion-content.product-profile-widoor {
+    .cmd-grid {
+      padding-inline: 2px;
+    }
+
+    :is(.basic-precision-row, .advanced-precision-row) {
+      padding-left: 48px;
+    }
+  }
+}

@@ -1,4 +1,6 @@
-<ion-header>
+<ion-header
+  [class.product-profile-widoor]="config.profile === 'widoor'"
+>
   <ion-toolbar class="mantion-navbar product-navbar">
     <ion-buttons slot="start">
       <ion-button
@@ -81,7 +83,10 @@
   </div>
 </ion-header>
 
-<ion-content [fullscreen]="true">
+<ion-content
+  [fullscreen]="true"
+  [class.product-profile-widoor]="config.profile === 'widoor'"
+>
   <main class="product-page-layout">
     <section class="product-shell-status">
       @if (viewModel.loading) {
@@ -1123,6 +1128,8 @@
                 <ion-label>{{ row.label }}</ion-label>
                 <ion-badge
                   class="product-information-value"
+                  [class.product-information-positive]="row.value === text.yes"
+                  [class.product-information-negative]="row.value === text.no"
                   slot="end"
                 >{{ row.value }}</ion-badge>
               </ion-item>

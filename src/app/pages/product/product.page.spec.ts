@@ -363,6 +363,10 @@ describe('ProductPage', () => {
 
       expect(component.activeMainTab).toBe('commands');
       expect(component.activeSettingsTab).toBe('basic');
+      expect(element.querySelector('ion-header.product-profile-widoor'))
+        .not.toBeNull();
+      expect(element.querySelector('ion-content.product-profile-widoor'))
+        .not.toBeNull();
       expect(element.textContent).toContain(component.text.shell.controlledDoor);
       expect(commandsSection?.hidden).toBeFalse();
       expect(settingsSection?.hidden).toBeTrue();
