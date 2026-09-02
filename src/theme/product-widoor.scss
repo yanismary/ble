@@ -70,6 +70,12 @@
     box-shadow: none;
   }
 
+  :is(.product-main-segment, .product-sub-segment)
+    ion-segment-button::part(native) {
+    background: transparent;
+    box-shadow: none;
+  }
+
   .product-main-segment {
     height: 64px;
     min-height: 64px;
@@ -116,15 +122,21 @@
   .product-controlled-door span {
     color: #000;
   }
+
+  .product-controlled-door strong {
+    font-weight: 700;
+  }
 }
 
 ion-content.product-profile-widoor {
-  --background: #f4f4f4;
+  --background: #fff;
 
   .product-page-layout {
+    background: #fff;
     margin: 0;
+    min-height: 100%;
     max-width: none;
-    padding: 12px 0 24px;
+    padding: 0 0 24px;
     width: 100%;
   }
 
@@ -156,12 +168,17 @@ ion-content.product-profile-widoor {
     padding: 0;
   }
 
+  .product-section {
+    background: #fff;
+    min-height: 100%;
+  }
+
   .cmd-grid {
     display: grid;
     gap: 14px 0;
     grid-template-columns: repeat(12, minmax(0, 1fr));
     margin: 0;
-    padding: 0 5px;
+    padding: 24px 10px 0;
     width: 100%;
   }
 
@@ -201,10 +218,12 @@ ion-content.product-profile-widoor {
       0 1px 5px rgba(0, 0, 0, 0.12);
     height: 100px;
     margin: 0;
-    width: 100%;
+    justify-self: start;
+    width: calc(100% - 5px);
   }
 
   .cmd-motor img {
+    filter: brightness(0) invert(1);
     height: 64px;
     width: 64px;
   }
@@ -225,11 +244,16 @@ ion-content.product-profile-widoor {
     padding: 0;
   }
 
+  :is(.basic-settings-list, .advanced-settings-list) {
+    display: flex;
+    flex-direction: column;
+  }
+
   :is(.basic-section-header, .advanced-section-header) {
-    --background: #f4f4f4;
+    --background: #fff;
     border-bottom: 1px solid #dedede;
     color: #757575;
-    font-weight: 500;
+    font-weight: 400;
     min-height: 45px;
     padding-left: 12px;
   }
@@ -268,6 +292,54 @@ ion-content.product-profile-widoor {
     font-size: 14px;
   }
 
+  .basic-lighting-header,
+  .basic-lighting-row {
+    order: 20;
+  }
+
+  .basic-name-room-header,
+  .basic-name-row,
+  .basic-current-value {
+    order: 30;
+  }
+
+  .basic-lighting-row {
+    --min-height: 102px;
+  }
+
+  .basic-lighting-row ion-label {
+    color: #000;
+    font-size: 16px;
+    font-weight: 400;
+  }
+
+  .basic-lighting-row .basic-row-icon {
+    height: 28px;
+    width: 28px;
+  }
+
+  .basic-name-room-header {
+    --background: #f4f4f4;
+    min-height: 48px;
+  }
+
+  .basic-name-room-header .basic-value-badge {
+    display: none;
+  }
+
+  .basic-name-row {
+    --min-height: 88px;
+    --padding-start: 15px;
+  }
+
+  .basic-name-row .basic-row-icon {
+    display: none;
+  }
+
+  .basic-room-row {
+    --padding-start: 15px;
+  }
+
   :is(.basic-row-icon, .advanced-row-icon) {
     height: 24px;
     margin-inline-end: 16px;
@@ -275,20 +347,82 @@ ion-content.product-profile-widoor {
     width: 24px;
   }
 
-  :is(.basic-lock-icon, .advanced-lock-button img) {
+  :is(.basic-lock-icon, .advanced-lock-button img,
+    .advanced-lock-button ion-icon) {
+    color: #9b9b9b;
+    filter: grayscale(1);
     height: 22px;
+    opacity: 0.62;
     width: 22px;
+  }
+
+  .basic-lighting-header ion-label {
+    visibility: hidden;
   }
 
   :is(.basic-range, .advanced-range) {
     --bar-background: #bdbdbd;
-    --bar-background-active: #0159a1;
+    --bar-background-active: #bdbdbd;
     --bar-height: 2px;
-    --knob-background: #0159a1;
+    --knob-background: #bdbdbd;
     --knob-size: 18px;
     --pin-background: #0159a1;
     --pin-color: #fff;
     padding: 8px 12px;
+  }
+
+  .basic-slider-row .basic-range,
+  .advanced-slider-row .advanced-range {
+    margin-left: 26px;
+    padding-right: 20px;
+  }
+
+  :is(.basic-range, .advanced-range)::part(bar-active) {
+    background: #bdbdbd;
+  }
+
+  :is(.basic-slider-row, .advanced-slider-row).slider-unlocked
+    :is(.basic-range, .advanced-range) {
+    --bar-background-active: #0159a1;
+    --knob-background: #0159a1;
+  }
+
+  :is(.basic-slider-row, .advanced-slider-row).slider-unlocked
+    :is(.basic-range, .advanced-range)::part(bar-active) {
+    background: #0159a1;
+  }
+
+  :is(.basic-range, .advanced-range).range-disabled {
+    opacity: 1;
+  }
+
+  :is(.basic-range, .advanced-range)::part(knob) {
+    box-shadow: none;
+  }
+
+  .slider-options-toggle {
+    --color: #c1bdb4;
+    --padding-end: 0;
+    --padding-start: 0;
+    height: 42px;
+    margin: 0 -4px 0 0;
+    width: 28px;
+  }
+
+  .slider-options-toggle ion-icon {
+    font-size: 15px;
+  }
+
+  .advanced-slider-row[data-professional-scalar-field='break-force-at-open']
+    .advanced-range::part(tick) {
+    background: #bdbdbd;
+    height: 7px;
+    width: 2px;
+  }
+
+  .advanced-slider-row.slider-unlocked[data-professional-scalar-field='break-force-at-open']
+    .advanced-range::part(tick-active) {
+    background: #0159a1;
   }
 
   :is(.basic-precision-row, .advanced-precision-row) {
@@ -311,6 +445,18 @@ ion-content.product-profile-widoor {
     height: 40px;
     margin: 0;
     min-width: 0;
+    text-transform: uppercase;
+  }
+
+  :is(.basic-precision-row, .advanced-precision-row) ion-button ion-icon {
+    font-size: 18px;
+    margin-inline-end: 6px;
+  }
+
+  :is(.basic-precision-row, .advanced-precision-row) ion-button span {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0;
   }
 
   :is(.basic-precision-row, .advanced-precision-row) ion-button:first-of-type {
@@ -333,6 +479,30 @@ ion-content.product-profile-widoor {
     display: none;
   }
 
+  .basic-name-row ion-input,
+  .basic-room-row ion-select {
+    --highlight-color-focused: #a7c855;
+    --highlight-color-valid: #a7c855;
+    color: #000;
+  }
+
+  .basic-room-row {
+    flex-wrap: wrap;
+    padding-bottom: 14px;
+  }
+
+  .basic-room-row ion-button {
+    --background: #0159a1;
+    --border-radius: 2px;
+    --box-shadow: 0 2px 2px rgba(0, 0, 0, 0.14),
+      0 3px 1px -2px rgba(0, 0, 0, 0.2),
+      0 1px 5px rgba(0, 0, 0, 0.12);
+    flex-basis: calc(100% - 30px);
+    height: 38px;
+    margin: 14px 15px 0;
+    max-width: none;
+  }
+
   ion-toggle {
     --handle-background: #fff;
     --handle-background-checked: #fff;
@@ -351,30 +521,168 @@ ion-content.product-profile-widoor {
     width: 36px;
   }
 
+  .advanced-input-header,
+  .advanced-input-row {
+    order: 20;
+  }
+
+  .advanced-section-header {
+    border-left: 0;
+  }
+
+  .advanced-scalar-header {
+    border-left: 4px solid transparent;
+  }
+
+  .advanced-scalar-header.advanced-unlocked {
+    border-left-color: #32db64;
+  }
+
+  .advanced-input-header {
+    --background: #f4f4f4;
+    border-left: 0;
+    min-height: 48px;
+  }
+
+  .advanced-input-row {
+    --min-height: 64px;
+  }
+
+  .advanced-input-row .advanced-value-badge {
+    font-weight: 700;
+  }
+
+  .advanced-input-row .advanced-value-positive {
+    --background: #a7c855;
+  }
+
+  .advanced-input-row .advanced-value-negative {
+    --background: #911111;
+  }
+
+  .advanced-input-row ion-select {
+    color: #9b9b9b;
+    max-width: 92px;
+  }
+
+  .advanced-input-row .advanced-input-toggle {
+    flex: 0 0 36px;
+  }
+
+  .advanced-action-toggle-row {
+    --min-height: 64px;
+  }
+
+  .advanced-action-toggle-row .advanced-value-badge {
+    font-weight: 700;
+  }
+
+  .advanced-action-toggle-row .advanced-value-positive {
+    --background: #a7c855;
+  }
+
+  .advanced-action-toggle-row .advanced-value-negative {
+    --background: #911111;
+  }
+
+  .advanced-action-button-row {
+    --inner-padding-end: 16px;
+    --min-height: 96px;
+    --padding-start: 16px;
+  }
+
+  .advanced-action-button-row > ion-label {
+    display: none;
+  }
+
+  .advanced-action-button-row ion-button {
+    --border-radius: 2px;
+    --box-shadow: 0 2px 2px rgba(0, 0, 0, 0.14),
+      0 3px 1px -2px rgba(0, 0, 0, 0.2),
+      0 1px 5px rgba(0, 0, 0, 0.12);
+    font-size: 13px;
+    font-weight: 500;
+    height: 60px;
+    left: 50%;
+    margin: 18px 0;
+    max-width: 180px;
+    position: absolute;
+    transform: translateX(-50%);
+    width: 180px;
+  }
+
+  .advanced-action-button-row[data-sensitive-action='learning'] ion-button {
+    --background: #0159a1;
+  }
+
+  .advanced-action-button-row[data-sensitive-action='learning']
+    ion-button::part(native) {
+    background: #0159a1;
+  }
+
+  .advanced-action-button-row[data-sensitive-action='reset'] ion-button {
+    --background: #f53d3d;
+  }
+
+
+  .advanced-actions-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  :is(.advanced-outputs-header, .advanced-extra-actions-header) {
+    --background: #f4f4f4;
+    border-left: 0;
+    color: #757575;
+    min-height: 48px;
+  }
+
+  .advanced-outputs-header {
+    order: 10;
+  }
+
+  .advanced-extra-actions-header {
+    order: 30;
+  }
+
+  .advanced-action-toggle-row[data-sensitive-action^='radar-test'] {
+    order: 10;
+  }
+
+  .advanced-action-toggle-row[data-sensitive-action='professional-peripheral-lock'] {
+    order: 20;
+  }
+
+  .advanced-action-button-row[data-sensitive-action='learning'],
+  .advanced-action-button-row[data-sensitive-action='reset'] {
+    order: 40;
+  }
+
   .product-information-panel {
     background: transparent;
     padding: 0;
   }
 
   .product-information-list {
-    margin-bottom: 12px;
+    margin-bottom: 0;
   }
 
   .product-information-header {
-    --background: #f4f4f4;
+    --background: #fff;
     color: #757575;
     font-size: 14px;
-    font-weight: 500;
-    min-height: 45px;
-    padding-inline-start: 12px;
+    font-weight: 400;
+    border-bottom: 1px solid #dedede;
+    min-height: 58px;
+    padding-inline-start: 15px;
     text-transform: none;
   }
 
   .product-information-row {
     --background: #fff;
-    --inner-padding-end: 16px;
-    --min-height: 48px;
-    --padding-start: 16px;
+    --inner-padding-end: 15px;
+    --min-height: 44px;
+    --padding-start: 15px;
     color: #000;
     font-size: 14px;
   }
@@ -388,7 +696,7 @@ ion-content.product-profile-widoor {
 
   .product-information-value {
     --background: transparent;
-    --color: #808080;
+    --color: #c7c7c7;
     border-radius: 0;
     font-size: 14px;
     font-weight: 400;
@@ -464,7 +772,7 @@ ion-content.product-profile-widoor {
 @media (max-width: 360px) {
   ion-content.product-profile-widoor {
     .cmd-grid {
-      padding-inline: 2px;
+      padding-inline: 10px;
     }
 
     :is(.basic-precision-row, .advanced-precision-row) {

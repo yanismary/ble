@@ -9,11 +9,17 @@ const LEGACY_PRODUCT_LABELS = {
       "commands": "Commandes",
       "settings": "Réglages",
       "information": "Informations",
+      "basic": "Basiques",
+      "advanced": "Avancés",
+      "motorState": "Etats des switchs",
+      "general": "Informations générales",
       "version": "Versions des logiciels",
+      "hardware": "Materiel",
       "maintenance": "Maintenance"
     },
     "commands": {
       "open": "Ouvrir",
+      "openDelayed": "Ouvrir dans {{seconds}} s",
       "close": "Fermer",
       "lockedOpen": "Maintien de la porte en position ouverte",
       "lockedClosed": "Porte condamnée en position fermée"
@@ -25,7 +31,12 @@ const LEGACY_PRODUCT_LABELS = {
       "longTiming": "Temporisation longue à la fermeture",
       "dynamicLight": "Eclairage lors de l'ouverture",
       "rgb": "LED Principale",
-      "nameRoom": "Nom et localisation"
+      "nameRoom": "Nom et localisation",
+      "nameLabel": "Modifier le nom de votre WIDOOR",
+      "roomLabel": "Associer votre WIDOOR à une pièce",
+      "validate": "VALIDER",
+      "increase": "Incrémenter",
+      "decrease": "Décrémenter"
     },
     "rooms": {
       "bedroom": "Chambre",
@@ -63,7 +74,8 @@ const LEGACY_PRODUCT_LABELS = {
     "version": {
       "motor": "Version microprogramme motorisation",
       "ble": "Version microprogramme bluetooth",
-      "stack": "Version stack bluetooth"
+      "stack": "Version stack bluetooth",
+      "controlHardware": "Identifiant matériel"
     },
     "maintenance": {
       "initializationCount": "Nombre de redémarrages",
@@ -82,8 +94,22 @@ const LEGACY_PRODUCT_LABELS = {
       "direction": "Ouverture",
       "pairing": "Appairage / Apprentissage"
     },
+    "motorStates": {
+      "enabled": "Activé",
+      "disabled": "Désactivé",
+      "manual": "Manuel",
+      "automatic": "Automatique",
+      "clockwise": "Horaire",
+      "counterClockwise": "Antihoraire",
+      "learning": "Apprentissage",
+      "pairing": "Appairage"
+    },
     "actions": {
       "learning": "Apprentissage des butées",
+      "reset": "Reset de tous les paramètres",
+      "peripheralLock": "Verrou",
+      "outputsTitle": "Configuration des sorties",
+      "additionalTitle": "Commandes supplémentaires",
       "maintenance": "Maintenance effectuée",
       "setup": "Mise en service effectuée"
     }
@@ -94,11 +120,17 @@ const LEGACY_PRODUCT_LABELS = {
       "commands": "Commands",
       "settings": "Tuning",
       "information": "Informations",
+      "basic": "Basic",
+      "advanced": "Advanced",
+      "motorState": "Switch states",
+      "general": "General informations",
       "version": "Firmwares versions",
+      "hardware": "Hardware version",
       "maintenance": "Maintenance"
     },
     "commands": {
       "open": "Open",
+      "openDelayed": "Open in {{seconds}} s",
       "close": "Close",
       "lockedOpen": "Keep door open",
       "lockedClosed": "Door locked in closed position"
@@ -110,7 +142,12 @@ const LEGACY_PRODUCT_LABELS = {
       "longTiming": "Long delay before closing",
       "dynamicLight": "LED light during opening",
       "rgb": "main LED",
-      "nameRoom": "Name and location"
+      "nameRoom": "Name and location",
+      "nameLabel": "Change your WIDOOR's name",
+      "roomLabel": "Associate your WIDOOR with a room",
+      "validate": "VALIDATE",
+      "increase": "Increment",
+      "decrease": "Decrement"
     },
     "rooms": {
       "bedroom": "Bedroom",
@@ -148,7 +185,8 @@ const LEGACY_PRODUCT_LABELS = {
     "version": {
       "motor": "Door controller firmware",
       "ble": "Bluetooth firmware",
-      "stack": "Bluetooth stack version"
+      "stack": "Bluetooth stack version",
+      "controlHardware": "Door controller"
     },
     "maintenance": {
       "initializationCount": "Reboot numbers",
@@ -167,8 +205,22 @@ const LEGACY_PRODUCT_LABELS = {
       "direction": "Opening",
       "pairing": "Pairing / Learning"
     },
+    "motorStates": {
+      "enabled": "Enable",
+      "disabled": "Disable",
+      "manual": "Manual",
+      "automatic": "Auto",
+      "clockwise": "CW",
+      "counterClockwise": "CCW",
+      "learning": "Learning",
+      "pairing": "Pairing"
+    },
     "actions": {
       "learning": "Learning of stops",
+      "reset": "Reset all parameters",
+      "peripheralLock": "Locker",
+      "outputsTitle": "Configuration of outputs",
+      "additionalTitle": "Additionnal commands",
       "maintenance": "Maintenance done",
       "setup": "Setup done"
     }
@@ -179,11 +231,17 @@ const LEGACY_PRODUCT_LABELS = {
       "commands": "Befehle",
       "settings": "Einstellungen",
       "information": "Informationen",
+      "basic": "Grundeinstellungen",
+      "advanced": "Fortgeschrittene Einstellungen",
+      "motorState": "Status",
+      "general": "Allgemeine Informationen",
       "version": "Firmware Versionen",
+      "hardware": "Hardware Version",
       "maintenance": "Wartung"
     },
     "commands": {
       "open": "Öffnen",
+      "openDelayed": "In {{seconds}} s öffnen",
       "close": "Schließen",
       "lockedOpen": "Tür geöffnet halten",
       "lockedClosed": "Tür geschlossen halten"
@@ -195,7 +253,12 @@ const LEGACY_PRODUCT_LABELS = {
       "longTiming": "Lange Schließverzögerung",
       "dynamicLight": "LED Leuchte während des Öffnens",
       "rgb": "Haupt LED",
-      "nameRoom": "Name und Ort"
+      "nameRoom": "Name und Ort",
+      "nameLabel": "Ändern Sie den Namen Ihres WIDOOR Motors",
+      "roomLabel": "Verknüpfen Sie den Raum Ihres WIDOOR Motors",
+      "validate": "BESTÄTIGEN",
+      "increase": "Erhöhen",
+      "decrease": "Verringern"
     },
     "rooms": {
       "bedroom": "Schlafzimmer",
@@ -233,7 +296,8 @@ const LEGACY_PRODUCT_LABELS = {
     "version": {
       "motor": "Tür Fernbedienung Firmware",
       "ble": "Bluetooth Firmware",
-      "stack": "Bluetooth Stack Version"
+      "stack": "Bluetooth Stack Version",
+      "controlHardware": "Tür Fernbedienung"
     },
     "maintenance": {
       "initializationCount": "Anzahl Neustarts",
@@ -252,8 +316,22 @@ const LEGACY_PRODUCT_LABELS = {
       "direction": "Öffnen",
       "pairing": "Verbunden / Anlernen"
     },
+    "motorStates": {
+      "enabled": "Aktiviert",
+      "disabled": "Deaktiviert",
+      "manual": "Manuell",
+      "automatic": "Automatisch",
+      "clockwise": "CW",
+      "counterClockwise": "CCW",
+      "learning": "Anlernen",
+      "pairing": "Verbunden"
+    },
     "actions": {
       "learning": "Anschläge erlernen",
+      "reset": "Alle Parameter zurücksetzen",
+      "peripheralLock": "Verriegelung",
+      "outputsTitle": "Ausgänge konfigurieren",
+      "additionalTitle": "Weitere Befehle",
       "maintenance": "Wartung abgeschlossen",
       "setup": "Einstellungen abgeschlossen"
     }
@@ -264,11 +342,17 @@ const LEGACY_PRODUCT_LABELS = {
       "commands": "Polecenia",
       "settings": "Ustawienia",
       "information": "Informacje",
+      "basic": "Podstawowe",
+      "advanced": "Zaawansowane",
+      "motorState": "Pozycje przełączników",
+      "general": "Informacje ogólne",
       "version": "Wersja oprogramowania",
+      "hardware": "Wersja sprzętowa",
       "maintenance": "Konserwacja"
     },
     "commands": {
       "open": "Otwórz",
+      "openDelayed": "Otwórz za {{seconds}} s",
       "close": "Zamknij",
       "lockedOpen": "Trzymaj drzwi otwarte.",
       "lockedClosed": "Drzwi zablokowane w pozycji zamkniętej."
@@ -280,7 +364,12 @@ const LEGACY_PRODUCT_LABELS = {
       "longTiming": "Opóźnienie zamykania drzwi (minuty)",
       "dynamicLight": "Oświetlenie LED podczas otwierania.",
       "rgb": "Główna dioda LED",
-      "nameRoom": "Nazwa i lokalizacja"
+      "nameRoom": "Nazwa i lokalizacja",
+      "nameLabel": "Zmień nazwę swojego napędu.",
+      "roomLabel": "Przypisz pomieszczenie do swojego napędu.",
+      "validate": "ZATWIERDŹ",
+      "increase": "Zwiększ",
+      "decrease": "Zmniejsz"
     },
     "rooms": {
       "bedroom": "Sypialnia",
@@ -318,7 +407,8 @@ const LEGACY_PRODUCT_LABELS = {
     "version": {
       "motor": "Oprogramowanie sterownika drzwi",
       "ble": "Oprogramowanie Bluetooth",
-      "stack": "Wersja protokołu Bluetooth"
+      "stack": "Wersja protokołu Bluetooth",
+      "controlHardware": "Sterownik drzwi"
     },
     "maintenance": {
       "initializationCount": "Liczba restartów",
@@ -337,8 +427,22 @@ const LEGACY_PRODUCT_LABELS = {
       "direction": "Kierunek otwierania",
       "pairing": "Parowanie/Kalibracja"
     },
+    "motorStates": {
+      "enabled": "Włączony",
+      "disabled": "Wyłączony",
+      "manual": "Ręczny",
+      "automatic": "Automatyczny",
+      "clockwise": "W prawo",
+      "counterClockwise": "W lewo",
+      "learning": "Kalibracja",
+      "pairing": "Parowanie"
+    },
     "actions": {
       "learning": "Kalibracja pozycji krańcowych",
+      "reset": "Resetuj wszystkie parametry",
+      "peripheralLock": "Blokada",
+      "outputsTitle": "Konfiguracja wyjść",
+      "additionalTitle": "Dodatkowe polecenia",
       "maintenance": "Konserwacja wykonana",
       "setup": "Konfiguracja zakończona"
     }
@@ -353,8 +457,46 @@ export function normalizeProductPageLanguage(
     : 'fr';
 }
 
-export function productPageTextFor(language: ProductPageLanguage) {
-  if (language === 'fr') {
+export function widoorDelayedOpenLabelFor(
+  language: ProductPageLanguage,
+  seconds: number,
+): string {
+  return LEGACY_PRODUCT_LABELS[language].commands.openDelayed.replace(
+    '{{seconds}}',
+    String(seconds),
+  );
+}
+
+export type WidoorMotorStateKey =
+  | 'push-and-go'
+  | 'ble-switch'
+  | 'automatic-manual'
+  | 'direction'
+  | 'pairing';
+
+export function widoorMotorStateLabelFor(
+  language: ProductPageLanguage,
+  key: WidoorMotorStateKey,
+  value: boolean,
+): string {
+  const labels = LEGACY_PRODUCT_LABELS[language].motorStates;
+  switch (key) {
+    case 'automatic-manual':
+      return value ? labels.manual : labels.automatic;
+    case 'direction':
+      return value ? labels.clockwise : labels.counterClockwise;
+    case 'pairing':
+      return value ? labels.learning : labels.pairing;
+    default:
+      return value ? labels.enabled : labels.disabled;
+  }
+}
+
+export function productPageTextFor(
+  language: ProductPageLanguage,
+  profile: string | null = null,
+) {
+  if (language === 'fr' && profile !== 'widoor') {
     return PRODUCT_PAGE_TEXT;
   }
 
@@ -368,8 +510,18 @@ export function productPageTextFor(language: ProductPageLanguage) {
       commands: labels.sections.commands,
       settings: labels.sections.settings,
       information: labels.sections.information,
+      motorState: labels.sections.motorState,
+      dates: labels.sections.general,
       version: labels.sections.version,
+      hardware: labels.sections.hardware,
       maintenance: labels.sections.maintenance,
+    }),
+    shell: Object.freeze({
+      ...PRODUCT_PAGE_TEXT.shell,
+      basic: labels.sections.basic,
+      advanced: labels.sections.advanced,
+      increase: labels.user.increase,
+      decrease: labels.user.decrease,
     }),
     lockModeControls: Object.freeze({
       ...PRODUCT_PAGE_TEXT.lockModeControls,
@@ -398,6 +550,9 @@ export function productPageTextFor(language: ProductPageLanguage) {
     nameRoomControls: Object.freeze({
       ...PRODUCT_PAGE_TEXT.nameRoomControls,
       title: labels.user.nameRoom,
+      nameLabel: labels.user.nameLabel,
+      roomLabel: labels.user.roomLabel,
+      apply: labels.user.validate,
       rooms: Object.freeze({
         ...PRODUCT_PAGE_TEXT.nameRoomControls.rooms,
         ...labels.rooms,
@@ -419,6 +574,10 @@ export function productPageTextFor(language: ProductPageLanguage) {
     sensitiveActions: Object.freeze({
       ...PRODUCT_PAGE_TEXT.sensitiveActions,
       learning: labels.actions.learning,
+      reset: labels.actions.reset,
+      peripheralLock: labels.actions.peripheralLock,
+      outputsTitle: labels.actions.outputsTitle,
+      additionalTitle: labels.actions.additionalTitle,
     }),
     user: Object.freeze({
       ...PRODUCT_PAGE_TEXT.user,
@@ -449,6 +608,7 @@ export function productPageTextFor(language: ProductPageLanguage) {
       motor: labels.version.motor,
       ble: labels.version.ble,
       stack: labels.version.stack,
+      controlHardware: labels.version.controlHardware,
     }),
     maintenance: Object.freeze({
       ...PRODUCT_PAGE_TEXT.maintenance,

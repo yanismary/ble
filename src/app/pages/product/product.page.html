@@ -78,7 +78,7 @@
   </div>
 
   <div class="product-controlled-door" role="status">
-    <strong>{{ text.shell.controlledDoor }}</strong>
+    <strong>{{ text.shell.controlledDoor }} :</strong>
     <span>{{ controlledDoorName }}</span>
   </div>
 </ion-header>
@@ -290,27 +290,29 @@
           @if (showBasicSettingsControls) {
             <ion-list class="basic-settings-list" lines="none">
               @if (showBasicUserPeripheralControls) {
-                <ion-list-header
-                  class="basic-section-header"
-                  [class.basic-unlocked]="userPeripheralControlUnlocked"
-                >
-                  <ion-label>{{ text.userPeripheralControls.title }}</ion-label>
-                  <ion-button
-                    type="button"
-                    fill="clear"
-                    [attr.aria-label]="userPeripheralControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-                    (click)="toggleUserPeripheralControlLock()"
+                @if (config.profile !== 'widoor') {
+                  <ion-list-header
+                    class="basic-section-header basic-lighting-header"
+                    [class.basic-unlocked]="userPeripheralControlUnlocked"
                   >
-                    <img
-                      class="basic-lock-icon"
-                      [src]="userPeripheralControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
-                      alt=""
-                      aria-hidden="true"
-                    />
-                  </ion-button>
-                </ion-list-header>
+                    <ion-label>{{ text.userPeripheralControls.title }}</ion-label>
+                    <ion-button
+                      type="button"
+                      fill="clear"
+                      [attr.aria-label]="userPeripheralControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      (click)="toggleUserPeripheralControlLock()"
+                    >
+                      <img
+                        class="basic-lock-icon"
+                        [src]="userPeripheralControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                        alt=""
+                        aria-hidden="true"
+                      />
+                    </ion-button>
+                  </ion-list-header>
+                }
                 @for (peripheralControl of basicUserPeripheralControls; track peripheralControl.config.field) {
-                  <ion-item class="basic-toggle-row">
+                  <ion-item class="basic-toggle-row basic-lighting-row">
                     <img
                       class="basic-row-icon"
                       [src]="productPeripheralIconSrc(peripheralControl.config)"
@@ -323,7 +325,7 @@
                       class="user-peripheral-toggle"
                       slot="end"
                       [checked]="currentUserPeripheralState(peripheralControl.config) === true"
-                      [disabled]="!userPeripheralControlUnlocked || !canToggleUserPeripheral(peripheralControl.config)"
+                      [disabled]="(config.profile !== 'widoor' && !userPeripheralControlUnlocked) || !canToggleUserPeripheral(peripheralControl.config)"
                       (ionChange)="requestUserPeripheralChange(peripheralControl.config, $event)"
                     ></ion-toggle>
                   </ion-item>
@@ -347,7 +349,9 @@
                 @for (speedControl of userSpeedControls; track speedControl.config.field) {
                   <ion-list-header
                     class="basic-section-header"
+                    [attr.data-basic-slider-field]="speedControl.config.field"
                     [class.basic-unlocked]="isUserSpeedUnlocked(speedControl.config)"
+                    (click)="config.profile === 'widoor' && toggleUserSpeedLock(speedControl.config)"
                   >
                     <ion-label>{{ speedControl.text }}</ion-label>
                     <ion-badge class="mantion-value-badge basic-value-badge">
@@ -357,17 +361,29 @@
                       type="button"
                       fill="clear"
                       [attr.aria-label]="isUserSpeedUnlocked(speedControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-                      (click)="toggleUserSpeedLock(speedControl.config)"
+                      (click)="$event.stopPropagation(); toggleUserSpeedLock(speedControl.config)"
                     >
-                      <img
-                        class="basic-lock-icon"
-                        [src]="isUserSpeedUnlocked(speedControl.config) ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
-                        alt=""
-                        aria-hidden="true"
-                      />
+                      @if (config.profile === 'widoor') {
+                        <ion-icon
+                          class="basic-lock-icon"
+                          [name]="isUserSpeedUnlocked(speedControl.config) ? 'lock-open' : 'lock-closed'"
+                          aria-hidden="true"
+                        ></ion-icon>
+                      } @else {
+                        <img
+                          class="basic-lock-icon"
+                          [src]="isUserSpeedUnlocked(speedControl.config) ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                          alt=""
+                          aria-hidden="true"
+                        />
+                      }
                     </ion-button>
                   </ion-list-header>
-                  <ion-item class="basic-slider-row">
+                  <ion-item
+                    class="basic-slider-row"
+                    [class.slider-unlocked]="isUserSpeedUnlocked(speedControl.config)"
+                    (click)="config.profile === 'widoor' && unlockUserSpeedFromZone(speedControl.config)"
+                  >
                     <img
                       class="basic-row-icon"
                       src="assets/img/icon_speed.svg"
@@ -381,34 +397,61 @@
                       [min]="speedControl.config.range.min"
                       [max]="speedControl.config.range.max"
                       [step]="1"
-                      [pin]="true"
+                      [pin]="config.profile !== 'widoor'"
                       [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                       [value]="userSpeedDraftValue(speedControl.config)"
                       (ionChange)="setUserSpeedDraftValue(speedControl.config, $event)"
                       (ionKnobMoveEnd)="onUserSpeedSliderReleased(speedControl.config)"
                       (ionBlur)="onUserSpeedSliderReleased(speedControl.config)"
                     ></ion-range>
+                    @if (config.profile === 'widoor') {
+                      <ion-button
+                        class="slider-options-toggle"
+                        type="button"
+                        fill="clear"
+                        slot="end"
+                        [disabled]="!isUserSpeedUnlocked(speedControl.config)"
+                        [attr.aria-expanded]="isUserSpeedPrecisionOpen(speedControl.config)"
+                        aria-label="Afficher le réglage précis"
+                        (click)="toggleUserSpeedPrecision(speedControl.config, $event)"
+                      >
+                        <ion-icon
+                          [name]="isUserSpeedPrecisionOpen(speedControl.config) ? 'caret-forward' : 'caret-back'"
+                          aria-hidden="true"
+                        ></ion-icon>
+                      </ion-button>
+                    }
                   </ion-item>
-                  @if (isUserSpeedUnlocked(speedControl.config)) {
+                  @if (isUserSpeedUnlocked(speedControl.config) && (config.profile !== 'widoor' || isUserSpeedPrecisionOpen(speedControl.config))) {
                     <div class="basic-precision-row" aria-label="Réglage précis">
                       <ion-button
                         type="button"
                         fill="outline"
-                        aria-label="Diminuer de 1"
+                        [attr.aria-label]="config.profile === 'widoor' ? text.shell.decrease : 'Diminuer de 1'"
                         [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                         (click)="stepUserSpeedDraft(speedControl.config, -1)"
                       >
-                        -
+                        @if (config.profile === 'widoor') {
+                          <ion-icon name="remove" aria-hidden="true"></ion-icon>
+                          <span>{{ text.shell.decrease }}</span>
+                        } @else {
+                          -
+                        }
                       </ion-button>
                       <strong>{{ userSpeedDraftValue(speedControl.config) }} %</strong>
                       <ion-button
                         type="button"
                         fill="outline"
-                        aria-label="Augmenter de 1"
+                        [attr.aria-label]="config.profile === 'widoor' ? text.shell.increase : 'Augmenter de 1'"
                         [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                         (click)="stepUserSpeedDraft(speedControl.config, 1)"
                       >
-                        +
+                        @if (config.profile === 'widoor') {
+                          <ion-icon name="add" aria-hidden="true"></ion-icon>
+                          <span>{{ text.shell.increase }}</span>
+                        } @else {
+                          +
+                        }
                       </ion-button>
                       @if (showApplyButtonForProfile(speedControl.config.profile)) {
                         <ion-button
@@ -442,7 +485,9 @@
                 @for (timingControl of userTimingControls; track timingControl.config.field) {
                   <ion-list-header
                     class="basic-section-header"
+                    [attr.data-basic-slider-field]="timingControl.config.field"
                     [class.basic-unlocked]="isUserTimingUnlocked(timingControl.config)"
+                    (click)="config.profile === 'widoor' && toggleUserTimingLock(timingControl.config)"
                   >
                     <ion-label>{{ timingControl.text }}</ion-label>
                     <ion-badge class="mantion-value-badge basic-value-badge">
@@ -453,17 +498,29 @@
                       type="button"
                       fill="clear"
                       [attr.aria-label]="isUserTimingUnlocked(timingControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-                      (click)="toggleUserTimingLock(timingControl.config)"
+                      (click)="$event.stopPropagation(); toggleUserTimingLock(timingControl.config)"
                     >
-                      <img
-                        class="basic-lock-icon"
-                        [src]="isUserTimingUnlocked(timingControl.config) ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
-                        alt=""
-                        aria-hidden="true"
-                      />
+                      @if (config.profile === 'widoor') {
+                        <ion-icon
+                          class="basic-lock-icon"
+                          [name]="isUserTimingUnlocked(timingControl.config) ? 'lock-open' : 'lock-closed'"
+                          aria-hidden="true"
+                        ></ion-icon>
+                      } @else {
+                        <img
+                          class="basic-lock-icon"
+                          [src]="isUserTimingUnlocked(timingControl.config) ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                          alt=""
+                          aria-hidden="true"
+                        />
+                      }
                     </ion-button>
                   </ion-list-header>
-                  <ion-item class="basic-slider-row">
+                  <ion-item
+                    class="basic-slider-row"
+                    [class.slider-unlocked]="isUserTimingUnlocked(timingControl.config)"
+                    (click)="config.profile === 'widoor' && unlockUserTimingFromZone(timingControl.config)"
+                  >
                     <img
                       class="basic-row-icon"
                       src="assets/img/icon_delay.svg"
@@ -477,24 +534,46 @@
                       [min]="timingControl.config.range.min"
                       [max]="timingControl.config.range.max"
                       [step]="1"
-                      [pin]="true"
+                      [pin]="config.profile !== 'widoor'"
                       [disabled]="!isUserTimingUnlocked(timingControl.config)"
                       [value]="userTimingDraftValue(timingControl.config)"
                       (ionChange)="setUserTimingDraftValue(timingControl.config, $event)"
                       (ionKnobMoveEnd)="onUserTimingSliderReleased(timingControl.config)"
                       (ionBlur)="onUserTimingSliderReleased(timingControl.config)"
                     ></ion-range>
+                    @if (config.profile === 'widoor') {
+                      <ion-button
+                        class="slider-options-toggle"
+                        type="button"
+                        fill="clear"
+                        slot="end"
+                        [disabled]="!isUserTimingUnlocked(timingControl.config)"
+                        [attr.aria-expanded]="isUserTimingPrecisionOpen(timingControl.config)"
+                        aria-label="Afficher le réglage précis"
+                        (click)="toggleUserTimingPrecision(timingControl.config, $event)"
+                      >
+                        <ion-icon
+                          [name]="isUserTimingPrecisionOpen(timingControl.config) ? 'caret-forward' : 'caret-back'"
+                          aria-hidden="true"
+                        ></ion-icon>
+                      </ion-button>
+                    }
                   </ion-item>
-                  @if (isUserTimingUnlocked(timingControl.config)) {
+                  @if (isUserTimingUnlocked(timingControl.config) && (config.profile !== 'widoor' || isUserTimingPrecisionOpen(timingControl.config))) {
                     <div class="basic-precision-row" aria-label="Réglage précis">
                       <ion-button
                         type="button"
                         fill="outline"
-                        aria-label="Diminuer de 1"
+                        [attr.aria-label]="config.profile === 'widoor' ? text.shell.decrease : 'Diminuer de 1'"
                         [disabled]="!isUserTimingUnlocked(timingControl.config)"
                         (click)="stepUserTimingDraft(timingControl.config, -1)"
                       >
-                        -
+                        @if (config.profile === 'widoor') {
+                          <ion-icon name="remove" aria-hidden="true"></ion-icon>
+                          <span>{{ text.shell.decrease }}</span>
+                        } @else {
+                          -
+                        }
                       </ion-button>
                       <strong>
                         {{ userTimingDraftValue(timingControl.config) }}
@@ -503,11 +582,16 @@
                       <ion-button
                         type="button"
                         fill="outline"
-                        aria-label="Augmenter de 1"
+                        [attr.aria-label]="config.profile === 'widoor' ? text.shell.increase : 'Augmenter de 1'"
                         [disabled]="!isUserTimingUnlocked(timingControl.config)"
                         (click)="stepUserTimingDraft(timingControl.config, 1)"
                       >
-                        +
+                        @if (config.profile === 'widoor') {
+                          <ion-icon name="add" aria-hidden="true"></ion-icon>
+                          <span>{{ text.shell.increase }}</span>
+                        } @else {
+                          +
+                        }
                       </ion-button>
                       @if (showApplyButtonForProfile(timingControl.config.profile)) {
                         <ion-button
@@ -612,26 +696,28 @@
 
               @if (showNameRoomControls) {
                 <ion-list-header
-                  class="basic-section-header"
+                  class="basic-section-header basic-name-room-header"
                   [class.basic-unlocked]="nameRoomControlUnlocked"
                 >
                   <ion-label>{{ text.nameRoomControls.title }}</ion-label>
                   <ion-badge class="mantion-value-badge basic-value-badge">
                     {{ currentNameRoomDisplay() }}
                   </ion-badge>
-                  <ion-button
-                    type="button"
-                    fill="clear"
-                    [attr.aria-label]="nameRoomControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-                    (click)="toggleNameRoomControlLock()"
-                  >
-                    <img
-                      class="basic-lock-icon"
-                      [src]="nameRoomControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
-                      alt=""
-                      aria-hidden="true"
-                    />
-                  </ion-button>
+                  @if (config.profile !== 'widoor') {
+                    <ion-button
+                      type="button"
+                      fill="clear"
+                      [attr.aria-label]="nameRoomControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      (click)="toggleNameRoomControlLock()"
+                    >
+                      <img
+                        class="basic-lock-icon"
+                        [src]="nameRoomControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                        alt=""
+                        aria-hidden="true"
+                      />
+                    </ion-button>
+                  }
                 </ion-list-header>
                 <ion-item class="basic-name-row">
                   <img
@@ -647,7 +733,7 @@
                     label-placement="stacked"
                     [maxlength]="15"
                     [value]="nameRoomDraftValue().name"
-                    [disabled]="!nameRoomControlUnlocked || nameRoomWriteState.status === 'executing'"
+                    [disabled]="(config.profile !== 'widoor' && !nameRoomControlUnlocked) || nameRoomWriteState.status === 'executing'"
                     (ionInput)="setNameRoomDraftName($event)"
                   ></ion-input>
                 </ion-item>
@@ -658,7 +744,7 @@
                     label-placement="stacked"
                     interface="popover"
                     [value]="nameRoomDraftValue().roomSuffix"
-                    [disabled]="!nameRoomControlUnlocked || nameRoomWriteState.status === 'executing'"
+                    [disabled]="(config.profile !== 'widoor' && !nameRoomControlUnlocked) || nameRoomWriteState.status === 'executing'"
                     (ionChange)="setNameRoomDraftRoom($event)"
                   >
                     @for (room of roomOptions; track room.suffix) {
@@ -672,7 +758,7 @@
                     size="small"
                     slot="end"
                     (click)="requestNameRoomChange()"
-                    [disabled]="!nameRoomControlUnlocked || !canApplyNameRoom()"
+                    [disabled]="(config.profile !== 'widoor' && !nameRoomControlUnlocked) || !canApplyNameRoom()"
                   >
                     {{ text.nameRoomControls.apply }}
                   </ion-button>
@@ -738,21 +824,23 @@
               }
 
               @if (showProfessionalInputControls) {
-                <ion-list-header class="advanced-section-header">
+                <ion-list-header class="advanced-section-header advanced-input-header">
                   <ion-label>{{ text.professionalInputControls.title }}</ion-label>
-                  <ion-button
-                    type="button"
-                    size="small"
-                    fill="clear"
-                    class="advanced-lock-button"
-                    [attr.aria-label]="professionalInputControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-                    (click)="toggleProfessionalInputControlLock()"
-                  >
-                    <img
-                      [src]="professionalInputControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
-                      alt=""
-                    />
-                  </ion-button>
+                  @if (config.profile !== 'widoor') {
+                    <ion-button
+                      type="button"
+                      size="small"
+                      fill="clear"
+                      class="advanced-lock-button"
+                      [attr.aria-label]="professionalInputControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      (click)="toggleProfessionalInputControlLock()"
+                    >
+                      <img
+                        [src]="professionalInputControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                        alt=""
+                      />
+                    </ion-button>
+                  }
                 </ion-list-header>
                 @for (inputControl of professionalInputControls; track inputControl.config.field) {
                   <ion-item
@@ -766,28 +854,44 @@
                       alt=""
                     />
                     <ion-label>{{ inputControl.text }}</ion-label>
-                    <ion-badge slot="end" class="advanced-value-badge">
+                    <ion-badge
+                      slot="end"
+                      class="advanced-value-badge"
+                      [class.advanced-value-positive]="currentProfessionalInputMode(inputControl.config) === 'radar'"
+                      [class.advanced-value-negative]="currentProfessionalInputMode(inputControl.config) !== 'radar'"
+                    >
                       @if (currentProfessionalInputMode(inputControl.config) === 'radar') {
                         {{ text.professionalInputControls.radar }}
                       } @else {
                         {{ text.professionalInputControls.button }}
                       }
                     </ion-badge>
-                    <ion-select
-                      slot="end"
-                      interface="popover"
-                      [attr.aria-label]="inputControl.text"
-                      [value]="currentProfessionalInputMode(inputControl.config)"
-                      [disabled]="!professionalInputControlUnlocked || !canChangeProfessionalInput(inputControl.config)"
-                      (ionChange)="requestProfessionalInputChange(inputControl.config, $event)"
-                    >
-                      <ion-select-option value="button">
-                        {{ text.professionalInputControls.button }}
-                      </ion-select-option>
-                      <ion-select-option value="radar">
-                        {{ text.professionalInputControls.radar }}
-                      </ion-select-option>
-                    </ion-select>
+                    @if (config.profile === 'widoor') {
+                      <ion-toggle
+                        class="advanced-input-toggle"
+                        slot="end"
+                        [attr.aria-label]="inputControl.text"
+                        [checked]="currentProfessionalInputMode(inputControl.config) === 'radar'"
+                        [disabled]="!canChangeProfessionalInput(inputControl.config)"
+                        (ionChange)="requestProfessionalInputChange(inputControl.config, $event.detail.checked ? 'radar' : 'button')"
+                      ></ion-toggle>
+                    } @else {
+                      <ion-select
+                        slot="end"
+                        interface="popover"
+                        [attr.aria-label]="inputControl.text"
+                        [value]="currentProfessionalInputMode(inputControl.config)"
+                        [disabled]="!professionalInputControlUnlocked || !canChangeProfessionalInput(inputControl.config)"
+                        (ionChange)="requestProfessionalInputChange(inputControl.config, $event)"
+                      >
+                        <ion-select-option value="button">
+                          {{ text.professionalInputControls.button }}
+                        </ion-select-option>
+                        <ion-select-option value="radar">
+                          {{ text.professionalInputControls.radar }}
+                        </ion-select-option>
+                      </ion-select>
+                    }
                   </ion-item>
                 }
                 @if (professionalInputWriteState.message) {
@@ -884,15 +988,18 @@
               @if (showProfessionalScalarControls) {
                 @for (scalarControl of visibleProfessionalScalarControls; track scalarControl.config.field) {
                   <ion-list-header
-                    class="advanced-section-header"
-                    [attr.data-professional-scalar-field]="scalarControl.config.field"
+                    class="advanced-section-header advanced-scalar-header"
+                    [class.advanced-unlocked]="isProfessionalScalarUnlocked(scalarControl.config)"
+                    (click)="config.profile === 'widoor' && toggleProfessionalScalarLock(scalarControl.config)"
                   >
-                    <img
-                      slot="start"
-                      class="advanced-row-icon"
-                      [src]="professionalScalarIconSrc(scalarControl.config)"
-                      alt=""
-                    />
+                    @if (config.profile !== 'widoor') {
+                      <img
+                        slot="start"
+                        class="advanced-row-icon"
+                        [src]="professionalScalarIconSrc(scalarControl.config)"
+                        alt=""
+                      />
+                    }
                     <ion-label>{{ scalarControl.text }}</ion-label>
                     <ion-badge class="advanced-value-badge">
                       {{ currentProfessionalScalarValue(scalarControl.config) }}
@@ -904,39 +1011,83 @@
                       fill="clear"
                       class="advanced-lock-button"
                       [attr.aria-label]="isProfessionalScalarUnlocked(scalarControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-                      (click)="toggleProfessionalScalarLock(scalarControl.config)"
+                      (click)="$event.stopPropagation(); toggleProfessionalScalarLock(scalarControl.config)"
                     >
-                      <img
-                        [src]="isProfessionalScalarUnlocked(scalarControl.config) ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
-                        alt=""
-                      />
+                      @if (config.profile === 'widoor') {
+                        <ion-icon
+                          [name]="isProfessionalScalarUnlocked(scalarControl.config) ? 'lock-open' : 'lock-closed'"
+                          aria-hidden="true"
+                        ></ion-icon>
+                      } @else {
+                        <img
+                          [src]="isProfessionalScalarUnlocked(scalarControl.config) ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                          alt=""
+                        />
+                      }
                     </ion-button>
                   </ion-list-header>
-                  <ion-item class="advanced-slider-row">
+                  <ion-item
+                    class="advanced-slider-row"
+                    [class.slider-unlocked]="isProfessionalScalarUnlocked(scalarControl.config)"
+                    [attr.data-professional-scalar-field]="scalarControl.config.field"
+                    (click)="config.profile === 'widoor' && unlockProfessionalScalarFromZone(scalarControl.config)"
+                  >
+                    @if (config.profile === 'widoor') {
+                      <img
+                        slot="start"
+                        class="advanced-row-icon"
+                        [src]="professionalScalarIconSrc(scalarControl.config)"
+                        alt=""
+                      />
+                    }
                     <ion-range
                       class="advanced-range"
                       [attr.aria-label]="scalarControl.text"
                       [min]="scalarControl.config.range.min"
                       [max]="scalarControl.config.range.max"
                       [step]="1"
-                      [pin]="true"
+                      [pin]="config.profile !== 'widoor'"
+                      [snaps]="config.profile === 'widoor' && scalarControl.config.field === 'break-force-at-open'"
+                      [ticks]="config.profile === 'widoor' && scalarControl.config.field === 'break-force-at-open'"
                       [disabled]="!isProfessionalScalarUnlocked(scalarControl.config)"
                       [value]="professionalScalarDraftValue(scalarControl.config)"
                       (ionChange)="setProfessionalScalarDraftValue(scalarControl.config, $event)"
                       (ionKnobMoveEnd)="onProfessionalScalarSliderReleased(scalarControl.config)"
                       (ionBlur)="onProfessionalScalarSliderReleased(scalarControl.config)"
                     ></ion-range>
+                    @if (config.profile === 'widoor') {
+                      <ion-button
+                        class="slider-options-toggle"
+                        type="button"
+                        fill="clear"
+                        slot="end"
+                        [disabled]="!isProfessionalScalarUnlocked(scalarControl.config)"
+                        [attr.aria-expanded]="isProfessionalScalarPrecisionOpen(scalarControl.config)"
+                        aria-label="Afficher le réglage précis"
+                        (click)="toggleProfessionalScalarPrecision(scalarControl.config, $event)"
+                      >
+                        <ion-icon
+                          [name]="isProfessionalScalarPrecisionOpen(scalarControl.config) ? 'caret-forward' : 'caret-back'"
+                          aria-hidden="true"
+                        ></ion-icon>
+                      </ion-button>
+                    }
                   </ion-item>
-                  @if (isProfessionalScalarUnlocked(scalarControl.config)) {
+                  @if (isProfessionalScalarUnlocked(scalarControl.config) && (config.profile !== 'widoor' || isProfessionalScalarPrecisionOpen(scalarControl.config))) {
                     <div class="advanced-precision-row" aria-label="Réglage précis">
                       <ion-button
                         type="button"
                         size="small"
                         fill="outline"
-                        aria-label="Diminuer de 1"
+                        [attr.aria-label]="config.profile === 'widoor' ? text.shell.decrease : 'Diminuer de 1'"
                         (click)="stepProfessionalScalarDraft(scalarControl.config, -1)"
                       >
-                        −
+                        @if (config.profile === 'widoor') {
+                          <ion-icon name="remove" aria-hidden="true"></ion-icon>
+                          <span>{{ text.shell.decrease }}</span>
+                        } @else {
+                          −
+                        }
                       </ion-button>
                       <strong>
                         {{ professionalScalarDraftValue(scalarControl.config) }}
@@ -946,10 +1097,15 @@
                         type="button"
                         size="small"
                         fill="outline"
-                        aria-label="Augmenter de 1"
+                        [attr.aria-label]="config.profile === 'widoor' ? text.shell.increase : 'Augmenter de 1'"
                         (click)="stepProfessionalScalarDraft(scalarControl.config, 1)"
                       >
-                        +
+                        @if (config.profile === 'widoor') {
+                          <ion-icon name="add" aria-hidden="true"></ion-icon>
+                          <span>{{ text.shell.increase }}</span>
+                        } @else {
+                          +
+                        }
                       </ion-button>
                       @if (showApplyButtonForProfile(scalarControl.config.profile)) {
                         <ion-button
@@ -1029,7 +1185,16 @@
         @if (sensitiveActions.length > 0) {
           <article class="product-subsection advanced-settings-panel">
             <ion-list class="advanced-actions-list" lines="none">
+              @if (config.profile === 'widoor') {
+                <ion-list-header class="advanced-section-header advanced-outputs-header">
+                  <ion-label>{{ widoorHistoricalHeadings.outputs }}</ion-label>
+                </ion-list-header>
+                <ion-list-header class="advanced-section-header advanced-extra-actions-header">
+                  <ion-label>{{ widoorHistoricalHeadings.additionalActions }}</ion-label>
+                </ion-list-header>
+              }
               @for (action of sensitiveActions; track action.action) {
+                @if (config.profile !== 'widoor' || (action.action !== 'radar-test-1' && action.action !== 'radar-test-2')) {
                 @if (action.control === 'toggle') {
                   <ion-item
                     class="advanced-action-toggle-row"
@@ -1044,7 +1209,12 @@
                       />
                     }
                     <ion-label>{{ text.sensitiveActions[action.textKey] }}</ion-label>
-                    <ion-badge slot="end" class="advanced-value-badge">
+                    <ion-badge
+                      slot="end"
+                      class="advanced-value-badge"
+                      [class.advanced-value-positive]="sensitiveActionCurrentEnabled(action) === true"
+                      [class.advanced-value-negative]="sensitiveActionCurrentEnabled(action) !== true"
+                    >
                       @if (sensitiveActionCurrentEnabled(action) === true) {
                         {{ text.professionalPeripheralDiagnostics.enabled }}
                       } @else {
@@ -1084,6 +1254,7 @@
                       {{ text.sensitiveActions[action.textKey] }}
                     </ion-button>
                   </ion-item>
+                }
                 }
               }
             </ion-list>
@@ -1128,8 +1299,8 @@
                 <ion-label>{{ row.label }}</ion-label>
                 <ion-badge
                   class="product-information-value"
-                  [class.product-information-positive]="row.value === text.yes"
-                  [class.product-information-negative]="row.value === text.no"
+                  [class.product-information-positive]="isPositiveMotorRow(row)"
+                  [class.product-information-negative]="!isPositiveMotorRow(row)"
                   slot="end"
                 >{{ row.value }}</ion-badge>
               </ion-item>
@@ -1212,6 +1383,7 @@
           </ion-list-header>
           @if (viewModel.reads.version.status === 'available') {
             @for (row of versionRows; track row.key) {
+              @if (config.profile !== 'widoor' || row.key !== 'control-hardware') {
               <ion-item
                 class="product-information-row"
                 [attr.data-info-row]="row.key"
@@ -1222,9 +1394,32 @@
                   slot="end"
                 >{{ row.value }}</ion-badge>
               </ion-item>
+              }
             }
           }
         </ion-list>
+
+        @if (config.profile === 'widoor' && viewModel.reads.version.status === 'available') {
+          <ion-list class="product-information-list product-information-hardware" lines="full">
+            <ion-list-header class="mantion-list-header product-information-header">
+              <ion-label>{{ widoorHistoricalHeadings.hardware }}</ion-label>
+            </ion-list-header>
+            @for (row of versionRows; track row.key) {
+              @if (row.key === 'control-hardware') {
+                <ion-item
+                  class="product-information-row"
+                  [attr.data-info-row]="row.key"
+                >
+                  <ion-label>{{ row.label }}</ion-label>
+                  <ion-badge
+                    class="product-information-value"
+                    slot="end"
+                  >{{ row.value }}</ion-badge>
+                </ion-item>
+              }
+            }
+          </ion-list>
+        }
 
         @if (informationSupplementalRows.length > 0) {
           <ion-list class="product-information-list" lines="full">

@@ -333,6 +333,8 @@ export const PRODUCT_PAGE_TEXT = {
     controlledDoor: 'Porte contrôlée',
     basic: 'Basique',
     advanced: 'Avancé',
+    increase: 'Incrémenter',
+    decrease: 'Décrémenter',
   },
   states: {
     available: 'Disponible',

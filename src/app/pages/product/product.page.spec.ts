@@ -1925,7 +1925,10 @@ describe('ProductPage', () => {
         'ion-button.widoor-command-disabled',
       ).length).toBe(0);
       expect(element.textContent).toContain(
-        component.text.widoorCommands.openShortTimed.label,
+        component.productCommandDisplayLabel(
+          component.productCommands.find((command) =>
+            command.config.operation === 'motor-open-short-timed')!,
+        ),
       );
       expect(element.textContent).not.toContain(
         component.text.widoorCommands.openLongTimed.label,
@@ -2328,14 +2331,14 @@ describe('ProductPage', () => {
     expect(text).toContain('26580');
     expect(component.datesRows.some((row) =>
       row.key === 'cycles-since-maintenance' &&
-      row.label === 'Cycles depuis maintenance',
+      row.label === component.text.dates.cyclesSinceMaintenance,
     )).toBeTrue();
     expect(text).toContain('0');
     expect(text).toContain(component.text.user.rgb);
     expect(text).not.toContain(component.text.user.staticLight);
     expect(text).not.toContain(component.text.user.dynamicLight);
     expect(text).toContain('3.5.3.348');
-    expect(text).toContain('Initialisations');
+    expect(text).toContain(component.text.maintenance.initializationCount);
     expect(text).toContain('25');
   });
 
@@ -2412,13 +2415,25 @@ describe('ProductPage', () => {
       expect(element.querySelector(
         '[data-professional-input-field="input-2"]',
       )).not.toBeNull();
+      expect(element.querySelectorAll(
+        '[data-professional-input-field] ion-toggle.advanced-input-toggle',
+      ).length).toBe(2);
+      expect(element.querySelector(
+        '[data-professional-input-field] ion-select',
+      )).toBeNull();
+      expect(element.querySelector('.advanced-input-header ion-button'))
+        .toBeNull();
       expect(element.querySelector('[data-sensitive-action="learning"]'))
         .not.toBeNull();
       expect(element.querySelector('[data-sensitive-action="reset"]'))
         .not.toBeNull();
+      expect(element.querySelector('[data-sensitive-action="radar-test-1"]'))
+        .toBeNull();
+      expect(element.querySelector('[data-sensitive-action="radar-test-2"]'))
+        .toBeNull();
       expect(text).not.toContain('The required GATT characteristic');
       expect(text).toContain('27/08/2019');
-      expect(text).toContain('Initialisations');
+      expect(text).toContain(component.text.maintenance.initializationCount);
     },
   );
 
@@ -2648,6 +2663,10 @@ describe('ProductPage', () => {
       expect(text).toContain(component.text.motor.automaticManual);
       expect(text).toContain(component.text.motor.direction);
       expect(text).toContain(component.text.motor.pairing);
+      expect(text).toContain('Activé');
+      expect(text).toContain('Automatique');
+      expect(text).toContain('Antihoraire');
+      expect(text).toContain('Appairage');
       expect(element.querySelector(
         '.product-information-row[data-info-row="motor-state-label"]',
       )).toBeNull();
@@ -2924,7 +2943,10 @@ describe('ProductPage commands for other profiles', () => {
         fixture.componentInstance.text.widoorCommands.close.label,
       );
       expect(element.textContent).toContain(
-        fixture.componentInstance.text.widoorCommands.openShortTimed.label,
+        fixture.componentInstance.productCommandDisplayLabel(
+          fixture.componentInstance.productCommands.find((command) =>
+            command.config.operation === 'motor-open-short-timed')!,
+        ),
       );
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
@@ -3049,7 +3071,10 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
         component.text.widoorCommands.close.label,
       );
       expect(element.textContent).toContain(
-        component.text.widoorCommands.openShortTimed.label,
+        component.productCommandDisplayLabel(
+          component.productCommands.find((command) =>
+            command.config.operation === 'motor-open-short-timed')!,
+        ),
       );
       expect(element.textContent).not.toContain(
         component.text.widoorCommands.openLongTimed.label,
@@ -4446,11 +4471,12 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
     );
   }
 
-  it('should keep basic slider lock and steppers on the existing draft flow',
+  it('should unlock a Widoor slider from its row and open precision separately',
     async () => {
       const { fixture, component, writeExecutionService } =
         await createProductCommandsUiPage('widoor');
       const openSpeed = component.userSpeedControls[0].config;
+      const closeSpeed = component.userSpeedControls[1].config;
 
       component.setActiveMainTab('settings');
       fixture.detectChanges();
@@ -4458,18 +4484,53 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       let element = fixture.nativeElement as HTMLElement;
       expect(element.querySelector('.basic-precision-row')).toBeNull();
 
-      component.toggleUserSpeedLock(openSpeed);
+      element.querySelector<HTMLElement>(
+        `[data-basic-slider-field="${openSpeed.field}"] + ion-item`,
+      )?.click();
       fixture.detectChanges();
       element = fixture.nativeElement as HTMLElement;
+      expect(component.isUserSpeedUnlocked(openSpeed)).toBeTrue();
+      expect(element.querySelector('.basic-slider-row.slider-unlocked'))
+        .not.toBeNull();
+      expect(element.querySelector('.basic-precision-row')).toBeNull();
+
+      const options = element.querySelector<HTMLElement>(
+        '.basic-slider-row .slider-options-toggle',
+      );
+      options?.click();
+      fixture.detectChanges();
+      element = fixture.nativeElement as HTMLElement;
+      expect(component.isUserSpeedPrecisionOpen(openSpeed)).toBeTrue();
       expect(element.querySelector('.basic-precision-row')).not.toBeNull();
+      expect(element.querySelector<HTMLIonIconElement>(
+        '.slider-options-toggle ion-icon',
+      )?.name).toBe('caret-forward');
+      const range = element.querySelector<HTMLIonRangeElement>(
+        '.basic-slider-row ion-range',
+      );
+      expect(range?.pin).toBeFalse();
+      expect(element.querySelector('.basic-precision-row')?.textContent)
+        .toContain(component.text.shell.increase);
+      expect(element.querySelector('.basic-precision-row')?.textContent)
+        .toContain(component.text.shell.decrease);
 
-      component.setUserSpeedDraftValue(openSpeed, openSpeed.range.min);
-      component.stepUserSpeedDraft(openSpeed, -1);
-      expect(component.userSpeedDraftValue(openSpeed)).toBe(openSpeed.range.min);
+      component.unlockUserSpeedFromZone(closeSpeed);
+      fixture.detectChanges();
+      expect(component.isUserSpeedUnlocked(openSpeed)).toBeFalse();
+      expect(component.isUserSpeedPrecisionOpen(openSpeed)).toBeFalse();
+      expect(component.isUserSpeedUnlocked(closeSpeed)).toBeTrue();
+      expect(element.querySelectorAll('.basic-slider-row.slider-unlocked').length)
+        .toBe(1);
 
-      component.setUserSpeedDraftValue(openSpeed, openSpeed.range.max);
-      component.stepUserSpeedDraft(openSpeed, 1);
-      expect(component.userSpeedDraftValue(openSpeed)).toBe(openSpeed.range.max);
+      component.setUserSpeedDraftValue(closeSpeed, closeSpeed.range.min);
+      component.stepUserSpeedDraft(closeSpeed, -1);
+      expect(component.userSpeedDraftValue(closeSpeed))
+        .toBe(closeSpeed.range.min);
+
+      component.setUserSpeedDraftValue(closeSpeed, closeSpeed.range.max);
+      component.stepUserSpeedDraft(closeSpeed, 1);
+      expect(component.userSpeedDraftValue(closeSpeed))
+        .toBe(closeSpeed.range.max);
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
     },
   );
@@ -4629,6 +4690,10 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
           '.product-information-row[data-info-row="control-hardware"]',
         )).not.toBeNull();
         if (scenario.profile === 'widoor') {
+          expect(informationSection?.querySelector(
+            '.product-information-hardware',
+          )).not.toBeNull();
+          expect(informationText).toContain('Materiel');
           expect(informationSection?.querySelector(
             '.product-information-row[data-info-row="motor-address"]',
           )).toBeNull();
@@ -5880,17 +5945,26 @@ describe('ProductPage professional scalar controls',
           '[data-sensitive-action]',
         )).map((row) => row.getAttribute('data-sensitive-action'))).toEqual([
           'learning',
-          'radar-test-1',
-          'radar-test-2',
           'professional-peripheral-lock',
           'reset',
         ]);
-        expect(element.querySelector<HTMLImageElement>(
-          'img[src="assets/img/icon_test_off.svg"]',
-        )).not.toBeNull();
+        expect(element.querySelector(
+          '[data-sensitive-action="radar-test-1"]',
+        )).toBeNull();
+        expect(element.querySelector(
+          '[data-sensitive-action="radar-test-2"]',
+        )).toBeNull();
         expect(element.querySelector<HTMLImageElement>(
           'img[src="assets/img/icon_lock_off.svg"]',
         )).not.toBeNull();
+        expect(element.textContent).toContain('Configuration des sorties');
+        expect(element.textContent).toContain('Commandes supplémentaires');
+        expect(element.textContent).toContain(
+          component.text.sensitiveActions.peripheralLock,
+        );
+        expect(element.textContent).toContain(
+          component.text.sensitiveActions.reset,
+        );
         expect(component.showProfessionalAccessPrompt).toBeFalse();
         expect(component.canExecuteSensitiveAction(
           component.sensitiveActions.find((action) =>
@@ -5912,6 +5986,119 @@ describe('ProductPage professional scalar controls',
         expect(requestSensitiveAction)
           .toHaveBeenCalledOnceWith(component.sensitiveActions[0]);
         expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should mirror Widoor input and lock switch states after successful writes',
+      async () => {
+        const {
+          component,
+          fixture,
+          writeExecutionService,
+        } = await createProfessionalScalarPage(
+          'widoor',
+          professionalValue('widoor', 0, 0, {
+            breakForceAtOpen: 5,
+            nearOpenSpeed: 25,
+            nearCloseSpeed: 35,
+          }),
+        );
+
+        component.activeMainTab = 'settings';
+        component.activeSettingsTab = 'advanced';
+        fixture.detectChanges();
+
+        const input = component.professionalInputControls[0].config;
+        let element = fixture.nativeElement as HTMLElement;
+        let inputRow = element.querySelector<HTMLElement>(
+          `[data-professional-input-field="${input.field}"]`,
+        );
+        expect(inputRow?.querySelector('img[src="assets/img/icon_button.svg"]'))
+          .not.toBeNull();
+        expect(inputRow?.querySelector('.advanced-value-negative'))
+          .not.toBeNull();
+
+        component.toggleProfessionalInputControlLock();
+        await component.requestProfessionalInputChange(input, 'radar');
+        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        expect(component.currentProfessionalInputMode(input)).toBe('radar');
+        fixture.detectChanges();
+        element = fixture.nativeElement as HTMLElement;
+        inputRow = element.querySelector<HTMLElement>(
+          `[data-professional-input-field="${input.field}"]`,
+        );
+        expect(inputRow?.querySelector('img[src="assets/img/icon_radar.svg"]'))
+          .not.toBeNull();
+        expect(inputRow?.querySelector('.advanced-value-positive'))
+          .not.toBeNull();
+        expect(inputRow?.textContent).toContain(
+          component.text.professionalInputControls.radar,
+        );
+
+        writeExecutionService.execute.calls.reset();
+        const lock = component.sensitiveActions.find((action) =>
+          action.action === 'professional-peripheral-lock',
+        )!;
+        await component.requestSensitiveAction(lock, true);
+        fixture.detectChanges();
+
+        const lockRow = (fixture.nativeElement as HTMLElement)
+          .querySelector<HTMLElement>(
+            '[data-sensitive-action="professional-peripheral-lock"]',
+          );
+        expect(lockRow?.querySelector('img[src="assets/img/icon_lock_off.svg"]'))
+          .not.toBeNull();
+        expect(lockRow?.querySelector('.advanced-value-positive'))
+          .not.toBeNull();
+        expect(lockRow?.textContent).toContain(
+          component.text.professionalPeripheralDiagnostics.enabled,
+        );
+        expect(writeExecutionService.execute).toHaveBeenCalled();
+      },
+    );
+
+    it('should render Widoor braking force ticks and gate precision controls',
+      async () => {
+        const { component, fixture } = await createProfessionalScalarPage(
+          'widoor',
+          professionalValue('widoor', 0, 0, {
+            breakForceAtOpen: 5,
+            nearOpenSpeed: 25,
+            nearCloseSpeed: 35,
+          }),
+        );
+        component.setActiveMainTab('settings');
+        component.setActiveSettingsTab('advanced');
+        fixture.detectChanges();
+
+        const force = component.professionalScalarControls.find((control) =>
+          control.config.field === 'break-force-at-open',
+        )!.config;
+        let row = (fixture.nativeElement as HTMLElement)
+          .querySelector<HTMLElement>(
+            '[data-professional-scalar-field="break-force-at-open"]',
+          );
+        const range = row?.querySelector<HTMLIonRangeElement>('ion-range');
+        expect(range?.ticks).toBeTrue();
+        expect(range?.snaps).toBeTrue();
+        expect(range?.pin).toBeFalse();
+
+        row?.click();
+        fixture.detectChanges();
+        expect(component.isProfessionalScalarUnlocked(force)).toBeTrue();
+        expect(component.isProfessionalScalarPrecisionOpen(force)).toBeFalse();
+        expect((fixture.nativeElement as HTMLElement)
+          .querySelector('.advanced-precision-row')).toBeNull();
+
+        row = (fixture.nativeElement as HTMLElement)
+          .querySelector<HTMLElement>(
+            '[data-professional-scalar-field="break-force-at-open"]',
+          );
+        row?.querySelector<HTMLElement>('.slider-options-toggle')?.click();
+        fixture.detectChanges();
+        expect(component.isProfessionalScalarPrecisionOpen(force)).toBeTrue();
+        expect((fixture.nativeElement as HTMLElement)
+          .querySelector('.advanced-precision-row')).not.toBeNull();
       },
     );
 

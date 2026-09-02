@@ -6,7 +6,15 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { addIcons } from 'ionicons';
-import { arrowBack } from 'ionicons/icons';
+import {
+  add,
+  arrowBack,
+  caretBack,
+  caretForward,
+  lockClosed,
+  lockOpen,
+  remove,
+} from 'ionicons/icons';
 import {
   AlertController,
   IonBadge,
@@ -107,7 +115,12 @@ import {
   ProductUserField,
   isKnownProductProfile,
 } from './product-page.config';
-import { productPageTextFor } from './product-page-legacy-localization';
+import {
+  productPageTextFor,
+  widoorDelayedOpenLabelFor,
+  widoorMotorStateLabelFor,
+  WidoorMotorStateKey,
+} from './product-page-legacy-localization';
 import { productProfessionalFieldRequiresAccess } from
   './product-professional-access';
 import {
@@ -216,6 +229,11 @@ import {
 type ProductShellMainTab = 'commands' | 'settings' | 'information';
 type ProductShellSettingsTab = 'basic' | 'advanced';
 type LocalizedProductPageText = ReturnType<typeof productPageTextFor>;
+type WidoorHistoricalHeadings = Readonly<{
+  outputs: string;
+  additionalActions: string;
+  hardware: string;
+}>;
 
 @Component({
   selector: 'app-product',
@@ -290,6 +308,8 @@ export class ProductPage implements OnDestroy {
     ProductProfessionalScalarField,
     number
   >();
+  private widoorActiveSliderKey: string | null = null;
+  private widoorPrecisionSliderKey: string | null = null;
   private readonly widoorSliderWriteTimeouts = new Map<string, {
     readonly timeout: number;
     readonly write: () => Promise<void>;
@@ -300,7 +320,22 @@ export class ProductPage implements OnDestroy {
 
   readonly config: ProductPageConfig;
   get text(): ReturnType<typeof productPageTextFor> {
-    return productPageTextFor(currentAppLanguage());
+    return productPageTextFor(currentAppLanguage(), this.config.profile);
+  }
+
+  get widoorHistoricalHeadings(): WidoorHistoricalHeadings {
+    const text = this.text as LocalizedProductPageText & {
+      readonly sections: { readonly hardware: string };
+      readonly sensitiveActions: {
+        readonly outputsTitle: string;
+        readonly additionalTitle: string;
+      };
+    };
+    return Object.freeze({
+      outputs: text.sensitiveActions.outputsTitle,
+      additionalActions: text.sensitiveActions.additionalTitle,
+      hardware: text.sections.hardware,
+    });
   }
   readonly roomOptions = PRODUCT_ROOM_OPTIONS;
   readonly sensitiveActions: readonly ProductSensitiveActionUiConfig[];
@@ -427,7 +462,15 @@ export class ProductPage implements OnDestroy {
   ): boolean => isSameProductWeightRange(first, second);
 
   constructor() {
-    addIcons({ arrowBack });
+    addIcons({
+      add,
+      arrowBack,
+      caretBack,
+      caretForward,
+      lockClosed,
+      lockOpen,
+      remove,
+    });
     const routeProfile = this.route.snapshot.data['profile'];
     const profile = isKnownProductProfile(routeProfile)
       ? routeProfile
@@ -439,11 +482,11 @@ export class ProductPage implements OnDestroy {
       Object.freeze({
         config,
         get text() {
-          return productPageTextFor(currentAppLanguage())
+          return productPageTextFor(currentAppLanguage(), profile)
             .widoorCommands[config.textKey];
         },
         get disabledReason() {
-          const text = productPageTextFor(currentAppLanguage());
+          const text = productPageTextFor(currentAppLanguage(), profile);
           return config.disabledReason === 'physical-validation'
             ? text.widoorCommands.physicalValidationRequired
             : config.disabledReason === 'protected'
@@ -464,7 +507,7 @@ export class ProductPage implements OnDestroy {
         Object.freeze({
           config,
           get text() {
-            return productPageTextFor(currentAppLanguage())
+            return productPageTextFor(currentAppLanguage(), profile)
               .lockModeControls[config.textKey];
           },
         }),
@@ -486,7 +529,7 @@ export class ProductPage implements OnDestroy {
         Object.freeze({
           config,
           get text() {
-            return productPageTextFor(currentAppLanguage())
+            return productPageTextFor(currentAppLanguage(), profile)
               .user[config.textKey];
           },
         }),
@@ -503,7 +546,7 @@ export class ProductPage implements OnDestroy {
         Object.freeze({
           config,
           get text() {
-            return productPageTextFor(currentAppLanguage())
+            return productPageTextFor(currentAppLanguage(), profile)
               .user[config.textKey];
           },
         }),
@@ -520,7 +563,7 @@ export class ProductPage implements OnDestroy {
         Object.freeze({
           config,
           get text() {
-            return productPageTextFor(currentAppLanguage())
+            return productPageTextFor(currentAppLanguage(), profile)
               .user[config.textKey];
           },
         }),
@@ -536,7 +579,7 @@ export class ProductPage implements OnDestroy {
         Object.freeze({
           config,
           get text() {
-            const text = productPageTextFor(currentAppLanguage());
+            const text = productPageTextFor(currentAppLanguage(), profile);
             return config.textKey === 'input1'
               ? text.professionalInputControls.input1
               : text.professionalInputControls.input2;
@@ -555,7 +598,7 @@ export class ProductPage implements OnDestroy {
         Object.freeze({
           config,
           get text() {
-            return productPageTextFor(currentAppLanguage())
+            return productPageTextFor(currentAppLanguage(), profile)
               .professional[config.textKey];
           },
         }),
@@ -775,7 +818,13 @@ export class ProductPage implements OnDestroy {
   ): string {
     const userParameters = this.viewModel.reads.userParameters.value;
     if (command.config.operation === 'motor-open-short-timed' &&
-        userParameters !== null) {
+      userParameters !== null) {
+      if (this.config.profile === 'widoor') {
+        return widoorDelayedOpenLabelFor(
+          currentAppLanguage(),
+          userParameters.shortOpenTime,
+        );
+      }
       return `${command.text.label} (${userParameters.shortOpenTime} s)`;
     }
     if (command.config.operation === 'motor-open-long-timed' &&
@@ -831,9 +880,7 @@ export class ProductPage implements OnDestroy {
           ? 'assets/img/icon_test_on.svg'
           : 'assets/img/icon_test_off.svg';
       case 'professional-peripheral-lock':
-        return this.sensitiveActionCurrentEnabled(config) === true
-          ? 'assets/img/icon_lock_on.svg'
-          : 'assets/img/icon_lock_off.svg';
+        return 'assets/img/icon_lock_off.svg';
       case 'learning':
       case 'reset':
         return null;
@@ -906,6 +953,8 @@ export class ProductPage implements OnDestroy {
 
   lockAllProductControls(): void {
     this.controlLocks.lockAll();
+    this.widoorActiveSliderKey = null;
+    this.widoorPrecisionSliderKey = null;
   }
 
   get showProductDateMaintenanceAction(): boolean {
@@ -1409,32 +1458,32 @@ export class ProductPage implements OnDestroy {
     }
     const rows: ProductDisplayRow[] = [];
     if (!this.config.hiddenMotorSwitches.includes('push-and-go')) {
-      rows.push(this.booleanRow(
+      rows.push(this.motorSwitchRow(
         'push-and-go',
         this.text.motor.pushAndGo,
         value.switches.pushAndGo,
       ));
     }
-    rows.push(this.booleanRow(
+    rows.push(this.motorSwitchRow(
       'ble-switch',
       this.text.motor.ble,
       value.switches.ble,
     ));
     if (!this.config.hiddenMotorSwitches.includes('automatic-manual')) {
-      rows.push(this.booleanRow(
+      rows.push(this.motorSwitchRow(
         'automatic-manual',
         this.text.motor.automaticManual,
         value.switches.automaticManual,
       ));
     }
     if (!this.config.hiddenMotorSwitches.includes('direction')) {
-      rows.push(this.booleanRow(
+      rows.push(this.motorSwitchRow(
         'direction',
         this.text.motor.direction,
         value.switches.direction,
       ));
     }
-    rows.push(this.booleanRow(
+    rows.push(this.motorSwitchRow(
       'pairing',
       this.text.motor.pairing,
       value.switches.pairing,
@@ -1778,7 +1827,27 @@ export class ProductPage implements OnDestroy {
   }
 
   toggleUserSpeedLock(config: ProductUserSpeedUiConfig): void {
-    this.controlLocks.toggle(`user-speed:${config.field}`);
+    const key = `user-speed:${config.field}`;
+    this.toggleProductSliderLock(key, config.profile === 'widoor');
+  }
+
+  unlockUserSpeedFromZone(config: ProductUserSpeedUiConfig): void {
+    this.unlockWidoorSlider(`user-speed:${config.field}`);
+  }
+
+  isUserSpeedPrecisionOpen(config: ProductUserSpeedUiConfig): boolean {
+    return this.widoorPrecisionSliderKey === `user-speed:${config.field}`;
+  }
+
+  toggleUserSpeedPrecision(
+    config: ProductUserSpeedUiConfig,
+    event: Event,
+  ): void {
+    this.toggleWidoorSliderPrecision(
+      `user-speed:${config.field}`,
+      this.isUserSpeedUnlocked(config),
+      event,
+    );
   }
 
   stepUserSpeedDraft(
@@ -1909,7 +1978,27 @@ export class ProductPage implements OnDestroy {
   }
 
   toggleUserTimingLock(config: ProductUserTimingUiConfig): void {
-    this.controlLocks.toggle(`user-timing:${config.field}`);
+    const key = `user-timing:${config.field}`;
+    this.toggleProductSliderLock(key, config.profile === 'widoor');
+  }
+
+  unlockUserTimingFromZone(config: ProductUserTimingUiConfig): void {
+    this.unlockWidoorSlider(`user-timing:${config.field}`);
+  }
+
+  isUserTimingPrecisionOpen(config: ProductUserTimingUiConfig): boolean {
+    return this.widoorPrecisionSliderKey === `user-timing:${config.field}`;
+  }
+
+  toggleUserTimingPrecision(
+    config: ProductUserTimingUiConfig,
+    event: Event,
+  ): void {
+    this.toggleWidoorSliderPrecision(
+      `user-timing:${config.field}`,
+      this.isUserTimingUnlocked(config),
+      event,
+    );
   }
 
   stepUserTimingDraft(
@@ -2127,7 +2216,7 @@ export class ProductPage implements OnDestroy {
 
     void triggerConfiguredHapticFeedback();
     if (this.isDemoMode) {
-      this.updateDemoProfessionalInput(config.field, mode);
+      this.updateProfessionalInputDisplay(config.field, mode);
       this.professionalInputWriteState = Object.freeze({
         status: 'sent',
         field: config.field,
@@ -2183,6 +2272,7 @@ export class ProductPage implements OnDestroy {
       return;
     }
     if (result.status === 'success') {
+      this.updateProfessionalInputDisplay(config.field, mode);
       this.professionalInputWriteState = Object.freeze({
         status: 'sent',
         field: config.field,
@@ -2367,7 +2457,32 @@ export class ProductPage implements OnDestroy {
   toggleProfessionalScalarLock(
     config: ProductProfessionalScalarUiConfig,
   ): void {
-    this.controlLocks.toggle(`professional-scalar:${config.field}`);
+    const key = `professional-scalar:${config.field}`;
+    this.toggleProductSliderLock(key, config.profile === 'widoor');
+  }
+
+  unlockProfessionalScalarFromZone(
+    config: ProductProfessionalScalarUiConfig,
+  ): void {
+    this.unlockWidoorSlider(`professional-scalar:${config.field}`);
+  }
+
+  isProfessionalScalarPrecisionOpen(
+    config: ProductProfessionalScalarUiConfig,
+  ): boolean {
+    return this.widoorPrecisionSliderKey ===
+      `professional-scalar:${config.field}`;
+  }
+
+  toggleProfessionalScalarPrecision(
+    config: ProductProfessionalScalarUiConfig,
+    event: Event,
+  ): void {
+    this.toggleWidoorSliderPrecision(
+      `professional-scalar:${config.field}`,
+      this.isProfessionalScalarUnlocked(config),
+      event,
+    );
   }
 
   stepProfessionalScalarDraft(
@@ -2606,7 +2721,7 @@ export class ProductPage implements OnDestroy {
 
     if (this.isDemoMode) {
       if (config.control === 'toggle' && enabled !== undefined) {
-        this.updateDemoSensitiveToggle(config.action, enabled);
+        this.updateSensitiveToggleDisplay(config.action, enabled);
       }
       this.sensitiveActionState = Object.freeze({
         status: 'sent',
@@ -2728,6 +2843,9 @@ export class ProductPage implements OnDestroy {
       action: config.action,
       message: this.text.sensitiveActions.sent,
     });
+    if (config.control === 'toggle' && enabled !== undefined) {
+      this.updateSensitiveToggleDisplay(config.action, enabled);
+    }
     if ((config.action === 'reset' || this.shouldRefreshAfterSettledWrite()) &&
         this.canRefresh) {
       await this.refreshProductData();
@@ -4251,6 +4369,50 @@ export class ProductPage implements OnDestroy {
     this.widoorSliderWriteTimeouts.clear();
   }
 
+  private unlockWidoorSlider(key: string): void {
+    if (this.widoorActiveSliderKey !== key) {
+      this.activateWidoorSlider(key);
+    }
+  }
+
+  private toggleProductSliderLock(key: string, widoor: boolean): void {
+    if (!widoor) {
+      this.controlLocks.toggle(key);
+      return;
+    }
+    if (this.widoorActiveSliderKey === key) {
+      this.controlLocks.lock(key);
+      this.widoorActiveSliderKey = null;
+      this.widoorPrecisionSliderKey = null;
+      return;
+    }
+    this.activateWidoorSlider(key);
+  }
+
+  private activateWidoorSlider(key: string): void {
+    if (this.widoorActiveSliderKey !== null) {
+      this.controlLocks.lock(this.widoorActiveSliderKey);
+    }
+    if (!this.controlLocks.isUnlocked(key)) {
+      this.controlLocks.toggle(key);
+    }
+    this.widoorActiveSliderKey = key;
+    this.widoorPrecisionSliderKey = null;
+  }
+
+  private toggleWidoorSliderPrecision(
+    key: string,
+    unlocked: boolean,
+    event: Event,
+  ): void {
+    event.stopPropagation();
+    if (!unlocked) {
+      return;
+    }
+    this.widoorPrecisionSliderKey =
+      this.widoorPrecisionSliderKey === key ? null : key;
+  }
+
   private async flushPendingSliderWrites(): Promise<void> {
     const pendingWrites = [...this.widoorSliderWriteTimeouts.values()];
     this.clearWidoorSliderWrites();
@@ -4351,6 +4513,8 @@ export class ProductPage implements OnDestroy {
     };
     if (fullLoad) {
       this.controlLocks.lockAll();
+      this.widoorActiveSliderKey = null;
+      this.widoorPrecisionSliderKey = null;
       this.userSpeedDrafts.clear();
       this.userTimingDrafts.clear();
       this.resetNameRoomDraft();
@@ -4411,6 +4575,8 @@ export class ProductPage implements OnDestroy {
       globalError: this.connectionStateLabel(state),
     };
     this.controlLocks.lockAll();
+    this.widoorActiveSliderKey = null;
+    this.widoorPrecisionSliderKey = null;
     this.resetUserSpeedEditing();
     this.resetUserTimingEditing();
     this.resetNameRoomEditing();
@@ -4473,8 +4639,17 @@ export class ProductPage implements OnDestroy {
   private updateDemoProfessionalParameters(
     patch: Partial<BleProfessionalParameters>,
   ): void {
+    if (!this.isDemoMode) {
+      return;
+    }
+    this.updateProfessionalParametersDisplay(patch);
+  }
+
+  private updateProfessionalParametersDisplay(
+    patch: Partial<BleProfessionalParameters>,
+  ): void {
     const current = this.viewModel.reads.professionalParameters.value;
-    if (!this.isDemoMode || current === null) {
+    if (current === null) {
       return;
     }
     this.viewModel = {
@@ -4515,7 +4690,7 @@ export class ProductPage implements OnDestroy {
     });
   }
 
-  private updateDemoProfessionalInput(
+  private updateProfessionalInputDisplay(
     field: ProductProfessionalInputField,
     mode: LegacyInputMode,
   ): void {
@@ -4527,7 +4702,7 @@ export class ProductPage implements OnDestroy {
     const peripheralByte1 = mode === 'radar'
       ? current.peripheralByte1 | mask
       : current.peripheralByte1 & ~mask;
-    this.updateDemoProfessionalParameters({ peripheralByte1 });
+    this.updateProfessionalParametersDisplay({ peripheralByte1 });
   }
 
   private updateDemoWeightRange(range: ProductWeightRange): void {
@@ -4573,7 +4748,7 @@ export class ProductPage implements OnDestroy {
     }
   }
 
-  private updateDemoSensitiveToggle(
+  private updateSensitiveToggleDisplay(
     action: ProductSensitiveAction,
     enabled: boolean,
   ): void {
@@ -4591,7 +4766,7 @@ export class ProductPage implements OnDestroy {
     if (mask === 0) {
       return;
     }
-    this.updateDemoProfessionalParameters({
+    this.updateProfessionalParametersDisplay({
       peripheralByte1: enabled
         ? current.peripheralByte1 | mask
         : current.peripheralByte1 & ~mask,
@@ -5331,6 +5506,43 @@ export class ProductPage implements OnDestroy {
     value: boolean,
   ): ProductDisplayRow {
     return this.row(key, label, value ? this.text.yes : this.text.no);
+  }
+
+  private motorSwitchRow(
+    key: WidoorMotorStateKey,
+    label: string,
+    value: boolean,
+  ): ProductDisplayRow {
+    if (this.config.profile !== 'widoor') {
+      return this.booleanRow(key, label, value);
+    }
+    return this.row(
+      key,
+      label,
+      widoorMotorStateLabelFor(currentAppLanguage(), key, value),
+    );
+  }
+
+  isPositiveMotorRow(row: ProductDisplayRow): boolean {
+    if (this.config.profile !== 'widoor') {
+      return row.value === this.text.yes;
+    }
+    const switches = this.viewModel.motorState?.switches;
+    if (switches === null || switches === undefined) {
+      return false;
+    }
+    switch (row.key as WidoorMotorStateKey) {
+      case 'push-and-go':
+        return switches.pushAndGo;
+      case 'ble-switch':
+        return switches.ble;
+      case 'automatic-manual':
+        return switches.automaticManual;
+      case 'direction':
+        return switches.direction;
+      case 'pairing':
+        return switches.pairing;
+    }
   }
 
   private optionalNumber(value: number | null): string {
