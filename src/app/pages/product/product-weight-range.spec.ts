@@ -21,6 +21,7 @@ describe('Product weight-range controls', () => {
       { lower: 30, upper: 40 },
       { lower: 40, upper: 50 },
       { lower: 50, upper: 60 },
+      { lower: 60, upper: 80 },
     ]);
     expect(productWeightRangeConfigsFor(
       PRODUCT_PAGE_CONFIG['moventiv-80'],
@@ -32,38 +33,35 @@ describe('Product weight-range controls', () => {
       { lower: 50, upper: 60 },
       { lower: 60, upper: 80 },
     ]);
-    expect(productWeightRangeConfigsFor(PRODUCT_PAGE_CONFIG.garline).map(
-      (config) => config.range,
-    )).toEqual([
+    expect(PRODUCT_PAGE_CONFIG.garline.weightRanges).toEqual([
       { lower: 60, upper: 80 },
       { lower: 80, upper: 100 },
       { lower: 100, upper: 120 },
       { lower: 120, upper: 140 },
     ]);
+    expect(productWeightRangeConfigsFor(PRODUCT_PAGE_CONFIG.garline))
+      .toEqual([]);
   });
 
-  it('uses catalogued professional-parameter writes for weight ranges', () => {
+  it('uses catalogued writes only for interactive weight ranges', () => {
     const moventiv60 = productWeightRangeConfigsFor(
       PRODUCT_PAGE_CONFIG['moventiv-60'],
-    )[4];
+    )[5];
     const moventiv80 = productWeightRangeConfigsFor(
       PRODUCT_PAGE_CONFIG['moventiv-80'],
     )[5];
-    const garline = productWeightRangeConfigsFor(
-      PRODUCT_PAGE_CONFIG.garline,
-    )[0];
 
     expect(moventiv60.catalogFactory(moventiv60.range).payloadHex)
-      .toBe('00 32 3c');
-    expect(moventiv80.catalogFactory(moventiv80.range).payloadHex)
       .toBe('00 3c 50');
-    const write = garline.catalogFactory(garline.range);
+    const write = moventiv80.catalogFactory(moventiv80.range);
     expect(write.serviceUuid).toBe(BLE_UUIDS.moventivGarlineService);
     expect(write.characteristicUuid)
       .toBe(BLE_UUIDS.professionalParametersCharacteristic);
     expect(write.payloadHex).toBe('00 3c 50');
     expect(write.destructiveLevel).toBe('non-destructive-setting');
     expect(write.hardwareValidationStatus).toBe('phase1-reference-only');
+    expect(productWeightRangeConfigsFor(PRODUCT_PAGE_CONFIG.garline))
+      .toEqual([]);
   });
 
   it('validates complete lower and upper bounds by profile', () => {
@@ -82,7 +80,7 @@ describe('Product weight-range controls', () => {
     expect(isValidProductWeightRange(
       moventiv60,
       { lower: 60, upper: 80 },
-    )).toBeFalse();
+    )).toBeTrue();
     expect(isValidProductWeightRange(
       moventiv80,
       { lower: 60, upper: 80 },
@@ -94,7 +92,7 @@ describe('Product weight-range controls', () => {
     expect(isValidProductWeightRange(
       garline,
       { lower: 120, upper: 140 },
-    )).toBeTrue();
+    )).toBeFalse();
     expect(isValidProductWeightRange(
       garline,
       { lower: 50, upper: 60 },

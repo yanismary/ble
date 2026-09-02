@@ -12,7 +12,7 @@ import {
 } from './product-open-command';
 
 describe('Widoor motor authorization factory', () => {
-  it('should expose the four main Widoor movement commands', () => {
+  it('should expose only the three Phase 1 Widoor commands', () => {
       expect(WIDOOR_COMMAND_UI_CONFIGS.map((config) => ({
         profile: config.profile,
         command: config.command,
@@ -25,9 +25,10 @@ describe('Widoor motor authorization factory', () => {
           expectedState: 0x31 },
         { profile: 'widoor', command: 'OPEN_SHORT_TIMED', enabled: true,
           expectedState: 0x21 },
-        { profile: 'widoor', command: 'OPEN_LONG_TIMED', enabled: true,
-          expectedState: 0x21 },
       ]);
+      expect(WIDOOR_COMMAND_UI_CONFIGS.some((config) =>
+        config.command === 'OPEN_LONG_TIMED',
+      )).toBeFalse();
       expect(WIDOOR_COMMAND_UI_CONFIGS.every(Object.isFrozen)).toBeTrue();
       expect(WIDOOR_COMMAND_UI_CONFIGS.map(
         (config) => config.catalogFactory().payloadHex,
@@ -35,7 +36,6 @@ describe('Widoor motor authorization factory', () => {
         '00 20 00 00',
         '00 30',
         '00 21 00 00',
-        '00 22',
       ]);
       expect(WIDOOR_COMMAND_UI_CONFIGS.every((config) =>
         Boolean(config.label && config.confirmationTitle &&
