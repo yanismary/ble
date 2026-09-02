@@ -19,6 +19,8 @@ import {
   WIDOOR_OPENING_STARTED_STATE,
 } from '../../core/services/motor-command-confirmation';
 import { PRODUCT_PAGE_TEXT } from './product-page.text';
+import { ProductProfileDefinition } from
+  './profiles/product-profile.types';
 
 export const WIDOOR_COMMAND_AUTHORIZATION_TTL_MS = 15_000;
 export const WIDOOR_OPEN_AUTHORIZATION_TTL_MS =
@@ -184,6 +186,24 @@ export const MOTOR_COMMAND_UI_CONFIGS: Readonly<
     ),
   ),
 });
+
+export function productMotorCommandConfigsFor(
+  definition: Pick<ProductProfileDefinition, 'profile' | 'commands'>,
+): readonly WidoorCommandUiConfig[] {
+  const catalog = MOTOR_COMMAND_UI_CONFIGS[definition.profile];
+  return Object.freeze(definition.commands.map((operation) => {
+    const config = catalog.find((candidate) =>
+      candidate.operation === operation,
+    );
+    if (config === undefined) {
+      throw new Error(
+        `Missing motor-command implementation for ${definition.profile}: ` +
+        `${operation}.`,
+      );
+    }
+    return config;
+  }));
+}
 
 export interface WidoorCommandAuthorizationInput {
   readonly write: LegacyBleWrite;

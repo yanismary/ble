@@ -14,6 +14,8 @@ import {
   ProductProfessionalField,
   ProductWeightRange,
 } from './product-page.config';
+import { productProfileRegistry } from
+  './profiles/product-profile.registry';
 
 export type ProductWeightRangeField = Extract<
   ProductProfessionalField,
@@ -45,7 +47,9 @@ export function productWeightRangeConfigsFor(
   config: ProductPageConfig,
 ): readonly ProductWeightRangeUiConfig[] {
   const profile = config.profile;
-  if (!config.professionalFields.includes('weight-range') ||
+  if (productProfileRegistry.get(profile).capabilities
+        .weightRangeControl === 'none' ||
+      !config.professionalFields.includes('weight-range') ||
       profile === 'widoor') {
     return Object.freeze([]);
   }

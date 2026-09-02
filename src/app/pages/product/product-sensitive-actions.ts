@@ -10,6 +10,8 @@ import {
   encodeLegacyProfessionalPeripheral,
   isCataloguedLegacyBleWrite,
 } from '../../core/services/legacy-ble-write-catalog';
+import { productProfileRegistry } from
+  './profiles/product-profile.registry';
 
 export type ProductSensitiveAction =
   | 'learning'
@@ -50,53 +52,49 @@ export interface ProductSensitiveActionAuthorizationInput {
 
 const AUTHORIZATION_TTL_MS = 60_000;
 
+const SENSITIVE_ACTION_PRESENTATION = {
+  learning: {
+    textKey: 'learning',
+    control: 'button',
+    requiresConfirmation: false,
+  },
+  'radar-test-1': {
+    textKey: 'radarTest1',
+    control: 'toggle',
+    requiresConfirmation: false,
+  },
+  'radar-test-2': {
+    textKey: 'radarTest2',
+    control: 'toggle',
+    requiresConfirmation: false,
+  },
+  'professional-peripheral-lock': {
+    textKey: 'peripheralLock',
+    control: 'toggle',
+    requiresConfirmation: false,
+  },
+  reset: {
+    textKey: 'reset',
+    control: 'button',
+    requiresConfirmation: true,
+  },
+} as const satisfies Readonly<Record<ProductSensitiveAction, Readonly<{
+  textKey: ProductSensitiveActionTextKey;
+  control: ProductSensitiveActionUiConfig['control'];
+  requiresConfirmation: boolean;
+}>>>;
+
 export function productSensitiveActionConfigsFor(
   profile: KnownProductProfile,
 ): readonly ProductSensitiveActionUiConfig[] {
-  const actions: ProductSensitiveActionUiConfig[] = [
-    {
-      action: 'learning',
+  const definition = productProfileRegistry.get(profile);
+  return Object.freeze(definition.sensitiveActions.map((action) =>
+    Object.freeze({
+      action,
       profile,
-      textKey: 'learning',
-      control: 'button',
-      requiresConfirmation: false,
-    },
-  ];
-
-  if (profile === 'widoor') {
-    actions.push(
-      {
-        action: 'radar-test-1',
-        profile,
-        textKey: 'radarTest1',
-        control: 'toggle',
-        requiresConfirmation: false,
-      },
-      {
-        action: 'radar-test-2',
-        profile,
-        textKey: 'radarTest2',
-        control: 'toggle',
-        requiresConfirmation: false,
-      },
-      {
-        action: 'professional-peripheral-lock',
-        profile,
-        textKey: 'peripheralLock',
-        control: 'toggle',
-        requiresConfirmation: false,
-      },
-      {
-        action: 'reset',
-        profile,
-        textKey: 'reset',
-        control: 'button',
-        requiresConfirmation: true,
-      },
-    );
-  }
-
-  return Object.freeze(actions.map((action) => Object.freeze(action)));
+      ...SENSITIVE_ACTION_PRESENTATION[action],
+    }),
+  ));
 }
 
 export function productSensitiveActionWriteSteps(
@@ -104,13 +102,7 @@ export function productSensitiveActionWriteSteps(
   enabled?: boolean,
 ): readonly ProductSensitiveActionWriteStep[] {
   if (config.action === 'learning') {
-    const immediatePolicy = config.profile === 'widoor'
-      ? { allowWidoorPhase1ImmediateWrite: true } as const
-      : config.profile === 'moventiv-60' || config.profile === 'moventiv-80'
-        ? { allowMoventivPhase1ImmediateWrite: true } as const
-        : config.profile === 'garline'
-          ? { allowGarlinePhase1ImmediateWrite: true } as const
-          : {};
+    const immediatePolicy = learningImmediateWritePolicy(config.profile);
     return Object.freeze([
       step(
         encodeLegacyMotorCommand(config.profile, 'LEARNING'),
@@ -199,6 +191,21 @@ export function createProductSensitiveActionAuthorization(
     connectionGeneration: input.connectionGeneration,
     attemptId: input.attemptId,
   });
+}
+
+function learningImmediateWritePolicy(
+  profile: KnownProductProfile,
+): LegacyBleWriteExecutionPolicy {
+  switch (productProfileRegistry.get(profile).behavior.immediateWritePolicy) {
+    case 'widoor':
+      return { allowWidoorPhase1ImmediateWrite: true };
+    case 'moventiv':
+      return { allowMoventivPhase1ImmediateWrite: true };
+    case 'garline':
+      return { allowGarlinePhase1ImmediateWrite: true };
+    case 'none':
+      return {};
+  }
 }
 
 function step(

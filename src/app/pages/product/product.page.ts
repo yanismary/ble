@@ -108,13 +108,16 @@ import {
   ProductDetection,
 } from '../../core/services/product-detection';
 import {
-  PRODUCT_PAGE_CONFIG,
-  ProductPageConfig,
   ProductProfessionalField,
   ProductWeightRange,
   ProductUserField,
-  isKnownProductProfile,
 } from './product-page.config';
+import {
+  isMoventivProductProfile,
+  productProfileRegistry,
+} from './profiles/product-profile.registry';
+import { ProductProfileDefinition } from
+  './profiles/product-profile.types';
 import {
   productPageTextFor,
   widoorDelayedOpenLabelFor,
@@ -183,12 +186,12 @@ import {
   ProductCommandHistoryEntry,
   ProductOpenCommandStatus,
   ProductMotorCommandOperation,
-  MOTOR_COMMAND_UI_CONFIGS,
   WIDOOR_COMMAND_UI_CONFIGS,
   WidoorCommandUiConfig,
   createProductMotorCommandAuthorization,
   formatCommandHistoryTime,
   initialProductOpenCommandState,
+  productMotorCommandConfigsFor,
 } from './product-open-command';
 import {
   ProductConnectionState,
@@ -318,7 +321,7 @@ export class ProductPage implements OnDestroy {
   private readonly widoorShortTimingFallback = 1;
   private nameRoomDraft: ProductNameRoomDraft | null = null;
 
-  readonly config: ProductPageConfig;
+  readonly config: ProductProfileDefinition;
   get text(): ReturnType<typeof productPageTextFor> {
     return productPageTextFor(currentAppLanguage(), this.config.profile);
   }
@@ -472,13 +475,12 @@ export class ProductPage implements OnDestroy {
       remove,
     });
     const routeProfile = this.route.snapshot.data['profile'];
-    const profile = isKnownProductProfile(routeProfile)
-      ? routeProfile
-      : 'widoor';
-    this.config = PRODUCT_PAGE_CONFIG[profile];
+    this.config = productProfileRegistry.resolve(routeProfile) ??
+      productProfileRegistry.get('widoor');
+    const profile = this.config.profile;
     this.sensitiveActions = productSensitiveActionConfigsFor(profile);
     this.productCommands = Object.freeze(
-      MOTOR_COMMAND_UI_CONFIGS[profile].map((config) =>
+      productMotorCommandConfigsFor(this.config).map((config) =>
       Object.freeze({
         config,
         get text() {
@@ -695,8 +697,7 @@ export class ProductPage implements OnDestroy {
     this.activeSettingsTab = tab;
     this.refreshCurrentTabData();
     if (tab === 'advanced' &&
-        (this.isMoventivProfile(this.config.profile) ||
-          this.config.profile === 'garline')) {
+        this.config.behavior.advancedSettingsConfirmation) {
       void this.presentMoventivAdvancedAlert();
     }
   }
@@ -723,8 +724,8 @@ export class ProductPage implements OnDestroy {
   }
 
   get showWidoorOpenCommand(): boolean {
-    return this.context?.profile === 'widoor' &&
-      this.config.profile === 'widoor';
+    return this.context?.profile === this.config.profile &&
+      this.config.ui.widoorLayout;
   }
 
   get showProductMotorCommands(): boolean {
@@ -750,7 +751,7 @@ export class ProductPage implements OnDestroy {
     ];
   } | null {
     if (!this.showLockModeControls ||
-        !this.isMoventivProfile(this.config.profile)) {
+        this.config.family !== 'moventiv') {
       return null;
     }
     return this.lockModeControls.find((control) =>
@@ -819,7 +820,7 @@ export class ProductPage implements OnDestroy {
     const userParameters = this.viewModel.reads.userParameters.value;
     if (command.config.operation === 'motor-open-short-timed' &&
       userParameters !== null) {
-      if (this.config.profile === 'widoor') {
+      if (this.config.ui.widoorLayout) {
         return widoorDelayedOpenLabelFor(
           currentAppLanguage(),
           userParameters.shortOpenTime,
@@ -903,17 +904,17 @@ export class ProductPage implements OnDestroy {
     return this.pageContextCurrent &&
       this.weightRangeControls.length > 0 &&
       (this.viewModel.reads.professionalParameters.status === 'available' ||
-        this.isMoventivProfile(this.config.profile));
+        this.config.family === 'moventiv');
   }
 
   get showBasicWeightRangeControls(): boolean {
     return this.showWeightRangeControls &&
-      (this.config.profile === 'moventiv-60' ||
-        this.config.profile === 'moventiv-80');
+      this.config.capabilities.weightRangeControl === 'basic';
   }
 
   get showAdvancedWeightRangeControls(): boolean {
-    return this.showWeightRangeControls && !this.showBasicWeightRangeControls;
+    return this.showWeightRangeControls &&
+      this.config.capabilities.weightRangeControl === 'advanced';
   }
 
   get showProfessionalInputControls(): boolean {
@@ -993,7 +994,7 @@ export class ProductPage implements OnDestroy {
   get showProfessionalAccessPrompt(): boolean {
     return this.pageContextCurrent &&
       (this.viewModel.reads.professionalParameters.status === 'available' ||
-        this.config.profile === 'garline') &&
+        this.config.family === 'garline') &&
       this.professionalAccessControlsAvailable &&
       !this.professionalAccessGranted;
   }
@@ -1019,7 +1020,7 @@ export class ProductPage implements OnDestroy {
   }
 
   canExecuteProductCommand(config: WidoorCommandUiConfig): boolean {
-    if (!MOTOR_COMMAND_UI_CONFIGS[this.config.profile].includes(config) ||
+    if (!this.productCommands.some((command) => command.config === config) ||
         config.profile !== this.config.profile ||
         !config.enabled ||
         !this.showProductMotorCommands ||
@@ -1227,7 +1228,7 @@ export class ProductPage implements OnDestroy {
       this.row('control-hardware', this.text.version.controlHardware,
         `${value.productType}.${value.productSubtype}`),
     ];
-    if (this.config.profile !== 'widoor') {
+    if (this.config.information.showMotorAddress) {
       rows.push(this.row('motor-address', this.text.version.motorAddress,
         value.motorAddressHex ?? this.text.noValue));
     }
@@ -1254,10 +1255,7 @@ export class ProductPage implements OnDestroy {
         this.config.maximumWeightLabel,
       ));
     }
-    const weightRange = (
-      this.config.professionalFields.includes('weight-range') ||
-      this.config.profile === 'garline'
-    )
+    const weightRange = this.config.information.showCurrentWeightRange
       ? this.currentWeightRangeValue()
       : null;
     if (weightRange !== null) {
@@ -1277,7 +1275,7 @@ export class ProductPage implements OnDestroy {
   }
 
   get informationMaintenanceRows(): readonly ProductDisplayRow[] {
-    if (this.config.profile === 'widoor') {
+    if (!this.config.information.showMaintenanceDates) {
       return [];
     }
     return this.datesRows.filter(({ key }) =>
@@ -1357,22 +1355,11 @@ export class ProductPage implements OnDestroy {
   }
 
   get informationSupplementalRows(): readonly ProductDisplayRow[] {
-    const phase1Keys = this.config.profile === 'widoor'
-      ? [
-        'initializations',
-        'cycles-since-init',
-        'obstacles',
-        'encoder-errors',
-        'motor-errors',
-      ]
-      : [
-        'initializations',
-        'cycles-since-init',
-        'obstacles',
-        'learning',
-      ];
     return this.maintenanceRows.filter(({ key }) =>
-      phase1Keys.includes(key),
+      this.config.information.supplementalMaintenanceFields.includes(
+        key as typeof this.config.information
+          .supplementalMaintenanceFields[number],
+      ),
     );
   }
 
@@ -1828,7 +1815,10 @@ export class ProductPage implements OnDestroy {
 
   toggleUserSpeedLock(config: ProductUserSpeedUiConfig): void {
     const key = `user-speed:${config.field}`;
-    this.toggleProductSliderLock(key, config.profile === 'widoor');
+    this.toggleProductSliderLock(
+      key,
+      productProfileRegistry.get(config.profile).ui.widoorSliderInteraction,
+    );
   }
 
   unlockUserSpeedFromZone(config: ProductUserSpeedUiConfig): void {
@@ -1926,12 +1916,11 @@ export class ProductPage implements OnDestroy {
   currentUserTimingValue(config: ProductUserTimingUiConfig): number | null {
     const value = this.viewModel.reads.userParameters.value;
     if (value === null) {
-      if ((config.profile === 'widoor' ||
-            this.isMoventivProfile(config.profile) ||
-            config.profile === 'garline') &&
+      if (productProfileRegistry.get(config.profile).behavior
+            .showControlsBeforeRead &&
           config.field === 'short-timing' &&
           this.pageContextCurrent) {
-        return config.profile === 'widoor'
+        return productProfileRegistry.get(config.profile).family === 'widoor'
           ? this.widoorShortTimingFallback
           : LEGACY_WRITE_CONSTRAINTS[config.profile]
             .shortTimingInvalidReadDefault;
@@ -1979,7 +1968,10 @@ export class ProductPage implements OnDestroy {
 
   toggleUserTimingLock(config: ProductUserTimingUiConfig): void {
     const key = `user-timing:${config.field}`;
-    this.toggleProductSliderLock(key, config.profile === 'widoor');
+    this.toggleProductSliderLock(
+      key,
+      productProfileRegistry.get(config.profile).ui.widoorSliderInteraction,
+    );
   }
 
   unlockUserTimingFromZone(config: ProductUserTimingUiConfig): void {
@@ -2334,7 +2326,7 @@ export class ProductPage implements OnDestroy {
     event: CustomEvent<{ readonly value?: unknown }>,
   ): void {
     this.setWeightRangeDraftValue(event);
-    if (this.isMoventivProfile(this.config.profile)) {
+    if (this.config.family === 'moventiv') {
       void this.requestWeightRangeChange();
     }
   }
@@ -2362,7 +2354,7 @@ export class ProductPage implements OnDestroy {
     }
     const currentValue = this.currentWeightRangeValue();
     const draftValue = this.weightRangeDraftValue();
-    if ((currentValue === null && !this.isMoventivProfile(this.config.profile)) ||
+    if ((currentValue === null && this.config.family !== 'moventiv') ||
         draftValue === null ||
         isSameProductWeightRange(currentValue, draftValue) ||
         !isValidProductWeightRange(this.weightRangeUiConfigs, draftValue)) {
@@ -2458,7 +2450,10 @@ export class ProductPage implements OnDestroy {
     config: ProductProfessionalScalarUiConfig,
   ): void {
     const key = `professional-scalar:${config.field}`;
-    this.toggleProductSliderLock(key, config.profile === 'widoor');
+    this.toggleProductSliderLock(
+      key,
+      productProfileRegistry.get(config.profile).ui.widoorSliderInteraction,
+    );
   }
 
   unlockProfessionalScalarFromZone(
@@ -3322,7 +3317,7 @@ export class ProductPage implements OnDestroy {
   }
 
   weightRangeSelectDisabled(): boolean {
-    return !this.isMoventivProfile(this.config.profile) &&
+    return this.config.family !== 'moventiv' &&
       !this.weightRangeControlUnlocked;
   }
 
@@ -3377,7 +3372,7 @@ export class ProductPage implements OnDestroy {
       message: this.text.weightRangeControls.executing,
     });
 
-    if (this.isMoventivProfile(config.profile)) {
+    if (isMoventivProductProfile(config.profile)) {
       const speedResult = await this.writeMoventivWeightAssociatedSpeeds(
         config.profile,
         draftValue,
@@ -3415,7 +3410,7 @@ export class ProductPage implements OnDestroy {
         status: 'sent',
         message: this.text.weightRangeControls.sent,
       });
-      if (this.isMoventivProfile(config.profile)) {
+      if (productProfileRegistry.get(config.profile).family === 'moventiv') {
         await this.maybeRefreshAfterMoventivWeightChange();
       } else if (this.canRefresh) {
         await this.refreshProductData();
@@ -3429,7 +3424,7 @@ export class ProductPage implements OnDestroy {
   }
 
   private async writeMoventivWeightAssociatedSpeeds(
-    profile: 'moventiv-60' | 'moventiv-80',
+    profile: KnownProductProfile,
     range: ProductWeightRange,
     context: ProductPageNavigationState,
   ): Promise<boolean> {
@@ -4149,7 +4144,7 @@ export class ProductPage implements OnDestroy {
     routeProfile: unknown,
     context: ProductPageNavigationState | null,
   ): ProductConnectionState {
-    if (!isKnownProductProfile(routeProfile) ||
+    if (!productProfileRegistry.has(routeProfile) ||
         context === null ||
         context.profile !== routeProfile) {
       return 'invalid-profile';
@@ -4240,8 +4235,7 @@ export class ProductPage implements OnDestroy {
     await alert.present();
     const dismissal = await alert.onDidDismiss();
     if (dismissal.role !== 'confirm' &&
-        (this.isMoventivProfile(this.config.profile) ||
-          this.config.profile === 'garline') &&
+        this.config.behavior.advancedSettingsConfirmation &&
         this.activeMainTab === 'settings' &&
         this.activeSettingsTab === 'advanced') {
       this.activeSettingsTab = 'basic';
@@ -4254,57 +4248,47 @@ export class ProductPage implements OnDestroy {
 
   private phase1ShowsUserParameterControls(): boolean {
     return this.viewModel.reads.userParameters.status === 'available' ||
-      this.config.profile === 'widoor' ||
-      this.isMoventivProfile(this.config.profile) ||
-      this.config.profile === 'garline';
+      this.config.behavior.showControlsBeforeRead;
   }
 
   private phase1ShowsProfessionalParameterControls(): boolean {
     return this.viewModel.reads.professionalParameters.status === 'available' ||
-      this.config.profile === 'widoor' ||
-      this.isMoventivProfile(this.config.profile) ||
-      this.config.profile === 'garline';
+      this.config.behavior.showControlsBeforeRead;
   }
 
   private withPhase1ImmediatePolicy(
     profile: KnownProductProfile,
     policy: LegacyBleWriteExecutionPolicy | undefined,
   ): LegacyBleWriteExecutionPolicy | undefined {
-    if (profile === 'widoor') {
-      return Object.freeze({
-        ...(policy ?? {}),
-        allowWidoorPhase1ImmediateWrite: true,
-      });
+    switch (productProfileRegistry.get(profile).behavior
+      .immediateWritePolicy) {
+      case 'widoor':
+        return Object.freeze({
+          ...(policy ?? {}),
+          allowWidoorPhase1ImmediateWrite: true,
+        });
+      case 'moventiv':
+        return Object.freeze({
+          ...(policy ?? {}),
+          allowMoventivPhase1ImmediateWrite: true,
+        });
+      case 'garline':
+        return Object.freeze({
+          ...(policy ?? {}),
+          allowGarlinePhase1ImmediateWrite: true,
+        });
+      case 'none':
+        return policy;
     }
-    if (this.isMoventivProfile(profile)) {
-      return Object.freeze({
-        ...(policy ?? {}),
-        allowMoventivPhase1ImmediateWrite: true,
-      });
-    }
-    if (profile === 'garline') {
-      return Object.freeze({
-        ...(policy ?? {}),
-        allowGarlinePhase1ImmediateWrite: true,
-      });
-    }
-    return policy;
   }
 
   private usesPhase1ImmediateWrite(profile: KnownProductProfile): boolean {
-    return profile === 'widoor' ||
-      this.isMoventivProfile(profile) ||
-      profile === 'garline';
-  }
-
-  private isMoventivProfile(
-    profile: KnownProductProfile,
-  ): profile is 'moventiv-60' | 'moventiv-80' {
-    return profile === 'moventiv-60' || profile === 'moventiv-80';
+    return productProfileRegistry.get(profile).behavior
+      .immediateWritePolicy !== 'none';
   }
 
   private usesPhase1SliderAutoWrite(): boolean {
-    return this.usesPhase1ImmediateWrite(this.config.profile);
+    return this.config.behavior.sliderAutoWrite;
   }
 
   showApplyButtonForProfile(profile: KnownProductProfile): boolean {
@@ -4312,7 +4296,7 @@ export class ProductPage implements OnDestroy {
   }
 
   private maybeRefreshAfterMoventivWeightChange(): Promise<void> {
-    if (!this.isMoventivProfile(this.config.profile) || !this.canRefresh) {
+    if (this.config.family !== 'moventiv' || !this.canRefresh) {
       return Promise.resolve();
     }
     return this.refreshProductData({
@@ -4375,8 +4359,11 @@ export class ProductPage implements OnDestroy {
     }
   }
 
-  private toggleProductSliderLock(key: string, widoor: boolean): void {
-    if (!widoor) {
+  private toggleProductSliderLock(
+    key: string,
+    usesExclusiveSliderInteraction: boolean,
+  ): void {
+    if (!usesExclusiveSliderInteraction) {
       this.controlLocks.toggle(key);
       return;
     }
@@ -4994,11 +4981,8 @@ export class ProductPage implements OnDestroy {
   private shouldRefreshAfterProductDateAction(
     action: ProductDateMaintenanceFlowKind,
   ): boolean {
-    return !(
-      (this.isMoventivProfile(this.config.profile) ||
-        this.config.profile === 'garline') &&
-      action === 'maintenance'
-    );
+    return action !== 'maintenance' ||
+      this.config.behavior.refreshAfterMaintenanceAction;
   }
 
   private markProductDateActionReloadFailed(): void {
@@ -5667,7 +5651,7 @@ export function isProductPageNavigationState(
   const candidate = value as Partial<ProductPageNavigationState>;
   const mode = candidate.mode ?? 'connected';
   return (mode === 'connected' || mode === 'demo') &&
-    isKnownProductProfile(candidate.profile) &&
+    productProfileRegistry.has(candidate.profile) &&
     (mode !== 'demo' || isProductDemoProfile(candidate.profile)) &&
     typeof candidate.deviceId === 'string' &&
     candidate.deviceId.trim().length > 0 &&

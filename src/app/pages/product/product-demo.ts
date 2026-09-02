@@ -10,6 +10,8 @@ import { KnownProductProfile } from
 import { MotorStateFrame } from '../../core/services/product-detection';
 import { AppLanguage } from '../../core/services/app-language';
 import { ProductPageNavigationState } from './product-view.model';
+import { productProfileRegistry } from
+  './profiles/product-profile.registry';
 
 export type ProductDemoProfile = 'widoor' | 'moventiv-60' | 'garline';
 
@@ -90,15 +92,16 @@ export function productDemoTextFor(language: AppLanguage): {
 }
 
 export function createProductDemoSnapshot(
-  profile: ProductDemoProfile,
+  profile: KnownProductProfile,
 ): ProductDemoSnapshot {
-  const moventivFamily = profile !== 'widoor';
+  const demoProfile = implementedDemoProfile(profile);
+  const moventivFamily = demoProfile !== 'widoor';
   return Object.freeze({
-    profile,
+    profile: demoProfile,
     version: Object.freeze({
       stack: Object.freeze({ major: 1, minor: 2, patch: 3, build: 4 }),
       bleSoftware: softwareVersion(),
-      productType: profile === 'garline' ? 2 : 0,
+      productType: demoProfile === 'garline' ? 2 : 0,
       productSubtype: 0,
       motorSoftware: softwareVersion(),
       crc: 0,
@@ -129,7 +132,7 @@ export function createProductDemoSnapshot(
       lockMode: 'none',
       openSpeed: 90,
       closeSpeed: 95,
-      shortOpenTime: profile === 'garline' ? 1 : 4,
+      shortOpenTime: demoProfile === 'garline' ? 1 : 4,
       longOpenTime: moventivFamily ? 10 : 0,
       peripheralByte1: 0,
       peripheralByte2: 0,
@@ -141,15 +144,31 @@ export function createProductDemoSnapshot(
         rgbIndicator: true,
       }),
     }),
-    professionalParameters: demoProfessionalParameters(profile),
+    professionalParameters: demoProfessionalParameters(demoProfile),
     motorState: demoMotorState(),
   });
 }
 
 export function isProductDemoProfile(
-  value: KnownProductProfile,
-): value is ProductDemoProfile {
-  return value === 'widoor' || value === 'moventiv-60' || value === 'garline';
+  value: unknown,
+): boolean {
+  return productProfileRegistry.resolve(value)?.capabilities.demo === true;
+}
+
+function implementedDemoProfile(
+  profile: KnownProductProfile,
+): ProductDemoProfile {
+  if (!isProductDemoProfile(profile)) {
+    throw new Error(`Demo is not available for ${profile}.`);
+  }
+  switch (profile) {
+    case 'widoor':
+    case 'moventiv-60':
+    case 'garline':
+      return profile;
+    case 'moventiv-80':
+      throw new Error(`Demo data is not implemented for ${profile}.`);
+  }
 }
 
 function demoProfessionalParameters(

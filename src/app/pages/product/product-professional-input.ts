@@ -11,6 +11,8 @@ import {
   isCataloguedLegacyBleWrite,
 } from '../../core/services/legacy-ble-write-catalog';
 import { ProductPageConfig } from './product-page.config';
+import { productProfileRegistry } from
+  './profiles/product-profile.registry';
 
 export type ProductProfessionalInputField = 'input-1' | 'input-2';
 export type ProductProfessionalInputTextKey = 'input1' | 'input2';
@@ -35,12 +37,6 @@ export interface ProductProfessionalInputAuthorizationInput {
 
 const PROFESSIONAL_INPUT_AUTHORIZATION_TTL_MS = 30_000;
 
-const SUPPORTED_PROFILES: readonly KnownProductProfile[] = [
-  'widoor',
-  'moventiv-60',
-  'moventiv-80',
-];
-
 const INPUT_DEFINITIONS = [
   { field: 'input-1', textKey: 'input1', operation: 'input-1-radar' },
   { field: 'input-2', textKey: 'input2', operation: 'input-2-radar' },
@@ -49,7 +45,8 @@ const INPUT_DEFINITIONS = [
 export function productProfessionalInputConfigsFor(
   config: ProductPageConfig,
 ): readonly ProductProfessionalInputUiConfig[] {
-  if (!SUPPORTED_PROFILES.includes(config.profile) ||
+  if (!productProfileRegistry.get(config.profile).capabilities
+        .professionalInputs ||
       !config.professionalFields.includes('peripherals')) {
     return Object.freeze([]);
   }

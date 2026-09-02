@@ -13,7 +13,17 @@ describe('Product Demo data', () => {
       { profile: 'garline', label: 'Garline' },
       { profile: 'widoor', label: 'Widoor' },
     ]);
+    expect(isProductDemoProfile('widoor')).toBeTrue();
+    expect(isProductDemoProfile('moventiv-60')).toBeTrue();
     expect(isProductDemoProfile('moventiv-80')).toBeFalse();
+    expect(isProductDemoProfile('garline')).toBeTrue();
+    expect(isProductDemoProfile('unknown')).toBeFalse();
+  });
+
+  it('rejects snapshots for profiles without the Demo capability', () => {
+    expect(() => createProductDemoSnapshot('moventiv-80')).toThrowError(
+      'Demo is not available for moventiv-80.',
+    );
   });
 
   it('creates explicit non-connected navigation identities', () => {
