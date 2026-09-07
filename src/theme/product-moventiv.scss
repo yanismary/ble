@@ -1,5 +1,5 @@
-/* Moventiv reproduces the Ionic 3 page while keeping the shared ProductPage. */
-.product-profile-moventiv {
+/* Moventiv and Garline shared this Ionic 3 page presentation. */
+:is(.product-profile-moventiv, .product-profile-garline) {
   .product-navbar {
     --background: #0159a1;
     --color: #fff;
@@ -119,7 +119,7 @@
   }
 }
 
-ion-content.product-profile-moventiv {
+ion-content:is(.product-profile-moventiv, .product-profile-garline) {
   --background: #fff;
 
   .product-page-layout {
@@ -788,7 +788,7 @@ ion-alert.product-mov-weight-alert .alert-button {
 }
 
 @media (max-width: 360px) {
-  ion-content.product-profile-moventiv {
+  ion-content:is(.product-profile-moventiv, .product-profile-garline) {
     :is(.basic-precision-row, .advanced-precision-row) {
       padding-left: 48px;
     }

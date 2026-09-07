@@ -94,6 +94,7 @@ function createMoventivProductProfile(
     },
     ui: {
       widoorLayout: false,
+      moventivLayout: true,
       phase1SliderInteraction: true,
     },
   });

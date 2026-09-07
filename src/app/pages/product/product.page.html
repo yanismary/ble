@@ -1,6 +1,7 @@
 <ion-header
   [class.product-profile-widoor]="config.profile === 'widoor'"
   [class.product-profile-moventiv]="isMoventivProfile"
+  [class.product-profile-garline]="config.profile === 'garline'"
 >
   <ion-toolbar class="mantion-navbar product-navbar">
     <ion-buttons slot="start">
@@ -88,6 +89,7 @@
   [fullscreen]="true"
   [class.product-profile-widoor]="config.profile === 'widoor'"
   [class.product-profile-moventiv]="isMoventivProfile"
+  [class.product-profile-garline]="config.profile === 'garline'"
 >
   <main class="product-page-layout">
     <section class="product-shell-status">
@@ -204,7 +206,7 @@
           }
           @if (showCommandPeripheralControls) {
             <div class="cmd-list user-peripheral-command-controls">
-              @if (!isMoventivProfile) {
+              @if (!usesMoventivLayout) {
               <div class="cmd-head">
                 <h3>Éclairage</h3>
                 <ion-button
@@ -233,7 +235,7 @@
                   <ion-toggle
                     class="user-peripheral-toggle user-peripheral-command-toggle"
                     [checked]="currentUserPeripheralState(peripheralControl.config) === true"
-                    [disabled]="(!isMoventivProfile && !userPeripheralControlUnlocked) || !canToggleUserPeripheral(peripheralControl.config)"
+                    [disabled]="(!usesMoventivLayout && !userPeripheralControlUnlocked) || !canToggleUserPeripheral(peripheralControl.config)"
                     (ionChange)="requestUserPeripheralChange(peripheralControl.config, $event)"
                   ></ion-toggle>
                 </div>
@@ -294,7 +296,7 @@
           @if (showBasicSettingsControls) {
             <ion-list class="basic-settings-list" lines="none">
               @if (showBasicUserPeripheralControls) {
-                @if (config.profile !== 'widoor' && !isMoventivProfile) {
+                @if (config.profile !== 'widoor' && !usesMoventivLayout) {
                   <ion-list-header
                     class="basic-section-header basic-lighting-header"
                     [class.basic-unlocked]="userPeripheralControlUnlocked"
@@ -329,7 +331,7 @@
                       class="user-peripheral-toggle"
                       slot="end"
                       [checked]="currentUserPeripheralState(peripheralControl.config) === true"
-                      [disabled]="(config.profile !== 'widoor' && !isMoventivProfile && !userPeripheralControlUnlocked) || !canToggleUserPeripheral(peripheralControl.config)"
+                      [disabled]="(config.profile !== 'widoor' && !usesMoventivLayout && !userPeripheralControlUnlocked) || !canToggleUserPeripheral(peripheralControl.config)"
                       (ionChange)="requestUserPeripheralChange(peripheralControl.config, $event)"
                     ></ion-toggle>
                   </ion-item>
@@ -697,7 +699,7 @@
                   <ion-badge class="mantion-value-badge basic-value-badge">
                     {{ currentNameRoomDisplay() }}
                   </ion-badge>
-                  @if (config.profile !== 'widoor' && !isMoventivProfile) {
+                  @if (config.profile !== 'widoor' && !usesMoventivLayout) {
                     <ion-button
                       type="button"
                       fill="clear"
@@ -727,7 +729,7 @@
                     label-placement="stacked"
                     [maxlength]="15"
                     [value]="nameRoomDraftValue().name"
-                    [disabled]="(config.profile !== 'widoor' && !isMoventivProfile && !nameRoomControlUnlocked) || nameRoomWriteState.status === 'executing'"
+                    [disabled]="(config.profile !== 'widoor' && !usesMoventivLayout && !nameRoomControlUnlocked) || nameRoomWriteState.status === 'executing'"
                     (ionInput)="setNameRoomDraftName($event)"
                   ></ion-input>
                 </ion-item>
@@ -739,7 +741,7 @@
                     [placeholder]="text.nameRoomControls.roomLabel"
                     interface="popover"
                     [value]="nameRoomDraftValue().roomSuffix"
-                    [disabled]="(config.profile !== 'widoor' && !isMoventivProfile && !nameRoomControlUnlocked) || nameRoomWriteState.status === 'executing'"
+                    [disabled]="(config.profile !== 'widoor' && !usesMoventivLayout && !nameRoomControlUnlocked) || nameRoomWriteState.status === 'executing'"
                     (ionChange)="setNameRoomDraftRoom($event)"
                   >
                     @for (room of roomOptions; track room.suffix) {
@@ -755,7 +757,7 @@
                     size="small"
                     expand="block"
                     (click)="requestNameRoomChange()"
-                    [disabled]="(config.profile !== 'widoor' && !isMoventivProfile && !nameRoomControlUnlocked) || !canRequestNameRoomChange()"
+                    [disabled]="(config.profile !== 'widoor' && !usesMoventivLayout && !nameRoomControlUnlocked) || !canRequestNameRoomChange()"
                   >
                     {{ text.nameRoomControls.apply }}
                   </ion-button>
@@ -776,7 +778,7 @@
           @if (showAdvancedSettingsControls) {
             <ion-list class="advanced-settings-list" lines="none">
               @if (showProfessionalAccessPrompt) {
-                @if (isMoventivProfile) {
+                @if (usesMoventivLayout) {
                   <ion-list-header class="advanced-section-header phase1-mov-expert-header">
                     <ion-label>{{ text.professionalAccess.expertTitle }}</ion-label>
                   </ion-list-header>
@@ -993,7 +995,7 @@
                 }
               }
 
-              @if (isMoventivProfile && (sensitiveActions.length > 0 || showProductDateMaintenanceAction)) {
+              @if (usesMoventivLayout && (sensitiveActions.length > 0 || showProductDateMaintenanceAction)) {
                 <ion-list-header class="advanced-section-header phase1-mov-extra-actions-header">
                   <ion-label>{{ text.sensitiveActions.additionalTitle }}</ion-label>
                 </ion-list-header>
@@ -1032,13 +1034,13 @@
               }
 
               @if (showProfessionalScalarControls) {
-                @if (isMoventivProfile) {
+                @if (usesMoventivLayout) {
                   <ion-list-header class="advanced-section-header phase1-mov-advanced-tuning-header">
                     <ion-label>{{ text.sections.professionalSettings }}</ion-label>
                   </ion-list-header>
                 }
                 @for (scalarControl of visibleProfessionalScalarControls; track scalarControl.config.field) {
-                  @if (isMoventivProfile && professionalAccessGranted && scalarControl.config.field === config.capabilities.professionalAccessFields[0]) {
+                  @if (usesMoventivLayout && professionalAccessGranted && scalarControl.config.field === config.capabilities.professionalAccessFields[0]) {
                     <ion-list-header class="advanced-section-header phase1-mov-expert-mode-header">
                       <ion-label>{{ text.professionalAccess.expertMode }}</ion-label>
                     </ion-list-header>
@@ -1049,7 +1051,7 @@
                     [class.advanced-unlocked]="isProfessionalScalarUnlocked(scalarControl.config)"
                     (click)="usesPhase1SliderInteraction && toggleProfessionalScalarLock(scalarControl.config)"
                   >
-                    @if (config.profile !== 'widoor' && !isMoventivProfile) {
+                    @if (config.profile !== 'widoor' && !usesMoventivLayout) {
                       <img
                         slot="start"
                         class="advanced-row-icon"
@@ -1090,7 +1092,7 @@
                     [attr.data-professional-scalar-field]="scalarControl.config.field"
                     (click)="usesPhase1SliderInteraction && unlockProfessionalScalarFromZone(scalarControl.config)"
                   >
-                    @if (config.profile === 'widoor' || isMoventivProfile) {
+                    @if (config.profile === 'widoor' || usesMoventivLayout) {
                       <img
                         slot="start"
                         class="advanced-row-icon"
@@ -1198,7 +1200,7 @@
           }
         </article>
 
-        @if (!isMoventivProfile && showProductDateMaintenanceAction) {
+        @if (!usesMoventivLayout && showProductDateMaintenanceAction) {
           <article class="product-subsection advanced-settings-panel">
             <h3>{{ text.productDateActions.confirmTitle }}</h3>
             <ion-list class="advanced-actions-list" lines="none">
@@ -1242,7 +1244,7 @@
           </article>
         }
 
-        @if (!isMoventivProfile && sensitiveActions.length > 0) {
+        @if (!usesMoventivLayout && sensitiveActions.length > 0) {
           <article class="product-subsection advanced-settings-panel">
             <ion-list class="advanced-actions-list" lines="none">
               @if (config.profile === 'widoor') {
@@ -1442,8 +1444,8 @@
           @if (viewModel.reads.version.status === 'available') {
             @for (row of versionRows; track row.key) {
               @if (
-                (config.profile !== 'widoor' && !isMoventivProfile) ||
-                (row.key !== 'control-hardware' && (!isMoventivProfile || row.key !== 'motor-address'))
+                (config.profile !== 'widoor' && !usesMoventivLayout) ||
+                (row.key !== 'control-hardware' && (!usesMoventivLayout || row.key !== 'motor-address'))
               ) {
               <ion-item
                 class="product-information-row"
@@ -1460,13 +1462,13 @@
           }
         </ion-list>
 
-        @if ((config.profile === 'widoor' || isMoventivProfile) && viewModel.reads.version.status === 'available') {
+        @if ((config.profile === 'widoor' || usesMoventivLayout) && viewModel.reads.version.status === 'available') {
           <ion-list class="product-information-list product-information-hardware" lines="full">
             <ion-list-header class="mantion-list-header product-information-header">
               <ion-label>{{ widoorHistoricalHeadings.hardware }}</ion-label>
             </ion-list-header>
             @for (row of versionRows; track row.key) {
-              @if (row.key === 'control-hardware' || (isMoventivProfile && row.key === 'motor-address')) {
+              @if (row.key === 'control-hardware' || (usesMoventivLayout && row.key === 'motor-address')) {
                 <ion-item
                   class="product-information-row"
                   [attr.data-info-row]="row.key"

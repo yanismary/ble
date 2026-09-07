@@ -568,8 +568,9 @@ export function productPageTextFor(
   language: ProductPageLanguage,
   profile: string | null = null,
 ) {
-  const isMoventiv = profile?.startsWith('moventiv-') === true;
-  if (language === 'fr' && profile !== 'widoor' && !isMoventiv) {
+  const usesMoventivPage = profile?.startsWith('moventiv-') === true ||
+    profile === 'garline';
+  if (language === 'fr' && profile !== 'widoor' && !usesMoventivPage) {
     return PRODUCT_PAGE_TEXT;
   }
 
@@ -588,7 +589,7 @@ export function productPageTextFor(
       version: labels.sections.version,
       hardware: labels.sections.hardware,
       maintenance: labels.sections.maintenance,
-      professionalSettings: isMoventiv
+      professionalSettings: usesMoventivPage
         ? labels.moventiv.advancedTuning
         : PRODUCT_PAGE_TEXT.sections.professionalSettings,
     }),
@@ -626,10 +627,10 @@ export function productPageTextFor(
     nameRoomControls: Object.freeze({
       ...PRODUCT_PAGE_TEXT.nameRoomControls,
       title: labels.user.nameRoom,
-      nameLabel: isMoventiv
+      nameLabel: usesMoventivPage
         ? labels.user.nameLabel.replace('WIDOOR', 'MOVENTIV')
         : labels.user.nameLabel,
-      roomLabel: isMoventiv
+      roomLabel: usesMoventivPage
         ? labels.user.roomLabel.replace('WIDOOR', 'MOVENTIV')
         : labels.user.roomLabel,
       apply: labels.user.validate,
@@ -648,28 +649,28 @@ export function productPageTextFor(
     }),
     weightRangeControls: Object.freeze({
       ...PRODUCT_PAGE_TEXT.weightRangeControls,
-      selectTitle: isMoventiv
+      selectTitle: usesMoventivPage
         ? labels.moventiv.weightSelectTitle
         : PRODUCT_PAGE_TEXT.weightRangeControls.selectTitle,
-      warning: isMoventiv
+      warning: usesMoventivPage
         ? labels.moventiv.weightWarning
         : PRODUCT_PAGE_TEXT.weightRangeControls.warning,
-      cancel: isMoventiv
+      cancel: usesMoventivPage
         ? labels.moventiv.weightCancel
         : PRODUCT_PAGE_TEXT.weightRangeControls.cancel,
-      confirm: isMoventiv
+      confirm: usesMoventivPage
         ? labels.moventiv.weightConfirm
         : PRODUCT_PAGE_TEXT.weightRangeControls.confirm,
     }),
     professionalAccess: Object.freeze({
       ...PRODUCT_PAGE_TEXT.professionalAccess,
-      expertTitle: isMoventiv
+      expertTitle: usesMoventivPage
         ? labels.moventiv.expertTitle
         : PRODUCT_PAGE_TEXT.professionalAccess.expertTitle,
-      expertMode: isMoventiv
+      expertMode: usesMoventivPage
         ? labels.moventiv.expertMode
         : PRODUCT_PAGE_TEXT.professionalAccess.expertMode,
-      expertPlaceholder: isMoventiv
+      expertPlaceholder: usesMoventivPage
         ? labels.moventiv.expertPlaceholder
         : PRODUCT_PAGE_TEXT.professionalAccess.expertPlaceholder,
     }),
@@ -692,7 +693,7 @@ export function productPageTextFor(
       closeSpeed: labels.user.closeSpeed,
       shortTiming: labels.user.shortTiming,
       longTiming: labels.user.longTiming,
-      staticLight: isMoventiv
+      staticLight: usesMoventivPage
         ? labels.moventiv.staticLight
         : PRODUCT_PAGE_TEXT.user.staticLight,
       dynamicLight: labels.user.dynamicLight,
@@ -711,10 +712,10 @@ export function productPageTextFor(
     }),
     information: Object.freeze({
       ...PRODUCT_PAGE_TEXT.information,
-      currentWeightProfile: isMoventiv
+      currentWeightProfile: usesMoventivPage
         ? labels.moventiv.currentWeightProfile
         : PRODUCT_PAGE_TEXT.information.currentWeightProfile,
-      maximumWeight: isMoventiv
+      maximumWeight: usesMoventivPage
         ? labels.moventiv.maximumWeight
         : PRODUCT_PAGE_TEXT.information.maximumWeight,
     }),

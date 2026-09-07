@@ -698,6 +698,10 @@ export class ProductPage implements OnDestroy {
     return this.config.family === 'moventiv';
   }
 
+  get usesMoventivLayout(): boolean {
+    return this.config.ui.moventivLayout;
+  }
+
   get usesPhase1SliderInteraction(): boolean {
     return this.config.ui.phase1SliderInteraction;
   }
@@ -1282,7 +1286,7 @@ export class ProductPage implements OnDestroy {
     if (weightRange !== null) {
       rows.push(this.row(
         'current-weight-range',
-        this.isMoventivProfile
+        this.usesMoventivLayout
           ? this.text.information.currentWeightProfile
           : this.text.professional.weightRange,
         this.formatInformationWeightRange(weightRange),
@@ -5610,20 +5614,20 @@ export class ProductPage implements OnDestroy {
     label: string,
     value: boolean,
   ): ProductDisplayRow {
-    if (!this.isMoventivProfile && this.config.profile !== 'widoor') {
+    if (!this.usesMoventivLayout && this.config.profile !== 'widoor') {
       return this.booleanRow(key, label, value);
     }
     return this.row(
       key,
       label,
-      this.isMoventivProfile
+      this.usesMoventivLayout
         ? moventivMotorStateLabelFor(currentAppLanguage(), key, value)
         : widoorMotorStateLabelFor(currentAppLanguage(), key, value),
     );
   }
 
   isPositiveMotorRow(row: ProductDisplayRow): boolean {
-    if (!this.isMoventivProfile && this.config.profile !== 'widoor') {
+    if (!this.usesMoventivLayout && this.config.profile !== 'widoor') {
       return row.value === this.text.yes;
     }
     const switches = this.viewModel.motorState?.switches;
@@ -5636,7 +5640,7 @@ export class ProductPage implements OnDestroy {
       case 'ble-switch':
         return switches.ble;
       case 'automatic-manual':
-        return this.isMoventivProfile
+        return this.usesMoventivLayout
           ? switches.direction
           : switches.automaticManual;
       case 'direction':

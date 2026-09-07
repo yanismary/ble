@@ -212,7 +212,8 @@ function fixtureDefinition(
     },
     ui: {
       widoorLayout: family === 'widoor',
-      phase1SliderInteraction: family !== 'garline',
+      moventivLayout: family === 'moventiv' || family === 'garline',
+      phase1SliderInteraction: true,
     },
   };
 }

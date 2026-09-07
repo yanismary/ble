@@ -74,6 +74,21 @@ describe('product page legacy localization', () => {
     },
   );
 
+  it('uses the shared Phase 1 Moventiv labels for Garline', () => {
+    const moventiv = productPageTextFor('fr', 'moventiv-60');
+    const garline = productPageTextFor('fr', 'garline');
+
+    expect(garline.sections.professionalSettings)
+      .toBe(moventiv.sections.professionalSettings);
+    expect(garline.user.staticLight).toBe(moventiv.user.staticLight);
+    expect(garline.nameRoomControls.nameLabel)
+      .toBe(moventiv.nameRoomControls.nameLabel);
+    expect(garline.professionalAccess.expertTitle)
+      .toBe(moventiv.professionalAccess.expertTitle);
+    expect(garline.information.currentWeightProfile)
+      .toBe(moventiv.information.currentWeightProfile);
+  });
+
   it('formats Moventiv switch states with the Phase 1 business labels', () => {
     expect(moventivMotorStateLabelFor('fr', 'push-and-go', false))
       .toBe('Désactivé');

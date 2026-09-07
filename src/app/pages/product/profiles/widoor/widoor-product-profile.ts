@@ -75,6 +75,7 @@ export const WIDOOR_PRODUCT_PROFILE = defineProductProfile({
   },
   ui: {
     widoorLayout: true,
+    moventivLayout: false,
     phase1SliderInteraction: true,
   },
 } satisfies ProductProfileDefinition);

@@ -9,9 +9,26 @@ describe('Garline product profile', () => {
       'motor-close',
       'motor-open-short-timed',
     ]);
-    expect(GARLINE_PRODUCT_PROFILE.userFields).toContain('long-timing');
-    expect(GARLINE_PRODUCT_PROFILE.professionalFields)
-      .toContain('obstacle-sensitivity');
+    expect(GARLINE_PRODUCT_PROFILE.userFields).toEqual([
+      'open-speed',
+      'close-speed',
+      'short-timing',
+      'long-timing',
+      'static-light',
+      'dynamic-light',
+      'rgb',
+    ]);
+    expect(GARLINE_PRODUCT_PROFILE.professionalFields).toEqual([
+      'near-open-speed',
+      'near-close-speed',
+      'obstacle-sensitivity',
+    ]);
+    expect(GARLINE_PRODUCT_PROFILE.visibleLockModes).toEqual([]);
+    expect(GARLINE_PRODUCT_PROFILE.hiddenMotorSwitches).toEqual([
+      'push-and-go',
+      'automatic-manual',
+      'direction',
+    ]);
   });
 
   it('should keep unsupported controls explicitly absent', () => {
@@ -36,5 +53,13 @@ describe('Garline product profile', () => {
     expect(GARLINE_PRODUCT_PROFILE.information.showCurrentWeightRange)
       .toBeTrue();
     expect(GARLINE_PRODUCT_PROFILE.ui.widoorLayout).toBeFalse();
+    expect(GARLINE_PRODUCT_PROFILE.ui.moventivLayout).toBeTrue();
+    expect(GARLINE_PRODUCT_PROFILE.ui.phase1SliderInteraction).toBeTrue();
+    expect(GARLINE_PRODUCT_PROFILE.openSpeedRange).toEqual({ min: 0, max: 100 });
+    expect(GARLINE_PRODUCT_PROFILE.closeSpeedRange).toEqual({ min: 0, max: 100 });
+    expect(GARLINE_PRODUCT_PROFILE.nearOpenSpeedRange)
+      .toEqual({ min: 0, max: 100 });
+    expect(GARLINE_PRODUCT_PROFILE.nearCloseSpeedRange)
+      .toEqual({ min: 0, max: 100 });
   });
 });

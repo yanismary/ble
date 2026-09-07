@@ -76,7 +76,10 @@ import {
   WIDOOR_COMMAND_UI_CONFIGS,
 } from './product-open-command';
 import { PRODUCT_PAGE_CONFIG } from './product-page.config';
-import { productPageTextFor } from './product-page-legacy-localization';
+import {
+  moventivMotorStateLabelFor,
+  productPageTextFor,
+} from './product-page-legacy-localization';
 import { productUserSpeedConfigsFor } from './product-user-speed';
 import { productUserTimingConfigsFor } from './product-user-timing';
 import { productUserPeripheralConfigsFor } from './product-user-peripheral';
@@ -4989,6 +4992,70 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
     },
   );
 
+  it('should render Garline with the shared Phase 1 Moventiv presentation only',
+    async () => {
+      const { fixture, component, writeExecutionService, bleService } =
+        await createProductCommandsUiPage('garline');
+
+      expect(component.isMoventivProfile).toBeFalse();
+      expect(component.usesMoventivLayout).toBeTrue();
+      expect(component.usesPhase1SliderInteraction).toBeTrue();
+
+      let element = fixture.nativeElement as HTMLElement;
+      expect(element.querySelector('ion-header.product-profile-garline'))
+        .not.toBeNull();
+      expect(element.querySelector('ion-content.product-profile-garline'))
+        .not.toBeNull();
+      expect(element.querySelector('.phase1-mov-close-lock-command'))
+        .toBeNull();
+      expect(element.querySelector(
+        '.user-peripheral-command-controls .cmd-head',
+      )).toBeNull();
+
+      component.setActiveMainTab('settings');
+      fixture.detectChanges();
+      element = fixture.nativeElement as HTMLElement;
+
+      expect(component.userTimingControls.map((control) =>
+        control.config.field,
+      )).toEqual(['short-timing', 'long-timing']);
+      expect(element.querySelector('.basic-lighting-header')).toBeNull();
+      expect(element.querySelector(
+        '.basic-name-room-header ion-button',
+      )).toBeNull();
+      expect(element.querySelectorAll(
+        '.basic-slider-row .slider-options-toggle',
+      ).length).toBe(4);
+
+      component.setActiveSettingsTab('advanced');
+      fixture.detectChanges();
+      element = fixture.nativeElement as HTMLElement;
+
+      expect(component.showAdvancedWeightRangeControls).toBeFalse();
+      expect(component.showProfessionalInputControls).toBeFalse();
+      expect(element.querySelector('.phase1-mov-weight-row')).toBeNull();
+      expect(element.querySelector('.advanced-input-row')).toBeNull();
+      expect(element.querySelector('.phase1-mov-extra-actions-header'))
+        .not.toBeNull();
+      expect(element.querySelector('[data-sensitive-action="learning"]'))
+        .not.toBeNull();
+      expect(element.querySelector('.phase1-mov-maintenance-action-row'))
+        .not.toBeNull();
+      expect(element.querySelector('.phase1-mov-advanced-tuning-header'))
+        .not.toBeNull();
+      expect(element.querySelector('.phase1-mov-expert-access-row ion-input'))
+        .not.toBeNull();
+      expect(component.visibleProfessionalScalarControls.map((control) =>
+        control.config.field,
+      )).toEqual(['near-open-speed', 'near-close-speed']);
+      expect(element.querySelectorAll(
+        '.advanced-slider-row .slider-options-toggle',
+      ).length).toBe(2);
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
   it('should hide normal setting status messages and preserve failures',
     async () => {
       const { fixture, component } =
@@ -5159,7 +5226,8 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
             .toContain(component.text.noMotorState);
         }
         if (scenario.profile === 'moventiv-60' ||
-            scenario.profile === 'moventiv-80') {
+            scenario.profile === 'moventiv-80' ||
+            scenario.profile === 'garline') {
           const dates = informationSection?.querySelector<HTMLElement>(
             '.product-information-general + .product-information-dates',
           );
@@ -5206,7 +5274,8 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         )).not.toBeNull();
         if (scenario.profile === 'widoor' ||
             scenario.profile === 'moventiv-60' ||
-            scenario.profile === 'moventiv-80') {
+            scenario.profile === 'moventiv-80' ||
+            scenario.profile === 'garline') {
           expect(informationSection?.querySelector(
             '.product-information-hardware',
           )).not.toBeNull();
@@ -5227,6 +5296,11 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         }
         if (scenario.profile === 'garline') {
           expect(informationText).toContain('140 kg');
+          expect(informationSection?.querySelector(
+            '.product-information-row[data-info-row="current-weight-range"]',
+          )?.textContent).toContain(
+            component.text.information.currentWeightProfile,
+          );
         }
         expect(informationSection?.querySelector(
           'ion-button',
@@ -5344,6 +5418,18 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
             'Automatique',
             'Vers sortie câbles',
             'Appairage',
+          ]);
+        }
+        if (scenario.profile === 'garline') {
+          const values = scenario.visibleSwitches.map((row) =>
+            informationSection?.querySelector(
+              `.product-information-row[data-info-row="${row}"] ` +
+              '.product-information-value',
+            )?.textContent?.trim(),
+          );
+          expect(values).toEqual([
+            moventivMotorStateLabelFor('fr', 'ble-switch', true),
+            moventivMotorStateLabelFor('fr', 'pairing', false),
           ]);
         }
       },
@@ -7212,7 +7298,7 @@ describe('ProductPage product date maintenance actions', () => {
 
       const element = harness.fixture.nativeElement as HTMLElement;
       const advancedButton = element.querySelector<HTMLIonButtonElement>(
-        '.advanced-historical-action',
+        '.phase1-mov-maintenance-action-row ion-button',
       );
       expect(advancedButton?.textContent).toContain(
         harness.component.text.productDateActions.maintenanceLabel,

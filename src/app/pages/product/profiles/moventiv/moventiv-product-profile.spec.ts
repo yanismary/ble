@@ -26,6 +26,8 @@ describe('Moventiv product profiles', () => {
       .toBe('advanced');
     expect(MOVENTIV_60_PRODUCT_PROFILE.capabilities.professionalInputs)
       .toBeTrue();
+    expect(MOVENTIV_60_PRODUCT_PROFILE.ui.moventivLayout).toBeTrue();
+    expect(MOVENTIV_80_PRODUCT_PROFILE.ui.moventivLayout).toBeTrue();
     expect(MOVENTIV_60_PRODUCT_PROFILE.ui.phase1SliderInteraction).toBeTrue();
     expect(MOVENTIV_80_PRODUCT_PROFILE.ui.phase1SliderInteraction).toBeTrue();
   });

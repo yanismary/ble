@@ -27,6 +27,7 @@ describe('Widoor product profile', () => {
     expect(Object.isFrozen(WIDOOR_PRODUCT_PROFILE)).toBeTrue();
     expect(Object.isFrozen(WIDOOR_PRODUCT_PROFILE.sensitiveActions)).toBeTrue();
     expect(WIDOOR_PRODUCT_PROFILE.ui.widoorLayout).toBeTrue();
+    expect(WIDOOR_PRODUCT_PROFILE.ui.moventivLayout).toBeFalse();
     expect(WIDOOR_PRODUCT_PROFILE.ui.phase1SliderInteraction).toBeTrue();
     expect(WIDOOR_PRODUCT_PROFILE.behavior.advancedSettingsConfirmation)
       .toBeTrue();

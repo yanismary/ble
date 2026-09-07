@@ -73,6 +73,7 @@ export const GARLINE_PRODUCT_PROFILE = defineProductProfile({
   },
   ui: {
     widoorLayout: false,
-    phase1SliderInteraction: false,
+    moventivLayout: true,
+    phase1SliderInteraction: true,
   },
 } satisfies ProductProfileDefinition);

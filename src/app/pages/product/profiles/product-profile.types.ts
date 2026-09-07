@@ -121,6 +121,7 @@ export interface ProductProfileInformation {
 
 export interface ProductProfileUiCapabilities {
   readonly widoorLayout: boolean;
+  readonly moventivLayout: boolean;
   readonly phase1SliderInteraction: boolean;
 }
 
