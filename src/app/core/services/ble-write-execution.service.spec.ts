@@ -113,6 +113,11 @@ describe('BleWriteExecutionService', () => {
       const request = requestFor(
         encodeLegacyNameWrite('moventiv-60', 'Porte', '#SDB'),
       );
+      request.policy = {
+        allowPhase1ReferenceOnly: true,
+        gattWriteTimeoutMs: 15_000,
+        useLegacyAndroidWriteApi: true,
+      };
 
       const result = await service.execute(request);
 
@@ -126,6 +131,10 @@ describe('BleWriteExecutionService', () => {
         request.write.characteristicUuid,
         jasmine.any(Uint8Array),
         'device-1',
+        {
+          timeoutMs: 15_000,
+          useLegacyAndroidWriteApi: true,
+        },
       );
     },
   );

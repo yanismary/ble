@@ -4,12 +4,30 @@ import { encodeLegacyLockMode } from
 import { PRODUCT_PAGE_CONFIG } from './product-page.config';
 import {
   createProductWeightRangeAuthorization,
+  formatProductWeightRangeLabel,
   isSameProductWeightRange,
   isValidProductWeightRange,
   productWeightRangeConfigsFor,
 } from './product-weight-range';
 
 describe('Product weight-range controls', () => {
+  it('uses the exact Phase 1 labels for every Moventiv range', () => {
+    const labels = productWeightRangeConfigsFor(
+      PRODUCT_PAGE_CONFIG['moventiv-60'],
+    ).map((config) => config.label);
+
+    expect(labels).toEqual([
+      '< 20Kg',
+      '20-30Kg',
+      '30-40Kg',
+      '40-50Kg',
+      '50-60Kg',
+      '60-80Kg',
+    ]);
+    expect(formatProductWeightRangeLabel({ lower: 10, upper: 20 }))
+      .toBe('< 20Kg');
+  });
+
   it('exposes weight ranges from product configuration', () => {
     expect(productWeightRangeConfigsFor(PRODUCT_PAGE_CONFIG.widoor))
       .toEqual([]);

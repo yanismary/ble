@@ -84,6 +84,8 @@ export interface LegacyBleWriteExecutionPolicy {
   readonly allowGarlinePhase1ImmediateWrite?: true;
   readonly allowLearning?: true;
   readonly allowReset?: true;
+  readonly gattWriteTimeoutMs?: number;
+  readonly useLegacyAndroidWriteApi?: true;
   readonly allowPhysicalValidationAttempt?: {
     readonly operation: WidoorPhysicalValidationOperation;
     readonly profile: 'widoor';
@@ -546,12 +548,28 @@ export class BleWriteExecutionService implements OnDestroy {
     context: ExecutionContext,
   ): Promise<LegacyBleWriteExecutionResult> {
     try {
-      await this.bleService.writeCharacteristic(
+      const writeArguments = [
         request.write.serviceUuid,
         request.write.characteristicUuid,
         Uint8Array.from(request.write.payload),
         request.deviceId,
-      );
+      ] as const;
+      const writeOptions = {
+        ...(request.policy?.gattWriteTimeoutMs === undefined
+          ? {}
+          : { timeoutMs: request.policy.gattWriteTimeoutMs }),
+        ...(request.policy?.useLegacyAndroidWriteApi
+          ? { useLegacyAndroidWriteApi: true }
+          : {}),
+      };
+      if (Object.keys(writeOptions).length === 0) {
+        await this.bleService.writeCharacteristic(...writeArguments);
+      } else {
+        await this.bleService.writeCharacteristic(
+          ...writeArguments,
+          writeOptions,
+        );
+      }
     } catch (error: unknown) {
       return this.contextFailure(request, startedAt, context, false) ??
         this.result(

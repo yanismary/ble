@@ -72,7 +72,7 @@ function createMoventivProductProfile(
         'braking-open-power',
         'obstacle-sensitivity',
       ],
-      weightRangeControl: 'basic',
+      weightRangeControl: 'advanced',
     },
     behavior: {
       immediateWritePolicy: 'moventiv',
@@ -94,7 +94,7 @@ function createMoventivProductProfile(
     },
     ui: {
       widoorLayout: false,
-      widoorSliderInteraction: false,
+      phase1SliderInteraction: true,
     },
   });
 }

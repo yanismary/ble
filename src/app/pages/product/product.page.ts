@@ -119,6 +119,7 @@ import {
 import { ProductProfileDefinition } from
   './profiles/product-profile.types';
 import {
+  moventivMotorStateLabelFor,
   productPageTextFor,
   widoorDelayedOpenLabelFor,
   widoorMotorStateLabelFor,
@@ -154,6 +155,7 @@ import {
 import {
   ProductWeightRangeUiConfig,
   createProductWeightRangeAuthorization,
+  formatProductWeightRangeLabel,
   isSameProductWeightRange,
   isValidProductWeightRange,
   productWeightRangeConfigsFor,
@@ -204,6 +206,8 @@ import {
 import {
   PRODUCT_NAME_ROOM_CONFIRMATION_POLICY,
   PRODUCT_NAME_ROOM_EXECUTION_POLICY,
+  PRODUCT_NAME_ROOM_POST_WRITE_COOLDOWN_MS,
+  PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS,
   PRODUCT_ROOM_OPTIONS,
   ProductNameRoomDraft,
   ProductRoomSuffix,
@@ -427,6 +431,7 @@ export class ProductPage implements OnDestroy {
     readonly status: 'locked' | 'unlocked' | 'failed';
     readonly message: string | null;
   } = Object.freeze({ status: 'locked', message: null });
+  professionalAccessCode = '';
   nameRoomWriteState: {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly message: string | null;
@@ -683,11 +688,30 @@ export class ProductPage implements OnDestroy {
     if (tab === 'settings' && previousTab !== 'settings') {
       this.activeSettingsTab = 'basic';
     }
-    this.refreshCurrentTabData();
   }
 
   get isDemoMode(): boolean {
     return this.context?.mode === 'demo';
+  }
+
+  get isMoventivProfile(): boolean {
+    return this.config.family === 'moventiv';
+  }
+
+  get usesPhase1SliderInteraction(): boolean {
+    return this.config.ui.phase1SliderInteraction;
+  }
+
+  get moventivWeightAlertOptions(): Readonly<{
+    header: string;
+    message: string;
+    cssClass: string;
+  }> {
+    return Object.freeze({
+      header: this.text.weightRangeControls.selectTitle,
+      message: this.text.weightRangeControls.warning,
+      cssClass: 'product-mov-weight-alert',
+    });
   }
 
   setActiveSettingsTab(tab: ProductShellSettingsTab): void {
@@ -695,10 +719,13 @@ export class ProductPage implements OnDestroy {
       return;
     }
     this.activeSettingsTab = tab;
-    this.refreshCurrentTabData();
+  }
+
+  requestActiveSettingsTab(tab: ProductShellSettingsTab): void {
+    this.setActiveSettingsTab(tab);
     if (tab === 'advanced' &&
         this.config.behavior.advancedSettingsConfirmation) {
-      void this.presentMoventivAdvancedAlert();
+      void this.presentAdvancedSettingsAlert();
     }
   }
 
@@ -818,15 +845,16 @@ export class ProductPage implements OnDestroy {
     command: typeof this.productCommands[number],
   ): string {
     const userParameters = this.viewModel.reads.userParameters.value;
-    if (command.config.operation === 'motor-open-short-timed' &&
-      userParameters !== null) {
-      if (this.config.ui.widoorLayout) {
+    if (command.config.operation === 'motor-open-short-timed') {
+      const timingControl = this.userTimingControls.find((control) =>
+        control.config.field === 'short-timing',
+      );
+      if (timingControl !== undefined) {
         return widoorDelayedOpenLabelFor(
           currentAppLanguage(),
-          userParameters.shortOpenTime,
+          this.userTimingDraftValue(timingControl.config),
         );
       }
-      return `${command.text.label} (${userParameters.shortOpenTime} s)`;
     }
     if (command.config.operation === 'motor-open-long-timed' &&
         userParameters !== null) {
@@ -1248,21 +1276,23 @@ export class ProductPage implements OnDestroy {
 
   get informationGeneralRows(): readonly ProductDisplayRow[] {
     const rows: ProductDisplayRow[] = [];
-    if (this.config.maximumWeightLabel !== null) {
-      rows.push(this.row(
-        'maximum-weight',
-        this.text.information.maximumWeight,
-        this.config.maximumWeightLabel,
-      ));
-    }
     const weightRange = this.config.information.showCurrentWeightRange
       ? this.currentWeightRangeValue()
       : null;
     if (weightRange !== null) {
       rows.push(this.row(
         'current-weight-range',
-        this.text.professional.weightRange,
-        `${weightRange.lower}-${weightRange.upper} kg`,
+        this.isMoventivProfile
+          ? this.text.information.currentWeightProfile
+          : this.text.professional.weightRange,
+        this.formatInformationWeightRange(weightRange),
+      ));
+    }
+    if (this.config.maximumWeightLabel !== null) {
+      rows.push(this.row(
+        'maximum-weight',
+        this.text.information.maximumWeight,
+        this.config.maximumWeightLabel,
       ));
     }
     return rows;
@@ -1501,6 +1531,7 @@ export class ProductPage implements OnDestroy {
 
   async refreshProductData(
     options: ProductDataLoadOptions = {},
+    showLoading = true,
   ): Promise<void> {
     if (!this.canRefresh || this.context === null || this.isDemoMode) {
       return;
@@ -1509,7 +1540,7 @@ export class ProductPage implements OnDestroy {
     const context = this.context;
     this.viewModel = {
       ...this.viewModel,
-      loading: true,
+      loading: showLoading,
       globalError: null,
     };
 
@@ -1726,25 +1757,7 @@ export class ProductPage implements OnDestroy {
   }
 
   canApplyNameRoom(): boolean {
-    if (!this.showNameRoomControls ||
-        !this.isCurrentContext() ||
-        this.viewModel.loading ||
-        this.productDataLoadService.isLoading ||
-        this.bleService.isWriting ||
-        this.bleService.disconnectingDeviceId !== null ||
-        this.bleWriteExecutionService.isExecuting ||
-        this.lockModeWriteState.status === 'executing' ||
-        this.userSpeedWriteState.status === 'executing' ||
-        this.userTimingWriteState.status === 'executing' ||
-        this.userPeripheralWriteState.status === 'executing' ||
-        this.weightRangeWriteState.status === 'executing' ||
-        this.professionalInputWriteState.status === 'executing' ||
-        this.professionalScalarWriteState.status === 'executing' ||
-        this.nameRoomWriteState.status === 'executing' ||
-        this.productDateActionBusy ||
-        this.sensitiveActionBusy ||
-        this.commandInProgress ||
-        this.context === null) {
+    if (!this.nameRoomRequestContextAvailable()) {
       return false;
     }
     const validation = validateProductNameRoomDraft(
@@ -1758,15 +1771,32 @@ export class ProductPage implements OnDestroy {
     if (this.isDemoMode) {
       return true;
     }
+    const context = this.context;
+    if (context === null) {
+      return false;
+    }
     const properties = this.bleService.getGattCharacteristicProperties(
       write.serviceUuid,
       write.characteristicUuid,
-      this.context.deviceId,
+      context.deviceId,
     );
     return properties.servicePresent &&
       properties.characteristicPresent &&
       properties.propertiesAvailable &&
       properties.write === true;
+  }
+
+  canRequestNameRoomChange(): boolean {
+    if (!this.nameRoomRequestContextAvailable()) {
+      return false;
+    }
+    const validation = validateProductNameRoomDraft(
+      this.currentNameRoomValue(),
+      this.nameRoomDraftValue(),
+    );
+    return validation.valid
+      ? this.canApplyNameRoom()
+      : validation.error !== 'unchanged';
   }
 
   currentUserSpeedValue(config: ProductUserSpeedUiConfig): number | null {
@@ -1817,7 +1847,7 @@ export class ProductPage implements OnDestroy {
     const key = `user-speed:${config.field}`;
     this.toggleProductSliderLock(
       key,
-      productProfileRegistry.get(config.profile).ui.widoorSliderInteraction,
+      productProfileRegistry.get(config.profile).ui.phase1SliderInteraction,
     );
   }
 
@@ -1970,7 +2000,7 @@ export class ProductPage implements OnDestroy {
     const key = `user-timing:${config.field}`;
     this.toggleProductSliderLock(
       key,
-      productProfileRegistry.get(config.profile).ui.widoorSliderInteraction,
+      productProfileRegistry.get(config.profile).ui.phase1SliderInteraction,
     );
   }
 
@@ -2271,7 +2301,7 @@ export class ProductPage implements OnDestroy {
         message: this.text.professionalInputControls.sent,
       });
       if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
-        await this.refreshProductData();
+        await this.refreshProductData({}, false);
       }
       return;
     }
@@ -2291,6 +2321,10 @@ export class ProductPage implements OnDestroy {
       lower: value.weightRangeLower,
       upper: value.weightRangeUpper,
     };
+  }
+
+  private formatInformationWeightRange(range: ProductWeightRange): string {
+    return formatProductWeightRangeLabel(range);
   }
 
   weightRangeDraftValue(): ProductWeightRange | null {
@@ -2452,7 +2486,7 @@ export class ProductPage implements OnDestroy {
     const key = `professional-scalar:${config.field}`;
     this.toggleProductSliderLock(
       key,
-      productProfileRegistry.get(config.profile).ui.widoorSliderInteraction,
+      productProfileRegistry.get(config.profile).ui.phase1SliderInteraction,
     );
   }
 
@@ -2843,7 +2877,7 @@ export class ProductPage implements OnDestroy {
     }
     if ((config.action === 'reset' || this.shouldRefreshAfterSettledWrite()) &&
         this.canRefresh) {
-      await this.refreshProductData();
+      await this.refreshProductData({}, false);
     }
   }
 
@@ -3105,7 +3139,7 @@ export class ProductPage implements OnDestroy {
         message: this.text.userSpeedControls.sent,
       });
       if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
-        await this.refreshProductData();
+        await this.refreshProductData({}, false);
       }
       return;
     }
@@ -3196,7 +3230,7 @@ export class ProductPage implements OnDestroy {
         message: this.text.userTimingControls.sent,
       });
       if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
-        await this.refreshProductData();
+        await this.refreshProductData({}, false);
       }
       return;
     }
@@ -3297,7 +3331,7 @@ export class ProductPage implements OnDestroy {
         message: this.text.userPeripheralControls.sent,
       });
       if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
-        await this.refreshProductData();
+        await this.refreshProductData({}, false);
       }
       return;
     }
@@ -3413,7 +3447,7 @@ export class ProductPage implements OnDestroy {
       if (productProfileRegistry.get(config.profile).family === 'moventiv') {
         await this.maybeRefreshAfterMoventivWeightChange();
       } else if (this.canRefresh) {
-        await this.refreshProductData();
+        await this.refreshProductData({}, false);
       }
       return;
     }
@@ -3572,7 +3606,7 @@ export class ProductPage implements OnDestroy {
         message: this.text.professionalScalarControls.sent,
       });
       if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
-        await this.refreshProductData();
+        await this.refreshProductData({}, false);
       }
       return;
     }
@@ -3622,7 +3656,31 @@ export class ProductPage implements OnDestroy {
     const code = dismissal.data?.values?.professionalAccessCode ??
       dismissal.data?.professionalAccessCode ??
       '';
+    this.applyProfessionalAccessCode(context, code);
+  }
+
+  setProfessionalAccessCode(
+    eventOrValue: CustomEvent<{ readonly value?: string | null }> | string,
+  ): void {
+    this.professionalAccessCode = typeof eventOrValue === 'string'
+      ? eventOrValue
+      : eventOrValue.detail.value ?? '';
+  }
+
+  submitProfessionalAccessCode(): void {
+    const context = this.currentProfessionalAccessContext();
+    if (context === null || !this.professionalAccessControlsAvailable) {
+      return;
+    }
+    this.applyProfessionalAccessCode(context, this.professionalAccessCode);
+  }
+
+  private applyProfessionalAccessCode(
+    context: ProfessionalAccessContext,
+    code: string,
+  ): void {
     if (this.professionalAccessService.authenticate(context, code)) {
+      this.professionalAccessCode = '';
       this.professionalAccessState = Object.freeze({
         status: 'unlocked',
         message: this.text.professionalAccess.unlocked,
@@ -3818,18 +3876,26 @@ export class ProductPage implements OnDestroy {
   }
 
   async requestNameRoomChange(): Promise<void> {
-    if (!this.canApplyNameRoom() || this.context === null) {
+    if (!this.canRequestNameRoomChange() || this.context === null) {
       return;
     }
 
-    void triggerConfiguredHapticFeedback();
     const validation = validateProductNameRoomDraft(
       this.currentNameRoomValue(),
       this.nameRoomDraftValue(),
     );
     if (!validation.valid) {
+      const message = this.nameRoomValidationMessage();
+      if (message !== null) {
+        this.nameRoomWriteState = Object.freeze({
+          status: 'failed',
+          message,
+        });
+        await this.presentNameRoomWriteFailure(message);
+      }
       return;
     }
+    void triggerConfiguredHapticFeedback();
     if (this.isDemoMode) {
       this.viewModel = {
         ...this.viewModel,
@@ -3847,10 +3913,12 @@ export class ProductPage implements OnDestroy {
     const context = this.context;
     const contextStatus = this.writeContextStatus(context, write);
     if (contextStatus !== null) {
+      const message = this.nameRoomFailureMessage(contextStatus);
       this.nameRoomWriteState = Object.freeze({
         status: 'failed',
-        message: this.nameRoomFailureMessage(contextStatus),
+        message,
       });
+      await this.presentNameRoomWriteFailure(message);
       return;
     }
 
@@ -3871,15 +3939,15 @@ export class ProductPage implements OnDestroy {
       message: this.text.nameRoomControls.executing,
     });
 
-    if (this.config.profile === 'widoor') {
-      await this.delay(200);
-      if (!this.isCurrentContext() || this.context !== context) {
-        this.nameRoomWriteState = Object.freeze({
-          status: 'failed',
-          message: this.text.openCommand.stale,
-        });
-        return;
-      }
+    await this.delay(PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS);
+    if (!this.isCurrentContext() || this.context !== context) {
+      const message = this.text.openCommand.stale;
+      this.nameRoomWriteState = Object.freeze({
+        status: 'failed',
+        message,
+      });
+      await this.presentNameRoomWriteFailure(message);
+      return;
     }
 
     const result = await this.bleWriteExecutionService.execute({
@@ -3897,10 +3965,12 @@ export class ProductPage implements OnDestroy {
       ),
     });
     if (!this.isCurrentContext() || this.context !== context) {
+      const message = this.text.openCommand.stale;
       this.nameRoomWriteState = Object.freeze({
         status: 'failed',
-        message: this.text.openCommand.stale,
+        message,
       });
+      await this.presentNameRoomWriteFailure(message);
       return;
     }
     if (result.status === 'success') {
@@ -3919,18 +3989,18 @@ export class ProductPage implements OnDestroy {
         status: 'sent',
         message: this.text.nameRoomControls.sent,
       });
-      if (this.config.profile === 'widoor') {
-        await this.delay(1800);
-      }
+      await this.delay(PRODUCT_NAME_ROOM_POST_WRITE_COOLDOWN_MS);
       if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
-        await this.refreshProductData();
+        await this.refreshProductData({}, false);
       }
       return;
     }
+    const message = this.text.nameRoomControls.failed;
     this.nameRoomWriteState = Object.freeze({
       status: 'failed',
-      message: this.text.nameRoomControls.failed,
+      message,
     });
+    await this.presentNameRoomWriteFailure(message);
   }
 
   get lockModeControlUnlocked(): boolean {
@@ -4025,7 +4095,7 @@ export class ProductPage implements OnDestroy {
         message: this.text.lockModeControls.sent,
       });
       if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
-        await this.refreshProductData();
+        await this.refreshProductData({}, false);
       }
       return;
     }
@@ -4086,6 +4156,9 @@ export class ProductPage implements OnDestroy {
       );
     if (this.routerOutlet !== null) {
       this.routerOutlet.swipeGesture = false;
+    }
+    if (this.viewModel.lastUpdatedAt === null && this.canRefresh) {
+      void this.refreshProductData();
     }
   }
 
@@ -4211,13 +4284,7 @@ export class ProductPage implements OnDestroy {
       this.bleService.connectionGeneration === context.connectionGeneration;
   }
 
-  private refreshCurrentTabData(): void {
-    if (this.canRefresh) {
-      void this.refreshProductData();
-    }
-  }
-
-  private async presentMoventivAdvancedAlert(): Promise<void> {
+  private async presentAdvancedSettingsAlert(): Promise<void> {
     const alert = await this.alertController.create({
       header: this.text.moventivAdvancedAlert.title,
       message: this.text.moventivAdvancedAlert.message,
@@ -4240,6 +4307,41 @@ export class ProductPage implements OnDestroy {
         this.activeSettingsTab === 'advanced') {
       this.activeSettingsTab = 'basic';
     }
+  }
+
+  private async presentNameRoomWriteFailure(message: string): Promise<void> {
+    const alert = await this.alertController.create({
+      message,
+      buttons: [
+        {
+          text: this.text.widoorCommandAlerts.lock.ok,
+          role: 'cancel',
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  private nameRoomRequestContextAvailable(): boolean {
+    return this.showNameRoomControls &&
+      this.isCurrentContext() &&
+      !this.viewModel.loading &&
+      !this.productDataLoadService.isLoading &&
+      !this.bleService.isWriting &&
+      this.bleService.disconnectingDeviceId === null &&
+      !this.bleWriteExecutionService.isExecuting &&
+      this.lockModeWriteState.status !== 'executing' &&
+      this.userSpeedWriteState.status !== 'executing' &&
+      this.userTimingWriteState.status !== 'executing' &&
+      this.userPeripheralWriteState.status !== 'executing' &&
+      this.weightRangeWriteState.status !== 'executing' &&
+      this.professionalInputWriteState.status !== 'executing' &&
+      this.professionalScalarWriteState.status !== 'executing' &&
+      this.nameRoomWriteState.status !== 'executing' &&
+      !this.productDateActionBusy &&
+      !this.sensitiveActionBusy &&
+      !this.commandInProgress &&
+      this.context !== null;
   }
 
   private shouldRefreshAfterSettledWrite(): boolean {
@@ -4305,7 +4407,7 @@ export class ProductPage implements OnDestroy {
       maintenance: false,
       userParameters: false,
       professionalParameters: true,
-    });
+    }, false);
   }
 
   private scheduleWidoorSliderWrite(
@@ -4468,6 +4570,8 @@ export class ProductPage implements OnDestroy {
     const keepMissingRead = result.status !== 'disconnected' &&
       result.status !== 'stale';
     const fullLoad = result.notRequested.length === 0;
+    const hadConfirmedUserParameters =
+      this.viewModel.reads.userParameters.value !== null;
     this.viewModel = {
       ...this.viewModel,
       connectionState: terminalConnectionState,
@@ -4498,6 +4602,14 @@ export class ProductPage implements OnDestroy {
       lastUpdatedAt: result.completedAt,
       globalError: result.error?.message ?? null,
     };
+    const receivedInitialUserParameters =
+      !hadConfirmedUserParameters &&
+      result.results.userParameters !== undefined &&
+      this.viewModel.reads.userParameters.value !== null;
+    if (receivedInitialUserParameters) {
+      this.userSpeedDrafts.clear();
+      this.userTimingDrafts.clear();
+    }
     if (fullLoad) {
       this.controlLocks.lockAll();
       this.widoorActiveSliderKey = null;
@@ -4862,6 +4974,7 @@ export class ProductPage implements OnDestroy {
       status: 'locked',
       message: null,
     });
+    this.professionalAccessCode = '';
   }
 
   private resetProductDateAction(): void {
@@ -4968,7 +5081,7 @@ export class ProductPage implements OnDestroy {
       return;
     }
     try {
-      await this.refreshProductData();
+      await this.refreshProductData({}, false);
     } catch {
       this.markProductDateActionReloadFailed();
       return;
@@ -5497,18 +5610,20 @@ export class ProductPage implements OnDestroy {
     label: string,
     value: boolean,
   ): ProductDisplayRow {
-    if (this.config.profile !== 'widoor') {
+    if (!this.isMoventivProfile && this.config.profile !== 'widoor') {
       return this.booleanRow(key, label, value);
     }
     return this.row(
       key,
       label,
-      widoorMotorStateLabelFor(currentAppLanguage(), key, value),
+      this.isMoventivProfile
+        ? moventivMotorStateLabelFor(currentAppLanguage(), key, value)
+        : widoorMotorStateLabelFor(currentAppLanguage(), key, value),
     );
   }
 
   isPositiveMotorRow(row: ProductDisplayRow): boolean {
-    if (this.config.profile !== 'widoor') {
+    if (!this.isMoventivProfile && this.config.profile !== 'widoor') {
       return row.value === this.text.yes;
     }
     const switches = this.viewModel.motorState?.switches;
@@ -5521,7 +5636,9 @@ export class ProductPage implements OnDestroy {
       case 'ble-switch':
         return switches.ble;
       case 'automatic-manual':
-        return switches.automaticManual;
+        return this.isMoventivProfile
+          ? switches.direction
+          : switches.automaticManual;
       case 'direction':
         return switches.direction;
       case 'pairing':

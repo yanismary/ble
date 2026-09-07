@@ -1212,6 +1212,72 @@ describe('BleService', () => {
     expect(service.isWriting).toBeFalse();
   });
 
+  it('should pass an explicit per-write timeout to the native client',
+    async () => {
+      await service.connect('device-1');
+
+      await service.writeCharacteristic(
+        'service-uuid',
+        'characteristic-uuid',
+        Uint8Array.from([0x50, 0x6f, 0x72, 0x74, 0x65]),
+        'device-1',
+        { timeoutMs: 15_000 },
+      );
+
+      expect(writeSpy).toHaveBeenCalledOnceWith(
+        'device-1',
+        'service-uuid',
+        'characteristic-uuid',
+        jasmine.any(DataView),
+        { timeout: 15_000 },
+      );
+    },
+  );
+
+  it('should opt a scoped write into the Phase 1 Android GATT API',
+    async () => {
+      await service.connect('device-1');
+
+      await service.writeCharacteristic(
+        'service-uuid',
+        'characteristic-uuid',
+        Uint8Array.from([0x50, 0x6f, 0x72, 0x74, 0x65, 0x23, 0x43, 0x48, 0x41]),
+        'device-1',
+        {
+          timeoutMs: 15_000,
+          useLegacyAndroidWriteApi: true,
+        },
+      );
+
+      expect(writeSpy).toHaveBeenCalledTimes(1);
+      expect(writeSpy.calls.mostRecent().args.slice(0, 4)).toEqual([
+        'device-1',
+        'service-uuid',
+        'characteristic-uuid',
+        jasmine.any(DataView),
+      ]);
+      expect(writeSpy.calls.mostRecent().args[4] as unknown).toEqual({
+        timeout: 15_000,
+        useLegacyAndroidWriteApi: true,
+      });
+    },
+  );
+
+  it('should reject an invalid explicit write timeout before native write',
+    async () => {
+      await service.connect('device-1');
+
+      await expectAsync(service.writeCharacteristic(
+        'service-uuid',
+        'characteristic-uuid',
+        Uint8Array.from([1]),
+        'device-1',
+        { timeoutMs: 0 },
+      )).toBeRejectedWithError('A positive BLE write timeout is required.');
+      expect(writeSpy).not.toHaveBeenCalled();
+    },
+  );
+
   it('should reject an explicit device other than the connected device', async () => {
     await service.connect('device-1');
 

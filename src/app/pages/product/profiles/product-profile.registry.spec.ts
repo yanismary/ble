@@ -195,7 +195,7 @@ function fixtureDefinition(
       demo: profile !== 'moventiv-80',
       professionalInputs: profile !== 'garline',
       professionalAccessFields: [],
-      weightRangeControl: family === 'moventiv' ? 'basic' : 'none',
+      weightRangeControl: family === 'moventiv' ? 'advanced' : 'none',
     },
     behavior: {
       immediateWritePolicy: family,
@@ -212,7 +212,7 @@ function fixtureDefinition(
     },
     ui: {
       widoorLayout: family === 'widoor',
-      widoorSliderInteraction: family === 'widoor',
+      phase1SliderInteraction: family !== 'garline',
     },
   };
 }

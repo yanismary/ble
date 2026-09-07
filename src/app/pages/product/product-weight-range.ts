@@ -77,6 +77,14 @@ export function isValidProductWeightRange(
   );
 }
 
+export function formatProductWeightRangeLabel(
+  range: ProductWeightRange,
+): string {
+  return range.lower === 10 && range.upper === 20
+    ? '< 20Kg'
+    : `${range.lower}-${range.upper}Kg`;
+}
+
 export function createProductWeightRangeAuthorization(
   input: ProductWeightRangeAuthorizationInput,
 ): LegacyBleWriteAuthorization {
@@ -118,7 +126,7 @@ function weightRangeConfig(
     profile,
     field: 'weight-range',
     range: Object.freeze({ lower: range.lower, upper: range.upper }),
-    label: `${range.lower}-${range.upper} kg`,
+    label: formatProductWeightRangeLabel(range),
     catalogFactory: (value: ProductWeightRange) =>
       encodeLegacyWeightRange(profile, value.lower, value.upper),
     confirmationPolicy: { kind: 'gatt-only' } as const,

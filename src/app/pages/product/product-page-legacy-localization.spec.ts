@@ -1,7 +1,9 @@
 import { PRODUCT_PAGE_TEXT } from './product-page.text';
 import {
+  moventivMotorStateLabelFor,
   normalizeProductPageLanguage,
   productPageTextFor,
+  widoorDelayedOpenLabelFor,
 } from './product-page-legacy-localization';
 
 describe('product page legacy localization', () => {
@@ -37,5 +39,49 @@ describe('product page legacy localization', () => {
       .not.toBe(productPageTextFor('fr').sections.settings);
     expect(productPageTextFor('pl').dates.firstCommissioning)
       .not.toBe(productPageTextFor('fr').dates.firstCommissioning);
+  });
+
+  it('formats the short timed motor command with its duration in every language',
+    () => {
+      expect(widoorDelayedOpenLabelFor('fr', 4)).toBe('Ouvrir dans 4 s');
+      expect(widoorDelayedOpenLabelFor('en', 4)).toBe('Open in 4 s');
+      expect(widoorDelayedOpenLabelFor('de', 4)).toBe('In 4 s öffnen');
+      expect(widoorDelayedOpenLabelFor('pl', 4)).toBe('Otwórz za 4 s');
+    },
+  );
+
+  it('restores the Phase 1 Moventiv labels without changing the default catalogue',
+    () => {
+      const text = productPageTextFor('fr', 'moventiv-60');
+
+      expect(text.shell.basic).toBe('Basiques');
+      expect(text.sections.professionalSettings).toBe('Réglages avancés');
+      expect(text.user.staticLight).toBe('Activation du bandeau lumineux');
+      expect(text.user.rgb).toBe('LED Principale');
+      expect(text.nameRoomControls.nameLabel)
+        .toBe('Modifier le nom de votre MOVENTIV');
+      expect(text.nameRoomControls.roomLabel)
+        .toBe('Associer votre MOVENTIV à une pièce');
+      expect(text.weightRangeControls.selectTitle)
+        .toBe('Sélectionner le poids de la porte');
+      expect(text.weightRangeControls.warning)
+        .toContain('réinitialisation des paramètres de vitesse');
+      expect(text.professionalAccess.expertTitle).toBe('Réglages expert');
+      expect(text.professionalAccess.expertMode).toBe('Mode expert');
+      expect(text.information.currentWeightProfile).toBe('Profil actuel');
+      expect(text.information.maximumWeight).toBe('Poids maximum autorisé');
+      expect(productPageTextFor('fr')).toBe(PRODUCT_PAGE_TEXT);
+    },
+  );
+
+  it('formats Moventiv switch states with the Phase 1 business labels', () => {
+    expect(moventivMotorStateLabelFor('fr', 'push-and-go', false))
+      .toBe('Désactivé');
+    expect(moventivMotorStateLabelFor('fr', 'automatic-manual', false))
+      .toBe('Automatique');
+    expect(moventivMotorStateLabelFor('fr', 'direction', false))
+      .toBe('opposé sortie câbles');
+    expect(moventivMotorStateLabelFor('fr', 'pairing', false))
+      .toBe('Appairage');
   });
 });

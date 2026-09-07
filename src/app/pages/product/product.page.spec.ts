@@ -265,6 +265,7 @@ describe('ProductPage', () => {
   let alertRole: string | undefined;
   let alertCreate: jasmine.Spy;
   let alertOptions: Record<string, unknown>[];
+  let delaySpy: jasmine.Spy;
   let routerNavigate: jasmine.Spy;
   let routerNavigationState: ProductPageNavigationState;
   let platform: FakePlatform;
@@ -326,6 +327,7 @@ describe('ProductPage', () => {
 
     fixture = TestBed.createComponent(ProductPage);
     component = fixture.componentInstance;
+    delaySpy = spyOn<any>(component, 'delay').and.resolveTo();
     productExitState = TestBed.inject(ProductExitStateService);
     fixture.detectChanges();
   });
@@ -683,40 +685,70 @@ describe('ProductPage', () => {
       .not.toBeNull();
   });
 
-  it('should refresh on tab clicks even when the tab is already active',
+  it('should load once on first entry and keep cached data across tabs',
     async () => {
-      component.setActiveMainTab('commands');
+      loadService.nextResult = completeLoadResult(
+        'success',
+        'widoor',
+        userValueWithTimings(4, 1),
+      );
+      const shortTimedCommand = component.productCommands.find((command) =>
+        command.config.operation === 'motor-open-short-timed',
+      )!;
+      const shortTiming = component.userTimingControls.find((control) =>
+        control.config.field === 'short-timing',
+      )!.config;
+      component.setUserTimingDraftValue(shortTiming, 1);
+
+      component.ionViewWillEnter();
       await waitForCondition(() =>
         loadService.loadProductData.calls.count() === 1 &&
         !component.viewModel.loading,
       );
+      fixture.detectChanges();
 
-      component.setActiveMainTab('commands');
-      await waitForCondition(() =>
-        loadService.loadProductData.calls.count() === 2 &&
-        !component.viewModel.loading,
-      );
-
-      component.setActiveMainTab('settings');
-      await waitForCondition(() =>
-        loadService.loadProductData.calls.count() === 3 &&
-        !component.viewModel.loading,
-      );
+      expect(component.activeMainTab).toBe('commands');
+      expect(component.productCommandDisplayLabel(shortTimedCommand))
+        .toBe('Ouvrir dans 4 s');
+      expect(fixture.nativeElement.querySelector('.cmd-timed .cmd-label')
+        ?.textContent).toContain('Ouvrir dans 4 s');
 
       component.setActiveMainTab('settings');
-      await waitForCondition(() =>
-        loadService.loadProductData.calls.count() === 4 &&
-        !component.viewModel.loading,
-      );
-
       component.setActiveSettingsTab('basic');
-      await waitForCondition(() =>
-        loadService.loadProductData.calls.count() === 5 &&
-        !component.viewModel.loading,
-      );
+      component.setActiveSettingsTab('advanced');
+      component.setActiveMainTab('information');
+      component.setActiveMainTab('commands');
 
+      expect(loadService.loadProductData).toHaveBeenCalledTimes(1);
+      expect(component.viewModel.loading).toBeFalse();
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should keep toggle DOM and appearance stable while another write runs',
+    async () => {
+      await component.refreshProductData();
+      component.setActiveMainTab('settings');
+      fixture.detectChanges();
+      const before = fixture.nativeElement.querySelector(
+        'ion-toggle.user-peripheral-toggle',
+      ) as HTMLIonToggleElement;
+
+      component.userSpeedWriteState = Object.freeze({
+        status: 'executing',
+        field: component.userSpeedControls[0].config.field,
+        message: component.text.userSpeedControls.executing,
+      });
+      fixture.detectChanges();
+      const during = fixture.nativeElement.querySelector(
+        'ion-toggle.user-peripheral-toggle',
+      ) as HTMLIonToggleElement;
+
+      expect(during).toBe(before);
+      expect(during.disabled).toBeTrue();
+      expect(getComputedStyle(during).opacity).toBe('1');
+      expect(component.viewModel.loading).toBeFalse();
     },
   );
 
@@ -735,8 +767,13 @@ describe('ProductPage', () => {
       });
       expect(element.querySelector('ion-input.name-room-name-input'))
         .not.toBeNull();
-      expect(element.querySelector('ion-select.name-room-select'))
+      const roomSelect = element.querySelector<HTMLIonSelectElement>(
+        'ion-select.name-room-select',
+      );
+      expect(roomSelect).not.toBeNull();
+      expect(element.querySelector('.basic-name-room-actions ion-button'))
         .not.toBeNull();
+      expect(roomSelect?.label).toBe(component.text.nameRoomControls.roomLabel);
       expect(component.canApplyNameRoom()).toBeFalse();
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
     },
@@ -765,8 +802,13 @@ describe('ProductPage', () => {
       Array.from('Couloir#CHA', (character) => character.charCodeAt(0)),
     );
     expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
-    expect(request.policy).toEqual(jasmine.objectContaining({ allowPhase1ReferenceOnly: true }));
+    expect(request.policy).toEqual(jasmine.objectContaining({
+      allowPhase1ReferenceOnly: true,
+      gattWriteTimeoutMs: 15_000,
+      useLegacyAndroidWriteApi: true,
+    }));
     expect(request.authorization).toBeNull();
+    expect(delaySpy.calls.allArgs()).toEqual([[200], [1_800]]);
     expect(component.viewModel.displayedName).toBe('Couloir');
     expect(component.viewModel.roomSuffix).toBe('#CHA');
     expect(component.nameRoomWriteState.status).toBe('sent');
@@ -885,16 +927,50 @@ describe('ProductPage', () => {
     component.setNameRoomDraftName('Abc');
 
     expect(component.canApplyNameRoom()).toBeFalse();
+    expect(component.canRequestNameRoomChange()).toBeTrue();
     expect(component.nameRoomValidationMessage()).toBe(
       component.text.nameRoomControls.errors.tooShort,
     );
     await component.requestNameRoomChange();
 
     expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    expect(alertCreate).toHaveBeenCalledTimes(1);
+    expect(alertOptions[0]).toEqual(jasmine.objectContaining({
+      message: component.text.nameRoomControls.errors.tooShort,
+    }));
     component.setNameRoomDraftName('Porte_1');
     expect(component.canApplyNameRoom()).toBeFalse();
+    expect(component.canRequestNameRoomChange()).toBeTrue();
     expect(component.nameRoomValidationMessage()).toBe(
       component.text.nameRoomControls.errors.invalidCharacters,
+    );
+    await component.requestNameRoomChange();
+
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    expect(alertCreate).toHaveBeenCalledTimes(2);
+    expect(alertOptions[1]).toEqual(jasmine.objectContaining({
+      message: component.text.nameRoomControls.errors.invalidCharacters,
+    }));
+    component.setNameRoomDraftName('123456789012');
+    expect(component.canApplyNameRoom()).toBeFalse();
+    expect(component.canRequestNameRoomChange()).toBeTrue();
+    await component.requestNameRoomChange();
+
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    expect(alertCreate).toHaveBeenCalledTimes(3);
+    expect(alertOptions[2]).toEqual(jasmine.objectContaining({
+      message: component.text.nameRoomControls.errors.tooLong,
+    }));
+    fixture.detectChanges();
+    const pageText = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(pageText).not.toContain(
+      component.text.nameRoomControls.errors.tooShort,
+    );
+    expect(pageText).not.toContain(
+      component.text.nameRoomControls.errors.invalidCharacters,
+    );
+    expect(pageText).not.toContain(
+      component.text.nameRoomControls.errors.tooLong,
     );
   });
 
@@ -926,6 +1002,15 @@ describe('ProductPage', () => {
       roomSuffix: '#CHA',
     });
     expect(component.nameRoomWriteState.status).toBe('failed');
+    fixture.detectChanges();
+    expect(alertCreate).toHaveBeenCalledTimes(1);
+    expect(alertOptions[0]).toEqual(jasmine.objectContaining({
+      message: component.text.nameRoomControls.failed,
+    }));
+    expect((fixture.nativeElement as HTMLElement).textContent)
+      .not.toContain(component.text.nameRoomControls.failed);
+    expect(bleService.connectedDeviceId).toBe('device-1');
+    expect(routerNavigate).not.toHaveBeenCalled();
     expect(readRoomCacheEntry('device-1')).toEqual({
       name: 'Ancien',
       suffix: '#SAL',
@@ -961,6 +1046,9 @@ describe('ProductPage', () => {
       const openButton = element.querySelector<HTMLIonButtonElement>(
         'ion-button.widoor-open-command',
       );
+      const shortTimedCommand = component.productCommands.find((command) =>
+        command.config.operation === 'motor-open-short-timed',
+      )!;
 
       expect(openButton).not.toBeNull();
       expect(openButton?.disabled).toBeFalse();
@@ -969,6 +1057,10 @@ describe('ProductPage', () => {
       );
       expect(element.querySelector('ion-button.widoor-close-command'))
         .not.toBeNull();
+      expect(component.productCommandDisplayLabel(shortTimedCommand))
+        .toBe('Ouvrir dans 1 s');
+      expect(component.productCommandDisplayLabel(shortTimedCommand))
+        .not.toBe(component.text.widoorCommands.openShortTimed.label);
       expect(element.textContent).toContain('Apprentissage');
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(alertCreate).not.toHaveBeenCalled();
@@ -2889,6 +2981,33 @@ describe('ProductPage', () => {
     })).toBeFalse();
     expect(isProductPageNavigationState(navigationState('widoor'))).toBeTrue();
   });
+
+  it('should require the Phase 1 confirmation before Widoor Advanced',
+    async () => {
+      component.setActiveMainTab('settings');
+      component.requestActiveSettingsTab('advanced');
+      await waitForCondition(() => component.activeSettingsTab === 'basic');
+
+      expect(alertCreate).toHaveBeenCalledTimes(1);
+      expect(alertOptions[0]['header'])
+        .toBe(component.text.moventivAdvancedAlert.title);
+      expect(alertOptions[0]['message'])
+        .toBe(component.text.moventivAdvancedAlert.message);
+      expect(component.activeSettingsTab).toBe('basic');
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should open Widoor Advanced after Phase 1 confirmation', async () => {
+    alertRole = 'confirm';
+    component.setActiveMainTab('settings');
+    component.requestActiveSettingsTab('advanced');
+    await waitForCondition(() => alertCreate.calls.count() === 1);
+    await fixture.whenStable();
+
+    expect(component.activeSettingsTab).toBe('advanced');
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+  });
 });
 
 describe('ProductPage commands for other profiles', () => {
@@ -3258,6 +3377,30 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
     },
   );
 
+  it('should render the Phase 1 room choice for Widoor and Moventiv',
+    async () => {
+      for (const profile of ['widoor', 'moventiv-60'] as const) {
+        const harness = await createNameRoomProfileHarness(profile);
+        harness.component.setActiveMainTab('settings');
+        harness.fixture.detectChanges();
+        const element = harness.fixture.nativeElement as HTMLElement;
+        const roomSelect = element.querySelector<HTMLIonSelectElement>(
+          'ion-select.name-room-select',
+        );
+
+        expect(roomSelect).withContext(profile).not.toBeNull();
+        expect(roomSelect?.value).withContext(profile).toBe('#CHA');
+        expect(roomSelect?.label).withContext(profile)
+          .toBe(harness.component.text.nameRoomControls.roomLabel);
+        expect(roomSelect?.querySelectorAll('ion-select-option').length)
+          .withContext(profile).toBe(harness.component.roomOptions.length);
+        expect(element.querySelector('.basic-name-room-actions ion-button'))
+          .withContext(profile).not.toBeNull();
+        harness.fixture.destroy();
+      }
+    },
+  );
+
   for (const profile of ['moventiv-80', 'garline'] as const) {
     it(`should show the Phase 1 advanced-tab alert for ${profile} and return to basic on cancel`,
       async () => {
@@ -3304,7 +3447,7 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
       fixture.detectChanges();
 
       component.setActiveMainTab('settings');
-      component.setActiveSettingsTab('advanced');
+      component.requestActiveSettingsTab('advanced');
       await waitForCondition(() => component.activeSettingsTab === 'basic');
 
       expect(alertCreate).toHaveBeenCalledTimes(1);
@@ -4154,7 +4297,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         }
         if (scenario.profile === 'moventiv-60' ||
             scenario.profile === 'moventiv-80') {
-          expect(element.querySelector('.moventiv-close-lock-command'))
+          expect(element.querySelector('.phase1-mov-close-lock-command'))
             .not.toBeNull();
           expect(element.textContent).not.toContain(
             component.text.lockModeControls.title,
@@ -4294,15 +4437,15 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       profile: 'moventiv-60',
       basicLighting: ['dynamic-light', 'rgb'],
       timings: ['short-timing'],
-      basicWeight: true,
-      advancedWeight: false,
+      basicWeight: false,
+      advancedWeight: true,
     },
     {
       profile: 'moventiv-80',
       basicLighting: ['dynamic-light', 'rgb'],
       timings: ['short-timing'],
-      basicWeight: true,
-      advancedWeight: false,
+      basicWeight: false,
+      advancedWeight: true,
     },
     {
       profile: 'garline',
@@ -4523,15 +4666,374 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         .toBe(1);
 
       component.setUserSpeedDraftValue(closeSpeed, closeSpeed.range.min);
+      fixture.detectChanges();
+      expect(element.querySelector(
+        `[data-basic-slider-field="${closeSpeed.field}"] .basic-value-badge`,
+      )?.textContent).toContain(`${closeSpeed.range.min} %`);
+
       component.stepUserSpeedDraft(closeSpeed, -1);
       expect(component.userSpeedDraftValue(closeSpeed))
         .toBe(closeSpeed.range.min);
 
-      component.setUserSpeedDraftValue(closeSpeed, closeSpeed.range.max);
+      const editableValue = closeSpeed.range.max - 1;
+      component.setUserSpeedDraftValue(closeSpeed, editableValue);
+      component.stepUserSpeedDraft(closeSpeed, 1);
+      fixture.detectChanges();
+      expect(element.querySelector(
+        `[data-basic-slider-field="${closeSpeed.field}"] .basic-value-badge`,
+      )?.textContent).toContain(`${closeSpeed.range.max} %`);
+
       component.stepUserSpeedDraft(closeSpeed, 1);
       expect(component.userSpeedDraftValue(closeSpeed))
         .toBe(closeSpeed.range.max);
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should reproduce the Phase 1 Moventiv slider interaction without writing',
+    async () => {
+      const { fixture, component, writeExecutionService } =
+        await createProductCommandsUiPage('moventiv-60');
+      const openSpeed = component.userSpeedControls[0].config;
+      const closeSpeed = component.userSpeedControls[1].config;
+
+      component.setActiveMainTab('settings');
+      fixture.detectChanges();
+
+      let element = fixture.nativeElement as HTMLElement;
+      const openSpeedHeader = element.querySelector<HTMLElement>(
+        `[data-basic-slider-field="${openSpeed.field}"]`,
+      );
+      expect(openSpeedHeader).not.toBeNull();
+      expect(element.querySelector('.basic-precision-row')).toBeNull();
+
+      openSpeedHeader?.click();
+      fixture.detectChanges();
+      element = fixture.nativeElement as HTMLElement;
+
+      expect(component.isUserSpeedUnlocked(openSpeed)).toBeTrue();
+      expect(element.querySelector(
+        `[data-basic-slider-field="${openSpeed.field}"] + ion-item.slider-unlocked`,
+      )).not.toBeNull();
+      expect(element.querySelector('.basic-precision-row')).toBeNull();
+
+      element.querySelector<HTMLElement>(
+        `[data-basic-slider-field="${openSpeed.field}"] + ion-item .slider-options-toggle`,
+      )?.click();
+      fixture.detectChanges();
+      element = fixture.nativeElement as HTMLElement;
+
+      expect(component.isUserSpeedPrecisionOpen(openSpeed)).toBeTrue();
+      expect(element.querySelector('.basic-precision-row')).not.toBeNull();
+
+      element.querySelector<HTMLElement>(
+        `[data-basic-slider-field="${closeSpeed.field}"]`,
+      )?.click();
+      fixture.detectChanges();
+
+      expect(component.isUserSpeedUnlocked(openSpeed)).toBeFalse();
+      expect(component.isUserSpeedPrecisionOpen(openSpeed)).toBeFalse();
+      expect(component.isUserSpeedUnlocked(closeSpeed)).toBeTrue();
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should update slider badges on ionInput without writing',
+    async () => {
+      const { fixture, component, writeExecutionService } =
+        await createProductCommandsUiPage('moventiv-60');
+      const speed = component.userSpeedControls[0].config;
+
+      component.setActiveMainTab('settings');
+      component.toggleUserSpeedLock(speed);
+      fixture.detectChanges();
+
+      const element = fixture.nativeElement as HTMLElement;
+      const range = element.querySelector<HTMLIonRangeElement>(
+        `[data-basic-slider-field="${speed.field}"] + ion-item ion-range`,
+      )!;
+      range.dispatchEvent(new CustomEvent('ionInput', {
+        bubbles: true,
+        detail: { value: 61 },
+      }));
+      fixture.detectChanges();
+
+      expect(component.userSpeedDraftValue(speed)).toBe(61);
+      expect(element.querySelector(
+        `[data-basic-slider-field="${speed.field}"] .basic-value-badge`,
+      )?.textContent).toContain('61 %');
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      const timing = component.userTimingControls.find((control) =>
+        control.config.field === 'short-timing',
+      )!.config;
+      component.toggleUserTimingLock(timing);
+      fixture.detectChanges();
+      const timingRange = element.querySelector<HTMLIonRangeElement>(
+        `[data-basic-slider-field="${timing.field}"] + ion-item ion-range`,
+      )!;
+      timingRange.dispatchEvent(new CustomEvent('ionInput', {
+        bubbles: true,
+        detail: { value: 4 },
+      }));
+      fixture.detectChanges();
+
+      expect(component.userTimingDraftValue(timing)).toBe(4);
+      expect(element.querySelector(
+        `[data-basic-slider-field="${timing.field}"] .basic-value-badge`,
+      )?.textContent).toContain('4 s');
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  for (const profile of [
+    'widoor',
+    'moventiv-60',
+    'moventiv-80',
+    'garline',
+  ] as const) {
+    it(`should keep the ${profile} short timed command label duration dynamic`,
+      async () => {
+        const { fixture, component } =
+          await createProductCommandsUiPage(profile);
+        const command = component.productCommands.find((candidate) =>
+          candidate.config.operation === 'motor-open-short-timed',
+        )!;
+        const timing = component.userTimingControls.find((control) =>
+          control.config.field === 'short-timing',
+        )!.config;
+
+        expect(component.productCommandDisplayLabel(command))
+          .toBe('Ouvrir dans 0 s');
+        expect(component.productCommandDisplayLabel(command))
+          .not.toBe(component.text.widoorCommands.openShortTimed.label);
+
+        component.setUserTimingDraftValue(timing, 4);
+        fixture.detectChanges();
+
+        expect(component.productCommandDisplayLabel(command))
+          .toBe('Ouvrir dans 4 s');
+        expect(fixture.nativeElement.querySelector('.cmd-timed .cmd-label')
+          ?.textContent).toContain('Ouvrir dans 4 s');
+      },
+    );
+  }
+
+  it('should replace an initial short-timing draft with the first BLE value',
+    async () => {
+      const { fixture, component, loadService } =
+        await createProductCommandsUiPage('moventiv-60');
+      const command = component.productCommands.find((candidate) =>
+        candidate.config.operation === 'motor-open-short-timed',
+      )!;
+      const timing = component.userTimingControls.find((control) =>
+        control.config.field === 'short-timing',
+      )!.config;
+      const loaded = completeLoadResult(
+        'success',
+        'moventiv-60',
+        userValueWithTimings(4, 12),
+      );
+
+      component.viewModel = {
+        ...component.viewModel,
+        reads: {
+          ...component.viewModel.reads,
+          userParameters: {
+            status: 'not-loaded',
+            readStatus: null,
+            value: null,
+            result: null,
+          },
+        },
+      };
+      component.setUserTimingDraftValue(timing, 1);
+      expect(component.productCommandDisplayLabel(command))
+        .toBe('Ouvrir dans 1 s');
+      loadService.nextResult = {
+        ...loaded,
+        executedOrder: ['userParameters'],
+        results: { userParameters: loaded.results.userParameters },
+        notRequested: [
+          'version',
+          'datesAndCycles',
+          'maintenance',
+          'professionalParameters',
+        ],
+      };
+
+      await component.refreshProductData();
+      fixture.detectChanges();
+
+      expect(component.currentUserTimingValue(timing)).toBe(4);
+      expect(component.userTimingDraftValue(timing)).toBe(4);
+      expect(component.productCommandDisplayLabel(command))
+        .toBe('Ouvrir dans 4 s');
+      expect(fixture.nativeElement.querySelector('.cmd-timed .cmd-label')
+        ?.textContent).toContain('Ouvrir dans 4 s');
+    },
+  );
+
+  it('should render basic slider drafts immediately and hide only normal feedback',
+    async () => {
+      const { fixture, component, writeExecutionService } =
+        await createProductCommandsUiPage('widoor');
+      const speed = component.userSpeedControls[0].config;
+      const timing = component.userTimingControls[0].config;
+
+      component.setActiveMainTab('settings');
+      component.setUserSpeedDraftValue(speed, 40);
+      component.setUserTimingDraftValue(timing, 4);
+      fixture.detectChanges();
+
+      let element = fixture.nativeElement as HTMLElement;
+      expect(element.querySelector(
+        `[data-basic-slider-field="${speed.field}"] .basic-value-badge`,
+      )?.textContent).toContain('40 %');
+      expect(element.querySelector(
+        `[data-basic-slider-field="${timing.field}"] .basic-value-badge`,
+      )?.textContent).toContain('4 s');
+
+      await component.requestUserSpeedChange(speed);
+      fixture.detectChanges();
+      element = fixture.nativeElement as HTMLElement;
+
+      expect(element.textContent)
+        .not.toContain(component.text.userSpeedControls.sent);
+
+      component.setUserTimingDraftValue(timing, 4);
+      await component.requestUserTimingChange(timing);
+      fixture.detectChanges();
+      element = fixture.nativeElement as HTMLElement;
+
+      expect(element.textContent)
+        .not.toContain(component.text.userTimingControls.sent);
+
+      writeExecutionService.nextResult = {
+        ...userSpeedExecutionResult('widoor', 'open-speed', '01 29'),
+        status: 'failed',
+        nativeWriteCompleted: false,
+        error: { code: 'native-write-failed', message: 'Native failure' },
+      };
+      component.setUserSpeedDraftValue(speed, 41);
+      await component.requestUserSpeedChange(speed);
+      fixture.detectChanges();
+
+      expect(component.userSpeedWriteState.status).toBe('failed');
+      expect((fixture.nativeElement as HTMLElement).textContent)
+        .toContain(component.text.userSpeedControls.failed);
+    },
+  );
+
+  it('should render the Phase 1 Moventiv advanced controls and ordering hooks',
+    async () => {
+      const { fixture, component, writeExecutionService, bleService } =
+        await createProductCommandsUiPage('moventiv-60');
+
+      component.setActiveMainTab('settings');
+      component.requestActiveSettingsTab('advanced');
+      fixture.detectChanges();
+
+      const element = fixture.nativeElement as HTMLElement;
+      const weightRow = element.querySelector<HTMLElement>(
+        '.phase1-mov-weight-row',
+      );
+      const inputRows = Array.from(element.querySelectorAll<HTMLElement>(
+        '.advanced-input-row',
+      ));
+
+      expect(component.showBasicWeightRangeControls).toBeFalse();
+      expect(component.showAdvancedWeightRangeControls).toBeTrue();
+      expect(weightRow).not.toBeNull();
+      expect(weightRow?.querySelector('ion-select')?.interface).toBe('alert');
+      expect(component.weightRangeControls.map((control) =>
+        control.config.label,
+      )).toEqual([
+        '< 20Kg',
+        '20-30Kg',
+        '30-40Kg',
+        '40-50Kg',
+        '50-60Kg',
+        '60-80Kg',
+      ]);
+      expect(Array.from(weightRow?.querySelectorAll('ion-select-option') ?? [])
+        .map((option) => option.textContent?.trim())).toEqual([
+          '< 20Kg',
+          '20-30Kg',
+          '30-40Kg',
+          '40-50Kg',
+          '50-60Kg',
+          '60-80Kg',
+        ]);
+      expect(component.moventivWeightAlertOptions).toEqual({
+        header: component.text.weightRangeControls.selectTitle,
+        message: component.text.weightRangeControls.warning,
+        cssClass: 'product-mov-weight-alert',
+      });
+      expect(inputRows.length).toBe(2);
+      expect(inputRows.every((row) => row.querySelector('ion-toggle') !== null))
+        .toBeTrue();
+      expect(inputRows.every((row) => row.querySelector('ion-select') === null))
+        .toBeTrue();
+      expect(element.querySelector('.phase1-mov-extra-actions-header'))
+        .not.toBeNull();
+      expect(element.querySelector('[data-sensitive-action="learning"]'))
+        .not.toBeNull();
+      expect(element.querySelector('.phase1-mov-maintenance-action-row'))
+        .not.toBeNull();
+      expect(element.querySelector('.phase1-mov-expert-access-row ion-input'))
+        .not.toBeNull();
+      expect(element.querySelector('.phase1-mov-expert-submit-row ion-button'))
+        .not.toBeNull();
+      expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should hide normal setting status messages and preserve failures',
+    async () => {
+      const { fixture, component } =
+        await createProductCommandsUiPage('moventiv-60');
+      component.setActiveMainTab('settings');
+      component.setActiveSettingsTab('advanced');
+      component.weightRangeWriteState = Object.freeze({
+        status: 'sent',
+        message: 'weight-success',
+      });
+      component.professionalInputWriteState = Object.freeze({
+        status: 'sent',
+        field: component.professionalInputControls[0].config.field,
+        message: 'input-success',
+      });
+      component.professionalAccessState = Object.freeze({
+        status: 'unlocked',
+        message: 'access-success',
+      });
+      fixture.detectChanges();
+
+      let textContent = (fixture.nativeElement as HTMLElement).textContent ?? '';
+      expect(textContent).not.toContain('weight-success');
+      expect(textContent).not.toContain('input-success');
+      expect(textContent).not.toContain('access-success');
+
+      component.weightRangeWriteState = Object.freeze({
+        status: 'failed',
+        message: 'weight-failed',
+      });
+      component.professionalInputWriteState = Object.freeze({
+        status: 'failed',
+        field: component.professionalInputControls[0].config.field,
+        message: 'input-failed',
+      });
+      component.professionalAccessState = Object.freeze({
+        status: 'failed',
+        message: 'access-failed',
+      });
+      fixture.detectChanges();
+
+      textContent = (fixture.nativeElement as HTMLElement).textContent ?? '';
+      expect(textContent).toContain('weight-failed');
+      expect(textContent).toContain('input-failed');
+      expect(textContent).toContain('access-failed');
     },
   );
 
@@ -4649,8 +5151,21 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
             `.product-information-row[data-info-row="${row}"]`,
           )).toBeNull();
         }
-        expect(informationSection?.textContent)
-          .toContain(component.text.noMotorState);
+        if (scenario.profile === 'widoor') {
+          expect(informationSection?.textContent)
+            .not.toContain(component.text.noMotorState);
+        } else {
+          expect(informationSection?.textContent)
+            .toContain(component.text.noMotorState);
+        }
+        if (scenario.profile === 'moventiv-60' ||
+            scenario.profile === 'moventiv-80') {
+          const dates = informationSection?.querySelector<HTMLElement>(
+            '.product-information-general + .product-information-dates',
+          );
+          expect(dates).not.toBeNull();
+          expect(getComputedStyle(dates!).borderTopWidth).toBe('1px');
+        }
         expect(informationSection?.querySelector(
           '.product-information-row[data-info-row="first-commissioning"]',
         )).not.toBeNull();
@@ -4689,14 +5204,22 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         expect(informationSection?.querySelector(
           '.product-information-row[data-info-row="control-hardware"]',
         )).not.toBeNull();
-        if (scenario.profile === 'widoor') {
+        if (scenario.profile === 'widoor' ||
+            scenario.profile === 'moventiv-60' ||
+            scenario.profile === 'moventiv-80') {
           expect(informationSection?.querySelector(
             '.product-information-hardware',
           )).not.toBeNull();
           expect(informationText).toContain('Materiel');
-          expect(informationSection?.querySelector(
-            '.product-information-row[data-info-row="motor-address"]',
-          )).toBeNull();
+          if (scenario.profile === 'widoor') {
+            expect(informationSection?.querySelector(
+              '.product-information-row[data-info-row="motor-address"]',
+            )).toBeNull();
+          } else {
+            expect(informationSection?.querySelector(
+              '.product-information-row[data-info-row="motor-address"]',
+            )).not.toBeNull();
+          }
         } else {
           expect(informationSection?.querySelector(
             '.product-information-row[data-info-row="motor-address"]',
@@ -4808,6 +5331,21 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         expect(informationText).not.toContain(component.text.motor.rawState);
         expect(informationText).not.toContain(component.text.motor.stateLabel);
         expect(informationText).not.toContain(component.text.motor.switchesRaw);
+        if (scenario.profile.startsWith('moventiv-')) {
+          const values = scenario.visibleSwitches.map((row) =>
+            informationSection?.querySelector(
+              `.product-information-row[data-info-row="${row}"] ` +
+              '.product-information-value',
+            )?.textContent?.trim(),
+          );
+          expect(values).toEqual([
+            'Activé',
+            'Activé',
+            'Automatique',
+            'Vers sortie câbles',
+            'Appairage',
+          ]);
+        }
       },
     );
   }
@@ -5042,7 +5580,9 @@ describe('ProductPage weight-range controls for profile variants', () => {
         expect(component.currentWeightRangeValue()).toEqual(scenario.current);
         expect(component.weightRangeDraftValue()).toEqual(scenario.current);
         expect(fixture.nativeElement.textContent)
-          .toContain(`${scenario.current.lower}–${scenario.current.upper}`);
+          .toContain(
+            `${scenario.current.lower}-${scenario.current.upper}Kg`,
+          );
 
         component.setWeightRangeDraftValue(scenario.invalid);
         await component.requestWeightRangeChange();
@@ -5590,6 +6130,7 @@ describe('ProductPage professional scalar controls',
         async () => {
           const {
             component,
+            fixture,
             professionalAccessService,
             writeExecutionService,
           } = await createProfessionalScalarPage(
@@ -5609,6 +6150,9 @@ describe('ProductPage professional scalar controls',
             candidate.config.field,
           )).toEqual(scenario.controls);
           expect(control).toBeDefined();
+          component.setActiveMainTab('settings');
+          component.setActiveSettingsTab('advanced');
+          await fixture.whenStable();
           if (control?.requiresProfessionalAccess) {
             expect(component.visibleProfessionalScalarControls.map(
               (candidate) => candidate.config.field,
@@ -5639,9 +6183,18 @@ describe('ProductPage professional scalar controls',
           expect(component.canApplyProfessionalScalar(control!)).toBeTrue();
           expect(writeExecutionService.execute).not.toHaveBeenCalled();
 
+          fixture.detectChanges();
+          expect(fixture.nativeElement.querySelector(
+            `[data-professional-scalar-header="${scenario.field}"] ` +
+            '.advanced-value-badge',
+          )?.textContent).toContain(String(scenario.accepted));
+
           await component.requestProfessionalScalarChange(control!);
+          fixture.detectChanges();
 
           expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+          expect((fixture.nativeElement as HTMLElement).textContent)
+            .not.toContain(component.text.professionalScalarControls.sent);
           const request = writeExecutionService.execute.calls.mostRecent()
             .args[0] as LegacyBleWriteRequest;
           expect(request.profile).toBe(scenario.profile);
@@ -5666,6 +6219,7 @@ describe('ProductPage professional scalar controls',
       async () => {
         const {
           component,
+          fixture,
           professionalAccessService,
           writeExecutionService,
         } = await createProfessionalScalarPage(
@@ -5684,6 +6238,9 @@ describe('ProductPage professional scalar controls',
           (candidate) =>
             candidate.config.field === 'obstacle-sensitivity',
         )!.config;
+        component.setActiveMainTab('settings');
+        component.setActiveSettingsTab('advanced');
+        await fixture.whenStable();
         expect(professionalAccessService.authenticate({
           profile: 'garline',
           deviceId: 'device-1',
@@ -5697,6 +6254,9 @@ describe('ProductPage professional scalar controls',
         expect(component.currentProfessionalScalarValue(control)).toBe(2);
         expect(component.professionalScalarDraftValue(control)).toBe(3);
         expect(component.professionalScalarWriteState.status).toBe('failed');
+        fixture.detectChanges();
+        expect((fixture.nativeElement as HTMLElement).textContent)
+          .toContain(component.text.professionalScalarControls.failed);
       },
     );
 
@@ -5868,10 +6428,18 @@ describe('ProductPage professional scalar controls',
         const protectedControl = component.professionalScalarControls.find(
           (candidate) => candidate.config.field === 'braking-open-power',
         )!.config;
+        const advancedControl = component.professionalScalarControls.find(
+          (candidate) => candidate.config.field === 'near-open-speed',
+        )!.config;
 
         component.setActiveMainTab('settings');
         component.setActiveSettingsTab('advanced');
         component.toggleProfessionalScalarLock(protectedControl);
+        component.toggleProfessionalScalarLock(advancedControl);
+        component.toggleProfessionalScalarPrecision(
+          advancedControl,
+          new Event('click'),
+        );
         fixture.detectChanges();
 
         let element = fixture.nativeElement as HTMLElement;
@@ -5889,14 +6457,33 @@ describe('ProductPage professional scalar controls',
           '[data-professional-scalar-field]',
         )).map((row) => row.getAttribute('data-professional-scalar-field')))
           .toEqual(['near-open-speed', 'near-close-speed']);
+        expect(element.querySelector('.phase1-mov-expert-mode-header'))
+          .toBeNull();
+        expect(element.querySelectorAll(
+          '[data-professional-scalar-header] .advanced-lock-icon',
+        ).length).toBe(2);
         expect(element.querySelector<HTMLImageElement>(
           'img[src="assets/img/icon_speed.svg"]',
         )).not.toBeNull();
-        expect(element.querySelector<HTMLImageElement>(
-          'img[src="assets/img/icon_lock_on.svg"]',
+        expect(element.querySelector<HTMLElement>(
+          '[data-professional-scalar-field] ion-icon',
         )).not.toBeNull();
+        const advancedPrecision = element.querySelector<HTMLElement>(
+          '[data-professional-scalar-precision="near-open-speed"]',
+        );
+        expect(advancedPrecision).not.toBeNull();
+        expect(advancedPrecision?.textContent)
+          .toContain(component.text.shell.increase);
+        expect(advancedPrecision?.textContent)
+          .toContain(component.text.shell.decrease);
+        expect(getComputedStyle(advancedPrecision!).order).toBe('40');
 
         await component.requestProfessionalAccess();
+        component.toggleProfessionalScalarLock(protectedControl);
+        component.toggleProfessionalScalarPrecision(
+          protectedControl,
+          new Event('click'),
+        );
         fixture.detectChanges();
         element = fixture.nativeElement as HTMLElement;
 
@@ -5912,9 +6499,23 @@ describe('ProductPage professional scalar controls',
             'braking-open-power',
             'obstacle-sensitivity',
           ]);
+        expect(element.querySelector('.phase1-mov-expert-mode-header')
+          ?.textContent).toContain('Mode expert');
+        expect(element.querySelectorAll(
+          '[data-professional-scalar-header] .advanced-lock-icon',
+        ).length).toBe(6);
         expect(element.querySelector<HTMLImageElement>(
           'img[src="assets/img/icon_force.svg"]',
         )).not.toBeNull();
+        const expertPrecision = element.querySelector<HTMLElement>(
+          '[data-professional-scalar-precision="braking-open-power"]',
+        );
+        expect(expertPrecision).not.toBeNull();
+        expect(expertPrecision?.textContent)
+          .toContain(component.text.shell.increase);
+        expect(expertPrecision?.textContent)
+          .toContain(component.text.shell.decrease);
+        expect(getComputedStyle(expertPrecision!).order).toBe('40');
         expect(writeExecutionService.execute).not.toHaveBeenCalled();
       },
     );
@@ -5970,12 +6571,12 @@ describe('ProductPage professional scalar controls',
           component.sensitiveActions.find((action) =>
             action.action === 'radar-test-1',
           )!,
-        )).toBeFalse();
+        )).toBeTrue();
         expect(component.canExecuteSensitiveAction(
           component.sensitiveActions.find((action) =>
             action.action === 'professional-peripheral-lock',
           )!,
-        )).toBeFalse();
+        )).toBeTrue();
 
         const learningButton = element.querySelector<HTMLIonButtonElement>(
           '[data-sensitive-action="learning"] ion-button',
@@ -5986,6 +6587,59 @@ describe('ProductPage professional scalar controls',
         expect(requestSensitiveAction)
           .toHaveBeenCalledOnceWith(component.sensitiveActions[0]);
         expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should keep a large action button visually stable while its write is pending',
+      async () => {
+        const {
+          component,
+          fixture,
+          writeExecutionService,
+        } = await createProfessionalScalarPage(
+          'widoor',
+          professionalValue('widoor', 0, 0, {
+            breakForceAtOpen: 5,
+            nearOpenSpeed: 25,
+            nearCloseSpeed: 35,
+          }),
+        );
+        const action = component.sensitiveActions.find((candidate) =>
+          candidate.action === 'learning',
+        )!;
+        let resolveWrite!: (result: LegacyBleWriteExecutionResult) => void;
+        const result = writeExecutionService.nextResult;
+        writeExecutionService.execute.and.returnValue(
+          new Promise<LegacyBleWriteExecutionResult>((resolve) => {
+            resolveWrite = resolve;
+          }),
+        );
+        component.setActiveMainTab('settings');
+        component.setActiveSettingsTab('advanced');
+        fixture.detectChanges();
+
+        const before = (fixture.nativeElement as HTMLElement)
+          .querySelector<HTMLIonButtonElement>(
+            '[data-sensitive-action="learning"] ion-button',
+          )!;
+        const pending = component.requestSensitiveAction(action);
+        while (!writeExecutionService.execute.calls.any()) {
+          await Promise.resolve();
+        }
+        fixture.detectChanges();
+
+        const during = (fixture.nativeElement as HTMLElement)
+          .querySelector<HTMLIonButtonElement>(
+            '[data-sensitive-action="learning"] ion-button',
+          )!;
+        expect(during).toBe(before);
+        expect(during.disabled).toBeTrue();
+        expect(during.classList).toContain('action-write-pending');
+        expect(getComputedStyle(during).opacity).toBe('1');
+        expect(component.viewModel.loading).toBeFalse();
+
+        resolveWrite(result);
+        await pending;
       },
     );
 
@@ -6054,12 +6708,43 @@ describe('ProductPage professional scalar controls',
           component.text.professionalPeripheralDiagnostics.enabled,
         );
         expect(writeExecutionService.execute).toHaveBeenCalled();
+        expect((fixture.nativeElement as HTMLElement).textContent)
+          .not.toContain(component.text.sensitiveActions.sent);
+
+        component.sensitiveActionState = Object.freeze({
+          status: 'failed',
+          action: lock.action,
+          message: component.text.sensitiveActions.failed,
+        });
+        fixture.detectChanges();
+        expect((fixture.nativeElement as HTMLElement).textContent)
+          .toContain(component.text.sensitiveActions.failed);
       },
     );
 
+    it('should omit the Widoor motor-state empty placeholder', async () => {
+      const { component, fixture } = await createProfessionalScalarPage(
+        'widoor',
+        professionalValue('widoor', 0, 0),
+      );
+      component.viewModel = {
+        ...component.viewModel,
+        motorState: null,
+      };
+      component.setActiveMainTab('information');
+      fixture.detectChanges();
+
+      expect((fixture.nativeElement as HTMLElement).textContent)
+        .not.toContain(component.text.noMotorState);
+      expect((fixture.nativeElement as HTMLElement).querySelector(
+        '.product-information-panel',
+      )).not.toBeNull();
+    });
+
     it('should render Widoor braking force ticks and gate precision controls',
       async () => {
-        const { component, fixture } = await createProfessionalScalarPage(
+        const { component, fixture, writeExecutionService } =
+          await createProfessionalScalarPage(
           'widoor',
           professionalValue('widoor', 0, 0, {
             breakForceAtOpen: 5,
@@ -6079,9 +6764,15 @@ describe('ProductPage professional scalar controls',
             '[data-professional-scalar-field="break-force-at-open"]',
           );
         const range = row?.querySelector<HTMLIonRangeElement>('ion-range');
+        const header = (fixture.nativeElement as HTMLElement)
+          .querySelector<HTMLElement>(
+            '[data-professional-scalar-header="break-force-at-open"]',
+          );
         expect(range?.ticks).toBeTrue();
         expect(range?.snaps).toBeTrue();
         expect(range?.pin).toBeFalse();
+        expect(getComputedStyle(header!).borderTopWidth).toBe('1px');
+        expect(getComputedStyle(header!).borderBottomWidth).toBe('0px');
 
         row?.click();
         fixture.detectChanges();
@@ -6089,6 +6780,18 @@ describe('ProductPage professional scalar controls',
         expect(component.isProfessionalScalarPrecisionOpen(force)).toBeFalse();
         expect((fixture.nativeElement as HTMLElement)
           .querySelector('.advanced-precision-row')).toBeNull();
+
+        range?.dispatchEvent(new CustomEvent('ionInput', {
+          bubbles: true,
+          detail: { value: 7 },
+        }));
+        fixture.detectChanges();
+        expect(component.professionalScalarDraftValue(force)).toBe(7);
+        expect((fixture.nativeElement as HTMLElement).querySelector(
+          '[data-professional-scalar-header="break-force-at-open"] ' +
+          '.advanced-value-badge',
+        )?.textContent).toContain('7');
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
 
         row = (fixture.nativeElement as HTMLElement)
           .querySelector<HTMLElement>(
@@ -6107,7 +6810,6 @@ describe('ProductPage professional scalar controls',
         const {
           component,
           fixture,
-          loadService,
           writeExecutionService,
         } = await createProfessionalScalarPage(
           'garline',
@@ -6120,10 +6822,6 @@ describe('ProductPage professional scalar controls',
 
         component.setActiveMainTab('settings');
         component.setActiveSettingsTab('advanced');
-        await waitForCondition(() =>
-          !component.viewModel.loading &&
-          loadService.loadProductData.calls.count() >= 2,
-        );
         fixture.detectChanges();
         const action = component.sensitiveActions.find((candidate) =>
           candidate.action === 'learning',
@@ -6910,8 +7608,15 @@ describe('ProductPage Demo mode', () => {
 
   it('should update Demo sliders, toggles and name locally without BLE',
     async () => {
+      localStorage.removeItem(ROOM_ASSIGNMENTS_STORAGE_KEY);
       const harness = await createDemoHarness('widoor');
       const speed = harness.component.userSpeedControls[0].config;
+      const timing = harness.component.userTimingControls.find((control) =>
+        control.config.field === 'short-timing',
+      )!.config;
+      const shortTimedCommand = harness.component.productCommands.find(
+        (command) => command.config.operation === 'motor-open-short-timed',
+      )!;
       const peripheral = harness.component.userPeripheralControls[0].config;
       const originalPeripheral = harness.component.currentUserPeripheralState(
         peripheral,
@@ -6919,6 +7624,10 @@ describe('ProductPage Demo mode', () => {
 
       harness.component.setUserSpeedDraftValue(speed, 80);
       await harness.component.requestUserSpeedChange(speed);
+      harness.component.setUserTimingDraftValue(timing, 4);
+      expect(harness.component.productCommandDisplayLabel(shortTimedCommand))
+        .toBe('Ouvrir dans 4 s');
+      await harness.component.requestUserTimingChange(timing);
       await harness.component.requestUserPeripheralChange(
         peripheral,
         !originalPeripheral,
@@ -6928,6 +7637,7 @@ describe('ProductPage Demo mode', () => {
       await harness.component.requestNameRoomChange();
 
       expect(harness.component.currentUserSpeedValue(speed)).toBe(80);
+      expect(harness.component.currentUserTimingValue(timing)).toBe(4);
       expect(harness.component.currentUserPeripheralState(peripheral))
         .toBe(!originalPeripheral);
       expect(harness.component.currentNameRoomValue()).toEqual({
@@ -7082,6 +7792,7 @@ async function createNameRoomProfileHarness(
 
   const fixture = TestBed.createComponent(ProductPage);
   const component = fixture.componentInstance;
+  spyOn<any>(component, 'delay').and.resolveTo();
   fixture.detectChanges();
 
   return {

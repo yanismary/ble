@@ -1,5 +1,5 @@
-/* Widoor keeps the Ionic 3 visual language without affecting shared profiles. */
-.product-profile-widoor {
+/* Moventiv reproduces the Ionic 3 page while keeping the shared ProductPage. */
+.product-profile-moventiv {
   .product-navbar {
     --background: #0159a1;
     --color: #fff;
@@ -31,7 +31,7 @@
 
   .product-command-header {
     background: #0159a1;
-    padding: 12px 10px 0;
+    padding: 4px 10px 0;
   }
 
   :is(.product-main-segment, .product-sub-segment) {
@@ -53,6 +53,7 @@
     border-bottom: 4px solid transparent;
     border-radius: 0;
     flex: 1 1 0;
+    font-size: 13.5px;
     font-weight: 700;
     letter-spacing: 0;
     line-height: 1.2;
@@ -65,11 +66,7 @@
   }
 
   :is(.product-main-segment, .product-sub-segment)
-    ion-segment-button::part(indicator-background) {
-    background: transparent;
-    box-shadow: none;
-  }
-
+    ion-segment-button::part(indicator-background),
   :is(.product-main-segment, .product-sub-segment)
     ion-segment-button::part(native) {
     background: transparent;
@@ -84,7 +81,6 @@
   .product-main-segment ion-segment-button {
     --color: rgba(255, 255, 255, 0.62);
     --color-checked: #fff;
-    font-size: 13.5px;
     height: 64px;
   }
 
@@ -101,7 +97,6 @@
   .product-sub-segment ion-segment-button {
     --color: rgba(167, 200, 85, 0.68);
     --color-checked: #a7c855;
-    font-size: 13.5px;
     height: 56px;
   }
 
@@ -114,28 +109,24 @@
     color: #000;
     font-size: 14px;
     gap: 4px;
-    height: 56px;
-    min-height: 56px;
-    padding: 0 24px;
+    height: 53px;
+    min-height: 53px;
+    padding: 0 15px;
   }
 
   .product-controlled-door span {
     color: #000;
   }
-
-  .product-controlled-door strong {
-    font-weight: 700;
-  }
 }
 
-ion-content.product-profile-widoor {
+ion-content.product-profile-moventiv {
   --background: #fff;
 
   .product-page-layout {
     background: #fff;
     margin: 0;
-    min-height: 100%;
     max-width: none;
+    min-height: 100%;
     padding: 0 0 24px;
     width: 100%;
   }
@@ -144,14 +135,17 @@ ion-content.product-profile-widoor {
     margin: 0;
   }
 
+  .product-section {
+    background: #fff;
+    min-height: 100%;
+  }
+
   .product-section > h2 {
-    border: 0;
     clip: rect(0 0 0 0);
     clip-path: inset(50%);
     height: 1px;
     margin: -1px;
     overflow: hidden;
-    padding: 0;
     position: absolute;
     white-space: nowrap;
     width: 1px;
@@ -168,22 +162,18 @@ ion-content.product-profile-widoor {
     padding: 0;
   }
 
-  .product-section {
-    background: #fff;
-    min-height: 100%;
-  }
-
   .cmd-grid {
     display: grid;
     gap: 14px 0;
     grid-template-columns: repeat(12, minmax(0, 1fr));
     margin: 0;
-    padding: 24px 10px 0;
+    padding: 24px 5px 12px;
     width: 100%;
   }
 
   .cmd-cell {
     min-width: 0;
+    padding-inline: 5px;
     text-align: center;
   }
 
@@ -218,8 +208,7 @@ ion-content.product-profile-widoor {
       0 1px 5px rgba(0, 0, 0, 0.12);
     height: 100px;
     margin: 0;
-    justify-self: start;
-    width: calc(100% - 5px);
+    width: 100%;
   }
 
   .cmd-motor img {
@@ -234,7 +223,26 @@ ion-content.product-profile-widoor {
     font-weight: 400;
     line-height: 1.2;
     margin: 6px 0 0;
-    text-align: center;
+  }
+
+  .cmd-list {
+    margin: 0;
+  }
+
+  .cmd-row {
+    border-top: 1px solid #dedede;
+    font-size: 16px;
+    gap: 16px;
+    grid-template-columns: 40px 1fr auto;
+    min-height: 72px;
+    padding: 8px 15px;
+  }
+
+  .cmd-row-icon {
+    filter: grayscale(1);
+    height: 28px;
+    opacity: 0.72;
+    width: 28px;
   }
 
   :is(.basic-settings-list, .advanced-settings-list,
@@ -258,20 +266,6 @@ ion-content.product-profile-widoor {
     padding-left: 12px;
   }
 
-  .basic-section-header {
-    border-left: 4px solid transparent;
-  }
-
-  .basic-section-header.basic-unlocked {
-    border-left-color: #32db64;
-  }
-
-  .basic-section-header[data-basic-slider-field],
-  .advanced-scalar-header {
-    border-bottom: 0;
-    border-top: 1px solid #dedede;
-  }
-
   :is(.basic-section-header, .advanced-section-header) ion-label {
     font-size: 14px;
     letter-spacing: 0;
@@ -283,35 +277,24 @@ ion-content.product-profile-widoor {
     border-radius: 4px;
     font-size: 13px;
     font-weight: 500;
+    min-width: 0;
     padding: 3px 8px;
   }
 
-  :is(.basic-toggle-row, .basic-slider-row, .basic-select-row,
-    .basic-name-row, .advanced-access-row, .advanced-action-button-row,
-    .advanced-action-toggle-row, .advanced-input-row, .advanced-select-row,
-    .advanced-slider-row) {
+  :is(.basic-toggle-row, .basic-slider-row, .basic-name-row,
+    .advanced-access-row, .advanced-action-button-row,
+    .advanced-input-row, .advanced-select-row, .advanced-slider-row) {
     --background: #fff;
-    --inner-padding-end: 8px;
+    --inner-padding-end: 15px;
     --min-height: 56px;
-    --padding-start: 16px;
+    --padding-start: 15px;
     border-top: 0;
     font-size: 14px;
   }
 
-  .basic-lighting-header,
   .basic-lighting-row {
-    order: 20;
-  }
-
-  .basic-name-room-header,
-  .basic-name-row,
-  .basic-name-room-actions,
-  .basic-current-value {
-    order: 30;
-  }
-
-  .basic-lighting-row {
-    --min-height: 102px;
+    --min-height: 48px;
+    border-bottom: 1px solid #dedede;
   }
 
   .basic-lighting-row ion-label {
@@ -320,51 +303,65 @@ ion-content.product-profile-widoor {
     font-weight: 400;
   }
 
+  :is(.basic-row-icon, .advanced-row-icon) {
+    filter: grayscale(1);
+    height: 28px;
+    margin-inline-end: 16px;
+    object-fit: contain;
+    opacity: 0.68;
+    width: 28px;
+  }
+
   .basic-lighting-row .basic-row-icon {
     height: 28px;
     width: 28px;
   }
 
-  .basic-name-room-header {
-    --background: #f4f4f4;
-    min-height: 48px;
-  }
-
-  .basic-name-room-header .basic-value-badge {
-    display: none;
-  }
-
-  .basic-name-row {
-    --min-height: 88px;
-    --padding-start: 15px;
-  }
-
-  .basic-name-row .basic-row-icon {
-    display: none;
-  }
-
-  .basic-room-row {
-    --padding-start: 15px;
-  }
-
-  :is(.basic-row-icon, .advanced-row-icon) {
-    height: 24px;
-    margin-inline-end: 16px;
-    object-fit: contain;
-    width: 24px;
-  }
-
-  :is(.basic-lock-icon, .advanced-lock-button img,
-    .advanced-lock-button ion-icon) {
-    color: #9b9b9b;
+  :is(.basic-lock-icon, .advanced-lock-icon, .advanced-lock-button img) {
     filter: grayscale(1);
     height: 22px;
     opacity: 0.62;
     width: 22px;
   }
 
-  .basic-lighting-header ion-label {
-    visibility: hidden;
+  .advanced-lock-button {
+    --color: #9b9b9b;
+    --padding-end: 8px;
+    --padding-start: 8px;
+    height: 40px;
+    margin: 0;
+    min-width: 40px;
+  }
+
+  .advanced-lock-icon {
+    color: #9b9b9b;
+    display: block;
+    font-size: 22px;
+  }
+
+  :is(.basic-section-header, .advanced-scalar-header) {
+    border-left: 4px solid transparent;
+  }
+
+  .basic-section-header.basic-unlocked,
+  .advanced-scalar-header.advanced-unlocked {
+    border-left-color: #32db64;
+  }
+
+  .basic-section-header[data-basic-slider-field],
+  .advanced-scalar-header {
+    border-bottom: 0;
+    border-top: 1px solid #dedede;
+  }
+
+  .basic-lighting-row + .basic-section-header[data-basic-slider-field],
+  .phase1-mov-advanced-tuning-header + .advanced-scalar-header,
+  .phase1-mov-expert-mode-header + .advanced-scalar-header {
+    border-top: 0;
+  }
+
+  :is(.basic-slider-row, .advanced-slider-row) {
+    --min-height: 82px;
   }
 
   :is(.basic-range, .advanced-range) {
@@ -373,15 +370,13 @@ ion-content.product-profile-widoor {
     --bar-height: 2px;
     --knob-background: #bdbdbd;
     --knob-size: 18px;
-    --pin-background: #0159a1;
-    --pin-color: #fff;
     padding: 8px 12px;
   }
 
   .basic-slider-row .basic-range,
   .advanced-slider-row .advanced-range {
-    margin-left: 26px;
-    padding-right: 20px;
+    margin-left: 16px;
+    padding-right: 12px;
   }
 
   :is(.basic-range, .advanced-range)::part(bar-active) {
@@ -420,16 +415,6 @@ ion-content.product-profile-widoor {
     font-size: 15px;
   }
 
-  .advanced-slider-row[data-professional-scalar-field='break-force-at-open']
-    .advanced-range::part(tick),
-  .advanced-slider-row[data-professional-scalar-field='break-force-at-open']
-    .advanced-range::part(tick-active) {
-    background: #bdbdbd;
-    height: 7px;
-    width: 2px;
-    z-index: 2;
-  }
-
   :is(.basic-precision-row, .advanced-precision-row) {
     background: #fff;
     display: grid;
@@ -453,9 +438,16 @@ ion-content.product-profile-widoor {
     text-transform: uppercase;
   }
 
-  :is(.basic-precision-row, .advanced-precision-row) ion-button ion-icon {
-    font-size: 18px;
-    margin-inline-end: 6px;
+  :is(.basic-precision-row, .advanced-precision-row) ion-button:first-of-type {
+    --background: #911111;
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  :is(.basic-precision-row, .advanced-precision-row) ion-button:nth-of-type(2) {
+    --background: #a7c855;
+    grid-column: 1;
+    grid-row: 1;
   }
 
   :is(.basic-precision-row, .advanced-precision-row) ion-button span {
@@ -464,24 +456,27 @@ ion-content.product-profile-widoor {
     letter-spacing: 0;
   }
 
-  :is(.basic-precision-row, .advanced-precision-row) ion-button:first-of-type {
-    --background: #911111;
-    --border-color: #911111;
-    --color: #fff;
-    grid-column: 2;
-    grid-row: 1;
+  .basic-name-room-header {
+    --background: #f4f4f4;
+    border-left: 0;
+    min-height: 48px;
   }
 
-  :is(.basic-precision-row, .advanced-precision-row) ion-button:nth-of-type(2) {
-    --background: #a7c855;
-    --border-color: #a7c855;
-    --color: #fff;
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .basic-current-value {
+  .basic-name-room-header .basic-value-badge,
+  .basic-current-value,
+  .basic-name-row .basic-row-icon {
     display: none;
+  }
+
+  .basic-name-row {
+    --min-height: 88px;
+    --padding-start: 15px;
+  }
+
+  .basic-room-row {
+    --padding-start: 15px;
+    flex-wrap: wrap;
+    padding-bottom: 14px;
   }
 
   .basic-name-row ion-input,
@@ -491,13 +486,8 @@ ion-content.product-profile-widoor {
     color: #000;
   }
 
-  .basic-room-row {
-    flex-wrap: wrap;
-    padding-bottom: 14px;
-  }
-
   .basic-name-room-actions ion-button {
-    --background: #0159a1;
+    --background: #488aff;
     --border-radius: 2px;
     --box-shadow: 0 2px 2px rgba(0, 0, 0, 0.14),
       0 3px 1px -2px rgba(0, 0, 0, 0.2),
@@ -525,24 +515,53 @@ ion-content.product-profile-widoor {
     width: 36px;
   }
 
+  .phase1-mov-weight-header,
+  .phase1-mov-weight-row {
+    order: 10;
+  }
+
+  .phase1-mov-weight-header {
+    --background: #f4f4f4;
+    border-left: 0;
+    min-height: 48px;
+  }
+
+  .phase1-mov-weight-row {
+    --min-height: 108px;
+  }
+
+  .phase1-mov-weight-row ion-label {
+    color: #9b9b9b;
+    flex: 1 1 auto;
+    font-size: 16px;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .phase1-mov-weight-row ion-select {
+    color: #9b9b9b;
+    flex: 0 0 auto;
+    max-width: 42%;
+    min-width: 86px;
+    width: auto;
+  }
+
+  .phase1-mov-weight-row ion-select::part(text) {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
   .advanced-input-header,
   .advanced-input-row {
     order: 20;
   }
 
-  .advanced-section-header {
-    border-left: 0;
-  }
-
-  .advanced-scalar-header {
-    border-left: 4px solid transparent;
-  }
-
-  .advanced-scalar-header.advanced-unlocked {
-    border-left-color: #32db64;
-  }
-
-  .advanced-input-header {
+  .advanced-input-header,
+  .phase1-mov-extra-actions-header,
+  .phase1-mov-advanced-tuning-header,
+  .phase1-mov-expert-header,
+  .phase1-mov-expert-mode-header {
     --background: #f4f4f4;
     border-left: 0;
     min-height: 48px;
@@ -550,10 +569,6 @@ ion-content.product-profile-widoor {
 
   .advanced-input-row {
     --min-height: 64px;
-  }
-
-  .advanced-input-row .advanced-value-badge {
-    font-weight: 700;
   }
 
   .advanced-input-row .advanced-value-positive {
@@ -564,106 +579,94 @@ ion-content.product-profile-widoor {
     --background: #911111;
   }
 
-  .advanced-input-row ion-select {
-    color: #9b9b9b;
-    max-width: 92px;
-  }
-
-  .advanced-input-row .advanced-input-toggle {
+  .advanced-input-toggle {
     flex: 0 0 36px;
   }
 
-  .advanced-action-toggle-row {
-    --min-height: 64px;
+  .phase1-mov-extra-actions-header,
+  .phase1-mov-extra-action-row {
+    order: 30;
   }
 
-  .advanced-action-toggle-row .advanced-value-badge {
-    font-weight: 700;
-  }
-
-  .advanced-action-toggle-row .advanced-value-positive {
-    --background: #a7c855;
-  }
-
-  .advanced-action-toggle-row .advanced-value-negative {
-    --background: #911111;
-  }
-
-  .advanced-action-button-row {
-    --inner-padding-end: 16px;
+  .phase1-mov-extra-action-row {
+    --inner-padding-end: 15px;
     --min-height: 96px;
-    --padding-start: 16px;
   }
 
-  .advanced-action-button-row > ion-label {
+  .phase1-mov-extra-action-row > ion-label {
     display: none;
   }
 
-  .advanced-action-button-row ion-button {
+  .phase1-mov-extra-action-row ion-button,
+  .phase1-mov-expert-submit-row ion-button {
+    --background: #0159a1;
     --border-radius: 2px;
     --box-shadow: 0 2px 2px rgba(0, 0, 0, 0.14),
       0 3px 1px -2px rgba(0, 0, 0, 0.2),
       0 1px 5px rgba(0, 0, 0, 0.12);
     font-size: 13px;
     font-weight: 500;
-    height: 60px;
+    height: 56px;
     left: 50%;
     margin: 18px 0;
-    max-width: 180px;
     position: absolute;
+    text-transform: uppercase;
     transform: translateX(-50%);
-    width: 180px;
+    width: min(188px, calc(100% - 48px));
   }
 
-  .advanced-action-button-row[data-sensitive-action='learning'] ion-button {
-    --background: #0159a1;
+  .phase1-mov-maintenance-action-row ion-button {
+    --background: #df7715;
   }
 
-  .advanced-action-button-row[data-sensitive-action='learning']
-    ion-button::part(native) {
-    background: #0159a1;
-  }
-
-  .advanced-action-button-row[data-sensitive-action='reset'] ion-button {
-    --background: #f53d3d;
-  }
-
-
-  .advanced-actions-list {
-    display: flex;
-    flex-direction: column;
-  }
-
-  :is(.advanced-outputs-header, .advanced-extra-actions-header) {
-    --background: #f4f4f4;
-    border-left: 0;
-    color: #757575;
-    min-height: 48px;
-  }
-
-  .advanced-outputs-header {
-    order: 10;
-  }
-
-  .advanced-extra-actions-header {
-    order: 30;
-  }
-
-  .advanced-action-toggle-row[data-sensitive-action^='radar-test'] {
-    order: 10;
-  }
-
-  .advanced-action-toggle-row[data-sensitive-action='professional-peripheral-lock'] {
-    order: 20;
-  }
-
-  .advanced-action-button-row[data-sensitive-action='learning'],
-  .advanced-action-button-row[data-sensitive-action='reset'] {
+  .phase1-mov-advanced-tuning-header,
+  .phase1-mov-expert-mode-header,
+  .advanced-scalar-header,
+  .advanced-slider-row,
+  .advanced-precision-row {
     order: 40;
   }
 
+  .advanced-scalar-header {
+    border-left: 4px solid transparent;
+  }
+
+  .advanced-scalar-header .advanced-row-icon {
+    display: none;
+  }
+
+  .advanced-slider-row .advanced-row-icon {
+    display: block;
+  }
+
+  .phase1-mov-expert-header,
+  .phase1-mov-expert-access-row,
+  .phase1-mov-expert-submit-row,
+  .advanced-state {
+    order: 50;
+  }
+
+  .phase1-mov-expert-access-row {
+    --min-height: 88px;
+  }
+
+  .phase1-mov-expert-submit-row {
+    --min-height: 72px;
+  }
+
+  .phase1-mov-expert-submit-row > ion-label {
+    display: none;
+  }
+
+  .phase1-mov-expert-submit-row ion-button {
+    --background: #488aff;
+    height: 38px;
+    margin: 8px 0;
+    width: calc(100% - 30px);
+  }
+
   .product-information-panel {
-    background: transparent;
+    background: #fff;
     padding: 0;
   }
 
@@ -673,10 +676,10 @@ ion-content.product-profile-widoor {
 
   .product-information-header {
     --background: #f4f4f4;
+    border-bottom: 1px solid #dedede;
     color: #757575;
     font-size: 14px;
     font-weight: 400;
-    border-bottom: 1px solid #dedede;
     min-height: 48px;
     padding-inline-start: 15px;
     text-transform: none;
@@ -737,6 +740,14 @@ ion-content.product-profile-widoor {
     --background: #911111;
   }
 
+  .product-information-dates .product-information-header {
+    display: none;
+  }
+
+  .product-information-general + .product-information-dates {
+    border-top: 1px solid #dedede;
+  }
+
   .product-loading {
     align-items: center;
     background: rgba(0, 0, 0, 0.32);
@@ -749,36 +760,35 @@ ion-content.product-profile-widoor {
     position: fixed;
     z-index: 1000;
   }
+}
 
-  .product-loading::before {
-    background: #fff;
-    border-radius: 2px;
-    box-shadow: 0 16px 20px rgba(0, 0, 0, 0.22);
-    content: '';
-    height: 112px;
-    left: 50%;
-    position: absolute;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 210px;
-  }
+ion-alert.product-mov-weight-alert {
+  --border-radius: 2px;
+  --max-width: 340px;
+  --width: calc(100% - 48px);
+}
 
-  .product-loading :is(ion-spinner, span) {
-    position: relative;
-    z-index: 1;
-  }
+ion-alert.product-mov-weight-alert .alert-title {
+  font-size: 24px;
+  font-weight: 500;
+}
 
-  .product-loading ion-spinner {
-    color: #0159a1;
-  }
+ion-alert.product-mov-weight-alert .alert-message {
+  color: #757575;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+ion-alert.product-mov-weight-alert .alert-radio-label {
+  font-size: 16px;
+}
+
+ion-alert.product-mov-weight-alert .alert-button {
+  color: #488aff;
 }
 
 @media (max-width: 360px) {
-  ion-content.product-profile-widoor {
-    .cmd-grid {
-      padding-inline: 10px;
-    }
-
+  ion-content.product-profile-moventiv {
     :is(.basic-precision-row, .advanced-precision-row) {
       padding-left: 48px;
     }

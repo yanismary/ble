@@ -3,6 +3,10 @@ import { encodeLegacyLockMode } from
   '../../core/services/legacy-ble-write-catalog';
 import {
   PRODUCT_KNOWN_ROOM_OPTIONS,
+  PRODUCT_NAME_ROOM_EXECUTION_POLICY,
+  PRODUCT_NAME_ROOM_POST_WRITE_COOLDOWN_MS,
+  PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS,
+  PRODUCT_NAME_ROOM_WRITE_TIMEOUT_MS,
   PRODUCT_ROOM_OPTIONS,
   createProductNameRoomAuthorization,
   createProductNameRoomDraft,
@@ -12,6 +16,17 @@ import {
 } from './product-name-room';
 
 describe('Product name and room controls', () => {
+  it('keeps the Phase 1 timing contract scoped to name-room writes', () => {
+    expect(PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS).toBe(200);
+    expect(PRODUCT_NAME_ROOM_POST_WRITE_COOLDOWN_MS).toBe(1_800);
+    expect(PRODUCT_NAME_ROOM_WRITE_TIMEOUT_MS).toBe(15_000);
+    expect(PRODUCT_NAME_ROOM_EXECUTION_POLICY).toEqual({
+      allowPhase1ReferenceOnly: true,
+      gattWriteTimeoutMs: 15_000,
+      useLegacyAndroidWriteApi: true,
+    });
+  });
+
   it('splits known room suffixes from the BLE display name', () => {
     expect(splitProductDisplayName('Firma#CHA')).toEqual({
       name: 'Firma',
@@ -136,6 +151,33 @@ describe('Product name and room controls', () => {
       name: '123456789012',
       roomSuffix: '#SAL',
     })).toEqual({ valid: false, error: 'too-long' });
+  });
+
+  it('replaces the existing suffix once for Widoor and Moventiv', () => {
+    const validation = validateProductNameRoomDraft(
+      splitProductDisplayName('Mov-BE-L#SAL'),
+      { name: 'Mov-BE-L', roomSuffix: '#CHA' },
+    );
+
+    expect(validation).toEqual(jasmine.objectContaining({
+      valid: true,
+      baseName: 'Mov-BE-L',
+      roomSuffix: '#CHA',
+      valueToWrite: 'Mov-BE-L#CHA',
+      nameChanged: false,
+      roomChanged: true,
+    }));
+    if (!validation.valid) {
+      return;
+    }
+    for (const profile of ['widoor', 'moventiv-60', 'moventiv-80'] as const) {
+      const write = encodeProductNameRoomWrite(profile, validation);
+      expect(write.payloadHex).withContext(profile)
+        .toBe('4d 6f 76 2d 42 45 2d 4c 23 43 48 41');
+      expect(Array.from(write.payload)).withContext(profile).toEqual(
+        Array.from('Mov-BE-L#CHA', (character) => character.charCodeAt(0)),
+      );
+    }
   });
 
   it('preserves legacy-only suffixes but does not expose them as new choices',

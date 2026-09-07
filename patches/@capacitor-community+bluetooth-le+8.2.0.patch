@@ -1,0 +1,52 @@
+diff --git a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt
+index ac18a9c..1908db2 100644
+--- a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt
++++ b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt
+@@ -678,8 +678,9 @@ class BluetoothLe : Plugin() {
+         }
+         val writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
++        val useLegacyAndroidWriteApi = call.getBoolean("useLegacyAndroidWriteApi", false) as Boolean
+         device.write(
+-            characteristic.first, characteristic.second, value, writeType, timeout
++            characteristic.first, characteristic.second, value, writeType, timeout, useLegacyAndroidWriteApi
+         ) { response ->
+             run {
+                 if (response.success) {
+@@ -703,7 +704,7 @@ class BluetoothLe : Plugin() {
+         val writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
+         device.write(
+-            characteristic.first, characteristic.second, value, writeType, timeout
++            characteristic.first, characteristic.second, value, writeType, timeout, false
+         ) { response ->
+             run {
+                 if (response.success) {
+diff --git a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt
+index 5546881..12713b0 100644
+--- a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt
++++ b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt
+@@ -555,6 +555,7 @@ class Device(
+         value: String,
+         writeType: Int,
+         timeout: Long,
++        useLegacyAndroidWriteApi: Boolean,
+         callback: (CallbackResponse) -> Unit
+     ) {
+         val key = "write|$serviceUUID|$characteristicUUID"
+@@ -567,13 +568,14 @@ class Device(
+         }
+         val bytes = stringToBytes(value)
+ 
+-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
++        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !useLegacyAndroidWriteApi) {
+             val statusCode = bluetoothGatt?.writeCharacteristic(characteristic, bytes, writeType)
+             if (statusCode != BluetoothStatusCodes.SUCCESS) {
+                 reject(key, "Writing characteristic failed with status code $statusCode.")
+                 return
+             }
+         } else {
++            // Some legacy peripherals only acknowledge the pre-API 33 write path.
+             characteristic.value = bytes
+             characteristic.writeType = writeType
+             val result = bluetoothGatt?.writeCharacteristic(characteristic)

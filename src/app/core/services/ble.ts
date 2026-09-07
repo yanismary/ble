@@ -27,6 +27,11 @@ export type BleOperationErrorCode =
   | 'app-settings-unavailable'
   | 'app-settings-failed';
 
+export interface BleCharacteristicWriteOptions {
+  readonly timeoutMs?: number;
+  readonly useLegacyAndroidWriteApi?: boolean;
+}
+
 export class BleOperationError extends Error {
   constructor(
     readonly code: BleOperationErrorCode,
@@ -632,6 +637,7 @@ export class BleService implements OnDestroy {
     characteristicUuid: string,
     value: DataView | Uint8Array,
     deviceId?: string,
+    options: BleCharacteristicWriteOptions = {},
   ): Promise<void> {
     const connectedDeviceId = this.connectedDeviceIdValue;
 
@@ -668,17 +674,42 @@ export class BleService implements OnDestroy {
       throw new Error('A non-empty value is required for a BLE write.');
     }
 
+    if (options.timeoutMs !== undefined &&
+        (!Number.isFinite(options.timeoutMs) || options.timeoutMs <= 0)) {
+      throw new Error('A positive BLE write timeout is required.');
+    }
+
     if (this.writePromise !== null) {
       throw new Error('A BLE write is already in progress.');
     }
 
     const dataView = new DataView(value.buffer, value.byteOffset, value.byteLength);
-    const write = BleClient.write(
-      targetDeviceId,
-      normalizedServiceUuid,
-      normalizedCharacteristicUuid,
-      dataView,
-    );
+    const nativeOptions: {
+      readonly timeout?: number;
+      readonly useLegacyAndroidWriteApi?: boolean;
+    } = {
+      ...(options.timeoutMs === undefined
+        ? {}
+        : { timeout: options.timeoutMs }),
+      ...(options.useLegacyAndroidWriteApi
+        ? { useLegacyAndroidWriteApi: true }
+        : {}),
+    };
+    const write = options.timeoutMs === undefined &&
+        !options.useLegacyAndroidWriteApi
+      ? BleClient.write(
+          targetDeviceId,
+          normalizedServiceUuid,
+          normalizedCharacteristicUuid,
+          dataView,
+        )
+      : BleClient.write(
+          targetDeviceId,
+          normalizedServiceUuid,
+          normalizedCharacteristicUuid,
+          dataView,
+          nativeOptions,
+        );
     this.writePromise = write;
 
     try {

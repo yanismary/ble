@@ -78,6 +78,9 @@ export interface ProductNameRoomAuthorizationInput {
 
 export const PRODUCT_NAME_ROOM_MIN_TYPED_NAME_LENGTH = 5;
 export const PRODUCT_NAME_ROOM_MAX_LENGTH = 15;
+export const PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS = 200;
+export const PRODUCT_NAME_ROOM_POST_WRITE_COOLDOWN_MS = 1_800;
+export const PRODUCT_NAME_ROOM_WRITE_TIMEOUT_MS = 15_000;
 
 const PRODUCT_NAME_ROOM_AUTHORIZATION_TTL_MS = 30_000;
 
@@ -226,6 +229,8 @@ export const PRODUCT_NAME_ROOM_CONFIRMATION_POLICY:
 export const PRODUCT_NAME_ROOM_EXECUTION_POLICY:
   LegacyBleWriteExecutionPolicy = Object.freeze({
     allowPhase1ReferenceOnly: true,
+    gattWriteTimeoutMs: PRODUCT_NAME_ROOM_WRITE_TIMEOUT_MS,
+    useLegacyAndroidWriteApi: true,
   });
 
 function isKnownRoomSuffix(value: string): value is ProductRoomSuffix {

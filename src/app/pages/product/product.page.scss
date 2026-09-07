@@ -77,3 +77,15 @@
   height: 28px;
   width: 28px;
 }
+
+ion-toggle[disabled],
+ion-toggle.toggle-disabled,
+ion-toggle.ion-disabled {
+  opacity: 1;
+}
+
+ion-button.action-write-pending[disabled],
+ion-button.action-write-pending.button-disabled,
+ion-button.action-write-pending.ion-disabled {
+  opacity: 1;
+}

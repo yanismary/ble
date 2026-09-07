@@ -13,9 +13,13 @@
 }
 
 .product-information-header {
-  --background: var(--mantion-page-background);
-  min-height: 34px;
-  padding-inline-start: 12px;
+  --background: #f4f4f4;
+  border-bottom: 1px solid #dedede;
+  color: #757575;
+  font-size: 14px;
+  font-weight: 400;
+  min-height: 48px;
+  padding-inline-start: 15px;
   text-transform: none;
 }
 

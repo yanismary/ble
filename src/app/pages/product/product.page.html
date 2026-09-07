@@ -1,5 +1,6 @@
 <ion-header
   [class.product-profile-widoor]="config.profile === 'widoor'"
+  [class.product-profile-moventiv]="isMoventivProfile"
 >
   <ion-toolbar class="mantion-navbar product-navbar">
     <ion-buttons slot="start">
@@ -63,13 +64,13 @@
       >
         <ion-segment-button
           value="basic"
-          (click)="setActiveSettingsTab('basic')"
+          (click)="requestActiveSettingsTab('basic')"
         >
           <span>{{ text.shell.basic }}</span>
         </ion-segment-button>
         <ion-segment-button
           value="advanced"
-          (click)="setActiveSettingsTab('advanced')"
+          (click)="requestActiveSettingsTab('advanced')"
         >
           <span>{{ text.shell.advanced }}</span>
         </ion-segment-button>
@@ -86,6 +87,7 @@
 <ion-content
   [fullscreen]="true"
   [class.product-profile-widoor]="config.profile === 'widoor'"
+  [class.product-profile-moventiv]="isMoventivProfile"
 >
   <main class="product-page-layout">
     <section class="product-shell-status">
@@ -147,7 +149,7 @@
           @if (showLockModeControls) {
             @if (moventivCloseLockControl; as closeLockControl) {
               <div class="cmd-list lock-mode-controls">
-                <div class="cmd-row moventiv-close-lock-command">
+                <div class="cmd-row phase1-mov-close-lock-command">
                   <img
                     class="cmd-row-icon"
                     [src]="productLockIconSrc(closeLockControl.config)"
@@ -202,6 +204,7 @@
           }
           @if (showCommandPeripheralControls) {
             <div class="cmd-list user-peripheral-command-controls">
+              @if (!isMoventivProfile) {
               <div class="cmd-head">
                 <h3>Éclairage</h3>
                 <ion-button
@@ -218,6 +221,7 @@
                   />
                 </ion-button>
               </div>
+              }
               @for (peripheralControl of commandUserPeripheralControls; track peripheralControl.config.field) {
                 <div class="cmd-row">
                   <img
@@ -229,7 +233,7 @@
                   <ion-toggle
                     class="user-peripheral-toggle user-peripheral-command-toggle"
                     [checked]="currentUserPeripheralState(peripheralControl.config) === true"
-                    [disabled]="!userPeripheralControlUnlocked || !canToggleUserPeripheral(peripheralControl.config)"
+                    [disabled]="(!isMoventivProfile && !userPeripheralControlUnlocked) || !canToggleUserPeripheral(peripheralControl.config)"
                     (ionChange)="requestUserPeripheralChange(peripheralControl.config, $event)"
                   ></ion-toggle>
                 </div>
@@ -290,7 +294,7 @@
           @if (showBasicSettingsControls) {
             <ion-list class="basic-settings-list" lines="none">
               @if (showBasicUserPeripheralControls) {
-                @if (config.profile !== 'widoor') {
+                @if (config.profile !== 'widoor' && !isMoventivProfile) {
                   <ion-list-header
                     class="basic-section-header basic-lighting-header"
                     [class.basic-unlocked]="userPeripheralControlUnlocked"
@@ -325,21 +329,18 @@
                       class="user-peripheral-toggle"
                       slot="end"
                       [checked]="currentUserPeripheralState(peripheralControl.config) === true"
-                      [disabled]="(config.profile !== 'widoor' && !userPeripheralControlUnlocked) || !canToggleUserPeripheral(peripheralControl.config)"
+                      [disabled]="(config.profile !== 'widoor' && !isMoventivProfile && !userPeripheralControlUnlocked) || !canToggleUserPeripheral(peripheralControl.config)"
                       (ionChange)="requestUserPeripheralChange(peripheralControl.config, $event)"
                     ></ion-toggle>
                   </ion-item>
                 }
-                @if (userPeripheralWriteState.message) {
+                @if (userPeripheralWriteState.status === 'failed' && userPeripheralWriteState.message) {
                   <p
                     class="command-state"
                     role="status"
                     aria-live="polite"
-                    [attr.data-tone]="userPeripheralWriteState.status === 'failed' ? 'error' : 'neutral'"
+                    data-tone="error"
                   >
-                    @if (userPeripheralWriteState.status === 'executing') {
-                      <ion-spinner name="crescent"></ion-spinner>
-                    }
                     <span>{{ userPeripheralWriteState.message }}</span>
                   </p>
                 }
@@ -351,11 +352,11 @@
                     class="basic-section-header"
                     [attr.data-basic-slider-field]="speedControl.config.field"
                     [class.basic-unlocked]="isUserSpeedUnlocked(speedControl.config)"
-                    (click)="config.profile === 'widoor' && toggleUserSpeedLock(speedControl.config)"
+                    (click)="usesPhase1SliderInteraction && toggleUserSpeedLock(speedControl.config)"
                   >
                     <ion-label>{{ speedControl.text }}</ion-label>
                     <ion-badge class="mantion-value-badge basic-value-badge">
-                      {{ currentUserSpeedValue(speedControl.config) }} %
+                      {{ userSpeedDraftValue(speedControl.config) }} %
                     </ion-badge>
                     <ion-button
                       type="button"
@@ -363,7 +364,7 @@
                       [attr.aria-label]="isUserSpeedUnlocked(speedControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
                       (click)="$event.stopPropagation(); toggleUserSpeedLock(speedControl.config)"
                     >
-                      @if (config.profile === 'widoor') {
+                      @if (usesPhase1SliderInteraction) {
                         <ion-icon
                           class="basic-lock-icon"
                           [name]="isUserSpeedUnlocked(speedControl.config) ? 'lock-open' : 'lock-closed'"
@@ -382,7 +383,7 @@
                   <ion-item
                     class="basic-slider-row"
                     [class.slider-unlocked]="isUserSpeedUnlocked(speedControl.config)"
-                    (click)="config.profile === 'widoor' && unlockUserSpeedFromZone(speedControl.config)"
+                    (click)="usesPhase1SliderInteraction && unlockUserSpeedFromZone(speedControl.config)"
                   >
                     <img
                       class="basic-row-icon"
@@ -397,14 +398,15 @@
                       [min]="speedControl.config.range.min"
                       [max]="speedControl.config.range.max"
                       [step]="1"
-                      [pin]="config.profile !== 'widoor'"
+                      [pin]="!usesPhase1SliderInteraction"
                       [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                       [value]="userSpeedDraftValue(speedControl.config)"
+                      (ionInput)="setUserSpeedDraftValue(speedControl.config, $event)"
                       (ionChange)="setUserSpeedDraftValue(speedControl.config, $event)"
                       (ionKnobMoveEnd)="onUserSpeedSliderReleased(speedControl.config)"
                       (ionBlur)="onUserSpeedSliderReleased(speedControl.config)"
                     ></ion-range>
-                    @if (config.profile === 'widoor') {
+                    @if (usesPhase1SliderInteraction) {
                       <ion-button
                         class="slider-options-toggle"
                         type="button"
@@ -422,16 +424,16 @@
                       </ion-button>
                     }
                   </ion-item>
-                  @if (isUserSpeedUnlocked(speedControl.config) && (config.profile !== 'widoor' || isUserSpeedPrecisionOpen(speedControl.config))) {
+                  @if (isUserSpeedUnlocked(speedControl.config) && (!usesPhase1SliderInteraction || isUserSpeedPrecisionOpen(speedControl.config))) {
                     <div class="basic-precision-row" aria-label="Réglage précis">
                       <ion-button
                         type="button"
                         fill="outline"
-                        [attr.aria-label]="config.profile === 'widoor' ? text.shell.decrease : 'Diminuer de 1'"
+                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.decrease : 'Diminuer de 1'"
                         [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                         (click)="stepUserSpeedDraft(speedControl.config, -1)"
                       >
-                        @if (config.profile === 'widoor') {
+                        @if (usesPhase1SliderInteraction) {
                           <ion-icon name="remove" aria-hidden="true"></ion-icon>
                           <span>{{ text.shell.decrease }}</span>
                         } @else {
@@ -442,11 +444,11 @@
                       <ion-button
                         type="button"
                         fill="outline"
-                        [attr.aria-label]="config.profile === 'widoor' ? text.shell.increase : 'Augmenter de 1'"
+                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.increase : 'Augmenter de 1'"
                         [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                         (click)="stepUserSpeedDraft(speedControl.config, 1)"
                       >
-                        @if (config.profile === 'widoor') {
+                        @if (usesPhase1SliderInteraction) {
                           <ion-icon name="add" aria-hidden="true"></ion-icon>
                           <span>{{ text.shell.increase }}</span>
                         } @else {
@@ -466,16 +468,13 @@
                     </div>
                   }
                 }
-                @if (userSpeedWriteState.message) {
+                @if (userSpeedWriteState.status === 'failed' && userSpeedWriteState.message) {
                   <p
                     class="command-state"
                     role="status"
                     aria-live="polite"
-                    [attr.data-tone]="userSpeedWriteState.status === 'failed' ? 'error' : 'neutral'"
+                    data-tone="error"
                   >
-                    @if (userSpeedWriteState.status === 'executing') {
-                      <ion-spinner name="crescent"></ion-spinner>
-                    }
                     <span>{{ userSpeedWriteState.message }}</span>
                   </p>
                 }
@@ -487,11 +486,11 @@
                     class="basic-section-header"
                     [attr.data-basic-slider-field]="timingControl.config.field"
                     [class.basic-unlocked]="isUserTimingUnlocked(timingControl.config)"
-                    (click)="config.profile === 'widoor' && toggleUserTimingLock(timingControl.config)"
+                    (click)="usesPhase1SliderInteraction && toggleUserTimingLock(timingControl.config)"
                   >
                     <ion-label>{{ timingControl.text }}</ion-label>
                     <ion-badge class="mantion-value-badge basic-value-badge">
-                      {{ currentUserTimingValue(timingControl.config) }}
+                      {{ userTimingDraftValue(timingControl.config) }}
                       {{ timingControl.config.unit }}
                     </ion-badge>
                     <ion-button
@@ -500,7 +499,7 @@
                       [attr.aria-label]="isUserTimingUnlocked(timingControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
                       (click)="$event.stopPropagation(); toggleUserTimingLock(timingControl.config)"
                     >
-                      @if (config.profile === 'widoor') {
+                      @if (usesPhase1SliderInteraction) {
                         <ion-icon
                           class="basic-lock-icon"
                           [name]="isUserTimingUnlocked(timingControl.config) ? 'lock-open' : 'lock-closed'"
@@ -519,7 +518,7 @@
                   <ion-item
                     class="basic-slider-row"
                     [class.slider-unlocked]="isUserTimingUnlocked(timingControl.config)"
-                    (click)="config.profile === 'widoor' && unlockUserTimingFromZone(timingControl.config)"
+                    (click)="usesPhase1SliderInteraction && unlockUserTimingFromZone(timingControl.config)"
                   >
                     <img
                       class="basic-row-icon"
@@ -534,14 +533,15 @@
                       [min]="timingControl.config.range.min"
                       [max]="timingControl.config.range.max"
                       [step]="1"
-                      [pin]="config.profile !== 'widoor'"
+                      [pin]="!usesPhase1SliderInteraction"
                       [disabled]="!isUserTimingUnlocked(timingControl.config)"
                       [value]="userTimingDraftValue(timingControl.config)"
+                      (ionInput)="setUserTimingDraftValue(timingControl.config, $event)"
                       (ionChange)="setUserTimingDraftValue(timingControl.config, $event)"
                       (ionKnobMoveEnd)="onUserTimingSliderReleased(timingControl.config)"
                       (ionBlur)="onUserTimingSliderReleased(timingControl.config)"
                     ></ion-range>
-                    @if (config.profile === 'widoor') {
+                    @if (usesPhase1SliderInteraction) {
                       <ion-button
                         class="slider-options-toggle"
                         type="button"
@@ -559,16 +559,16 @@
                       </ion-button>
                     }
                   </ion-item>
-                  @if (isUserTimingUnlocked(timingControl.config) && (config.profile !== 'widoor' || isUserTimingPrecisionOpen(timingControl.config))) {
+                  @if (isUserTimingUnlocked(timingControl.config) && (!usesPhase1SliderInteraction || isUserTimingPrecisionOpen(timingControl.config))) {
                     <div class="basic-precision-row" aria-label="Réglage précis">
                       <ion-button
                         type="button"
                         fill="outline"
-                        [attr.aria-label]="config.profile === 'widoor' ? text.shell.decrease : 'Diminuer de 1'"
+                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.decrease : 'Diminuer de 1'"
                         [disabled]="!isUserTimingUnlocked(timingControl.config)"
                         (click)="stepUserTimingDraft(timingControl.config, -1)"
                       >
-                        @if (config.profile === 'widoor') {
+                        @if (usesPhase1SliderInteraction) {
                           <ion-icon name="remove" aria-hidden="true"></ion-icon>
                           <span>{{ text.shell.decrease }}</span>
                         } @else {
@@ -582,11 +582,11 @@
                       <ion-button
                         type="button"
                         fill="outline"
-                        [attr.aria-label]="config.profile === 'widoor' ? text.shell.increase : 'Augmenter de 1'"
+                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.increase : 'Augmenter de 1'"
                         [disabled]="!isUserTimingUnlocked(timingControl.config)"
                         (click)="stepUserTimingDraft(timingControl.config, 1)"
                       >
-                        @if (config.profile === 'widoor') {
+                        @if (usesPhase1SliderInteraction) {
                           <ion-icon name="add" aria-hidden="true"></ion-icon>
                           <span>{{ text.shell.increase }}</span>
                         } @else {
@@ -606,16 +606,13 @@
                     </div>
                   }
                 }
-                @if (userTimingWriteState.message) {
+                @if (userTimingWriteState.status === 'failed' && userTimingWriteState.message) {
                   <p
                     class="command-state"
                     role="status"
                     aria-live="polite"
-                    [attr.data-tone]="userTimingWriteState.status === 'failed' ? 'error' : 'neutral'"
+                    data-tone="error"
                   >
-                    @if (userTimingWriteState.status === 'executing') {
-                      <ion-spinner name="crescent"></ion-spinner>
-                    }
                     <span>{{ userTimingWriteState.message }}</span>
                   </p>
                 }
@@ -679,16 +676,13 @@
                     </ion-button>
                   }
                 </ion-item>
-                @if (weightRangeWriteState.message) {
+                @if (weightRangeWriteState.status === 'failed' && weightRangeWriteState.message) {
                   <p
                     class="command-state"
                     role="status"
                     aria-live="polite"
-                    [attr.data-tone]="weightRangeWriteState.status === 'failed' ? 'error' : 'neutral'"
+                    data-tone="error"
                   >
-                    @if (weightRangeWriteState.status === 'executing') {
-                      <ion-spinner name="crescent"></ion-spinner>
-                    }
                     <span>{{ weightRangeWriteState.message }}</span>
                   </p>
                 }
@@ -703,7 +697,7 @@
                   <ion-badge class="mantion-value-badge basic-value-badge">
                     {{ currentNameRoomDisplay() }}
                   </ion-badge>
-                  @if (config.profile !== 'widoor') {
+                  @if (config.profile !== 'widoor' && !isMoventivProfile) {
                     <ion-button
                       type="button"
                       fill="clear"
@@ -733,7 +727,7 @@
                     label-placement="stacked"
                     [maxlength]="15"
                     [value]="nameRoomDraftValue().name"
-                    [disabled]="(config.profile !== 'widoor' && !nameRoomControlUnlocked) || nameRoomWriteState.status === 'executing'"
+                    [disabled]="(config.profile !== 'widoor' && !isMoventivProfile && !nameRoomControlUnlocked) || nameRoomWriteState.status === 'executing'"
                     (ionInput)="setNameRoomDraftName($event)"
                   ></ion-input>
                 </ion-item>
@@ -742,9 +736,10 @@
                     class="name-room-select"
                     [label]="text.nameRoomControls.roomLabel"
                     label-placement="stacked"
+                    [placeholder]="text.nameRoomControls.roomLabel"
                     interface="popover"
                     [value]="nameRoomDraftValue().roomSuffix"
-                    [disabled]="(config.profile !== 'widoor' && !nameRoomControlUnlocked) || nameRoomWriteState.status === 'executing'"
+                    [disabled]="(config.profile !== 'widoor' && !isMoventivProfile && !nameRoomControlUnlocked) || nameRoomWriteState.status === 'executing'"
                     (ionChange)="setNameRoomDraftRoom($event)"
                   >
                     @for (room of roomOptions; track room.suffix) {
@@ -753,38 +748,22 @@
                       </ion-select-option>
                     }
                   </ion-select>
+                </ion-item>
+                <div class="basic-name-room-actions">
                   <ion-button
                     type="button"
                     size="small"
-                    slot="end"
+                    expand="block"
                     (click)="requestNameRoomChange()"
-                    [disabled]="(config.profile !== 'widoor' && !nameRoomControlUnlocked) || !canApplyNameRoom()"
+                    [disabled]="(config.profile !== 'widoor' && !isMoventivProfile && !nameRoomControlUnlocked) || !canRequestNameRoomChange()"
                   >
                     {{ text.nameRoomControls.apply }}
                   </ion-button>
-                </ion-item>
+                </div>
                 <p class="basic-current-value">
                   {{ text.nameRoomControls.draft }}
                   {{ nameRoomDraftDisplay() }}
                 </p>
-                @if (nameRoomValidationMessage()) {
-                  <p class="command-state" role="alert" data-tone="error">
-                    <span>{{ nameRoomValidationMessage() }}</span>
-                  </p>
-                }
-                @if (nameRoomWriteState.message) {
-                  <p
-                    class="command-state"
-                    role="status"
-                    aria-live="polite"
-                    [attr.data-tone]="nameRoomWriteState.status === 'failed' ? 'error' : 'neutral'"
-                  >
-                    @if (nameRoomWriteState.status === 'executing') {
-                      <ion-spinner name="crescent"></ion-spinner>
-                    }
-                    <span>{{ nameRoomWriteState.message }}</span>
-                  </p>
-                }
               }
             </ion-list>
           }
@@ -797,27 +776,51 @@
           @if (showAdvancedSettingsControls) {
             <ion-list class="advanced-settings-list" lines="none">
               @if (showProfessionalAccessPrompt) {
-                <ion-item class="advanced-access-row">
-                  <ion-label>
-                    <p>{{ text.professionalAccess.locked }}</p>
-                  </ion-label>
-                  <ion-button
-                    slot="end"
-                    type="button"
-                    size="small"
-                    fill="outline"
-                    (click)="requestProfessionalAccess()"
-                  >
-                    {{ text.professionalAccess.unlock }}
-                  </ion-button>
-                </ion-item>
+                @if (isMoventivProfile) {
+                  <ion-list-header class="advanced-section-header phase1-mov-expert-header">
+                    <ion-label>{{ text.professionalAccess.expertTitle }}</ion-label>
+                  </ion-list-header>
+                  <ion-item class="advanced-access-row phase1-mov-expert-access-row">
+                    <ion-input
+                      type="password"
+                      [maxlength]="35"
+                      [label]="text.professionalAccess.expertPlaceholder"
+                      label-placement="stacked"
+                      [value]="professionalAccessCode"
+                      (ionInput)="setProfessionalAccessCode($event)"
+                    ></ion-input>
+                  </ion-item>
+                  <ion-item class="advanced-action-button-row phase1-mov-expert-submit-row">
+                    <ion-button
+                      type="button"
+                      (click)="submitProfessionalAccessCode()"
+                    >
+                      {{ text.professionalAccess.confirm }}
+                    </ion-button>
+                  </ion-item>
+                } @else {
+                  <ion-item class="advanced-access-row">
+                    <ion-label>
+                      <p>{{ text.professionalAccess.locked }}</p>
+                    </ion-label>
+                    <ion-button
+                      slot="end"
+                      type="button"
+                      size="small"
+                      fill="outline"
+                      (click)="requestProfessionalAccess()"
+                    >
+                      {{ text.professionalAccess.unlock }}
+                    </ion-button>
+                  </ion-item>
+                }
               }
-              @if (professionalAccessState.message) {
+              @if (professionalAccessState.status === 'failed' && professionalAccessState.message) {
                 <p
                   class="command-state advanced-state"
                   role="status"
                   aria-live="polite"
-                  [attr.data-tone]="professionalAccessState.status === 'failed' ? 'error' : 'neutral'"
+                  data-tone="error"
                 >
                   <span>{{ professionalAccessState.message }}</span>
                 </p>
@@ -826,7 +829,7 @@
               @if (showProfessionalInputControls) {
                 <ion-list-header class="advanced-section-header advanced-input-header">
                   <ion-label>{{ text.professionalInputControls.title }}</ion-label>
-                  @if (config.profile !== 'widoor') {
+                  @if (config.profile !== 'widoor' && !isMoventivProfile) {
                     <ion-button
                       type="button"
                       size="small"
@@ -866,7 +869,7 @@
                         {{ text.professionalInputControls.button }}
                       }
                     </ion-badge>
-                    @if (config.profile === 'widoor') {
+                    @if (config.profile === 'widoor' || isMoventivProfile) {
                       <ion-toggle
                         class="advanced-input-toggle"
                         slot="end"
@@ -894,30 +897,30 @@
                     }
                   </ion-item>
                 }
-                @if (professionalInputWriteState.message) {
+                @if (professionalInputWriteState.status === 'failed' && professionalInputWriteState.message) {
                   <p
                     class="command-state advanced-state"
                     role="status"
                     aria-live="polite"
-                    [attr.data-tone]="professionalInputWriteState.status === 'failed' ? 'error' : 'neutral'"
+                    data-tone="error"
                   >
-                    @if (professionalInputWriteState.status === 'executing') {
-                      <ion-spinner name="crescent"></ion-spinner>
-                    }
                     <span>{{ professionalInputWriteState.message }}</span>
                   </p>
                 }
               }
 
               @if (showAdvancedWeightRangeControls) {
-                <ion-list-header class="advanced-section-header">
+                <ion-list-header class="advanced-section-header phase1-mov-weight-header">
+                  @if (!isMoventivProfile) {
                   <img
                     slot="start"
                     class="advanced-row-icon"
                     src="assets/img/icon_force.svg"
                     alt=""
                   />
+                  }
                   <ion-label>{{ text.professional.weightRange }}</ion-label>
+                  @if (!isMoventivProfile) {
                   <ion-badge class="advanced-value-badge">
                     {{ currentWeightRangeValue()?.lower }}–{{ currentWeightRangeValue()?.upper }}
                     kg
@@ -935,13 +938,19 @@
                       alt=""
                     />
                   </ion-button>
+                  }
                 </ion-list-header>
-                <ion-item class="advanced-select-row">
-                  <ion-label>{{ text.weightRangeControls.draft }}</ion-label>
+                <ion-item class="advanced-select-row phase1-mov-weight-row">
+                  <ion-label>
+                    {{ isMoventivProfile ? text.weightRangeControls.selectTitle : text.weightRangeControls.draft }}
+                  </ion-label>
                   <ion-select
                     slot="end"
                     [attr.aria-label]="text.professional.weightRange"
-                    interface="popover"
+                    [interface]="isMoventivProfile ? 'alert' : 'popover'"
+                    [interfaceOptions]="isMoventivProfile ? moventivWeightAlertOptions : {}"
+                    [cancelText]="text.weightRangeControls.cancel"
+                    [okText]="text.weightRangeControls.confirm"
                     [compareWith]="compareWeightRangeOptions"
                     [value]="weightRangeDraftValue()"
                     [disabled]="weightRangeSelectDisabled()"
@@ -954,6 +963,7 @@
                     }
                   </ion-select>
                 </ion-item>
+                @if (!isMoventivProfile) {
                 <div class="advanced-apply-row">
                   <strong>
                     {{ weightRangeDraftValue()?.lower }}–{{ weightRangeDraftValue()?.upper }}
@@ -970,29 +980,76 @@
                     </ion-button>
                   }
                 </div>
-                @if (weightRangeWriteState.message) {
+                }
+                @if (weightRangeWriteState.status === 'failed' && weightRangeWriteState.message) {
                   <p
                     class="command-state advanced-state"
                     role="status"
                     aria-live="polite"
-                    [attr.data-tone]="weightRangeWriteState.status === 'failed' ? 'error' : 'neutral'"
+                    data-tone="error"
                   >
-                    @if (weightRangeWriteState.status === 'executing') {
-                      <ion-spinner name="crescent"></ion-spinner>
-                    }
                     <span>{{ weightRangeWriteState.message }}</span>
                   </p>
                 }
               }
 
+              @if (isMoventivProfile && (sensitiveActions.length > 0 || showProductDateMaintenanceAction)) {
+                <ion-list-header class="advanced-section-header phase1-mov-extra-actions-header">
+                  <ion-label>{{ text.sensitiveActions.additionalTitle }}</ion-label>
+                </ion-list-header>
+                @for (action of sensitiveActions; track action.action) {
+                  @if (action.control === 'button') {
+                    <ion-item
+                      class="advanced-action-button-row phase1-mov-extra-action-row"
+                      [attr.data-sensitive-action]="action.action"
+                    >
+                      <ion-label>{{ text.sensitiveActions[action.textKey] }}</ion-label>
+                      <ion-button
+                        type="button"
+                        [class.action-write-pending]="sensitiveActionBusy && sensitiveActionState.action === action.action"
+                        [disabled]="!canExecuteSensitiveAction(action)"
+                        (click)="requestSensitiveAction(action)"
+                      >
+                        {{ text.sensitiveActions[action.textKey] }}
+                      </ion-button>
+                    </ion-item>
+                  }
+                }
+                @if (showProductDateMaintenanceAction) {
+                  <ion-item class="advanced-action-button-row phase1-mov-extra-action-row phase1-mov-maintenance-action-row">
+                    <ion-label>{{ productDateMaintenanceActionLabel }}</ion-label>
+                    <ion-button
+                      type="button"
+                      color="warning"
+                      [class.action-write-pending]="productDateActionBusy"
+                      (click)="requestProductDateMaintenanceAction()"
+                      [disabled]="!canRequestProductDateMaintenanceAction()"
+                    >
+                      {{ productDateMaintenanceActionLabel }}
+                    </ion-button>
+                  </ion-item>
+                }
+              }
+
               @if (showProfessionalScalarControls) {
+                @if (isMoventivProfile) {
+                  <ion-list-header class="advanced-section-header phase1-mov-advanced-tuning-header">
+                    <ion-label>{{ text.sections.professionalSettings }}</ion-label>
+                  </ion-list-header>
+                }
                 @for (scalarControl of visibleProfessionalScalarControls; track scalarControl.config.field) {
+                  @if (isMoventivProfile && professionalAccessGranted && scalarControl.config.field === config.capabilities.professionalAccessFields[0]) {
+                    <ion-list-header class="advanced-section-header phase1-mov-expert-mode-header">
+                      <ion-label>{{ text.professionalAccess.expertMode }}</ion-label>
+                    </ion-list-header>
+                  }
                   <ion-list-header
                     class="advanced-section-header advanced-scalar-header"
+                    [attr.data-professional-scalar-header]="scalarControl.config.field"
                     [class.advanced-unlocked]="isProfessionalScalarUnlocked(scalarControl.config)"
-                    (click)="config.profile === 'widoor' && toggleProfessionalScalarLock(scalarControl.config)"
+                    (click)="usesPhase1SliderInteraction && toggleProfessionalScalarLock(scalarControl.config)"
                   >
-                    @if (config.profile !== 'widoor') {
+                    @if (config.profile !== 'widoor' && !isMoventivProfile) {
                       <img
                         slot="start"
                         class="advanced-row-icon"
@@ -1002,7 +1059,7 @@
                     }
                     <ion-label>{{ scalarControl.text }}</ion-label>
                     <ion-badge class="advanced-value-badge">
-                      {{ currentProfessionalScalarValue(scalarControl.config) }}
+                      {{ professionalScalarDraftValue(scalarControl.config) }}
                       {{ scalarControl.config.unit ?? '' }}
                     </ion-badge>
                     <ion-button
@@ -1013,8 +1070,9 @@
                       [attr.aria-label]="isProfessionalScalarUnlocked(scalarControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
                       (click)="$event.stopPropagation(); toggleProfessionalScalarLock(scalarControl.config)"
                     >
-                      @if (config.profile === 'widoor') {
+                      @if (usesPhase1SliderInteraction) {
                         <ion-icon
+                          class="advanced-lock-icon"
                           [name]="isProfessionalScalarUnlocked(scalarControl.config) ? 'lock-open' : 'lock-closed'"
                           aria-hidden="true"
                         ></ion-icon>
@@ -1030,9 +1088,9 @@
                     class="advanced-slider-row"
                     [class.slider-unlocked]="isProfessionalScalarUnlocked(scalarControl.config)"
                     [attr.data-professional-scalar-field]="scalarControl.config.field"
-                    (click)="config.profile === 'widoor' && unlockProfessionalScalarFromZone(scalarControl.config)"
+                    (click)="usesPhase1SliderInteraction && unlockProfessionalScalarFromZone(scalarControl.config)"
                   >
-                    @if (config.profile === 'widoor') {
+                    @if (config.profile === 'widoor' || isMoventivProfile) {
                       <img
                         slot="start"
                         class="advanced-row-icon"
@@ -1046,16 +1104,17 @@
                       [min]="scalarControl.config.range.min"
                       [max]="scalarControl.config.range.max"
                       [step]="1"
-                      [pin]="config.profile !== 'widoor'"
+                      [pin]="!usesPhase1SliderInteraction"
                       [snaps]="config.profile === 'widoor' && scalarControl.config.field === 'break-force-at-open'"
                       [ticks]="config.profile === 'widoor' && scalarControl.config.field === 'break-force-at-open'"
                       [disabled]="!isProfessionalScalarUnlocked(scalarControl.config)"
                       [value]="professionalScalarDraftValue(scalarControl.config)"
+                      (ionInput)="setProfessionalScalarDraftValue(scalarControl.config, $event)"
                       (ionChange)="setProfessionalScalarDraftValue(scalarControl.config, $event)"
                       (ionKnobMoveEnd)="onProfessionalScalarSliderReleased(scalarControl.config)"
                       (ionBlur)="onProfessionalScalarSliderReleased(scalarControl.config)"
                     ></ion-range>
-                    @if (config.profile === 'widoor') {
+                    @if (usesPhase1SliderInteraction) {
                       <ion-button
                         class="slider-options-toggle"
                         type="button"
@@ -1073,16 +1132,20 @@
                       </ion-button>
                     }
                   </ion-item>
-                  @if (isProfessionalScalarUnlocked(scalarControl.config) && (config.profile !== 'widoor' || isProfessionalScalarPrecisionOpen(scalarControl.config))) {
-                    <div class="advanced-precision-row" aria-label="Réglage précis">
+                  @if (isProfessionalScalarUnlocked(scalarControl.config) && (!usesPhase1SliderInteraction || isProfessionalScalarPrecisionOpen(scalarControl.config))) {
+                    <div
+                      class="advanced-precision-row"
+                      aria-label="Réglage précis"
+                      [attr.data-professional-scalar-precision]="scalarControl.config.field"
+                    >
                       <ion-button
                         type="button"
                         size="small"
                         fill="outline"
-                        [attr.aria-label]="config.profile === 'widoor' ? text.shell.decrease : 'Diminuer de 1'"
+                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.decrease : 'Diminuer de 1'"
                         (click)="stepProfessionalScalarDraft(scalarControl.config, -1)"
                       >
-                        @if (config.profile === 'widoor') {
+                        @if (usesPhase1SliderInteraction) {
                           <ion-icon name="remove" aria-hidden="true"></ion-icon>
                           <span>{{ text.shell.decrease }}</span>
                         } @else {
@@ -1097,10 +1160,10 @@
                         type="button"
                         size="small"
                         fill="outline"
-                        [attr.aria-label]="config.profile === 'widoor' ? text.shell.increase : 'Augmenter de 1'"
+                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.increase : 'Augmenter de 1'"
                         (click)="stepProfessionalScalarDraft(scalarControl.config, 1)"
                       >
-                        @if (config.profile === 'widoor') {
+                        @if (usesPhase1SliderInteraction) {
                           <ion-icon name="add" aria-hidden="true"></ion-icon>
                           <span>{{ text.shell.increase }}</span>
                         } @else {
@@ -1120,16 +1183,13 @@
                     </div>
                   }
                 }
-                @if (professionalScalarWriteState.message) {
+                @if (professionalScalarWriteState.status === 'failed' && professionalScalarWriteState.message) {
                   <p
                     class="command-state advanced-state"
                     role="status"
                     aria-live="polite"
-                    [attr.data-tone]="professionalScalarWriteState.status === 'failed' ? 'error' : 'neutral'"
+                    data-tone="error"
                   >
-                    @if (professionalScalarWriteState.status === 'executing') {
-                      <ion-spinner name="crescent"></ion-spinner>
-                    }
                     <span>{{ professionalScalarWriteState.message }}</span>
                   </p>
                 }
@@ -1138,7 +1198,7 @@
           }
         </article>
 
-        @if (showProductDateMaintenanceAction) {
+        @if (!isMoventivProfile && showProductDateMaintenanceAction) {
           <article class="product-subsection advanced-settings-panel">
             <h3>{{ text.productDateActions.confirmTitle }}</h3>
             <ion-list class="advanced-actions-list" lines="none">
@@ -1182,7 +1242,7 @@
           </article>
         }
 
-        @if (sensitiveActions.length > 0) {
+        @if (!isMoventivProfile && sensitiveActions.length > 0) {
           <article class="product-subsection advanced-settings-panel">
             <ion-list class="advanced-actions-list" lines="none">
               @if (config.profile === 'widoor') {
@@ -1246,6 +1306,7 @@
                       slot="end"
                       type="button"
                       size="small"
+                      [class.action-write-pending]="sensitiveActionBusy && sensitiveActionState.action === action.action"
                       [color]="sensitiveActionButtonColor(action)"
                       [class.advanced-danger-button]="action.action === 'reset'"
                       [disabled]="!canExecuteSensitiveAction(action)"
@@ -1258,16 +1319,13 @@
                 }
               }
             </ion-list>
-            @if (sensitiveActionState.message) {
+            @if (sensitiveActionState.status === 'failed' && sensitiveActionState.message) {
               <p
                 class="command-state advanced-state"
                 role="status"
                 aria-live="polite"
-                [attr.data-tone]="sensitiveActionState.status === 'failed' ? 'error' : 'neutral'"
+                data-tone="error"
               >
-                @if (sensitiveActionState.status === 'executing') {
-                  <ion-spinner name="crescent"></ion-spinner>
-                }
                 <span>{{ sensitiveActionState.message }}</span>
               </p>
             }
@@ -1306,7 +1364,7 @@
               </ion-item>
             }
           </ion-list>
-        } @else {
+        } @else if (config.profile !== 'widoor') {
           <ion-list class="product-information-list" lines="full">
             <ion-list-header class="mantion-list-header product-information-header">
               <ion-label>{{ text.sections.motorState }}</ion-label>
@@ -1318,7 +1376,7 @@
         }
 
         @if (informationGeneralRows.length > 0) {
-          <ion-list class="product-information-list" lines="full">
+          <ion-list class="product-information-list product-information-general" lines="full">
             <ion-list-header class="mantion-list-header product-information-header">
               <ion-label>{{ text.information.general }}</ion-label>
             </ion-list-header>
@@ -1337,7 +1395,7 @@
           </ion-list>
         }
 
-        <ion-list class="product-information-list" lines="full">
+        <ion-list class="product-information-list product-information-dates" lines="full">
           <ion-list-header class="mantion-list-header product-information-header">
             <ion-label>{{ text.sections.dates }}</ion-label>
           </ion-list-header>
@@ -1383,7 +1441,10 @@
           </ion-list-header>
           @if (viewModel.reads.version.status === 'available') {
             @for (row of versionRows; track row.key) {
-              @if (config.profile !== 'widoor' || row.key !== 'control-hardware') {
+              @if (
+                (config.profile !== 'widoor' && !isMoventivProfile) ||
+                (row.key !== 'control-hardware' && (!isMoventivProfile || row.key !== 'motor-address'))
+              ) {
               <ion-item
                 class="product-information-row"
                 [attr.data-info-row]="row.key"
@@ -1399,13 +1460,13 @@
           }
         </ion-list>
 
-        @if (config.profile === 'widoor' && viewModel.reads.version.status === 'available') {
+        @if ((config.profile === 'widoor' || isMoventivProfile) && viewModel.reads.version.status === 'available') {
           <ion-list class="product-information-list product-information-hardware" lines="full">
             <ion-list-header class="mantion-list-header product-information-header">
               <ion-label>{{ widoorHistoricalHeadings.hardware }}</ion-label>
             </ion-list-header>
             @for (row of versionRows; track row.key) {
-              @if (row.key === 'control-hardware') {
+              @if (row.key === 'control-hardware' || (isMoventivProfile && row.key === 'motor-address')) {
                 <ion-item
                   class="product-information-row"
                   [attr.data-info-row]="row.key"

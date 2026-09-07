@@ -57,7 +57,7 @@ export const WIDOOR_PRODUCT_PROFILE = defineProductProfile({
   behavior: {
     immediateWritePolicy: 'widoor',
     sliderAutoWrite: true,
-    advancedSettingsConfirmation: false,
+    advancedSettingsConfirmation: true,
     showControlsBeforeRead: true,
     refreshAfterMaintenanceAction: true,
   },
@@ -75,6 +75,6 @@ export const WIDOOR_PRODUCT_PROFILE = defineProductProfile({
   },
   ui: {
     widoorLayout: true,
-    widoorSliderInteraction: true,
+    phase1SliderInteraction: true,
   },
 } satisfies ProductProfileDefinition);

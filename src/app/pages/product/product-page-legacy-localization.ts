@@ -112,6 +112,21 @@ const LEGACY_PRODUCT_LABELS = {
       "additionalTitle": "Commandes supplémentaires",
       "maintenance": "Maintenance effectuée",
       "setup": "Mise en service effectuée"
+    },
+    "moventiv": {
+      "staticLight": "Activation du bandeau lumineux",
+      "advancedTuning": "Réglages avancés",
+      "expertTitle": "Réglages expert",
+      "expertMode": "Mode expert",
+      "expertPlaceholder": "Rentrez le mot de passe",
+      "currentWeightProfile": "Profil actuel",
+      "maximumWeight": "Poids maximum autorisé",
+      "weightSelectTitle": "Sélectionner le poids de la porte",
+      "weightWarning": "ATTENTION : La modification de ce paramètre entrainera la réinitialisation des paramètres de vitesse !",
+      "weightCancel": "Annuler",
+      "weightConfirm": "Valider",
+      "directionLeft": "opposé sortie câbles",
+      "directionRight": "Vers sortie câbles"
     }
   },
   "en": {
@@ -223,6 +238,21 @@ const LEGACY_PRODUCT_LABELS = {
       "additionalTitle": "Additionnal commands",
       "maintenance": "Maintenance done",
       "setup": "Setup done"
+    },
+    "moventiv": {
+      "staticLight": "Activation of the illuminated panel",
+      "advancedTuning": "Advanced tuning",
+      "expertTitle": "Expert settings",
+      "expertMode": "Expert mode",
+      "expertPlaceholder": "Enter password",
+      "currentWeightProfile": "Actuel weight profile",
+      "maximumWeight": "Maximum weight",
+      "weightSelectTitle": "Select door weight",
+      "weightWarning": "CAUTION: Changing this setting will reset the speed settings!",
+      "weightCancel": "Cancel",
+      "weightConfirm": "Validate",
+      "directionLeft": "Opposite of cable output",
+      "directionRight": "To cable output"
     }
   },
   "de": {
@@ -334,6 +364,21 @@ const LEGACY_PRODUCT_LABELS = {
       "additionalTitle": "Weitere Befehle",
       "maintenance": "Wartung abgeschlossen",
       "setup": "Einstellungen abgeschlossen"
+    },
+    "moventiv": {
+      "staticLight": "Aktivierung des LED",
+      "advancedTuning": "Fortgeschrittene Justierung",
+      "expertTitle": "Experten Einstellungen",
+      "expertMode": "Expertenmodus",
+      "expertPlaceholder": "Passwort eingeben",
+      "currentWeightProfile": "Gewichtsprofil",
+      "maximumWeight": "Maximales Gewicht",
+      "weightSelectTitle": "Türgewicht auswählen",
+      "weightWarning": "ACHTUNG: Wenn Sie diesen Parameter ändern, werden die Geschwindigkeitseinstellungen zurückgesetzt!",
+      "weightCancel": "Abbrechen",
+      "weightConfirm": "Bestätigen",
+      "directionLeft": "gegenüber dem Kabelausgang",
+      "directionRight": "zum Kabelausgang"
     }
   },
   "pl": {
@@ -445,6 +490,21 @@ const LEGACY_PRODUCT_LABELS = {
       "additionalTitle": "Dodatkowe polecenia",
       "maintenance": "Konserwacja wykonana",
       "setup": "Konfiguracja zakończona"
+    },
+    "moventiv": {
+      "staticLight": "Aktywacja podświetlanego panelu.",
+      "advancedTuning": "Ustawienia zaawansowane",
+      "expertTitle": "Ustawienia zaawansowane",
+      "expertMode": "Tryb ekspercki",
+      "expertPlaceholder": "Wprowadź hasło",
+      "currentWeightProfile": "Aktualny profil wagowy",
+      "maximumWeight": "Maksymalna waga",
+      "weightSelectTitle": "Wybierz wagę drzwi",
+      "weightWarning": "UWAGA: Zmiana tego ustawienia zresetuje ustawienia prędkości!",
+      "weightCancel": "Anuluj",
+      "weightConfirm": "Zatwierdź",
+      "directionLeft": "Przeciwnie do wyjścia kabla.",
+      "directionRight": "W kierunku wyjścia kabla."
     }
   }
 } as const;
@@ -492,11 +552,24 @@ export function widoorMotorStateLabelFor(
   }
 }
 
+export function moventivMotorStateLabelFor(
+  language: ProductPageLanguage,
+  key: WidoorMotorStateKey,
+  value: boolean,
+): string {
+  if (key === 'direction') {
+    const labels = LEGACY_PRODUCT_LABELS[language].moventiv;
+    return value ? labels.directionRight : labels.directionLeft;
+  }
+  return widoorMotorStateLabelFor(language, key, value);
+}
+
 export function productPageTextFor(
   language: ProductPageLanguage,
   profile: string | null = null,
 ) {
-  if (language === 'fr' && profile !== 'widoor') {
+  const isMoventiv = profile?.startsWith('moventiv-') === true;
+  if (language === 'fr' && profile !== 'widoor' && !isMoventiv) {
     return PRODUCT_PAGE_TEXT;
   }
 
@@ -515,6 +588,9 @@ export function productPageTextFor(
       version: labels.sections.version,
       hardware: labels.sections.hardware,
       maintenance: labels.sections.maintenance,
+      professionalSettings: isMoventiv
+        ? labels.moventiv.advancedTuning
+        : PRODUCT_PAGE_TEXT.sections.professionalSettings,
     }),
     shell: Object.freeze({
       ...PRODUCT_PAGE_TEXT.shell,
@@ -550,8 +626,12 @@ export function productPageTextFor(
     nameRoomControls: Object.freeze({
       ...PRODUCT_PAGE_TEXT.nameRoomControls,
       title: labels.user.nameRoom,
-      nameLabel: labels.user.nameLabel,
-      roomLabel: labels.user.roomLabel,
+      nameLabel: isMoventiv
+        ? labels.user.nameLabel.replace('WIDOOR', 'MOVENTIV')
+        : labels.user.nameLabel,
+      roomLabel: isMoventiv
+        ? labels.user.roomLabel.replace('WIDOOR', 'MOVENTIV')
+        : labels.user.roomLabel,
       apply: labels.user.validate,
       rooms: Object.freeze({
         ...PRODUCT_PAGE_TEXT.nameRoomControls.rooms,
@@ -565,6 +645,33 @@ export function productPageTextFor(
       input2: labels.inputs.input2,
       radar: labels.inputs.radar,
       button: labels.inputs.button,
+    }),
+    weightRangeControls: Object.freeze({
+      ...PRODUCT_PAGE_TEXT.weightRangeControls,
+      selectTitle: isMoventiv
+        ? labels.moventiv.weightSelectTitle
+        : PRODUCT_PAGE_TEXT.weightRangeControls.selectTitle,
+      warning: isMoventiv
+        ? labels.moventiv.weightWarning
+        : PRODUCT_PAGE_TEXT.weightRangeControls.warning,
+      cancel: isMoventiv
+        ? labels.moventiv.weightCancel
+        : PRODUCT_PAGE_TEXT.weightRangeControls.cancel,
+      confirm: isMoventiv
+        ? labels.moventiv.weightConfirm
+        : PRODUCT_PAGE_TEXT.weightRangeControls.confirm,
+    }),
+    professionalAccess: Object.freeze({
+      ...PRODUCT_PAGE_TEXT.professionalAccess,
+      expertTitle: isMoventiv
+        ? labels.moventiv.expertTitle
+        : PRODUCT_PAGE_TEXT.professionalAccess.expertTitle,
+      expertMode: isMoventiv
+        ? labels.moventiv.expertMode
+        : PRODUCT_PAGE_TEXT.professionalAccess.expertMode,
+      expertPlaceholder: isMoventiv
+        ? labels.moventiv.expertPlaceholder
+        : PRODUCT_PAGE_TEXT.professionalAccess.expertPlaceholder,
     }),
     productDateActions: Object.freeze({
       ...PRODUCT_PAGE_TEXT.productDateActions,
@@ -585,6 +692,9 @@ export function productPageTextFor(
       closeSpeed: labels.user.closeSpeed,
       shortTiming: labels.user.shortTiming,
       longTiming: labels.user.longTiming,
+      staticLight: isMoventiv
+        ? labels.moventiv.staticLight
+        : PRODUCT_PAGE_TEXT.user.staticLight,
       dynamicLight: labels.user.dynamicLight,
       rgb: labels.user.rgb,
     }),
@@ -598,6 +708,15 @@ export function productPageTextFor(
       brakingOpenPower: labels.professional.brakingOpenPower,
       obstacleSensitivity: labels.professional.obstacleSensitivity,
       breakForceAtOpen: labels.professional.breakForceAtOpen,
+    }),
+    information: Object.freeze({
+      ...PRODUCT_PAGE_TEXT.information,
+      currentWeightProfile: isMoventiv
+        ? labels.moventiv.currentWeightProfile
+        : PRODUCT_PAGE_TEXT.information.currentWeightProfile,
+      maximumWeight: isMoventiv
+        ? labels.moventiv.maximumWeight
+        : PRODUCT_PAGE_TEXT.information.maximumWeight,
     }),
     dates: Object.freeze({
       ...PRODUCT_PAGE_TEXT.dates,

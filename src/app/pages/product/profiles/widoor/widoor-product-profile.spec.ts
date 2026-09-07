@@ -27,9 +27,9 @@ describe('Widoor product profile', () => {
     expect(Object.isFrozen(WIDOOR_PRODUCT_PROFILE)).toBeTrue();
     expect(Object.isFrozen(WIDOOR_PRODUCT_PROFILE.sensitiveActions)).toBeTrue();
     expect(WIDOOR_PRODUCT_PROFILE.ui.widoorLayout).toBeTrue();
-    expect(WIDOOR_PRODUCT_PROFILE.ui.widoorSliderInteraction).toBeTrue();
+    expect(WIDOOR_PRODUCT_PROFILE.ui.phase1SliderInteraction).toBeTrue();
     expect(WIDOOR_PRODUCT_PROFILE.behavior.advancedSettingsConfirmation)
-      .toBeFalse();
+      .toBeTrue();
     expect(WIDOOR_PRODUCT_PROFILE.information.showMotorAddress).toBeFalse();
     expect(WIDOOR_PRODUCT_PROFILE.information.supplementalMaintenanceFields)
       .toEqual([

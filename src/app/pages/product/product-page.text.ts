@@ -82,6 +82,12 @@ export const PRODUCT_PAGE_TEXT = {
   },
   weightRangeControls: {
     apply: 'Appliquer',
+    selectTitle: 'Sélectionner le poids de la porte',
+    warning:
+      'ATTENTION : La modification de ce paramètre entrainera la ' +
+      'réinitialisation des paramètres de vitesse !',
+    cancel: 'Annuler',
+    confirm: 'Valider',
     current: 'Plage lue :',
     draft: 'Plage à appliquer :',
     executing: 'Envoi de la plage de poids…',
@@ -91,6 +97,7 @@ export const PRODUCT_PAGE_TEXT = {
   },
   sensitiveActions: {
     title: 'Fonctions avancées Phase 1',
+    additionalTitle: 'Commandes supplémentaires',
     notice:
       'Ces fonctions reprennent les commandes réellement exposées dans la Phase 1. Les actions destructives demandent une confirmation explicite.',
     learning: 'Apprentissage',
@@ -145,8 +152,11 @@ export const PRODUCT_PAGE_TEXT = {
   },
   professionalAccess: {
     title: 'Accès professionnel',
+    expertTitle: 'Réglages expert',
+    expertMode: 'Mode expert',
     message: 'Saisissez le code professionnel pour afficher ces réglages.',
     placeholder: 'Code professionnel',
+    expertPlaceholder: 'Rentrez le mot de passe',
     cancel: 'Annuler',
     confirm: 'Valider',
     unlock: 'Déverrouiller les réglages professionnels',
@@ -326,6 +336,7 @@ export const PRODUCT_PAGE_TEXT = {
   },
   information: {
     general: 'Informations générales',
+    currentWeightProfile: 'Profil actuel',
     maximumWeight: 'Poids maximum',
     supplemental: 'Informations supplémentaires',
   },
