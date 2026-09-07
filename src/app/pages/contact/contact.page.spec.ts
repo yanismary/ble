@@ -29,6 +29,8 @@ describe('ContactPage', () => {
 
     expect(element.querySelector('ion-title')?.textContent)
       .toContain(component.copy.contactTitle);
+    expect(element.querySelector('ion-toolbar.main-menu-destination-navbar'))
+      .not.toBeNull();
     expect(element.querySelector('img[src="assets/img/logo_wimove.png"]'))
       .not.toBeNull();
     expect(element.textContent).toContain(component.copy.supportEmail);

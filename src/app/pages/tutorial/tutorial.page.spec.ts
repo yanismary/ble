@@ -10,6 +10,12 @@ describe('TutorialPage', () => {
   let router: jasmine.SpyObj<Router>;
   let gestureOptions: {
     readonly direction?: string;
+    readonly threshold?: number;
+    readonly onStart?: () => void;
+    readonly onMove?: (detail: {
+      readonly deltaX: number;
+      readonly deltaY: number;
+    }) => void;
     readonly onEnd?: (detail: {
       readonly deltaX: number;
       readonly deltaY: number;
@@ -157,6 +163,52 @@ describe('TutorialPage', () => {
     component.handleSwipe(-20, 0);
     component.handleSwipe(-120, 150);
     expect(component.slideIndex).toBe(0);
+  });
+
+  it('moves the slide with the finger before selecting it on release',
+    async () => {
+      const fixture = await createPage();
+      const component = fixture.componentInstance;
+
+      component.selectProduct('widoor');
+      fixture.detectChanges();
+      gestureOptions?.onStart?.();
+      gestureOptions?.onMove?.({ deltaX: -72, deltaY: 4 });
+      fixture.detectChanges();
+
+      const firstSlide = query<HTMLElement>(fixture, '.tutorial-slide');
+      expect(component.slideIndex).toBe(0);
+      expect(component.slideDragOffsetX).toBe(-72);
+      expect(firstSlide?.classList.contains('tutorial-slide-dragging'))
+        .toBeTrue();
+      expect(firstSlide?.style.transform).toBe(
+        'translate3d(calc(0% - 72px), 0px, 0px)',
+      );
+
+      gestureOptions?.onEnd?.({ deltaX: -72, deltaY: 4 });
+      fixture.detectChanges();
+
+      expect(component.slideIndex).toBe(1);
+      expect(component.slideDragOffsetX).toBe(0);
+      expect(firstSlide?.classList.contains('tutorial-slide-dragging'))
+        .toBeFalse();
+      expect(firstSlide?.style.transform).toContain('-100%');
+    },
+  );
+
+  it('dampens dragging beyond the first and final pages', async () => {
+    const fixture = await createPage();
+    const component = fixture.componentInstance;
+
+    component.selectProduct('moventiv');
+    component.startSlideDrag();
+    component.moveSlideDrag(80, 0);
+    expect(component.slideDragOffsetX).toBe(20);
+
+    component.slideIndex = component.totalPages - 1;
+    component.startSlideDrag();
+    component.moveSlideDrag(-80, 0);
+    expect(component.slideDragOffsetX).toBe(-20);
   });
 
   it('keeps the pager indicative and removes Phase 2 navigation buttons',

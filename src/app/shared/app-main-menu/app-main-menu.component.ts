@@ -29,6 +29,11 @@ import {
     .app-main-menu-icon {
       font-size: 26px;
     }
+
+    .app-main-menu-list ion-label {
+      text-align: start;
+    }
+
   `],
   standalone: true,
   imports: [IonButton, IonItem, IonLabel, IonList, IonPopover],

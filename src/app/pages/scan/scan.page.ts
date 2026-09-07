@@ -2297,7 +2297,7 @@ export class ScanPage implements OnDestroy {
   }
 
   private async presentPermissionDeniedToast(): Promise<void> {
-    const text = scanPermissionTextFor(readStoredAppLanguage());
+    const text = await this.currentPermissionText();
     const toast = await this.toastController.create({
       message: text.firstDenial,
       duration: 3_500,
@@ -2315,7 +2315,7 @@ export class ScanPage implements OnDestroy {
 
     this.clearPermissionInlineFeedback();
     this.permissionSettingsAlertOpen = true;
-    const text = scanPermissionTextFor(readStoredAppLanguage());
+    const text = await this.currentPermissionText();
     const alert = await this.alertController.create({
       header: text.settingsTitle,
       message: blocked ? text.blockedDenial : text.repeatedDenial,
@@ -2339,6 +2339,14 @@ export class ScanPage implements OnDestroy {
       ],
     });
     await alert.present();
+  }
+
+  private async currentPermissionText() {
+    const requirement =
+      await this.bleService.requiresLegacyAndroidLocationService()
+        ? 'bluetooth-and-location' as const
+        : 'bluetooth' as const;
+    return scanPermissionTextFor(readStoredAppLanguage(), requirement);
   }
 
   private async openAppSettingsAfterPermissionDenial(): Promise<void> {

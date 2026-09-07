@@ -28,7 +28,8 @@ describe('CompanyInfoPage', () => {
   it('renders the Phase 1 style navbar and historical company images', () => {
     const element = fixture.nativeElement as HTMLElement;
 
-    expect(element.querySelector('ion-toolbar.mantion-navbar')).toBeTruthy();
+    expect(element.querySelector('ion-toolbar.main-menu-destination-navbar'))
+      .toBeTruthy();
     expect(element.querySelector('img[src="assets/img/mantionSMT_exterior.jpg"]'))
       .toBeTruthy();
     expect(element.querySelector('img[src="assets/img/mantionSMT_manufacturing.jpg"]'))

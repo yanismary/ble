@@ -1204,6 +1204,12 @@ describe('ScanPage', () => {
       const signal = fixture.nativeElement.querySelector(
         '.scan-rssi-image',
       ) as HTMLImageElement | null;
+      const signalLine = fixture.nativeElement.querySelector(
+        '.scan-rssi-line',
+      ) as HTMLElement | null;
+      const signalIndicator = fixture.nativeElement.querySelector(
+        '.scan-rssi-indicator',
+      ) as HTMLElement | null;
 
       expect(item?.textContent).toContain('Nom : Salon');
       expect(item?.textContent).toContain('device-1');
@@ -1212,10 +1218,25 @@ describe('ScanPage', () => {
       expect(signal?.getAttribute('src')).toBe(
         'assets/img/img_ble_strenght_4_4.svg',
       );
+      expect(signalLine?.firstElementChild?.classList)
+        .toContain('scan-rssi-label');
+      expect(signalLine?.lastElementChild).toBe(signalIndicator);
+      expect(signalIndicator?.firstElementChild).toBe(signal);
 
       await component.stopScan();
     },
   );
+
+  it('should render the Phase 1 blue search action with its leading icon',
+    () => {
+      const button = scanSearchButton(fixture);
+      const icon = button.querySelector('ion-icon');
+
+      expect(button.hasAttribute('color')).toBeFalse();
+      expect(icon?.getAttribute('name')).toBe('search');
+      expect(icon?.getAttribute('slot')).toBe('start');
+      expect(button.textContent?.trim()).toBe(component.scanText.search);
+    });
 
   it('should hide BLE identifiers when the scan preference disables them',
     async () => {
@@ -1743,9 +1764,13 @@ describe('ScanPage', () => {
       fixture.detectChanges();
 
       expect(toastOptions).toEqual([jasmine.objectContaining({
+        message:
+          'L’autorisation Bluetooth est nécessaire pour détecter et se ' +
+          'connecter aux motorisations.',
         duration: 3_500,
         position: 'bottom',
       })]);
+      expect(toastOptions[0]['message']).not.toContain('localisation');
       expect(alertOptions).toEqual([]);
       expect(component.devices).toEqual([existingDevice]);
       expect(component.selectedDeviceId).toBe(existingDevice.deviceId);
@@ -1786,7 +1811,13 @@ describe('ScanPage', () => {
 
       expect(toastCreate).toHaveBeenCalledTimes(1);
       expect(alertOptions.length).toBe(1);
-      expect(alertOptions[0].header).toBe('Autorisations requises');
+      expect(alertOptions[0].header).toBe('Autorisation requise');
+      expect(alertOptions[0].message).toBe(
+        'L’autorisation Bluetooth est nécessaire pour détecter et se ' +
+        'connecter aux motorisations. Veuillez l’activer dans les réglages ' +
+        'de l’application.',
+      );
+      expect(alertOptions[0].message).not.toContain('localisation');
       expect(alertOptions[0].buttons.map(({ text }) => text)).toEqual([
         'Annuler',
         'Ouvrir les réglages de l’application',
@@ -1803,6 +1834,24 @@ describe('ScanPage', () => {
       await alertOptions[0].buttons[1].handler?.();
       expect(bleService.openAppSettings).toHaveBeenCalledTimes(1);
       expect(startScanSpy).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('should keep location in permission feedback on Android API 30',
+    async () => {
+      bleService.legacyAndroidLocationServiceRequired = true;
+      bleService.locationEnabled = true;
+      spyOn(bleService, 'startScan').and.rejectWith(
+        new BleOperationError('permission-denied', 'Permission denied.'),
+      );
+
+      await component.startScan();
+
+      expect(toastOptions).toEqual([jasmine.objectContaining({
+        message:
+          'Impossible de lancer la recherche tant que les autorisations ' +
+          'Bluetooth et localisation ne sont pas accordées.',
+      })]);
     },
   );
 

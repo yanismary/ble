@@ -42,6 +42,23 @@
   --color: var(--mantion-blue-contrast);
 }
 
+.main-menu-destination-navbar {
+  position: relative;
+}
+
+.main-menu-destination-navbar ion-title {
+  inset: 0;
+  padding-inline: 56px;
+  pointer-events: none;
+  position: absolute;
+  text-align: center;
+}
+
+.main-menu-destination-navbar ion-buttons {
+  position: relative;
+  z-index: 1;
+}
+
 .mantion-page-background {
   --background: var(--mantion-page-background);
 }

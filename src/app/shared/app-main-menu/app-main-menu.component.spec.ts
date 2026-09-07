@@ -145,6 +145,32 @@ describe('AppMainMenuComponent', () => {
     await popover.dismiss();
   });
 
+  it('should keep every Phase 1 menu label aligned to the start',
+    async () => {
+      const button = fixture.nativeElement.querySelector(
+        '.app-main-menu-button',
+      ) as HTMLIonButtonElement;
+      const popover = fixture.nativeElement.querySelector(
+        'ion-popover',
+      ) as HTMLIonPopoverElement;
+      const didPresent = popoverDidPresent(popover);
+
+      button.click();
+      await didPresent;
+      await fixture.whenStable();
+
+      const labels = Array.from(
+        document.querySelectorAll<HTMLElement>('.app-main-menu-list ion-label'),
+      );
+      expect(labels).toHaveSize(6);
+      expect(labels.every((label) =>
+        ['start', 'left'].includes(getComputedStyle(label).textAlign)))
+        .toBeTrue();
+
+      await popover.dismiss();
+    },
+  );
+
   it('should dismiss before navigating once to the selected destination',
     async () => {
       const order: string[] = [];

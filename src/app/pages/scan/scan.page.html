@@ -11,12 +11,11 @@
       <div class="scan-search-cell"></div>
       <ion-button
         class="scan-search-button"
-        color="light"
         type="button"
         (click)="startScan()"
         [disabled]="!canStartScan"
       >
-        <ion-icon name="search" aria-hidden="true"></ion-icon>
+        <ion-icon slot="start" name="search" aria-hidden="true"></ion-icon>
         <span>{{ scanText.search }}</span>
       </ion-button>
       <div class="scan-spinner-cell">
@@ -70,8 +69,8 @@
               <p><strong>{{ bleIdentifierLabel }}</strong> {{ device.deviceId }}</p>
             }
             <p class="scan-rssi-line">
-              {{ scanText.signalQuality }}
-              <span>
+              <span class="scan-rssi-label">{{ scanText.signalQuality }}</span>
+              <span class="scan-rssi-indicator">
                 <img
                   [src]="getSignalQualityAsset(device)"
                   class="scan-rssi-image"

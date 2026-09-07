@@ -50,11 +50,24 @@
   z-index: 20;
 }
 
+.tutorial-slide-viewport {
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  touch-action: pan-y;
+}
+
 .tutorial-slide {
   display: flex;
-  height: 100%;
+  inset: 0;
   padding: 42px 0 78px;
-  touch-action: pan-y;
+  position: absolute;
+  transition: transform 240ms ease-out;
+  will-change: transform;
+}
+
+.tutorial-slide-dragging {
+  transition: none;
 }
 
 .tutorial-slide-content {

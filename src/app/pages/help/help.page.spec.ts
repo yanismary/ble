@@ -52,7 +52,8 @@ describe('HelpPage', () => {
   it('renders the Phase 1 style navbar and back button', async () => {
     const fixture = await createPage();
 
-    expect(query(fixture, 'ion-toolbar.mantion-navbar')).not.toBeNull();
+    expect(query(fixture, 'ion-toolbar.main-menu-destination-navbar'))
+      .not.toBeNull();
     expect(query(fixture, 'ion-back-button[defaultHref="/scan"]'))
       .not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Aide');

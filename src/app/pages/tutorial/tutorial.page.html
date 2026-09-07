@@ -54,24 +54,38 @@
 
     <section
       #slideSurface
-      class="tutorial-slide"
+      class="tutorial-slide-viewport"
       aria-live="polite"
       [attr.data-slide-index]="slideIndex"
     >
-      @if (currentSlide; as slide) {
-        <div class="tutorial-slide-content">
-          @if (slide.image) {
-            <img
-              class="tutorial-image"
-              [src]="slide.image"
-              [alt]="slide.title"
-            />
-          }
+      @for (slide of copy.slides; track $index; let pageIndex = $index) {
+        <article
+          class="tutorial-slide"
+          [class.tutorial-slide-dragging]="slideDragging"
+          [style.transform]="tutorialSlideTransform(pageIndex)"
+          [attr.aria-hidden]="pageIndex !== slideIndex"
+        >
+          <div class="tutorial-slide-content">
+            @if (slide.image) {
+              <img
+                class="tutorial-image"
+                [src]="slide.image"
+                [alt]="slide.title"
+              />
+            }
 
-          <h2 class="slide-title" [innerHTML]="slide.title"></h2>
-          <p class="slide-description" [innerHTML]="slide.description"></p>
-        </div>
-      } @else {
+            <h2 class="slide-title" [innerHTML]="slide.title"></h2>
+            <p class="slide-description" [innerHTML]="slide.description"></p>
+          </div>
+        </article>
+      }
+
+      <article
+        class="tutorial-slide"
+        [class.tutorial-slide-dragging]="slideDragging"
+        [style.transform]="tutorialSlideTransform(copy.slides.length)"
+        [attr.aria-hidden]="!isReadySlide"
+      >
         <div class="tutorial-slide-content tutorial-ready-slide">
           <h2 class="slide-title">{{ copy.readyTitle }}</h2>
           <ion-button
@@ -83,7 +97,7 @@
             {{ copy.continueLabel }}
           </ion-button>
         </div>
-      }
+      </article>
     </section>
 
     <div class="tutorial-pager" aria-hidden="true">

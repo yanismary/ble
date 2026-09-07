@@ -32,7 +32,8 @@ describe('AppInfoPage', () => {
     const element = fixture.nativeElement as HTMLElement;
     const text = element.textContent ?? '';
 
-    expect(element.querySelector('ion-toolbar.mantion-navbar')).toBeTruthy();
+    expect(element.querySelector('ion-toolbar.main-menu-destination-navbar'))
+      .toBeTruthy();
     expect(text).toContain(component.copy.aboutContentTitle);
     expect(text).toContain(component.copy.versionLabel);
     expect(text).toContain(component.copy.lastModification);

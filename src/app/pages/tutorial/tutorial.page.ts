@@ -38,6 +38,8 @@ export class TutorialPage implements OnDestroy {
 
   selectedProduct: TutorialProduct | null = null;
   slideIndex = 0;
+  slideDragOffsetX = 0;
+  slideDragging = false;
 
   constructor(
     private readonly gestureController: GestureController,
@@ -56,9 +58,15 @@ export class TutorialPage implements OnDestroy {
       el: element.nativeElement,
       gestureName: 'tutorial-slide-swipe',
       direction: 'x',
-      threshold: 12,
+      threshold: 0,
+      onStart: () => {
+        this.ngZone.run(() => this.startSlideDrag());
+      },
+      onMove: ({ deltaX, deltaY }) => {
+        this.ngZone.run(() => this.moveSlideDrag(deltaX, deltaY));
+      },
       onEnd: ({ deltaX, deltaY }) => {
-        this.ngZone.run(() => this.handleSwipe(deltaX, deltaY));
+        this.ngZone.run(() => this.endSlideDrag(deltaX, deltaY));
       },
     });
     this.slideGesture.enable();
@@ -94,6 +102,36 @@ export class TutorialPage implements OnDestroy {
   selectProduct(product: TutorialProduct): void {
     this.selectedProduct = product;
     this.slideIndex = 0;
+    this.slideDragOffsetX = 0;
+    this.slideDragging = false;
+  }
+
+  tutorialSlideTransform(pageIndex: number): string {
+    const pageOffset = (pageIndex - this.slideIndex) * 100;
+    return `translate3d(calc(${pageOffset}% + ${this.slideDragOffsetX}px), 0, 0)`;
+  }
+
+  startSlideDrag(): void {
+    this.slideDragging = true;
+    this.slideDragOffsetX = 0;
+  }
+
+  moveSlideDrag(deltaX: number, deltaY: number): void {
+    if (this.selectedProduct === null || Math.abs(deltaX) <= Math.abs(deltaY)) {
+      return;
+    }
+
+    const draggingPastStart = this.slideIndex === 0 && deltaX > 0;
+    const draggingPastEnd = this.slideIndex === this.totalPages - 1 && deltaX < 0;
+    this.slideDragOffsetX = draggingPastStart || draggingPastEnd
+      ? deltaX * 0.25
+      : deltaX;
+  }
+
+  endSlideDrag(deltaX: number, deltaY: number): void {
+    this.handleSwipe(deltaX, deltaY);
+    this.slideDragOffsetX = 0;
+    this.slideDragging = false;
   }
 
   handleSwipe(deltaX: number, deltaY: number): void {

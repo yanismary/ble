@@ -37,6 +37,10 @@
 }
 
 .scan-search-button {
+  --background: #f4f4f4;
+  --background-activated: #e0e0e0;
+  --background-focused: #eeeeee;
+  --background-hover: #eeeeee;
   --box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14),
     0 3px 1px -2px rgba(0, 0, 0, 0.2),
     0 1px 5px 0 rgba(0, 0, 0, 0.12);
@@ -48,14 +52,14 @@
   font-weight: 500;
   height: 60px;
   letter-spacing: 0;
-  margin: 0 5px;
+  margin: 0 -3px;
   min-width: 0;
-  text-transform: uppercase;
-  width: calc(100% - 10px);
+  text-transform: none;
+  width: calc(100% + 6px);
 }
 
 .scan-search-button ion-icon {
-  color: var(--mantion-blue);
+  color: currentColor;
   font-size: 20px;
   margin-inline-end: 0.3em;
 }
@@ -123,12 +127,25 @@
 }
 
 .scan-rssi-line {
-  display: block;
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.scan-rssi-label {
+  flex: 0 0 auto;
+}
+
+.scan-rssi-indicator {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 15px;
 }
 
 .scan-rssi-image {
+  display: block;
   height: 15px;
-  vertical-align: middle;
   width: 40px;
 }
 
