@@ -188,6 +188,61 @@ describe('BleWriteExecutionService', () => {
       expect(ble.writeCharacteristic).not.toHaveBeenCalled();
     });
 
+  it('releases Widoor GATT-only commands without waiting for motor state',
+    async () => {
+      const pending = deferred<void>();
+      ble.writeCharacteristic.and.returnValue(pending.promise);
+      const firstRequest = openRequest();
+      firstRequest.confirmationPolicy = { kind: 'gatt-only' };
+
+      const first = service.execute(firstRequest);
+      expect(service.isExecuting).toBeTrue();
+      expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+
+      const competingRequest = openRequest();
+      competingRequest.confirmationPolicy = { kind: 'gatt-only' };
+      const competing = await service.execute(competingRequest);
+      expect(competing.error?.code).toBe('write-in-progress');
+
+      pending.resolve();
+      const firstResult = await first;
+      expect(firstResult).toEqual(jasmine.objectContaining({
+        status: 'success',
+        nativeWriteCompleted: true,
+        confirmationStatus: 'not-required',
+        movementStartConfirmed: false,
+      }));
+      expect(service.isExecuting).toBeFalse();
+
+      ble.writeCharacteristic.and.resolveTo();
+      const nextRequest = openRequest();
+      nextRequest.confirmationPolicy = { kind: 'gatt-only' };
+      expect((await service.execute(nextRequest)).status).toBe('success');
+      expect(ble.writeCharacteristic).toHaveBeenCalledTimes(2);
+      expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps Widoor close and timed physical-validation scopes with GATT-only completion',
+    async () => {
+      const close = closeRequest();
+      close.confirmationPolicy = { kind: 'gatt-only' };
+      const timed = timedRequest(
+        'OPEN_SHORT_TIMED',
+        'motor-open-short-timed',
+      );
+      timed.confirmationPolicy = { kind: 'gatt-only' };
+
+      expect((await service.execute(close)).status).toBe('success');
+      const timedResult = await service.execute(timed);
+
+      expect(timedResult.status).toBe('success');
+      expect(timedResult.timedCycleValidationStatus).toBe('not-observed');
+      expect(ble.writeCharacteristic).toHaveBeenCalledTimes(2);
+      expect(sendMotorCommandWithConfirmation).not.toHaveBeenCalled();
+    },
+  );
+
   it('executes a catalogued professional setting only with the override',
     async () => {
       const request = requestFor(encodeLegacyProfessionalScalar(

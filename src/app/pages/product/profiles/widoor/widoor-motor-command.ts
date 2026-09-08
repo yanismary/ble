@@ -24,7 +24,7 @@ export const WIDOOR_MOTOR_COMMAND_DEFINITIONS: readonly (
     catalogFactory: commandFactory('OPEN'),
     enabled: true,
     expectedMotorStateRaw: WIDOOR_OPENING_STARTED_STATE,
-    confirmationPolicy: Object.freeze({ kind: 'widoor-open-state' }),
+    confirmationPolicy: Object.freeze({ kind: 'gatt-only' }),
     hardwareValidationStatus: 'validated-widoor-old-firmware',
     isTimedCommand: false,
   }),
@@ -36,7 +36,7 @@ export const WIDOOR_MOTOR_COMMAND_DEFINITIONS: readonly (
     catalogFactory: commandFactory('CLOSE'),
     enabled: true,
     expectedMotorStateRaw: WIDOOR_CLOSING_STARTED_STATE,
-    confirmationPolicy: Object.freeze({ kind: 'widoor-close-state' }),
+    confirmationPolicy: Object.freeze({ kind: 'gatt-only' }),
     physicalValidationPolicy: Object.freeze({
       allowPhysicalValidationAttempt: Object.freeze({
         operation: 'motor-close',
@@ -54,10 +54,7 @@ export const WIDOOR_MOTOR_COMMAND_DEFINITIONS: readonly (
     catalogFactory: commandFactory('OPEN_SHORT_TIMED'),
     enabled: true,
     expectedMotorStateRaw: WIDOOR_OPENING_STARTED_STATE,
-    confirmationPolicy: Object.freeze({
-      kind: 'widoor-timed-opening-state',
-      command: 'OPEN_SHORT_TIMED',
-    }),
+    confirmationPolicy: Object.freeze({ kind: 'gatt-only' }),
     physicalValidationPolicy: Object.freeze({
       allowPhysicalValidationAttempt: Object.freeze({
         operation: 'motor-open-short-timed',

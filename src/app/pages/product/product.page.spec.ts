@@ -1,8 +1,15 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {
+  ComponentFixture,
+  TestBed,
+  fakeAsync,
+  flushMicrotasks,
+  tick,
+} from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   AlertController,
+  IonContent,
   IonRouterOutlet,
   Platform,
 } from '@ionic/angular/standalone';
@@ -63,6 +70,10 @@ import {
 import {
   ProductExitStateService,
 } from '../../core/services/product-exit-state.service';
+import {
+  CONNECTED_PRODUCT_INACTIVITY_TIMEOUT_MS,
+  ConnectedProductInactivityService,
+} from '../../core/services/connected-product-inactivity.service';
 import {
   AppMainMenuComponent,
 } from '../../shared/app-main-menu/app-main-menu.component';
@@ -271,6 +282,8 @@ describe('ProductPage', () => {
   let writeExecutionService: FakeBleWriteExecutionService;
   let alertRole: string | undefined;
   let alertCreate: jasmine.Spy;
+  let alertGetTop: jasmine.Spy;
+  let topAlertDismiss: jasmine.Spy;
   let alertOptions: Record<string, unknown>[];
   let delaySpy: jasmine.Spy;
   let routerNavigate: jasmine.Spy;
@@ -298,6 +311,10 @@ describe('ProductPage', () => {
         };
       },
     );
+    topAlertDismiss = jasmine.createSpy('dismiss').and.resolveTo(true);
+    alertGetTop = jasmine.createSpy('getTop').and.resolveTo({
+      dismiss: topAlertDismiss,
+    });
     routerNavigate = jasmine.createSpy('navigate').and.resolveTo(true);
     routerNavigationState = navigationState('widoor');
     platform = new FakePlatform();
@@ -307,7 +324,10 @@ describe('ProductPage', () => {
       imports: [ProductPage],
       providers: [
         { provide: BleService, useValue: bleService },
-        { provide: AlertController, useValue: { create: alertCreate } },
+        {
+          provide: AlertController,
+          useValue: { create: alertCreate, getTop: alertGetTop },
+        },
         {
           provide: BleWriteExecutionService,
           useValue: writeExecutionService,
@@ -511,6 +531,8 @@ describe('ProductPage', () => {
       expect(productExitState.consume()).toBeNull();
       expect(component.activeMainTab).toBe('commands');
       expect(menu.menuOpen).toBeFalse();
+      expect(TestBed.inject(ConnectedProductInactivityService)
+        .isMonitoring('widoor:device-1:4')).toBeTrue();
     },
   );
 
@@ -528,6 +550,9 @@ describe('ProductPage', () => {
       await menu.select(help!);
       component.ionViewWillLeave();
       routerNavigate.calls.reset();
+
+      expect(TestBed.inject(ConnectedProductInactivityService)
+        .isMonitoring('widoor:device-1:4')).toBeTrue();
 
       await platform.backButton.trigger();
 
@@ -569,6 +594,118 @@ describe('ProductPage', () => {
     expect(writeExecutionService.execute).not.toHaveBeenCalled();
     expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
   });
+
+  it('should scroll to the top only for real Product tab changes', () => {
+    const content = fixture.debugElement.query(By.directive(IonContent))
+      .componentInstance as IonContent;
+    const scrollToTop = spyOn(content, 'scrollToTop').and.resolveTo();
+
+    component.setActiveMainTab('settings');
+    expect(scrollToTop).toHaveBeenCalledOnceWith(0);
+
+    component.setActiveMainTab('settings');
+    expect(scrollToTop).toHaveBeenCalledTimes(1);
+
+    component.setActiveSettingsTab('advanced');
+    component.setActiveSettingsTab('advanced');
+    component.setActiveSettingsTab('basic');
+    component.setActiveMainTab('information');
+    component.setActiveMainTab('commands');
+
+    expect(scrollToTop).toHaveBeenCalledTimes(5);
+    expect(scrollToTop.calls.allArgs()).toEqual([
+      [0], [0], [0], [0], [0],
+    ]);
+    expect(writeExecutionService.execute).not.toHaveBeenCalled();
+  });
+
+  it('should monitor inactivity only for the current real BLE session', () => {
+    const inactivity = TestBed.inject(ConnectedProductInactivityService);
+
+    expect(inactivity.isMonitoring('widoor:device-1:4')).toBeTrue();
+    bleService.emitMotorState([0x21, 0, 0, 0, 0]);
+    expect(inactivity.isMonitoring('widoor:device-1:4')).toBeTrue();
+  });
+
+  it('should dismiss the top alert before inactivity uses backToScan',
+    async () => {
+      const disconnect = spyOn(bleService, 'disconnect').and.callThrough();
+
+      await (component as any).handleConnectedProductInactivityTimeout();
+
+      expect(alertGetTop).toHaveBeenCalledTimes(1);
+      expect(topAlertDismiss).toHaveBeenCalledOnceWith(
+        undefined,
+        'product-inactivity-timeout',
+      );
+      expect(disconnect).toHaveBeenCalledTimes(1);
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
+    },
+  );
+
+  it('should navigate on expired resume after BLE disconnected in background',
+    fakeAsync(() => {
+      const inactivity = TestBed.inject(ConnectedProductInactivityService);
+      const disconnect = spyOn(bleService, 'disconnect').and.callThrough();
+
+      inactivity.handleAppStateChange(false);
+      void bleService.disconnect();
+      flushMicrotasks();
+
+      expect(bleService.connectedDeviceId).toBeNull();
+      expect(inactivity.isMonitoring('widoor:device-1:4')).toBeTrue();
+      tick(CONNECTED_PRODUCT_INACTIVITY_TIMEOUT_MS);
+      expect(routerNavigate).not.toHaveBeenCalled();
+
+      inactivity.handleAppStateChange(true);
+      flushMicrotasks();
+
+      expect(disconnect).toHaveBeenCalledTimes(1);
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
+      expect(inactivity.isMonitoring()).toBeFalse();
+    }),
+  );
+
+  it('should retry Scan on resume when expiration completed in background',
+    fakeAsync(() => {
+      const inactivity = TestBed.inject(ConnectedProductInactivityService);
+      const disconnect = spyOn(bleService, 'disconnect').and.callThrough();
+      let resolveFirstNavigation!: (navigated: boolean) => void;
+      inactivity.stop('widoor:device-1:4');
+      inactivity.start({
+        id: 'widoor:device-1:4',
+        isWriteInProgress: () => false,
+        onTimeout: () => (component as any)
+          .handleConnectedProductInactivityTimeout(),
+      });
+      routerNavigate.and.returnValue(new Promise<boolean>((resolve) => {
+        resolveFirstNavigation = resolve;
+      }));
+
+      tick(CONNECTED_PRODUCT_INACTIVITY_TIMEOUT_MS);
+      flushMicrotasks();
+      expect(disconnect).toHaveBeenCalledTimes(1);
+      expect(routerNavigate).toHaveBeenCalledTimes(1);
+      expect(bleService.connectedDeviceId).toBeNull();
+
+      inactivity.handleAppStateChange(false);
+      resolveFirstNavigation(true);
+      flushMicrotasks();
+      expect(inactivity.isExpirationPending('widoor:device-1:4')).toBeTrue();
+
+      routerNavigate.and.resolveTo(true);
+      inactivity.handleAppStateChange(true);
+      flushMicrotasks();
+
+      expect(disconnect).toHaveBeenCalledTimes(1);
+      expect(routerNavigate).toHaveBeenCalledTimes(2);
+      expect(routerNavigate.calls.allArgs()).toEqual([
+        [['/scan']],
+        [['/scan']],
+      ]);
+      expect(inactivity.isMonitoring()).toBeFalse();
+    }),
+  );
 
   it('should show settings and information tabs by default', () => {
     const element = fixture.nativeElement as HTMLElement;
@@ -1833,6 +1970,10 @@ describe('ProductPage', () => {
   it('should execute catalogued Widoor OPEN once with scoped authorization',
     async () => {
       alertRole = 'confirm';
+      writeExecutionService.nextResult = openExecutionResult(
+        'success',
+        'not-required',
+      );
 
       await component.requestWidoorOpen();
       fixture.detectChanges();
@@ -1850,15 +1991,15 @@ describe('ProductPage', () => {
         profile: 'widoor',
         confidence: 'strong',
       });
-      expect(request.confirmationPolicy).toEqual({
-        kind: 'widoor-open-state',
-      });
+      expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
       expect(request.policy).toEqual({
         allowWidoorPhase1ImmediateWrite: true,
       });
       expect(request.authorization).toBeNull();
       expect(component.openCommandState.status).toBe('confirmed');
-      expect(component.openCommandState.confirmationStatus).toBe('confirmed');
+      expect(component.openCommandState.confirmationStatus)
+        .toBe('not-required');
+      expect(component.openCommandState.movementStartConfirmed).toBeFalse();
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
     },
   );
@@ -1892,7 +2033,7 @@ describe('ProductPage', () => {
       alertRole = 'confirm';
       writeExecutionService.nextResult = openExecutionResult(
         'success',
-        'confirmed',
+        'not-validated',
         null,
         'motor-close',
       );
@@ -1905,9 +2046,7 @@ describe('ProductPage', () => {
       expect(request.write.operation).toBe('motor-close');
       expect(request.write.payloadHex).toBe('00 30');
       expect(Array.from(request.write.payload)).toEqual([0x00, 0x30]);
-      expect(request.confirmationPolicy).toEqual({
-        kind: 'widoor-close-state',
-      });
+      expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
       expect(request.policy).toEqual({
         allowPhysicalValidationAttempt: {
           operation: 'motor-close',
@@ -1919,7 +2058,7 @@ describe('ProductPage', () => {
       expect(request.authorization).toBeNull();
       expect(component.openCommandState.status).toBe('confirmed');
       expect(component.openCommandState.message)
-        .toBe(component.text.widoorCommands.close.confirmed);
+        .toBe(component.text.openCommand.sent);
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
     },
   );
@@ -1968,7 +2107,7 @@ describe('ProductPage', () => {
         ), 'unavailable', component.text.openCommand.alreadyInProgress],
         [openExecutionResult(
           'success', 'not-validated', null, 'motor-close',
-        ), 'timeout', component.text.widoorCommands.close.notConfirmed],
+        ), 'confirmed', component.text.openCommand.sent],
       ];
 
       for (const [result, expectedStatus, expectedMessage] of cases) {
@@ -2060,7 +2199,7 @@ describe('ProductPage', () => {
       const config = WIDOOR_COMMAND_UI_CONFIGS[2];
       writeExecutionService.nextResult = openExecutionResult(
         'success',
-        'confirmed',
+        'not-validated',
         null,
         'motor-open-short-timed',
       );
@@ -2074,10 +2213,7 @@ describe('ProductPage', () => {
         .args[0] as LegacyBleWriteRequest;
       expect(request.write.payloadHex).toBe('00 21 00 00');
       expect(request.write.operation).toBe('motor-open-short-timed');
-      expect(request.confirmationPolicy).toEqual({
-        kind: 'widoor-timed-opening-state',
-        command: 'OPEN_SHORT_TIMED',
-      });
+      expect(request.confirmationPolicy).toEqual({ kind: 'gatt-only' });
       expect(request.policy?.allowPhysicalValidationAttempt).toEqual({
         operation: 'motor-open-short-timed',
         profile: 'widoor',
@@ -2085,21 +2221,19 @@ describe('ProductPage', () => {
       expect(request.policy?.allowWidoorPhase1ImmediateWrite).toBeTrue();
       expect(request.policy?.allowPhase1ReferenceOnly).toBeUndefined();
       expect(request.authorization).toBeNull();
-      expect(component.openCommandState.movementStartConfirmed).toBeTrue();
+      expect(component.openCommandState.movementStartConfirmed).toBeFalse();
       expect(component.openCommandState.timedCycleValidationStatus)
-        .toBe('pending-physical-validation');
+        .toBe('not-observed');
       expect(component.openCommandState.message).toBe(
-        component.text.widoorCommands.openShortTimed.confirmed,
+        component.text.openCommand.sent,
       );
-      expect(component.openCommandState.secondaryMessage).toBe(
-        component.text.widoorCommands.timedCyclePending,
-      );
+      expect(component.openCommandState.secondaryMessage).toBeNull();
       expect(component.commandHistory[0]).toEqual(jasmine.objectContaining({
         label: component.text.widoorCommands.openShortTimed.label,
         status: 'confirmed',
-        confirmationStatus: 'confirmed',
+        confirmationStatus: 'not-validated',
         isTimedCommand: true,
-        timedCycleValidationStatus: 'pending-physical-validation',
+        timedCycleValidationStatus: 'not-observed',
       }));
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
     },
@@ -2262,7 +2396,7 @@ describe('ProductPage', () => {
         string,
       ][] = [
         [openExecutionResult('success', 'confirmed'), 'confirmed',
-          component.text.widoorCommands.open.confirmed],
+          component.text.openCommand.sent],
         [openExecutionResult('timeout', 'timeout'), 'timeout',
           component.text.widoorCommands.open.notConfirmed],
         [openExecutionResult('failed', 'unavailable'), 'failed',
@@ -2276,8 +2410,8 @@ describe('ProductPage', () => {
         [openExecutionResult(
           'unavailable', 'unavailable', 'write-in-progress',
         ), 'unavailable', component.text.openCommand.alreadyInProgress],
-        [openExecutionResult('success', 'not-validated'), 'timeout',
-          component.text.widoorCommands.open.notConfirmed],
+        [openExecutionResult('success', 'not-validated'), 'confirmed',
+          component.text.openCommand.sent],
       ];
 
       for (const [result, expectedStatus, expectedMessage] of cases) {
@@ -2991,6 +3125,9 @@ describe('ProductPage', () => {
 
   it('should require the Phase 1 confirmation before Widoor Advanced',
     async () => {
+      const content = fixture.debugElement.query(By.directive(IonContent))
+        .componentInstance as IonContent;
+      const scrollToTop = spyOn(content, 'scrollToTop').and.resolveTo();
       component.setActiveMainTab('settings');
       component.requestActiveSettingsTab('advanced');
       await waitForCondition(() => component.activeSettingsTab === 'basic');
@@ -3001,7 +3138,39 @@ describe('ProductPage', () => {
       expect(alertOptions[0]['message'])
         .toBe(component.text.moventivAdvancedAlert.message);
       expect(component.activeSettingsTab).toBe('basic');
+      expect(scrollToTop).toHaveBeenCalledTimes(3);
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should allow the next Widoor command as soon as its GATT write settles',
+    async () => {
+      writeExecutionService.nextResult = openExecutionResult(
+        'success',
+        'not-validated',
+        null,
+        'motor-close',
+      );
+
+      await component.requestWidoorClose();
+
+      expect(component.canExecuteWidoorCommand(
+        WIDOOR_COMMAND_UI_CONFIGS[0],
+      )).toBeTrue();
+      writeExecutionService.nextResult = openExecutionResult(
+        'success',
+        'not-required',
+      );
+      await component.requestWidoorOpen();
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(2);
+      expect(writeExecutionService.execute.calls.allArgs().map(
+        ([request]) => request.confirmationPolicy,
+      )).toEqual([
+        { kind: 'gatt-only' },
+        { kind: 'gatt-only' },
+      ]);
+      expect(component.openCommandState.status).toBe('confirmed');
     },
   );
 
@@ -7752,6 +7921,7 @@ describe('ProductPage Demo mode', () => {
       expect(harness.routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
       expect(harness.productExitState.consume()).toBeNull();
       expect(harness.loadService.cancelCurrentLoad).not.toHaveBeenCalled();
+      expect(harness.inactivityService.isMonitoring()).toBeFalse();
     },
   );
 });
@@ -7764,6 +7934,7 @@ async function createDemoHarness(profile: ProductDemoProfile): Promise<{
   readonly writeExecutionService: FakeBleWriteExecutionService;
   readonly routerNavigate: jasmine.Spy;
   readonly productExitState: ProductExitStateService;
+  readonly inactivityService: ConnectedProductInactivityService;
 }> {
   const bleService = new FakeBleService();
   bleService.connectedDeviceId = null;
@@ -7811,6 +7982,9 @@ async function createDemoHarness(profile: ProductDemoProfile): Promise<{
   const fixture = TestBed.createComponent(ProductPage);
   const component = fixture.componentInstance;
   const productExitState = TestBed.inject(ProductExitStateService);
+  const inactivityService = TestBed.inject(
+    ConnectedProductInactivityService,
+  );
   fixture.detectChanges();
   return {
     fixture,
@@ -7820,6 +7994,7 @@ async function createDemoHarness(profile: ProductDemoProfile): Promise<{
     writeExecutionService,
     routerNavigate,
     productExitState,
+    inactivityService,
   };
 }
 
@@ -8159,7 +8334,7 @@ function openExecutionResult(
     timedCycleValidationStatus: timed
       ? confirmed
         ? 'pending-physical-validation'
-        : status === 'timeout'
+        : status === 'timeout' || status === 'success'
           ? 'not-observed'
           : 'failed'
       : 'not-observed',

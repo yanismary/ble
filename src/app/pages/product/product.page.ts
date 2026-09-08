@@ -2,6 +2,7 @@ import {
   Component,
   NgZone,
   OnDestroy,
+  ViewChild,
   inject,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -103,6 +104,9 @@ import {
 import {
   ProductExitStateService,
 } from '../../core/services/product-exit-state.service';
+import {
+  ConnectedProductInactivityService,
+} from '../../core/services/connected-product-inactivity.service';
 import {
   MotorStateFrame,
   ProductDetection,
@@ -239,6 +243,9 @@ import {
 
 type ProductShellMainTab = 'commands' | 'settings' | 'information';
 type ProductShellSettingsTab = 'basic' | 'advanced';
+type ProductBackToScanOptions = Readonly<{
+  preserveInactivityExpiration?: boolean;
+}>;
 type LocalizedProductPageText = ReturnType<typeof productPageTextFor>;
 type WidoorHistoricalHeadings = Readonly<{
   outputs: string;
@@ -276,6 +283,8 @@ type WidoorHistoricalHeadings = Readonly<{
   ],
 })
 export class ProductPage implements OnDestroy {
+  @ViewChild(IonContent) private content?: IonContent;
+
   private readonly alertController = inject(AlertController);
   private readonly bleService = inject(BleService);
   private readonly bleWriteExecutionService =
@@ -292,6 +301,8 @@ export class ProductPage implements OnDestroy {
   private readonly platform = inject(Platform);
   private readonly routerOutlet = inject(IonRouterOutlet, { optional: true });
   private readonly productExitState = inject(ProductExitStateService);
+  private readonly connectedProductInactivity =
+    inject(ConnectedProductInactivityService);
   private readonly subscriptions = new Subscription();
   private productBackButtonSubscription: Subscription | null = null;
   private readonly controlLocks = new ProductControlUnlockRegistry();
@@ -637,6 +648,16 @@ export class ProductPage implements OnDestroy {
     );
     this.resetNameRoomEditing();
 
+    const inactivitySessionId = this.connectedProductInactivitySessionId();
+    if (inactivitySessionId !== null &&
+        this.viewModel.connectionState === 'connected') {
+      this.connectedProductInactivity.start({
+        id: inactivitySessionId,
+        isWriteInProgress: () => this.productWriteInProgress(),
+        onTimeout: () => this.handleConnectedProductInactivityTimeout(),
+      });
+    }
+
     if (this.context !== null &&
         this.viewModel.connectionState === 'connected') {
       this.subscriptions.add(this.bleService.disconnections$.subscribe(
@@ -688,10 +709,14 @@ export class ProductPage implements OnDestroy {
       return;
     }
     const previousTab = this.activeMainTab;
+    if (tab === previousTab) {
+      return;
+    }
     this.activeMainTab = tab;
     if (tab === 'settings' && previousTab !== 'settings') {
       this.activeSettingsTab = 'basic';
     }
+    this.scrollContentToTop();
   }
 
   get isDemoMode(): boolean {
@@ -723,10 +748,12 @@ export class ProductPage implements OnDestroy {
   }
 
   setActiveSettingsTab(tab: ProductShellSettingsTab): void {
-    if (this.activeMainTab !== 'settings' || !this.pageContextCurrent) {
+    if (this.activeMainTab !== 'settings' || !this.pageContextCurrent ||
+        this.activeSettingsTab === tab) {
       return;
     }
     this.activeSettingsTab = tab;
+    this.scrollContentToTop();
   }
 
   requestActiveSettingsTab(tab: ProductShellSettingsTab): void {
@@ -4117,11 +4144,16 @@ export class ProductPage implements OnDestroy {
     });
   }
 
-  async backToScan(): Promise<void> {
+  async backToScan(
+    options: ProductBackToScanOptions = {},
+  ): Promise<boolean> {
     if (this.returningToScan) {
-      return;
+      return false;
     }
     this.returningToScan = true;
+    if (!options.preserveInactivityExpiration) {
+      this.stopConnectedProductInactivity();
+    }
     this.returnToScanErrorMessage = null;
     const deviceId = this.context?.deviceId ?? this.bleService.connectedDeviceId;
     let disconnectStatus: 'success' | 'failed' = 'success';
@@ -4133,15 +4165,16 @@ export class ProductPage implements OnDestroy {
         this.productDataLoadService.cancelCurrentLoad();
       }
       if (this.isDemoMode) {
-        await this.router.navigate(['/scan']);
-        return;
+        return await this.navigateToScan();
       }
-      try {
-        await this.bleService.disconnect();
-      } catch {
-        disconnectStatus = this.bleService.connectedDeviceId === null
-          ? 'success'
-          : 'failed';
+      if (this.bleService.connectedDeviceId !== null) {
+        try {
+          await this.bleService.disconnect();
+        } catch {
+          disconnectStatus = this.bleService.connectedDeviceId === null
+            ? 'success'
+            : 'failed';
+        }
       }
       this.invalidateContext(
         disconnectStatus === 'success' ? 'disconnected' : 'stale',
@@ -4149,10 +4182,11 @@ export class ProductPage implements OnDestroy {
       if (deviceId !== null) {
         this.productExitState.record({ deviceId, disconnectStatus });
       }
-      const navigated = await this.router.navigate(['/scan']);
+      const navigated = await this.navigateToScan();
       if (!navigated) {
         this.productExitState.clear();
       }
+      return navigated;
     } finally {
       if (!this.destroyed) {
         this.returningToScan = false;
@@ -4184,6 +4218,7 @@ export class ProductPage implements OnDestroy {
 
   ngOnDestroy(): void {
     this.destroyed = true;
+    this.stopConnectedProductInactivity();
     this.loadCycle += 1;
     this.resetOpenCommandState();
     if (this.viewModel.loading) {
@@ -4201,6 +4236,57 @@ export class ProductPage implements OnDestroy {
     this.productBackButtonSubscription?.unsubscribe();
     this.productBackButtonSubscription = null;
     this.subscriptions.unsubscribe();
+  }
+
+  private scrollContentToTop(): void {
+    void this.content?.scrollToTop(0);
+  }
+
+  private connectedProductInactivitySessionId(): string | null {
+    const context = this.context;
+    if (context === null || context.mode === 'demo') {
+      return null;
+    }
+    return `${context.profile}:${context.deviceId}:` +
+      `${context.connectionGeneration}`;
+  }
+
+  private stopConnectedProductInactivity(): void {
+    const sessionId = this.connectedProductInactivitySessionId();
+    if (sessionId !== null) {
+      this.connectedProductInactivity.stop(sessionId);
+    }
+  }
+
+  private navigateToScan(): Promise<boolean> {
+    return this.ngZone.run(() => this.router.navigate(['/scan']));
+  }
+
+  private productWriteInProgress(): boolean {
+    return this.bleService.isWriting ||
+      this.bleWriteExecutionService.isExecuting ||
+      this.widoorSliderWriteTimeouts.size > 0 ||
+      this.openCommandState.status === 'executing' ||
+      this.lockModeWriteState.status === 'executing' ||
+      this.userSpeedWriteState.status === 'executing' ||
+      this.userTimingWriteState.status === 'executing' ||
+      this.userPeripheralWriteState.status === 'executing' ||
+      this.weightRangeWriteState.status === 'executing' ||
+      this.expertInputWriteState.status === 'executing' ||
+      this.expertScalarWriteState.status === 'executing' ||
+      this.nameRoomWriteState.status === 'executing' ||
+      this.productDateActionState.status === 'executing' ||
+      this.sensitiveActionState.status === 'executing';
+  }
+
+  private async handleConnectedProductInactivityTimeout(): Promise<boolean> {
+    try {
+      const alert = await this.alertController.getTop();
+      await alert?.dismiss(undefined, 'product-inactivity-timeout');
+    } catch {
+      // An overlay can disappear between lookup and dismissal.
+    }
+    return await this.backToScan({ preserveInactivityExpiration: true });
   }
 
   private resolveNavigationContext(
@@ -4317,7 +4403,7 @@ export class ProductPage implements OnDestroy {
         this.config.behavior.advancedSettingsConfirmation &&
         this.activeMainTab === 'settings' &&
         this.activeSettingsTab === 'advanced') {
-      this.activeSettingsTab = 'basic';
+      this.setActiveSettingsTab('basic');
     }
   }
 
@@ -4637,6 +4723,15 @@ export class ProductPage implements OnDestroy {
   private handleDisconnection(event: BleDisconnectionEvent): void {
     if (this.context === null || event.deviceId !== this.context.deviceId) {
       return;
+    }
+    const inactivitySessionId = this.connectedProductInactivitySessionId();
+    const preserveInactivityExpiration = inactivitySessionId !== null &&
+      (!this.connectedProductInactivity.isAppActive() ||
+        this.connectedProductInactivity.isExpirationPending(
+          inactivitySessionId,
+        ));
+    if (!preserveInactivityExpiration) {
+      this.stopConnectedProductInactivity();
     }
     this.commandCycle += 1;
     const operation = this.openCommandState.operation;

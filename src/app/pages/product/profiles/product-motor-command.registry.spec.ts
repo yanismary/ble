@@ -30,6 +30,9 @@ describe('Widoor motor authorization factory', () => {
         config.command === 'OPEN_LONG_TIMED',
       )).toBeFalse();
       expect(WIDOOR_COMMAND_UI_CONFIGS.every(Object.isFrozen)).toBeTrue();
+      expect(WIDOOR_COMMAND_UI_CONFIGS.every((config) =>
+        config.confirmationPolicy?.kind === 'gatt-only',
+      )).toBeTrue();
       expect(WIDOOR_COMMAND_UI_CONFIGS.map(
         (config) => config.catalogFactory().payloadHex,
       )).toEqual([

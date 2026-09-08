@@ -277,7 +277,8 @@ export class BleWriteExecutionService implements OnDestroy {
     // Authorization is consumed at the last synchronous boundary before the
     // native write (or a Widoor motor-state confirmation flow) begins.
     this.consumeAuthorization(request.authorization);
-    if (isControlledWidoorMotorWrite(write)) {
+    if (isControlledWidoorMotorWrite(write) &&
+        request.confirmationPolicy.kind !== 'gatt-only') {
       return this.executeWidoorMotorCommand(request, startedAt, context);
     }
     return this.executeGattWrite(request, startedAt, context);
@@ -502,15 +503,17 @@ export class BleWriteExecutionService implements OnDestroy {
     }
 
     if (isWidoorOpen(write)) {
-      if (request.confirmationPolicy.kind !== 'widoor-open-state') {
+      if (request.confirmationPolicy.kind !== 'gatt-only' &&
+          request.confirmationPolicy.kind !== 'widoor-open-state') {
         return this.result(
           request, startedAt, 'invalid-request', false, 'unavailable',
           overrideUsed, 'widoor-confirmation-required',
-          'Widoor OPEN must use the existing motor-state confirmation.',
+          'Widoor OPEN requires GATT or motor-state confirmation.',
         );
       }
     } else if (isWidoorClose(write)) {
-      if (request.confirmationPolicy.kind !== 'widoor-close-state' ||
+      if ((request.confirmationPolicy.kind !== 'gatt-only' &&
+          request.confirmationPolicy.kind !== 'widoor-close-state') ||
           !this.isPhysicalValidationAttempt(request)) {
         return this.result(
           request, startedAt, 'invalid-request', false, 'unavailable',
@@ -522,9 +525,11 @@ export class BleWriteExecutionService implements OnDestroy {
       const expectedCommand = write.operation === 'motor-open-short-timed'
         ? 'OPEN_SHORT_TIMED'
         : 'OPEN_LONG_TIMED';
-      if (request.confirmationPolicy.kind !==
-          'widoor-timed-opening-state' ||
-          request.confirmationPolicy.command !== expectedCommand ||
+      const validConfirmation =
+        request.confirmationPolicy.kind === 'gatt-only' ||
+        (request.confirmationPolicy.kind === 'widoor-timed-opening-state' &&
+          request.confirmationPolicy.command === expectedCommand);
+      if (!validConfirmation ||
           !this.isPhysicalValidationAttempt(request)) {
         return this.result(
           request, startedAt, 'invalid-request', false, 'unavailable',
@@ -948,6 +953,9 @@ function timedCycleStatus(
     return 'pending-physical-validation';
   }
   if (status === 'timeout') {
+    return 'not-observed';
+  }
+  if (status === 'success') {
     return 'not-observed';
   }
   return 'failed';
