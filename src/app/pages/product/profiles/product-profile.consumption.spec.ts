@@ -1,14 +1,16 @@
-import { PRODUCT_PAGE_CONFIG } from '../product-page.config';
-import { isProductDemoProfile } from '../product-demo';
+import { PRODUCT_PAGE_CONFIG } from
+  './product-page-config.facade';
+import { isProductDemoProfile } from '../shared/demo/product-demo';
 import {
   MOTOR_COMMAND_UI_CONFIGS,
   productMotorCommandConfigsFor,
-} from '../product-open-command';
-import { productProfessionalInputConfigsFor } from
-  '../product-professional-input';
+} from './product-motor-command.registry';
+import { productExpertInputConfigsFor } from
+  '../shared/expert/product-expert-input';
 import { productSensitiveActionConfigsFor } from
-  '../product-sensitive-actions';
-import { productWeightRangeConfigsFor } from '../product-weight-range';
+  '../shared/actions/product-sensitive-action';
+import { productWeightRangeConfigsFor } from
+  './moventiv/moventiv-weight-range';
 import {
   isMoventivProductProfile,
   productProfileRegistry,
@@ -38,7 +40,7 @@ describe('Product profile consumption', () => {
 
   it('derives Demo availability from the registered capability', () => {
     for (const definition of productProfileRegistry.all()) {
-      expect(isProductDemoProfile(definition.profile))
+      expect(isProductDemoProfile(definition))
         .toBe(definition.capabilities.demo);
     }
   });
@@ -50,13 +52,13 @@ describe('Product profile consumption', () => {
     }
   });
 
-  it('uses professionalInputs to expose the historical input controls', () => {
+  it('uses expertInputs to expose the historical input controls', () => {
     for (const definition of productProfileRegistry.all()) {
-      const controls = productProfessionalInputConfigsFor(
+      const controls = productExpertInputConfigsFor(
         PRODUCT_PAGE_CONFIG[definition.profile],
       );
       expect(controls.length > 0)
-        .toBe(definition.capabilities.professionalInputs);
+        .toBe(definition.capabilities.expertInputs);
     }
   });
 
@@ -73,7 +75,7 @@ describe('Product profile consumption', () => {
 
   it('uses profile sensitiveActions as the visible action source', () => {
     for (const definition of productProfileRegistry.all()) {
-      expect(productSensitiveActionConfigsFor(definition.profile).map(
+      expect(productSensitiveActionConfigsFor(definition).map(
         ({ action }) => action,
       )).toEqual(definition.sensitiveActions);
     }

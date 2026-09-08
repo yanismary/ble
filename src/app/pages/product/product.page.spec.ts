@@ -41,10 +41,10 @@ import {
   MaintenanceAccessService,
 } from '../../core/services/maintenance-access.service';
 import {
-  ProfessionalAccessContext,
-  ProfessionalAccessService,
+  ExpertAccessContext,
+  ExpertAccessService,
 } from
-  '../../core/services/professional-access.service';
+  '../../core/services/expert-access.service';
 import { ProductDetection } from '../../core/services/product-detection';
 import {
   BleWriteExecutionService,
@@ -74,25 +74,29 @@ import {
 import {
   MOTOR_COMMAND_UI_CONFIGS,
   WIDOOR_COMMAND_UI_CONFIGS,
-} from './product-open-command';
-import { PRODUCT_PAGE_CONFIG } from './product-page.config';
+} from './profiles/product-motor-command.registry';
+import { PRODUCT_PAGE_CONFIG } from
+  './profiles/product-page-config.facade';
 import {
   moventivMotorStateLabelFor,
   productPageTextFor,
-} from './product-page-legacy-localization';
-import { productUserSpeedConfigsFor } from './product-user-speed';
-import { productUserTimingConfigsFor } from './product-user-timing';
-import { productUserPeripheralConfigsFor } from './product-user-peripheral';
-import { productProfessionalScalarConfigsFor } from
-  './product-professional-scalar';
+} from './shared/localization/product-page-localization';
+import { productUserSpeedConfigsFor } from
+  './shared/settings/product-user-speed';
+import { productUserTimingConfigsFor } from
+  './shared/settings/product-user-timing';
+import { productUserPeripheralConfigsFor } from
+  './shared/settings/product-user-peripheral';
+import { productExpertScalarConfigsFor } from
+  './shared/expert/product-expert-scalar';
 import {
   ProductPageNavigationState,
   ProductReadViewState,
-} from './product-view.model';
+} from './shared/models/product-view.model';
 import {
   ProductDemoProfile,
   createProductDemoNavigationState,
-} from './product-demo';
+} from './shared/demo/product-demo';
 
 class FakeBleService {
   private readonly disconnectionSubject =
@@ -177,30 +181,30 @@ class FakeProductDataLoadService {
     .and.returnValue(true);
 }
 
-const PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE =
-  'accepted-professional-access-code';
+const PRODUCT_PAGE_EXPERT_ACCESS_TEST_CODE =
+  'accepted-expert-access-code';
 
-class FakeProfessionalAccessService {
-  private authenticatedContext: ProfessionalAccessContext | null = null;
+class FakeExpertAccessService {
+  private authenticatedContext: ExpertAccessContext | null = null;
 
-  isAuthenticated(context: ProfessionalAccessContext | null): boolean {
+  isAuthenticated(context: ExpertAccessContext | null): boolean {
     return context !== null &&
       this.authenticatedContext !== null &&
       this.sameContext(this.authenticatedContext, context);
   }
 
   authenticate(
-    context: ProfessionalAccessContext,
+    context: ExpertAccessContext,
     accessCode: string,
   ): boolean {
-    if (accessCode !== PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE) {
+    if (accessCode !== PRODUCT_PAGE_EXPERT_ACCESS_TEST_CODE) {
       return false;
     }
     this.authenticatedContext = Object.freeze({ ...context });
     return true;
   }
 
-  reset(context?: ProfessionalAccessContext): void {
+  reset(context?: ExpertAccessContext): void {
     if (context === undefined ||
         (this.authenticatedContext !== null &&
           this.sameContext(this.authenticatedContext, context))) {
@@ -209,8 +213,8 @@ class FakeProfessionalAccessService {
   }
 
   private sameContext(
-    first: ProfessionalAccessContext,
-    second: ProfessionalAccessContext,
+    first: ExpertAccessContext,
+    second: ExpertAccessContext,
   ): boolean {
     return first.profile === second.profile &&
       first.deviceId === second.deviceId &&
@@ -2493,8 +2497,8 @@ describe('ProductPage', () => {
       component.setActiveSettingsTab('advanced');
       fixture.detectChanges();
 
-      expect(component.showProfessionalScalarControls).toBeTrue();
-      expect(component.showProfessionalInputControls).toBeTrue();
+      expect(component.showExpertScalarControls).toBeTrue();
+      expect(component.showExpertInputControls).toBeTrue();
       expect(element.querySelector(
         '[data-professional-scalar-field="break-force-at-open"]',
       )).not.toBeNull();
@@ -2558,15 +2562,15 @@ describe('ProductPage', () => {
 
       component.setActiveSettingsTab('advanced');
       fixture.detectChanges();
-      const breakForce = component.professionalScalarControls.find(
+      const breakForce = component.expertScalarControls.find(
         (control) => control.config.field === 'break-force-at-open',
       )!.config;
-      component.toggleProfessionalScalarLock(breakForce);
-      component.setProfessionalScalarDraftValue(breakForce, 6);
+      component.toggleExpertScalarLock(breakForce);
+      component.setExpertScalarDraftValue(breakForce, 6);
 
-      expect(component.showProfessionalScalarControls).toBeTrue();
-      expect(component.canApplyProfessionalScalar(breakForce)).toBeFalse();
-      await component.requestProfessionalScalarChange(breakForce);
+      expect(component.showExpertScalarControls).toBeTrue();
+      expect(component.canApplyExpertScalar(breakForce)).toBeFalse();
+      await component.requestExpertScalarChange(breakForce);
 
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
@@ -3633,13 +3637,13 @@ describe('ProductPage speed controls for profile variants', () => {
       expect(component.showUserTimingControls).toBeTrue();
       expect(component.showUserPeripheralControls).toBeTrue();
       expect(component.showWeightRangeControls).toBeTrue();
-      expect(component.showProfessionalInputControls).toBeTrue();
-      expect(component.showProfessionalScalarControls).toBeTrue();
+      expect(component.showExpertInputControls).toBeTrue();
+      expect(component.showExpertScalarControls).toBeTrue();
       expect(component.currentUserTimingValue(
         component.userTimingControls[0].config,
       )).toBe(1);
-      expect(component.canChangeProfessionalInput(
-        component.professionalInputControls[0].config,
+      expect(component.canChangeExpertInput(
+        component.expertInputControls[0].config,
         'radar',
       )).toBeFalse();
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
@@ -3695,18 +3699,18 @@ describe('ProductPage speed controls for profile variants', () => {
       expect(component.showUserSpeedControls).toBeTrue();
       expect(component.showUserTimingControls).toBeTrue();
       expect(component.showUserPeripheralControls).toBeTrue();
-      expect(component.showProfessionalScalarControls).toBeTrue();
-      expect(component.showProfessionalAccessPrompt).toBeTrue();
+      expect(component.showExpertScalarControls).toBeTrue();
+      expect(component.showExpertAccessPrompt).toBeTrue();
       expect(component.showLockModeControls).toBeFalse();
       expect(component.showWeightRangeControls).toBeFalse();
-      expect(component.showProfessionalInputControls).toBeFalse();
+      expect(component.showExpertInputControls).toBeFalse();
       expect(component.currentUserTimingValue(
         component.userTimingControls[0].config,
       )).toBe(1);
       expect(component.userTimingControls.map((control) =>
         control.config.field,
       )).toEqual(['short-timing', 'long-timing']);
-      expect(component.visibleProfessionalScalarControls.map((control) =>
+      expect(component.visibleExpertScalarControls.map((control) =>
         control.config.field,
       )).toEqual(['near-open-speed', 'near-close-speed']);
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
@@ -4587,7 +4591,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
           component.text.sensitiveActions.notice,
         );
         expect(settingsText).not.toContain(
-          component.text.professionalPeripheralDiagnostics.title,
+          component.text.expertPeripheralDiagnostics.title,
         );
         expect(settingsText).not.toContain(
           component.text.errors.characteristicAbsent,
@@ -5032,7 +5036,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       element = fixture.nativeElement as HTMLElement;
 
       expect(component.showAdvancedWeightRangeControls).toBeFalse();
-      expect(component.showProfessionalInputControls).toBeFalse();
+      expect(component.showExpertInputControls).toBeFalse();
       expect(element.querySelector('.phase1-mov-weight-row')).toBeNull();
       expect(element.querySelector('.advanced-input-row')).toBeNull();
       expect(element.querySelector('.phase1-mov-extra-actions-header'))
@@ -5045,7 +5049,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         .not.toBeNull();
       expect(element.querySelector('.phase1-mov-expert-access-row ion-input'))
         .not.toBeNull();
-      expect(component.visibleProfessionalScalarControls.map((control) =>
+      expect(component.visibleExpertScalarControls.map((control) =>
         control.config.field,
       )).toEqual(['near-open-speed', 'near-close-speed']);
       expect(element.querySelectorAll(
@@ -5066,12 +5070,12 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         status: 'sent',
         message: 'weight-success',
       });
-      component.professionalInputWriteState = Object.freeze({
+      component.expertInputWriteState = Object.freeze({
         status: 'sent',
-        field: component.professionalInputControls[0].config.field,
+        field: component.expertInputControls[0].config.field,
         message: 'input-success',
       });
-      component.professionalAccessState = Object.freeze({
+      component.expertAccessState = Object.freeze({
         status: 'unlocked',
         message: 'access-success',
       });
@@ -5086,12 +5090,12 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         status: 'failed',
         message: 'weight-failed',
       });
-      component.professionalInputWriteState = Object.freeze({
+      component.expertInputWriteState = Object.freeze({
         status: 'failed',
-        field: component.professionalInputControls[0].config.field,
+        field: component.expertInputControls[0].config.field,
         message: 'input-failed',
       });
-      component.professionalAccessState = Object.freeze({
+      component.expertAccessState = Object.freeze({
         status: 'failed',
         message: 'access-failed',
       });
@@ -5893,31 +5897,31 @@ describe('ProductPage weight-range controls for profile variants', () => {
   );
 });
 
-describe('ProductPage professional scalar controls',
+describe('ProductPage expert scalar controls',
   () => {
-    async function createProfessionalScalarPage(
+    async function createExpertScalarPage(
       profile: KnownProductProfile,
       professionalParameters: BleProfessionalParameters,
       result: LegacyBleWriteExecutionResult =
-        professionalScalarExecutionResult(
+        expertScalarExecutionResult(
           profile,
           profile === 'widoor'
             ? 'break-force-at-open'
             : 'obstacle-sensitivity',
           profile === 'widoor' ? '01 05' : '07 03',
         ),
-      professionalAccessDismissal: {
+      expertAccessDismissal: {
         readonly role: string;
         readonly data?: {
           readonly values?: {
-            readonly professionalAccessCode?: string;
+            readonly expertAccessCode?: string;
           };
         };
       } = {
         role: 'confirm',
         data: {
           values: {
-            professionalAccessCode: PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE,
+            expertAccessCode: PRODUCT_PAGE_EXPERT_ACCESS_TEST_CODE,
           },
         },
       },
@@ -5926,12 +5930,12 @@ describe('ProductPage professional scalar controls',
       readonly fixture: ComponentFixture<ProductPage>;
       readonly bleService: FakeBleService;
       readonly loadService: FakeProductDataLoadService;
-      readonly professionalAccessService: FakeProfessionalAccessService;
+      readonly expertAccessService: FakeExpertAccessService;
       readonly writeExecutionService: FakeBleWriteExecutionService;
     }> {
       const bleService = new FakeBleService();
       const loadService = new FakeProductDataLoadService();
-      const professionalAccessService = new FakeProfessionalAccessService();
+      const expertAccessService = new FakeExpertAccessService();
       loadService.nextResult = completeLoadResult(
         'success',
         profile,
@@ -5951,7 +5955,7 @@ describe('ProductPage professional scalar controls',
             useValue: {
               create: jasmine.createSpy('create').and.resolveTo({
                 present: async () => undefined,
-                onDidDismiss: async () => professionalAccessDismissal,
+                onDidDismiss: async () => expertAccessDismissal,
               }),
             },
           },
@@ -5960,8 +5964,8 @@ describe('ProductPage professional scalar controls',
             useValue: writeExecutionService,
           },
           {
-            provide: ProfessionalAccessService,
-            useValue: professionalAccessService,
+            provide: ExpertAccessService,
+            useValue: expertAccessService,
           },
           { provide: ProductDataLoadService, useValue: loadService },
           { provide: ProductDetection, useClass: ProductDetection },
@@ -5992,7 +5996,7 @@ describe('ProductPage professional scalar controls',
         fixture,
         bleService,
         loadService,
-        professionalAccessService,
+        expertAccessService,
         writeExecutionService,
       };
     }
@@ -6217,56 +6221,56 @@ describe('ProductPage professional scalar controls',
           const {
             component,
             fixture,
-            professionalAccessService,
+            expertAccessService,
             writeExecutionService,
-          } = await createProfessionalScalarPage(
+          } = await createExpertScalarPage(
             scenario.profile,
             scenario.current,
-            professionalScalarExecutionResult(
+            expertScalarExecutionResult(
               scenario.profile,
               scenario.field,
               scenario.payloadHex,
             ),
           );
-          const control = component.professionalScalarControls.find(
+          const control = component.expertScalarControls.find(
             (candidate) => candidate.config.field === scenario.field,
           )?.config;
 
-          expect(component.professionalScalarControls.map((candidate) =>
+          expect(component.expertScalarControls.map((candidate) =>
             candidate.config.field,
           )).toEqual(scenario.controls);
           expect(control).toBeDefined();
           component.setActiveMainTab('settings');
           component.setActiveSettingsTab('advanced');
           await fixture.whenStable();
-          if (control?.requiresProfessionalAccess) {
-            expect(component.visibleProfessionalScalarControls.map(
+          if (control?.requiresExpertAccess) {
+            expect(component.visibleExpertScalarControls.map(
               (candidate) => candidate.config.field,
             )).not.toContain(scenario.field);
-            expect(component.canApplyProfessionalScalar(control))
+            expect(component.canApplyExpertScalar(control))
               .toBeFalse();
-            expect(professionalAccessService.authenticate({
+            expect(expertAccessService.authenticate({
               profile: scenario.profile,
               deviceId: 'device-1',
               connectionGeneration: 4,
-            }, PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE)).toBeTrue();
+            }, PRODUCT_PAGE_EXPERT_ACCESS_TEST_CODE)).toBeTrue();
           }
           expect(control?.range).toEqual(scenario.range);
           expect(control?.unit).toBe(scenario.unit);
-          expect(component.currentProfessionalScalarValue(control!))
+          expect(component.currentExpertScalarValue(control!))
             .toBe(scenario.currentValue);
 
-          component.setProfessionalScalarDraftValue(control!, scenario.invalid);
-          await component.requestProfessionalScalarChange(control!);
+          component.setExpertScalarDraftValue(control!, scenario.invalid);
+          await component.requestExpertScalarChange(control!);
           expect(writeExecutionService.execute).not.toHaveBeenCalled();
 
-          component.setProfessionalScalarDraftValue(
+          component.setExpertScalarDraftValue(
             control!,
             scenario.accepted,
           );
-          expect(component.professionalScalarDraftValue(control!))
+          expect(component.expertScalarDraftValue(control!))
             .toBe(scenario.accepted);
-          expect(component.canApplyProfessionalScalar(control!)).toBeTrue();
+          expect(component.canApplyExpertScalar(control!)).toBeTrue();
           expect(writeExecutionService.execute).not.toHaveBeenCalled();
 
           fixture.detectChanges();
@@ -6275,12 +6279,12 @@ describe('ProductPage professional scalar controls',
             '.advanced-value-badge',
           )?.textContent).toContain(String(scenario.accepted));
 
-          await component.requestProfessionalScalarChange(control!);
+          await component.requestExpertScalarChange(control!);
           fixture.detectChanges();
 
           expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
           expect((fixture.nativeElement as HTMLElement).textContent)
-            .not.toContain(component.text.professionalScalarControls.sent);
+            .not.toContain(component.text.expertScalarControls.sent);
           const request = writeExecutionService.execute.calls.mostRecent()
             .args[0] as LegacyBleWriteRequest;
           expect(request.profile).toBe(scenario.profile);
@@ -6301,64 +6305,64 @@ describe('ProductPage professional scalar controls',
       );
     }
 
-    it('should leave the BLE value unchanged when a professional write fails',
+    it('should leave the BLE value unchanged when an expert write fails',
       async () => {
         const {
           component,
           fixture,
-          professionalAccessService,
+          expertAccessService,
           writeExecutionService,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'garline',
           professionalValue('garline', 80, 100, {
             obstacleSensitivity: 2,
           }),
-          professionalScalarExecutionResult(
+          expertScalarExecutionResult(
             'garline',
             'obstacle-sensitivity',
             '07 03',
             'failed',
           ),
         );
-        const control = component.professionalScalarControls.find(
+        const control = component.expertScalarControls.find(
           (candidate) =>
             candidate.config.field === 'obstacle-sensitivity',
         )!.config;
         component.setActiveMainTab('settings');
         component.setActiveSettingsTab('advanced');
         await fixture.whenStable();
-        expect(professionalAccessService.authenticate({
+        expect(expertAccessService.authenticate({
           profile: 'garline',
           deviceId: 'device-1',
           connectionGeneration: 4,
-        }, PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE)).toBeTrue();
+        }, PRODUCT_PAGE_EXPERT_ACCESS_TEST_CODE)).toBeTrue();
 
-        component.setProfessionalScalarDraftValue(control, 3);
-        await component.requestProfessionalScalarChange(control);
+        component.setExpertScalarDraftValue(control, 3);
+        await component.requestExpertScalarChange(control);
 
         expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
-        expect(component.currentProfessionalScalarValue(control)).toBe(2);
-        expect(component.professionalScalarDraftValue(control)).toBe(3);
-        expect(component.professionalScalarWriteState.status).toBe('failed');
+        expect(component.currentExpertScalarValue(control)).toBe(2);
+        expect(component.expertScalarDraftValue(control)).toBe(3);
+        expect(component.expertScalarWriteState.status).toBe('failed');
         fixture.detectChanges();
         expect((fixture.nativeElement as HTMLElement).textContent)
-          .toContain(component.text.professionalScalarControls.failed);
+          .toContain(component.text.expertScalarControls.failed);
       },
     );
 
-    it('should reset professional scalar drafts after a BLE reload',
+    it('should reset expert scalar drafts after a BLE reload',
       async () => {
         const {
           component,
           loadService,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'widoor',
           professionalValue('widoor', 0, 0, { breakForceAtOpen: 5 }),
         );
-        const control = component.professionalScalarControls[0].config;
+        const control = component.expertScalarControls[0].config;
 
-        component.setProfessionalScalarDraftValue(control, 8);
-        expect(component.professionalScalarDraftValue(control)).toBe(8);
+        component.setExpertScalarDraftValue(control, 8);
+        expect(component.expertScalarDraftValue(control)).toBe(8);
 
         loadService.nextResult = completeLoadResult(
           'success',
@@ -6368,18 +6372,18 @@ describe('ProductPage professional scalar controls',
         );
         await component.refreshProductData();
 
-        expect(component.currentProfessionalScalarValue(control)).toBe(2);
-        expect(component.professionalScalarDraftValue(control)).toBe(2);
+        expect(component.currentExpertScalarValue(control)).toBe(2);
+        expect(component.expertScalarDraftValue(control)).toBe(2);
       },
     );
 
-    it('should reset professional scalar editing on disconnection',
+    it('should reset expert scalar editing on disconnection',
       async () => {
         const {
           component,
           bleService,
-          professionalAccessService,
-        } = await createProfessionalScalarPage(
+          expertAccessService,
+        } = await createExpertScalarPage(
           'moventiv-80',
           professionalValue('moventiv-80', 50, 60, {
             nearOpenSpeed: 45,
@@ -6390,15 +6394,15 @@ describe('ProductPage professional scalar controls',
             obstacleSensitivity: 2,
           }),
         );
-        const control = component.professionalScalarControls[0].config;
-        expect(professionalAccessService.authenticate({
+        const control = component.expertScalarControls[0].config;
+        expect(expertAccessService.authenticate({
           profile: 'moventiv-80',
           deviceId: 'device-1',
           connectionGeneration: 4,
-        }, PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE)).toBeTrue();
+        }, PRODUCT_PAGE_EXPERT_ACCESS_TEST_CODE)).toBeTrue();
 
-        component.setProfessionalScalarDraftValue(control, 50);
-        component.professionalScalarWriteState = Object.freeze({
+        component.setExpertScalarDraftValue(control, 50);
+        component.expertScalarWriteState = Object.freeze({
           status: 'failed',
           field: control.field,
           message: 'failed',
@@ -6406,23 +6410,23 @@ describe('ProductPage professional scalar controls',
 
         bleService.disconnect();
 
-        expect(component.professionalScalarDraftValue(control))
+        expect(component.expertScalarDraftValue(control))
           .toBe(control.range.min);
-        expect(component.professionalScalarWriteState).toEqual({
+        expect(component.expertScalarWriteState).toEqual({
           status: 'idle',
           field: null,
           message: null,
         });
-        expect(component.professionalAccessGranted).toBeFalse();
-        expect(component.canApplyProfessionalScalar(control)).toBeFalse();
+        expect(component.expertAccessGranted).toBeFalse();
+        expect(component.canApplyExpertScalar(control)).toBeFalse();
       },
     );
 
-    it('should keep protected professional settings hidden before access',
+    it('should keep protected expert settings hidden before access',
       async () => {
         const {
           component,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'moventiv-80',
           professionalValue('moventiv-80', 50, 60, {
             nearOpenSpeed: 45,
@@ -6434,34 +6438,34 @@ describe('ProductPage professional scalar controls',
           }),
         );
 
-        expect(component.professionalAccessGranted).toBeFalse();
-        expect(component.showProfessionalAccessPrompt).toBeTrue();
-        expect(component.visibleProfessionalScalarControls.map((control) =>
+        expect(component.expertAccessGranted).toBeFalse();
+        expect(component.showExpertAccessPrompt).toBeTrue();
+        expect(component.visibleExpertScalarControls.map((control) =>
           control.config.field,
         )).toEqual(['near-open-speed', 'near-close-speed']);
-        expect(component.professionalRows.map((row) => row.key))
+        expect(component.expertRows.map((row) => row.key))
           .not.toContain('braking-open-power');
-        expect(component.professionalRows.map((row) => row.key))
+        expect(component.expertRows.map((row) => row.key))
           .not.toContain('obstacle-sensitivity');
-        expect(component.professionalRows.map((row) => row.key))
+        expect(component.expertRows.map((row) => row.key))
           .not.toContain('near-open-torque');
-        expect(component.professionalRows.map((row) => row.key))
+        expect(component.expertRows.map((row) => row.key))
           .not.toContain('near-close-torque');
-        expect(component.professionalRows.map((row) => row.key))
+        expect(component.expertRows.map((row) => row.key))
           .toContain('near-open-speed');
-        expect(component.professionalRows.map((row) => row.key))
+        expect(component.expertRows.map((row) => row.key))
           .toContain('near-close-speed');
-        expect(component.professionalRows.map((row) => row.key))
+        expect(component.expertRows.map((row) => row.key))
           .toContain('weight-range');
       },
     );
 
-    it('should unlock protected professional settings with a valid code',
+    it('should unlock protected expert settings with a valid code',
       async () => {
         const {
           component,
           fixture,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'moventiv-80',
           professionalValue('moventiv-80', 50, 60, {
             nearOpenSpeed: 45,
@@ -6471,13 +6475,13 @@ describe('ProductPage professional scalar controls',
           }),
         );
 
-        await component.requestProfessionalAccess();
+        await component.requestExpertAccess();
         fixture.detectChanges();
 
-        expect(component.professionalAccessGranted).toBeTrue();
-        expect(component.professionalAccessState.status).toBe('unlocked');
-        expect(component.showProfessionalAccessPrompt).toBeFalse();
-        expect(component.visibleProfessionalScalarControls.map((control) =>
+        expect(component.expertAccessGranted).toBeTrue();
+        expect(component.expertAccessState.status).toBe('unlocked');
+        expect(component.showExpertAccessPrompt).toBeFalse();
+        expect(component.visibleExpertScalarControls.map((control) =>
           control.config.field,
         )).toEqual([
           'near-open-speed',
@@ -6487,9 +6491,9 @@ describe('ProductPage professional scalar controls',
           'braking-open-power',
           'obstacle-sensitivity',
         ]);
-        expect(component.professionalRows.map((row) => row.key))
+        expect(component.expertRows.map((row) => row.key))
           .toContain('braking-open-power');
-        expect(component.professionalRows.map((row) => row.key))
+        expect(component.expertRows.map((row) => row.key))
           .toContain('near-open-torque');
       },
     );
@@ -6500,7 +6504,7 @@ describe('ProductPage professional scalar controls',
           component,
           fixture,
           writeExecutionService,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'moventiv-80',
           professionalValue('moventiv-80', 50, 60, {
             nearOpenSpeed: 45,
@@ -6511,18 +6515,18 @@ describe('ProductPage professional scalar controls',
             nearCloseTorque: 110,
           }),
         );
-        const protectedControl = component.professionalScalarControls.find(
+        const protectedControl = component.expertScalarControls.find(
           (candidate) => candidate.config.field === 'braking-open-power',
         )!.config;
-        const advancedControl = component.professionalScalarControls.find(
+        const advancedControl = component.expertScalarControls.find(
           (candidate) => candidate.config.field === 'near-open-speed',
         )!.config;
 
         component.setActiveMainTab('settings');
         component.setActiveSettingsTab('advanced');
-        component.toggleProfessionalScalarLock(protectedControl);
-        component.toggleProfessionalScalarLock(advancedControl);
-        component.toggleProfessionalScalarPrecision(
+        component.toggleExpertScalarLock(protectedControl);
+        component.toggleExpertScalarLock(advancedControl);
+        component.toggleExpertScalarPrecision(
           advancedControl,
           new Event('click'),
         );
@@ -6533,11 +6537,11 @@ describe('ProductPage professional scalar controls',
           '.advanced-settings-panel',
         );
         expect(advancedPanel).not.toBeNull();
-        expect(component.professionalAccessGranted).toBeFalse();
-        expect(component.visibleProfessionalScalarControls.map((control) =>
+        expect(component.expertAccessGranted).toBeFalse();
+        expect(component.visibleExpertScalarControls.map((control) =>
           control.config.field,
         )).toEqual(['near-open-speed', 'near-close-speed']);
-        expect(component.canApplyProfessionalScalar(protectedControl))
+        expect(component.canApplyExpertScalar(protectedControl))
           .toBeFalse();
         expect(Array.from(element.querySelectorAll<HTMLElement>(
           '[data-professional-scalar-field]',
@@ -6564,16 +6568,16 @@ describe('ProductPage professional scalar controls',
           .toContain(component.text.shell.decrease);
         expect(getComputedStyle(advancedPrecision!).order).toBe('40');
 
-        await component.requestProfessionalAccess();
-        component.toggleProfessionalScalarLock(protectedControl);
-        component.toggleProfessionalScalarPrecision(
+        await component.requestExpertAccess();
+        component.toggleExpertScalarLock(protectedControl);
+        component.toggleExpertScalarPrecision(
           protectedControl,
           new Event('click'),
         );
         fixture.detectChanges();
         element = fixture.nativeElement as HTMLElement;
 
-        expect(component.professionalAccessGranted).toBeTrue();
+        expect(component.expertAccessGranted).toBeTrue();
         expect(Array.from(element.querySelectorAll<HTMLElement>(
           '[data-professional-scalar-field]',
         )).map((row) => row.getAttribute('data-professional-scalar-field')))
@@ -6612,7 +6616,7 @@ describe('ProductPage professional scalar controls',
           component,
           fixture,
           writeExecutionService,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'widoor',
           professionalValue('widoor', 0, 0, {
             breakForceAtOpen: 5,
@@ -6652,7 +6656,7 @@ describe('ProductPage professional scalar controls',
         expect(element.textContent).toContain(
           component.text.sensitiveActions.reset,
         );
-        expect(component.showProfessionalAccessPrompt).toBeFalse();
+        expect(component.showExpertAccessPrompt).toBeFalse();
         expect(component.canExecuteSensitiveAction(
           component.sensitiveActions.find((action) =>
             action.action === 'radar-test-1',
@@ -6682,7 +6686,7 @@ describe('ProductPage professional scalar controls',
           component,
           fixture,
           writeExecutionService,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'widoor',
           professionalValue('widoor', 0, 0, {
             breakForceAtOpen: 5,
@@ -6735,7 +6739,7 @@ describe('ProductPage professional scalar controls',
           component,
           fixture,
           writeExecutionService,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'widoor',
           professionalValue('widoor', 0, 0, {
             breakForceAtOpen: 5,
@@ -6748,7 +6752,7 @@ describe('ProductPage professional scalar controls',
         component.activeSettingsTab = 'advanced';
         fixture.detectChanges();
 
-        const input = component.professionalInputControls[0].config;
+        const input = component.expertInputControls[0].config;
         let element = fixture.nativeElement as HTMLElement;
         let inputRow = element.querySelector<HTMLElement>(
           `[data-professional-input-field="${input.field}"]`,
@@ -6758,10 +6762,10 @@ describe('ProductPage professional scalar controls',
         expect(inputRow?.querySelector('.advanced-value-negative'))
           .not.toBeNull();
 
-        component.toggleProfessionalInputControlLock();
-        await component.requestProfessionalInputChange(input, 'radar');
+        component.toggleExpertInputControlLock();
+        await component.requestExpertInputChange(input, 'radar');
         expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
-        expect(component.currentProfessionalInputMode(input)).toBe('radar');
+        expect(component.currentExpertInputMode(input)).toBe('radar');
         fixture.detectChanges();
         element = fixture.nativeElement as HTMLElement;
         inputRow = element.querySelector<HTMLElement>(
@@ -6772,7 +6776,7 @@ describe('ProductPage professional scalar controls',
         expect(inputRow?.querySelector('.advanced-value-positive'))
           .not.toBeNull();
         expect(inputRow?.textContent).toContain(
-          component.text.professionalInputControls.radar,
+          component.text.expertInputControls.radar,
         );
 
         writeExecutionService.execute.calls.reset();
@@ -6791,7 +6795,7 @@ describe('ProductPage professional scalar controls',
         expect(lockRow?.querySelector('.advanced-value-positive'))
           .not.toBeNull();
         expect(lockRow?.textContent).toContain(
-          component.text.professionalPeripheralDiagnostics.enabled,
+          component.text.expertPeripheralDiagnostics.enabled,
         );
         expect(writeExecutionService.execute).toHaveBeenCalled();
         expect((fixture.nativeElement as HTMLElement).textContent)
@@ -6809,7 +6813,7 @@ describe('ProductPage professional scalar controls',
     );
 
     it('should omit the Widoor motor-state empty placeholder', async () => {
-      const { component, fixture } = await createProfessionalScalarPage(
+      const { component, fixture } = await createExpertScalarPage(
         'widoor',
         professionalValue('widoor', 0, 0),
       );
@@ -6830,7 +6834,7 @@ describe('ProductPage professional scalar controls',
     it('should render Widoor braking force ticks and gate precision controls',
       async () => {
         const { component, fixture, writeExecutionService } =
-          await createProfessionalScalarPage(
+          await createExpertScalarPage(
           'widoor',
           professionalValue('widoor', 0, 0, {
             breakForceAtOpen: 5,
@@ -6842,7 +6846,7 @@ describe('ProductPage professional scalar controls',
         component.setActiveSettingsTab('advanced');
         fixture.detectChanges();
 
-        const force = component.professionalScalarControls.find((control) =>
+        const force = component.expertScalarControls.find((control) =>
           control.config.field === 'break-force-at-open',
         )!.config;
         let row = (fixture.nativeElement as HTMLElement)
@@ -6862,8 +6866,8 @@ describe('ProductPage professional scalar controls',
 
         row?.click();
         fixture.detectChanges();
-        expect(component.isProfessionalScalarUnlocked(force)).toBeTrue();
-        expect(component.isProfessionalScalarPrecisionOpen(force)).toBeFalse();
+        expect(component.isExpertScalarUnlocked(force)).toBeTrue();
+        expect(component.isExpertScalarPrecisionOpen(force)).toBeFalse();
         expect((fixture.nativeElement as HTMLElement)
           .querySelector('.advanced-precision-row')).toBeNull();
 
@@ -6872,7 +6876,7 @@ describe('ProductPage professional scalar controls',
           detail: { value: 7 },
         }));
         fixture.detectChanges();
-        expect(component.professionalScalarDraftValue(force)).toBe(7);
+        expect(component.expertScalarDraftValue(force)).toBe(7);
         expect((fixture.nativeElement as HTMLElement).querySelector(
           '[data-professional-scalar-header="break-force-at-open"] ' +
           '.advanced-value-badge',
@@ -6885,7 +6889,7 @@ describe('ProductPage professional scalar controls',
           );
         row?.querySelector<HTMLElement>('.slider-options-toggle')?.click();
         fixture.detectChanges();
-        expect(component.isProfessionalScalarPrecisionOpen(force)).toBeTrue();
+        expect(component.isExpertScalarPrecisionOpen(force)).toBeTrue();
         expect((fixture.nativeElement as HTMLElement)
           .querySelector('.advanced-precision-row')).not.toBeNull();
       },
@@ -6897,7 +6901,7 @@ describe('ProductPage professional scalar controls',
           component,
           fixture,
           writeExecutionService,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'garline',
           professionalValue('garline', 80, 100, {
             nearOpenSpeed: 25,
@@ -6937,12 +6941,12 @@ describe('ProductPage professional scalar controls',
       'radar-test-2',
       'professional-peripheral-lock',
     ] as const) {
-      it(`should execute Widoor ${actionName} without professional access`,
+      it(`should execute Widoor ${actionName} without expert access`,
         async () => {
           const {
             component,
             writeExecutionService,
-          } = await createProfessionalScalarPage(
+          } = await createExpertScalarPage(
             'widoor',
             professionalValue('widoor', 0, 0, {
               breakForceAtOpen: 5,
@@ -6954,7 +6958,7 @@ describe('ProductPage professional scalar controls',
             candidate.action === actionName,
           )!;
 
-          expect(component.professionalAccessGranted).toBeFalse();
+          expect(component.expertAccessGranted).toBeFalse();
           expect(component.canExecuteSensitiveAction(action)).toBeTrue();
 
           await component.requestSensitiveAction(action, true);
@@ -6967,12 +6971,12 @@ describe('ProductPage professional scalar controls',
       );
     }
 
-    it('should execute Widoor sensitive actions without professional access',
+    it('should execute Widoor sensitive actions without expert access',
       async () => {
         const {
           component,
           writeExecutionService,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'widoor',
           professionalValue('widoor', 0, 0, {
             breakForceAtOpen: 5,
@@ -6983,14 +6987,14 @@ describe('ProductPage professional scalar controls',
         const radarTest = component.sensitiveActions.find((action) =>
           action.action === 'radar-test-1',
         )!;
-        const scalar = component.professionalScalarControls.find((control) =>
+        const scalar = component.expertScalarControls.find((control) =>
           control.config.field === 'break-force-at-open',
         )!.config;
 
-        component.toggleProfessionalScalarLock(scalar);
-        component.toggleProfessionalInputControlLock();
+        component.toggleExpertScalarLock(scalar);
+        component.toggleExpertInputControlLock();
 
-        expect(component.professionalAccessGranted).toBeFalse();
+        expect(component.expertAccessGranted).toBeFalse();
         expect(component.canExecuteSensitiveAction(radarTest)).toBeTrue();
 
         await component.requestSensitiveAction(radarTest, true);
@@ -7007,7 +7011,7 @@ describe('ProductPage professional scalar controls',
         const {
           component,
           writeExecutionService,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'moventiv-80',
           professionalValue('moventiv-80', 50, 60, {
             nearOpenSpeed: 45,
@@ -7017,27 +7021,27 @@ describe('ProductPage professional scalar controls',
             brakingOpenPower: 40,
             obstacleSensitivity: 2,
           }),
-          professionalScalarExecutionResult(
+          expertScalarExecutionResult(
             'moventiv-80',
             'near-open-speed',
             '02 32',
           ),
         );
-        const nearOpenSpeed = component.professionalScalarControls.find(
+        const nearOpenSpeed = component.expertScalarControls.find(
           (candidate) => candidate.config.field === 'near-open-speed',
         )!.config;
-        const nearCloseSpeed = component.professionalScalarControls.find(
+        const nearCloseSpeed = component.expertScalarControls.find(
           (candidate) => candidate.config.field === 'near-close-speed',
         )!.config;
 
-        component.setProfessionalScalarDraftValue(nearOpenSpeed, 50);
+        component.setExpertScalarDraftValue(nearOpenSpeed, 50);
 
-        expect(component.professionalScalarDraftValue(nearOpenSpeed))
+        expect(component.expertScalarDraftValue(nearOpenSpeed))
           .toBe(50);
-        expect(component.professionalScalarDraftValue(nearCloseSpeed))
+        expect(component.expertScalarDraftValue(nearCloseSpeed))
           .toBe(55);
 
-        await component.requestProfessionalScalarChange(nearOpenSpeed);
+        await component.requestExpertScalarChange(nearOpenSpeed);
 
         expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
         const request = writeExecutionService.execute.calls.mostRecent()
@@ -7051,9 +7055,9 @@ describe('ProductPage professional scalar controls',
       async () => {
         const {
           component,
-          professionalAccessService,
+          expertAccessService,
           writeExecutionService,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'moventiv-80',
           professionalValue('moventiv-80', 50, 60, {
             nearOpenSpeed: 45,
@@ -7063,32 +7067,32 @@ describe('ProductPage professional scalar controls',
             brakingOpenPower: 40,
             obstacleSensitivity: 2,
           }),
-          professionalScalarExecutionResult(
+          expertScalarExecutionResult(
             'moventiv-80',
             'near-open-torque',
             '04 78',
           ),
         );
-        expect(professionalAccessService.authenticate({
+        expect(expertAccessService.authenticate({
           profile: 'moventiv-80',
           deviceId: 'device-1',
           connectionGeneration: 4,
-        }, PRODUCT_PAGE_PROFESSIONAL_ACCESS_TEST_CODE)).toBeTrue();
-        const nearOpenTorque = component.professionalScalarControls.find(
+        }, PRODUCT_PAGE_EXPERT_ACCESS_TEST_CODE)).toBeTrue();
+        const nearOpenTorque = component.expertScalarControls.find(
           (candidate) => candidate.config.field === 'near-open-torque',
         )!.config;
-        const nearCloseTorque = component.professionalScalarControls.find(
+        const nearCloseTorque = component.expertScalarControls.find(
           (candidate) => candidate.config.field === 'near-close-torque',
         )!.config;
 
-        component.setProfessionalScalarDraftValue(nearOpenTorque, 120);
+        component.setExpertScalarDraftValue(nearOpenTorque, 120);
 
-        expect(component.professionalScalarDraftValue(nearOpenTorque))
+        expect(component.expertScalarDraftValue(nearOpenTorque))
           .toBe(120);
-        expect(component.professionalScalarDraftValue(nearCloseTorque))
+        expect(component.expertScalarDraftValue(nearCloseTorque))
           .toBe(110);
 
-        await component.requestProfessionalScalarChange(nearOpenTorque);
+        await component.requestExpertScalarChange(nearOpenTorque);
 
         expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
         const request = writeExecutionService.execute.calls.mostRecent()
@@ -7098,56 +7102,56 @@ describe('ProductPage professional scalar controls',
       },
     );
 
-    it('should reject an incorrect professional access code without writing',
+    it('should reject an incorrect expert access code without writing',
       async () => {
         const {
           component,
           writeExecutionService,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'garline',
           professionalValue('garline', 80, 100, {
             obstacleSensitivity: 2,
           }),
-          professionalScalarExecutionResult(
+          expertScalarExecutionResult(
             'garline',
             'obstacle-sensitivity',
             '07 03',
           ),
           {
             role: 'confirm',
-            data: { values: { professionalAccessCode: 'bad-code' } },
+            data: { values: { expertAccessCode: 'bad-code' } },
           },
         );
 
-        await component.requestProfessionalAccess();
+        await component.requestExpertAccess();
 
-        expect(component.professionalAccessGranted).toBeFalse();
-        expect(component.professionalAccessState.status).toBe('failed');
-        expect(component.visibleProfessionalScalarControls.map((control) =>
+        expect(component.expertAccessGranted).toBeFalse();
+        expect(component.expertAccessState.status).toBe('failed');
+        expect(component.visibleExpertScalarControls.map((control) =>
           control.config.field,
         )).toEqual(['near-open-speed', 'near-close-speed']);
         expect(writeExecutionService.execute).not.toHaveBeenCalled();
       },
     );
 
-    it('should reject a professional scalar config from another profile',
+    it('should reject an expert scalar config from another profile',
       async () => {
         const {
           component,
           writeExecutionService,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'widoor',
           professionalValue('widoor', 0, 0, { breakForceAtOpen: 5 }),
         );
-        const garlineObstacle = productProfessionalScalarConfigsFor(
+        const garlineObstacle = productExpertScalarConfigsFor(
           PRODUCT_PAGE_CONFIG.garline,
         )[0];
 
-        component.setProfessionalScalarDraftValue(garlineObstacle, 3);
-        await component.requestProfessionalScalarChange(garlineObstacle);
+        component.setExpertScalarDraftValue(garlineObstacle, 3);
+        await component.requestExpertScalarChange(garlineObstacle);
 
         expect(writeExecutionService.execute).not.toHaveBeenCalled();
-        expect(component.canApplyProfessionalScalar(garlineObstacle))
+        expect(component.canApplyExpertScalar(garlineObstacle))
           .toBeFalse();
       },
     );
@@ -7156,12 +7160,12 @@ describe('ProductPage professional scalar controls',
       async () => {
         const {
           component,
-        } = await createProfessionalScalarPage(
+        } = await createExpertScalarPage(
           'widoor',
           professionalValue('widoor', 0, 0, { breakForceAtOpen: 5 }),
         );
 
-        expect(component.showProfessionalScalarControls).toBeTrue();
+        expect(component.showExpertScalarControls).toBeTrue();
         expect(component.showWeightRangeControls).toBeFalse();
         expect(component.showUserSpeedControls).toBeTrue();
         expect(component.showUserTimingControls).toBeTrue();
@@ -8347,7 +8351,7 @@ function weightRangeExecutionResult(
   };
 }
 
-function professionalScalarExecutionResult(
+function expertScalarExecutionResult(
   profile: KnownProductProfile,
   operation:
     | 'break-force-at-open'
@@ -8385,8 +8389,8 @@ function professionalScalarExecutionResult(
     error: status === 'success'
       ? null
       : {
-        code: 'professional-scalar-test-error',
-        message: 'Professional scalar error',
+        code: 'expert-scalar-test-error',
+        message: 'Expert scalar error',
       },
   };
 }

@@ -111,14 +111,14 @@ function validateProductProfile(
     throw new Error(`Product profile identity mismatch for ${profile}.`);
   }
 
-  if (definition.capabilities.professionalInputs &&
-      !definition.professionalFields.includes('peripherals')) {
+  if (definition.capabilities.expertInputs &&
+      !definition.expertFields.includes('peripherals')) {
     throw new Error(
-      `Professional inputs require peripherals for ${profile}.`,
+      `Expert inputs require peripherals for ${profile}.`,
     );
   }
 
-  const hasWeightRangeField = definition.professionalFields
+  const hasWeightRangeField = definition.expertFields
     .includes('weight-range');
   const hasWeightRangeControl = definition.capabilities
     .weightRangeControl !== 'none';

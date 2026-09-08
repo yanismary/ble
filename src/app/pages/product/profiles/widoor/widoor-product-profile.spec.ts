@@ -14,10 +14,10 @@ describe('Widoor product profile', () => {
       'short-timing',
       'rgb',
     ]);
-    expect(WIDOOR_PRODUCT_PROFILE.professionalFields).toContain(
+    expect(WIDOOR_PRODUCT_PROFILE.expertFields).toContain(
       'break-force-at-open',
     );
-    expect(WIDOOR_PRODUCT_PROFILE.capabilities.professionalInputs)
+    expect(WIDOOR_PRODUCT_PROFILE.capabilities.expertInputs)
       .toBeTrue();
     expect(WIDOOR_PRODUCT_PROFILE.behavior.refreshAfterMaintenanceAction)
       .toBeTrue();

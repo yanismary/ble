@@ -17,7 +17,7 @@ export const WIDOOR_PRODUCT_PROFILE = defineProductProfile({
     'short-timing',
     'rgb',
   ],
-  professionalFields: [
+  expertFields: [
     'break-force-at-open',
     'near-open-speed',
     'near-close-speed',
@@ -50,8 +50,8 @@ export const WIDOOR_PRODUCT_PROFILE = defineProductProfile({
   ],
   capabilities: {
     demo: true,
-    professionalInputs: true,
-    professionalAccessFields: [],
+    expertInputs: true,
+    expertAccessFields: [],
     weightRangeControl: 'none',
   },
   behavior: {

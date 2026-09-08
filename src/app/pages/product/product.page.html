@@ -625,7 +625,7 @@
                   class="basic-section-header"
                   [class.basic-unlocked]="weightRangeControlUnlocked"
                 >
-                  <ion-label>{{ text.professional.weightRange }}</ion-label>
+                  <ion-label>{{ text.expert.weightRange }}</ion-label>
                   <ion-badge class="mantion-value-badge basic-value-badge">
                     {{ currentWeightRangeValue()?.lower }}–{{ currentWeightRangeValue()?.upper }} kg
                   </ion-badge>
@@ -653,7 +653,7 @@
                   />
                   <ion-select
                     class="weight-range-select"
-                    [attr.aria-label]="text.professional.weightRange"
+                    [attr.aria-label]="text.expert.weightRange"
                     interface="popover"
                     [compareWith]="compareWeightRangeOptions"
                     [value]="weightRangeDraftValue()"
@@ -774,80 +774,80 @@
 
       <div [hidden]="activeSettingsTab !== 'advanced'">
         <article class="product-subsection advanced-settings-panel">
-          <h3>{{ text.sections.professionalSettings }}</h3>
+          <h3>{{ text.sections.expertSettings }}</h3>
           @if (showAdvancedSettingsControls) {
             <ion-list class="advanced-settings-list" lines="none">
-              @if (showProfessionalAccessPrompt) {
+              @if (showExpertAccessPrompt) {
                 @if (usesMoventivLayout) {
                   <ion-list-header class="advanced-section-header phase1-mov-expert-header">
-                    <ion-label>{{ text.professionalAccess.expertTitle }}</ion-label>
+                    <ion-label>{{ text.expertAccess.expertTitle }}</ion-label>
                   </ion-list-header>
                   <ion-item class="advanced-access-row phase1-mov-expert-access-row">
                     <ion-input
                       type="password"
                       [maxlength]="35"
-                      [label]="text.professionalAccess.expertPlaceholder"
+                      [label]="text.expertAccess.expertPlaceholder"
                       label-placement="stacked"
-                      [value]="professionalAccessCode"
-                      (ionInput)="setProfessionalAccessCode($event)"
+                      [value]="expertAccessCode"
+                      (ionInput)="setExpertAccessCode($event)"
                     ></ion-input>
                   </ion-item>
                   <ion-item class="advanced-action-button-row phase1-mov-expert-submit-row">
                     <ion-button
                       type="button"
-                      (click)="submitProfessionalAccessCode()"
+                      (click)="submitExpertAccessCode()"
                     >
-                      {{ text.professionalAccess.confirm }}
+                      {{ text.expertAccess.confirm }}
                     </ion-button>
                   </ion-item>
                 } @else {
                   <ion-item class="advanced-access-row">
                     <ion-label>
-                      <p>{{ text.professionalAccess.locked }}</p>
+                      <p>{{ text.expertAccess.locked }}</p>
                     </ion-label>
                     <ion-button
                       slot="end"
                       type="button"
                       size="small"
                       fill="outline"
-                      (click)="requestProfessionalAccess()"
+                      (click)="requestExpertAccess()"
                     >
-                      {{ text.professionalAccess.unlock }}
+                      {{ text.expertAccess.unlock }}
                     </ion-button>
                   </ion-item>
                 }
               }
-              @if (professionalAccessState.status === 'failed' && professionalAccessState.message) {
+              @if (expertAccessState.status === 'failed' && expertAccessState.message) {
                 <p
                   class="command-state advanced-state"
                   role="status"
                   aria-live="polite"
                   data-tone="error"
                 >
-                  <span>{{ professionalAccessState.message }}</span>
+                  <span>{{ expertAccessState.message }}</span>
                 </p>
               }
 
-              @if (showProfessionalInputControls) {
+              @if (showExpertInputControls) {
                 <ion-list-header class="advanced-section-header advanced-input-header">
-                  <ion-label>{{ text.professionalInputControls.title }}</ion-label>
+                  <ion-label>{{ text.expertInputControls.title }}</ion-label>
                   @if (config.profile !== 'widoor' && !isMoventivProfile) {
                     <ion-button
                       type="button"
                       size="small"
                       fill="clear"
                       class="advanced-lock-button"
-                      [attr.aria-label]="professionalInputControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-                      (click)="toggleProfessionalInputControlLock()"
+                      [attr.aria-label]="expertInputControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      (click)="toggleExpertInputControlLock()"
                     >
                       <img
-                        [src]="professionalInputControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                        [src]="expertInputControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
                         alt=""
                       />
                     </ion-button>
                   }
                 </ion-list-header>
-                @for (inputControl of professionalInputControls; track inputControl.config.field) {
+                @for (inputControl of expertInputControls; track inputControl.config.field) {
                   <ion-item
                     class="advanced-input-row"
                     [attr.data-professional-input-field]="inputControl.config.field"
@@ -855,20 +855,20 @@
                     <img
                       slot="start"
                       class="advanced-row-icon"
-                      [src]="professionalInputIconSrc(inputControl.config)"
+                      [src]="expertInputIconSrc(inputControl.config)"
                       alt=""
                     />
                     <ion-label>{{ inputControl.text }}</ion-label>
                     <ion-badge
                       slot="end"
                       class="advanced-value-badge"
-                      [class.advanced-value-positive]="currentProfessionalInputMode(inputControl.config) === 'radar'"
-                      [class.advanced-value-negative]="currentProfessionalInputMode(inputControl.config) !== 'radar'"
+                      [class.advanced-value-positive]="currentExpertInputMode(inputControl.config) === 'radar'"
+                      [class.advanced-value-negative]="currentExpertInputMode(inputControl.config) !== 'radar'"
                     >
-                      @if (currentProfessionalInputMode(inputControl.config) === 'radar') {
-                        {{ text.professionalInputControls.radar }}
+                      @if (currentExpertInputMode(inputControl.config) === 'radar') {
+                        {{ text.expertInputControls.radar }}
                       } @else {
-                        {{ text.professionalInputControls.button }}
+                        {{ text.expertInputControls.button }}
                       }
                     </ion-badge>
                     @if (config.profile === 'widoor' || isMoventivProfile) {
@@ -876,37 +876,37 @@
                         class="advanced-input-toggle"
                         slot="end"
                         [attr.aria-label]="inputControl.text"
-                        [checked]="currentProfessionalInputMode(inputControl.config) === 'radar'"
-                        [disabled]="!canChangeProfessionalInput(inputControl.config)"
-                        (ionChange)="requestProfessionalInputChange(inputControl.config, $event.detail.checked ? 'radar' : 'button')"
+                        [checked]="currentExpertInputMode(inputControl.config) === 'radar'"
+                        [disabled]="!canChangeExpertInput(inputControl.config)"
+                        (ionChange)="requestExpertInputChange(inputControl.config, $event.detail.checked ? 'radar' : 'button')"
                       ></ion-toggle>
                     } @else {
                       <ion-select
                         slot="end"
                         interface="popover"
                         [attr.aria-label]="inputControl.text"
-                        [value]="currentProfessionalInputMode(inputControl.config)"
-                        [disabled]="!professionalInputControlUnlocked || !canChangeProfessionalInput(inputControl.config)"
-                        (ionChange)="requestProfessionalInputChange(inputControl.config, $event)"
+                        [value]="currentExpertInputMode(inputControl.config)"
+                        [disabled]="!expertInputControlUnlocked || !canChangeExpertInput(inputControl.config)"
+                        (ionChange)="requestExpertInputChange(inputControl.config, $event)"
                       >
                         <ion-select-option value="button">
-                          {{ text.professionalInputControls.button }}
+                          {{ text.expertInputControls.button }}
                         </ion-select-option>
                         <ion-select-option value="radar">
-                          {{ text.professionalInputControls.radar }}
+                          {{ text.expertInputControls.radar }}
                         </ion-select-option>
                       </ion-select>
                     }
                   </ion-item>
                 }
-                @if (professionalInputWriteState.status === 'failed' && professionalInputWriteState.message) {
+                @if (expertInputWriteState.status === 'failed' && expertInputWriteState.message) {
                   <p
                     class="command-state advanced-state"
                     role="status"
                     aria-live="polite"
                     data-tone="error"
                   >
-                    <span>{{ professionalInputWriteState.message }}</span>
+                    <span>{{ expertInputWriteState.message }}</span>
                   </p>
                 }
               }
@@ -921,7 +921,7 @@
                     alt=""
                   />
                   }
-                  <ion-label>{{ text.professional.weightRange }}</ion-label>
+                  <ion-label>{{ text.expert.weightRange }}</ion-label>
                   @if (!isMoventivProfile) {
                   <ion-badge class="advanced-value-badge">
                     {{ currentWeightRangeValue()?.lower }}–{{ currentWeightRangeValue()?.upper }}
@@ -948,7 +948,7 @@
                   </ion-label>
                   <ion-select
                     slot="end"
-                    [attr.aria-label]="text.professional.weightRange"
+                    [attr.aria-label]="text.expert.weightRange"
                     [interface]="isMoventivProfile ? 'alert' : 'popover'"
                     [interfaceOptions]="isMoventivProfile ? moventivWeightAlertOptions : {}"
                     [cancelText]="text.weightRangeControls.cancel"
@@ -1033,35 +1033,35 @@
                 }
               }
 
-              @if (showProfessionalScalarControls) {
+              @if (showExpertScalarControls) {
                 @if (usesMoventivLayout) {
                   <ion-list-header class="advanced-section-header phase1-mov-advanced-tuning-header">
-                    <ion-label>{{ text.sections.professionalSettings }}</ion-label>
+                    <ion-label>{{ text.sections.expertSettings }}</ion-label>
                   </ion-list-header>
                 }
-                @for (scalarControl of visibleProfessionalScalarControls; track scalarControl.config.field) {
-                  @if (usesMoventivLayout && professionalAccessGranted && scalarControl.config.field === config.capabilities.professionalAccessFields[0]) {
+                @for (scalarControl of visibleExpertScalarControls; track scalarControl.config.field) {
+                  @if (usesMoventivLayout && expertAccessGranted && scalarControl.config.field === config.capabilities.expertAccessFields[0]) {
                     <ion-list-header class="advanced-section-header phase1-mov-expert-mode-header">
-                      <ion-label>{{ text.professionalAccess.expertMode }}</ion-label>
+                      <ion-label>{{ text.expertAccess.expertMode }}</ion-label>
                     </ion-list-header>
                   }
                   <ion-list-header
                     class="advanced-section-header advanced-scalar-header"
                     [attr.data-professional-scalar-header]="scalarControl.config.field"
-                    [class.advanced-unlocked]="isProfessionalScalarUnlocked(scalarControl.config)"
-                    (click)="usesPhase1SliderInteraction && toggleProfessionalScalarLock(scalarControl.config)"
+                    [class.advanced-unlocked]="isExpertScalarUnlocked(scalarControl.config)"
+                    (click)="usesPhase1SliderInteraction && toggleExpertScalarLock(scalarControl.config)"
                   >
                     @if (config.profile !== 'widoor' && !usesMoventivLayout) {
                       <img
                         slot="start"
                         class="advanced-row-icon"
-                        [src]="professionalScalarIconSrc(scalarControl.config)"
+                        [src]="expertScalarIconSrc(scalarControl.config)"
                         alt=""
                       />
                     }
                     <ion-label>{{ scalarControl.text }}</ion-label>
                     <ion-badge class="advanced-value-badge">
-                      {{ professionalScalarDraftValue(scalarControl.config) }}
+                      {{ expertScalarDraftValue(scalarControl.config) }}
                       {{ scalarControl.config.unit ?? '' }}
                     </ion-badge>
                     <ion-button
@@ -1069,18 +1069,18 @@
                       size="small"
                       fill="clear"
                       class="advanced-lock-button"
-                      [attr.aria-label]="isProfessionalScalarUnlocked(scalarControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
-                      (click)="$event.stopPropagation(); toggleProfessionalScalarLock(scalarControl.config)"
+                      [attr.aria-label]="isExpertScalarUnlocked(scalarControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      (click)="$event.stopPropagation(); toggleExpertScalarLock(scalarControl.config)"
                     >
                       @if (usesPhase1SliderInteraction) {
                         <ion-icon
                           class="advanced-lock-icon"
-                          [name]="isProfessionalScalarUnlocked(scalarControl.config) ? 'lock-open' : 'lock-closed'"
+                          [name]="isExpertScalarUnlocked(scalarControl.config) ? 'lock-open' : 'lock-closed'"
                           aria-hidden="true"
                         ></ion-icon>
                       } @else {
                         <img
-                          [src]="isProfessionalScalarUnlocked(scalarControl.config) ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                          [src]="isExpertScalarUnlocked(scalarControl.config) ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
                           alt=""
                         />
                       }
@@ -1088,15 +1088,15 @@
                   </ion-list-header>
                   <ion-item
                     class="advanced-slider-row"
-                    [class.slider-unlocked]="isProfessionalScalarUnlocked(scalarControl.config)"
+                    [class.slider-unlocked]="isExpertScalarUnlocked(scalarControl.config)"
                     [attr.data-professional-scalar-field]="scalarControl.config.field"
-                    (click)="usesPhase1SliderInteraction && unlockProfessionalScalarFromZone(scalarControl.config)"
+                    (click)="usesPhase1SliderInteraction && unlockExpertScalarFromZone(scalarControl.config)"
                   >
                     @if (config.profile === 'widoor' || usesMoventivLayout) {
                       <img
                         slot="start"
                         class="advanced-row-icon"
-                        [src]="professionalScalarIconSrc(scalarControl.config)"
+                        [src]="expertScalarIconSrc(scalarControl.config)"
                         alt=""
                       />
                     }
@@ -1109,12 +1109,12 @@
                       [pin]="!usesPhase1SliderInteraction"
                       [snaps]="config.profile === 'widoor' && scalarControl.config.field === 'break-force-at-open'"
                       [ticks]="config.profile === 'widoor' && scalarControl.config.field === 'break-force-at-open'"
-                      [disabled]="!isProfessionalScalarUnlocked(scalarControl.config)"
-                      [value]="professionalScalarDraftValue(scalarControl.config)"
-                      (ionInput)="setProfessionalScalarDraftValue(scalarControl.config, $event)"
-                      (ionChange)="setProfessionalScalarDraftValue(scalarControl.config, $event)"
-                      (ionKnobMoveEnd)="onProfessionalScalarSliderReleased(scalarControl.config)"
-                      (ionBlur)="onProfessionalScalarSliderReleased(scalarControl.config)"
+                      [disabled]="!isExpertScalarUnlocked(scalarControl.config)"
+                      [value]="expertScalarDraftValue(scalarControl.config)"
+                      (ionInput)="setExpertScalarDraftValue(scalarControl.config, $event)"
+                      (ionChange)="setExpertScalarDraftValue(scalarControl.config, $event)"
+                      (ionKnobMoveEnd)="onExpertScalarSliderReleased(scalarControl.config)"
+                      (ionBlur)="onExpertScalarSliderReleased(scalarControl.config)"
                     ></ion-range>
                     @if (usesPhase1SliderInteraction) {
                       <ion-button
@@ -1122,19 +1122,19 @@
                         type="button"
                         fill="clear"
                         slot="end"
-                        [disabled]="!isProfessionalScalarUnlocked(scalarControl.config)"
-                        [attr.aria-expanded]="isProfessionalScalarPrecisionOpen(scalarControl.config)"
+                        [disabled]="!isExpertScalarUnlocked(scalarControl.config)"
+                        [attr.aria-expanded]="isExpertScalarPrecisionOpen(scalarControl.config)"
                         aria-label="Afficher le réglage précis"
-                        (click)="toggleProfessionalScalarPrecision(scalarControl.config, $event)"
+                        (click)="toggleExpertScalarPrecision(scalarControl.config, $event)"
                       >
                         <ion-icon
-                          [name]="isProfessionalScalarPrecisionOpen(scalarControl.config) ? 'caret-forward' : 'caret-back'"
+                          [name]="isExpertScalarPrecisionOpen(scalarControl.config) ? 'caret-forward' : 'caret-back'"
                           aria-hidden="true"
                         ></ion-icon>
                       </ion-button>
                     }
                   </ion-item>
-                  @if (isProfessionalScalarUnlocked(scalarControl.config) && (!usesPhase1SliderInteraction || isProfessionalScalarPrecisionOpen(scalarControl.config))) {
+                  @if (isExpertScalarUnlocked(scalarControl.config) && (!usesPhase1SliderInteraction || isExpertScalarPrecisionOpen(scalarControl.config))) {
                     <div
                       class="advanced-precision-row"
                       aria-label="Réglage précis"
@@ -1145,7 +1145,7 @@
                         size="small"
                         fill="outline"
                         [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.decrease : 'Diminuer de 1'"
-                        (click)="stepProfessionalScalarDraft(scalarControl.config, -1)"
+                        (click)="stepExpertScalarDraft(scalarControl.config, -1)"
                       >
                         @if (usesPhase1SliderInteraction) {
                           <ion-icon name="remove" aria-hidden="true"></ion-icon>
@@ -1155,7 +1155,7 @@
                         }
                       </ion-button>
                       <strong>
-                        {{ professionalScalarDraftValue(scalarControl.config) }}
+                        {{ expertScalarDraftValue(scalarControl.config) }}
                         {{ scalarControl.config.unit ?? '' }}
                       </strong>
                       <ion-button
@@ -1163,7 +1163,7 @@
                         size="small"
                         fill="outline"
                         [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.increase : 'Augmenter de 1'"
-                        (click)="stepProfessionalScalarDraft(scalarControl.config, 1)"
+                        (click)="stepExpertScalarDraft(scalarControl.config, 1)"
                       >
                         @if (usesPhase1SliderInteraction) {
                           <ion-icon name="add" aria-hidden="true"></ion-icon>
@@ -1176,23 +1176,23 @@
                         <ion-button
                           type="button"
                           size="small"
-                          (click)="requestProfessionalScalarChange(scalarControl.config)"
-                          [disabled]="!canApplyProfessionalScalar(scalarControl.config)"
+                          (click)="requestExpertScalarChange(scalarControl.config)"
+                          [disabled]="!canApplyExpertScalar(scalarControl.config)"
                         >
-                          {{ text.professionalScalarControls.apply }}
+                          {{ text.expertScalarControls.apply }}
                         </ion-button>
                       }
                     </div>
                   }
                 }
-                @if (professionalScalarWriteState.status === 'failed' && professionalScalarWriteState.message) {
+                @if (expertScalarWriteState.status === 'failed' && expertScalarWriteState.message) {
                   <p
                     class="command-state advanced-state"
                     role="status"
                     aria-live="polite"
                     data-tone="error"
                   >
-                    <span>{{ professionalScalarWriteState.message }}</span>
+                    <span>{{ expertScalarWriteState.message }}</span>
                   </p>
                 }
               }
@@ -1278,9 +1278,9 @@
                       [class.advanced-value-negative]="sensitiveActionCurrentEnabled(action) !== true"
                     >
                       @if (sensitiveActionCurrentEnabled(action) === true) {
-                        {{ text.professionalPeripheralDiagnostics.enabled }}
+                        {{ text.expertPeripheralDiagnostics.enabled }}
                       } @else {
-                        {{ text.professionalPeripheralDiagnostics.disabled }}
+                        {{ text.expertPeripheralDiagnostics.disabled }}
                       }
                     </ion-badge>
                     <ion-toggle

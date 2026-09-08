@@ -25,7 +25,7 @@ export const GARLINE_PRODUCT_PROFILE = defineProductProfile({
     'dynamic-light',
     'rgb',
   ],
-  professionalFields: [
+  expertFields: [
     'near-open-speed',
     'near-close-speed',
     'obstacle-sensitivity',
@@ -49,8 +49,8 @@ export const GARLINE_PRODUCT_PROFILE = defineProductProfile({
   sensitiveActions: ['learning'],
   capabilities: {
     demo: true,
-    professionalInputs: false,
-    professionalAccessFields: ['obstacle-sensitivity'],
+    expertInputs: false,
+    expertAccessFields: ['obstacle-sensitivity'],
     weightRangeControl: 'none',
   },
   behavior: {

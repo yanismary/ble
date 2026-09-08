@@ -90,17 +90,18 @@ import {
 } from '../../shared/app-main-menu/app-main-menu.component';
 import {
   PRODUCT_PAGE_CONFIG,
-} from '../product/product-page.config';
-import { PRODUCT_PAGE_TEXT } from '../product/product-page.text';
+} from '../product/profiles/product-page-config.facade';
+import { PRODUCT_PAGE_TEXT } from
+  '../product/shared/localization/product-page-text';
 import {
   ProductPageNavigationState,
-} from '../product/product-view.model';
+} from '../product/shared/models/product-view.model';
 import {
   PRODUCT_DEMO_CHOICES,
   ProductDemoProfile,
   createProductDemoNavigationState,
   productDemoTextFor,
-} from '../product/product-demo';
+} from '../product/shared/demo/product-demo';
 import {
   getBleSignalQualityAsset,
   getScanRoomIconClass,

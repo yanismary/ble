@@ -13,7 +13,7 @@ export type ProductUserField =
   | 'dynamic-light'
   | 'rgb';
 
-export type ProductProfessionalField =
+export type ProductExpertField =
   | 'weight-range'
   | 'exact-weight'
   | 'break-force-at-open'
@@ -41,7 +41,7 @@ export interface ProductPageConfig {
   readonly maximumWeightLabel: string | null;
   readonly weightRanges: readonly ProductWeightRange[];
   readonly userFields: readonly ProductUserField[];
-  readonly professionalFields: readonly ProductProfessionalField[];
+  readonly expertFields: readonly ProductExpertField[];
   readonly visibleLockModes: readonly (
     | 'none'
     | 'locked-open'
@@ -97,8 +97,8 @@ export type ProductImmediateWritePolicy =
 
 export interface ProductProfileCapabilities {
   readonly demo: boolean;
-  readonly professionalInputs: boolean;
-  readonly professionalAccessFields: readonly ProductProfessionalField[];
+  readonly expertInputs: boolean;
+  readonly expertAccessFields: readonly ProductExpertField[];
   readonly weightRangeControl: 'none' | 'basic' | 'advanced';
 }
 
@@ -145,7 +145,7 @@ export function defineProductProfile(
       Object.freeze({ ...range }),
     )),
     userFields: Object.freeze([...definition.userFields]),
-    professionalFields: Object.freeze([...definition.professionalFields]),
+    expertFields: Object.freeze([...definition.expertFields]),
     visibleLockModes: Object.freeze([...definition.visibleLockModes]),
     hiddenMotorSwitches: Object.freeze([...definition.hiddenMotorSwitches]),
     openSpeedRange: Object.freeze({ ...definition.openSpeedRange }),
@@ -162,8 +162,8 @@ export function defineProductProfile(
     sensitiveActions: Object.freeze([...definition.sensitiveActions]),
     capabilities: Object.freeze({
       ...definition.capabilities,
-      professionalAccessFields: Object.freeze([
-        ...definition.capabilities.professionalAccessFields,
+      expertAccessFields: Object.freeze([
+        ...definition.capabilities.expertAccessFields,
       ]),
     }),
     behavior: Object.freeze({ ...definition.behavior }),

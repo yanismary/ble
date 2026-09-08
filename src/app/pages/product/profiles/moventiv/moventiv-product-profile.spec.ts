@@ -18,13 +18,13 @@ describe('Moventiv product profiles', () => {
       .toEqual(MOVENTIV_80_PRODUCT_PROFILE.commands);
     expect(MOVENTIV_60_PRODUCT_PROFILE.userFields)
       .toEqual(MOVENTIV_80_PRODUCT_PROFILE.userFields);
-    expect(MOVENTIV_60_PRODUCT_PROFILE.professionalFields)
-      .toEqual(MOVENTIV_80_PRODUCT_PROFILE.professionalFields);
+    expect(MOVENTIV_60_PRODUCT_PROFILE.expertFields)
+      .toEqual(MOVENTIV_80_PRODUCT_PROFILE.expertFields);
     expect(MOVENTIV_60_PRODUCT_PROFILE.visibleLockModes)
       .toEqual(['locked-closed']);
     expect(MOVENTIV_60_PRODUCT_PROFILE.capabilities.weightRangeControl)
       .toBe('advanced');
-    expect(MOVENTIV_60_PRODUCT_PROFILE.capabilities.professionalInputs)
+    expect(MOVENTIV_60_PRODUCT_PROFILE.capabilities.expertInputs)
       .toBeTrue();
     expect(MOVENTIV_60_PRODUCT_PROFILE.ui.moventivLayout).toBeTrue();
     expect(MOVENTIV_80_PRODUCT_PROFILE.ui.moventivLayout).toBeTrue();
@@ -56,7 +56,7 @@ describe('Moventiv product profiles', () => {
       MOVENTIV_60_PRODUCT_PROFILE,
       MOVENTIV_80_PRODUCT_PROFILE,
     ]) {
-      expect(profile.professionalFields).not.toContain('break-force-at-open');
+      expect(profile.expertFields).not.toContain('break-force-at-open');
       expect(profile.sensitiveActions).toEqual(['learning']);
       expect(profile.ui.widoorLayout).toBeFalse();
       expect(profile.behavior.advancedSettingsConfirmation).toBeTrue();

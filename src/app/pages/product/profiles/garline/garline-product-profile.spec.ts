@@ -18,7 +18,7 @@ describe('Garline product profile', () => {
       'dynamic-light',
       'rgb',
     ]);
-    expect(GARLINE_PRODUCT_PROFILE.professionalFields).toEqual([
+    expect(GARLINE_PRODUCT_PROFILE.expertFields).toEqual([
       'near-open-speed',
       'near-close-speed',
       'obstacle-sensitivity',
@@ -32,14 +32,14 @@ describe('Garline product profile', () => {
   });
 
   it('should keep unsupported controls explicitly absent', () => {
-    expect(GARLINE_PRODUCT_PROFILE.capabilities.professionalInputs)
+    expect(GARLINE_PRODUCT_PROFILE.capabilities.expertInputs)
       .toBeFalse();
     expect(GARLINE_PRODUCT_PROFILE.capabilities.weightRangeControl)
       .toBe('none');
-    const professionalFields = GARLINE_PRODUCT_PROFILE.professionalFields as
+    const expertFields = GARLINE_PRODUCT_PROFILE.expertFields as
       readonly string[];
-    expect(professionalFields).not.toContain('weight-range');
-    expect(professionalFields).not.toContain('peripherals');
+    expect(expertFields).not.toContain('weight-range');
+    expect(expertFields).not.toContain('peripherals');
     expect(GARLINE_PRODUCT_PROFILE.sensitiveActions).toEqual(['learning']);
   });
 

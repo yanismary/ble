@@ -83,9 +83,9 @@ import {
   MaintenanceAccessService,
 } from '../../core/services/maintenance-access.service';
 import {
-  ProfessionalAccessContext,
-  ProfessionalAccessService,
-} from '../../core/services/professional-access.service';
+  ExpertAccessContext,
+  ExpertAccessService,
+} from '../../core/services/expert-access.service';
 import {
   readShowProductInformation,
   readShowProductSettings,
@@ -108,10 +108,10 @@ import {
   ProductDetection,
 } from '../../core/services/product-detection';
 import {
-  ProductProfessionalField,
+  ProductExpertField,
   ProductWeightRange,
   ProductUserField,
-} from './product-page.config';
+} from './profiles/product-page-config.facade';
 import {
   isMoventivProductProfile,
   productProfileRegistry,
@@ -124,34 +124,34 @@ import {
   widoorDelayedOpenLabelFor,
   widoorMotorStateLabelFor,
   WidoorMotorStateKey,
-} from './product-page-legacy-localization';
-import { productProfessionalFieldRequiresAccess } from
-  './product-professional-access';
+} from './shared/localization/product-page-localization';
+import { productExpertFieldRequiresAccess } from
+  './shared/expert/product-expert-access';
 import {
   ProductLockModeUiConfig,
   createProductLockModeAuthorization,
   productLockModeConfigsFor,
-} from './product-lock-mode';
+} from './profiles/moventiv/moventiv-lock-mode';
 import {
   ProductUserSpeedField,
   ProductUserSpeedUiConfig,
   createProductUserSpeedAuthorization,
   isValidProductUserSpeedValue,
   productUserSpeedConfigsFor,
-} from './product-user-speed';
+} from './shared/settings/product-user-speed';
 import {
   ProductUserTimingField,
   ProductUserTimingUiConfig,
   createProductUserTimingAuthorization,
   isValidProductUserTimingValue,
   productUserTimingConfigsFor,
-} from './product-user-timing';
+} from './shared/settings/product-user-timing';
 import {
   ProductUserPeripheralField,
   ProductUserPeripheralUiConfig,
   createProductUserPeripheralAuthorization,
   productUserPeripheralConfigsFor,
-} from './product-user-peripheral';
+} from './shared/settings/product-user-peripheral';
 import {
   ProductWeightRangeUiConfig,
   createProductWeightRangeAuthorization,
@@ -159,42 +159,45 @@ import {
   isSameProductWeightRange,
   isValidProductWeightRange,
   productWeightRangeConfigsFor,
-} from './product-weight-range';
+} from './profiles/moventiv/moventiv-weight-range';
 import {
-  ProductProfessionalInputField,
-  ProductProfessionalInputUiConfig,
-  createProductProfessionalInputAuthorization,
-  productProfessionalInputConfigsFor,
-} from './product-professional-input';
+  ProductExpertInputField,
+  ProductExpertInputUiConfig,
+  createProductExpertInputAuthorization,
+  productExpertInputConfigsFor,
+} from './shared/expert/product-expert-input';
 import {
-  createProfessionalPeripheralDiagnosticRows,
-} from './product-professional-peripheral-diagnostics';
+  createExpertPeripheralDiagnosticRows,
+} from './shared/expert/product-expert-peripheral-diagnostics';
 import {
   ProductSensitiveAction,
   ProductSensitiveActionUiConfig,
   createProductSensitiveActionAuthorization,
   productSensitiveActionConfigsFor,
-  productSensitiveActionWriteSteps,
-} from './product-sensitive-actions';
+} from './shared/actions/product-sensitive-action';
+import { productSensitiveActionWriteSteps } from
+  './profiles/product-sensitive-action.registry';
 import {
-  ProductProfessionalScalarField,
-  ProductProfessionalScalarUiConfig,
-  createProductProfessionalScalarAuthorization,
-  isValidProductProfessionalScalarValue,
-  productProfessionalScalarConfigsFor,
-} from './product-professional-scalar';
+  ProductExpertScalarField,
+  ProductExpertScalarUiConfig,
+  createProductExpertScalarAuthorization,
+  isValidProductExpertScalarValue,
+  productExpertScalarConfigsFor,
+} from './shared/expert/product-expert-scalar';
 import {
-  ProductOpenCommandState,
+  ProductMotorCommandState,
   ProductCommandHistoryEntry,
-  ProductOpenCommandStatus,
+  ProductMotorCommandStatus,
   ProductMotorCommandOperation,
-  WIDOOR_COMMAND_UI_CONFIGS,
-  WidoorCommandUiConfig,
-  createProductMotorCommandAuthorization,
+  ProductMotorCommandUiConfig,
   formatCommandHistoryTime,
-  initialProductOpenCommandState,
+  initialProductMotorCommandState,
+} from './shared/commands/product-motor-command';
+import {
+  WIDOOR_COMMAND_UI_CONFIGS,
+  createProductMotorCommandAuthorization,
   productMotorCommandConfigsFor,
-} from './product-open-command';
+} from './profiles/product-motor-command.registry';
 import {
   ProductConnectionState,
   ProductDisplayRow,
@@ -202,7 +205,7 @@ import {
   ProductReadViewState,
   ProductReadViewStates,
   ProductViewModel,
-} from './product-view.model';
+} from './shared/models/product-view.model';
 import {
   PRODUCT_NAME_ROOM_CONFIRMATION_POLICY,
   PRODUCT_NAME_ROOM_EXECUTION_POLICY,
@@ -216,22 +219,23 @@ import {
   encodeProductNameRoomWrite,
   splitProductDisplayName,
   validateProductNameRoomDraft,
-} from './product-name-room';
+} from './shared/settings/product-name-room';
 import {
   ProductDateActionContext,
   ProductDateMaintenanceFlowKind,
   prepareProductDateMaintenanceFlow,
-} from './product-date-actions';
+} from './profiles/moventiv/moventiv-family-maintenance-date-actions';
 import {
   ProductDraftStepDirection,
   stepProductDraftValue,
-} from './product-draft-step';
-import { ProductControlLockRegistry } from './product-control-lock';
+} from './shared/controls/product-draft-value-step';
+import { ProductControlUnlockRegistry } from
+  './shared/controls/product-control-unlock-registry';
 import {
   ProductDemoSnapshot,
   createProductDemoSnapshot,
   isProductDemoProfile,
-} from './product-demo';
+} from './shared/demo/product-demo';
 
 type ProductShellMainTab = 'commands' | 'settings' | 'information';
 type ProductShellSettingsTab = 'basic' | 'advanced';
@@ -279,8 +283,8 @@ export class ProductPage implements OnDestroy {
   private readonly ngZone = inject(NgZone);
   private readonly maintenanceAccessService =
     inject(MaintenanceAccessService);
-  private readonly professionalAccessService =
-    inject(ProfessionalAccessService);
+  private readonly expertAccessService =
+    inject(ExpertAccessService);
   private readonly productDataLoadService = inject(ProductDataLoadService);
   private readonly productDetection = inject(ProductDetection);
   private readonly route = inject(ActivatedRoute);
@@ -290,7 +294,7 @@ export class ProductPage implements OnDestroy {
   private readonly productExitState = inject(ProductExitStateService);
   private readonly subscriptions = new Subscription();
   private productBackButtonSubscription: Subscription | null = null;
-  private readonly controlLocks = new ProductControlLockRegistry();
+  private readonly controlLocks = new ProductControlUnlockRegistry();
   private readonly context: ProductPageNavigationState | null;
   private loadCycle = 0;
   private commandCycle = 0;
@@ -303,16 +307,16 @@ export class ProductPage implements OnDestroy {
   private readonly userTimingWrites: Map<ProductUserTimingField, LegacyBleWrite>;
   private readonly userTimingDrafts = new Map<ProductUserTimingField, number>();
   private weightRangeDraft: ProductWeightRange | null = null;
-  private readonly professionalInputWrites: Map<
-    ProductProfessionalInputField,
+  private readonly expertInputWrites: Map<
+    ProductExpertInputField,
     LegacyBleWrite
   >;
-  private readonly professionalScalarWrites: Map<
-    ProductProfessionalScalarField,
+  private readonly expertScalarWrites: Map<
+    ProductExpertScalarField,
     LegacyBleWrite
   >;
-  private readonly professionalScalarDrafts = new Map<
-    ProductProfessionalScalarField,
+  private readonly expertScalarDrafts = new Map<
+    ProductExpertScalarField,
     number
   >();
   private widoorActiveSliderKey: string | null = null;
@@ -347,9 +351,9 @@ export class ProductPage implements OnDestroy {
   readonly roomOptions = PRODUCT_ROOM_OPTIONS;
   readonly sensitiveActions: readonly ProductSensitiveActionUiConfig[];
   readonly productCommands: readonly {
-    readonly config: WidoorCommandUiConfig;
+    readonly config: ProductMotorCommandUiConfig;
     readonly text: LocalizedProductPageText['widoorCommands'][
-      WidoorCommandUiConfig['textKey']
+      ProductMotorCommandUiConfig['textKey']
     ];
     readonly disabledReason: string | null;
   }[];
@@ -381,19 +385,19 @@ export class ProductPage implements OnDestroy {
   readonly weightRangeControls: readonly {
     readonly config: ProductWeightRangeUiConfig;
   }[];
-  readonly professionalInputControls: readonly {
-    readonly config: ProductProfessionalInputUiConfig;
+  readonly expertInputControls: readonly {
+    readonly config: ProductExpertInputUiConfig;
     readonly text: string;
   }[];
-  readonly professionalScalarControls: readonly {
-    readonly config: ProductProfessionalScalarUiConfig;
-    readonly text: LocalizedProductPageText['professional'][
-      ProductProfessionalScalarUiConfig['textKey']
+  readonly expertScalarControls: readonly {
+    readonly config: ProductExpertScalarUiConfig;
+    readonly text: LocalizedProductPageText['expert'][
+      ProductExpertScalarUiConfig['textKey']
     ];
   }[];
   readonly emptyTechnicalRows: readonly ProductDisplayRow[] = [];
   viewModel: ProductViewModel;
-  openCommandState = initialProductOpenCommandState();
+  openCommandState = initialProductMotorCommandState();
   lockModeWriteState: {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly message: string | null;
@@ -417,21 +421,21 @@ export class ProductPage implements OnDestroy {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', message: null });
-  professionalInputWriteState: {
+  expertInputWriteState: {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
-    readonly field: ProductProfessionalInputField | null;
+    readonly field: ProductExpertInputField | null;
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', field: null, message: null });
-  professionalScalarWriteState: {
+  expertScalarWriteState: {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
-    readonly field: ProductProfessionalScalarField | null;
+    readonly field: ProductExpertScalarField | null;
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', field: null, message: null });
-  professionalAccessState: {
+  expertAccessState: {
     readonly status: 'locked' | 'unlocked' | 'failed';
     readonly message: string | null;
   } = Object.freeze({ status: 'locked', message: null });
-  professionalAccessCode = '';
+  expertAccessCode = '';
   nameRoomWriteState: {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly message: string | null;
@@ -483,7 +487,7 @@ export class ProductPage implements OnDestroy {
     this.config = productProfileRegistry.resolve(routeProfile) ??
       productProfileRegistry.get('widoor');
     const profile = this.config.profile;
-    this.sensitiveActions = productSensitiveActionConfigsFor(profile);
+    this.sensitiveActions = productSensitiveActionConfigsFor(this.config);
     this.productCommands = Object.freeze(
       productMotorCommandConfigsFor(this.config).map((config) =>
       Object.freeze({
@@ -581,38 +585,38 @@ export class ProductPage implements OnDestroy {
         Object.freeze({ config }),
       ),
     );
-    this.professionalInputControls = Object.freeze(
-      productProfessionalInputConfigsFor(this.config).map((config) =>
+    this.expertInputControls = Object.freeze(
+      productExpertInputConfigsFor(this.config).map((config) =>
         Object.freeze({
           config,
           get text() {
             const text = productPageTextFor(currentAppLanguage(), profile);
             return config.textKey === 'input1'
-              ? text.professionalInputControls.input1
-              : text.professionalInputControls.input2;
+              ? text.expertInputControls.input1
+              : text.expertInputControls.input2;
           },
         }),
       ),
     );
-    this.professionalInputWrites = new Map(
-      this.professionalInputControls.map(({ config }) => [
+    this.expertInputWrites = new Map(
+      this.expertInputControls.map(({ config }) => [
         config.field,
         config.catalogFactory('button'),
       ]),
     );
-    this.professionalScalarControls = Object.freeze(
-      productProfessionalScalarConfigsFor(this.config).map((config) =>
+    this.expertScalarControls = Object.freeze(
+      productExpertScalarConfigsFor(this.config).map((config) =>
         Object.freeze({
           config,
           get text() {
             return productPageTextFor(currentAppLanguage(), profile)
-              .professional[config.textKey];
+              .expert[config.textKey];
           },
         }),
       ),
     );
-    this.professionalScalarWrites = new Map(
-      this.professionalScalarControls.map(({ config }) => [
+    this.expertScalarWrites = new Map(
+      this.expertScalarControls.map(({ config }) => [
         config.field,
         config.catalogFactory(config.range.min),
       ]),
@@ -622,8 +626,8 @@ export class ProductPage implements OnDestroy {
       this.maintenanceAccessService.reset(
         this.maintenanceAccessContext(this.context),
       );
-      this.professionalAccessService.reset(
-        this.professionalAccessContext(this.context),
+      this.expertAccessService.reset(
+        this.expertAccessContext(this.context),
       );
     }
     this.viewModel = this.createInitialViewModel(
@@ -743,8 +747,8 @@ export class ProductPage implements OnDestroy {
       this.userTimingWriteState.status !== 'executing' &&
       this.userPeripheralWriteState.status !== 'executing' &&
       this.weightRangeWriteState.status !== 'executing' &&
-      this.professionalInputWriteState.status !== 'executing' &&
-      this.professionalScalarWriteState.status !== 'executing' &&
+      this.expertInputWriteState.status !== 'executing' &&
+      this.expertScalarWriteState.status !== 'executing' &&
       this.nameRoomWriteState.status !== 'executing' &&
       !this.productDateActionBusy &&
       !this.sensitiveActionBusy;
@@ -832,7 +836,7 @@ export class ProductPage implements OnDestroy {
       this.basicUserPeripheralControls.length > 0;
   }
 
-  productCommandIconSrc(config: WidoorCommandUiConfig): string {
+  productCommandIconSrc(config: ProductMotorCommandUiConfig): string {
     switch (config.operation) {
       case 'motor-close':
         return 'assets/img/icon_command_close.svg';
@@ -879,16 +883,16 @@ export class ProductPage implements OnDestroy {
       : 'assets/img/icon_light_off.svg';
   }
 
-  professionalInputIconSrc(
-    config: ProductProfessionalInputUiConfig,
+  expertInputIconSrc(
+    config: ProductExpertInputUiConfig,
   ): string {
-    return this.currentProfessionalInputMode(config) === 'radar'
+    return this.currentExpertInputMode(config) === 'radar'
       ? 'assets/img/icon_radar.svg'
       : 'assets/img/icon_button.svg';
   }
 
-  professionalScalarIconSrc(
-    config: ProductProfessionalScalarUiConfig,
+  expertScalarIconSrc(
+    config: ProductExpertScalarUiConfig,
   ): string {
     switch (config.field) {
       case 'near-open-speed':
@@ -949,16 +953,16 @@ export class ProductPage implements OnDestroy {
       this.config.capabilities.weightRangeControl === 'advanced';
   }
 
-  get showProfessionalInputControls(): boolean {
+  get showExpertInputControls(): boolean {
     return this.pageContextCurrent &&
-      this.professionalInputControls.length > 0 &&
-      this.phase1ShowsProfessionalParameterControls();
+      this.expertInputControls.length > 0 &&
+      this.phase1ShowsExpertControls();
   }
 
-  get showProfessionalScalarControls(): boolean {
+  get showExpertScalarControls(): boolean {
     return this.pageContextCurrent &&
-      this.visibleProfessionalScalarControls.length > 0 &&
-      this.phase1ShowsProfessionalParameterControls();
+      this.visibleExpertScalarControls.length > 0 &&
+      this.phase1ShowsExpertControls();
   }
 
   get showBasicSettingsControls(): boolean {
@@ -971,12 +975,12 @@ export class ProductPage implements OnDestroy {
   }
 
   get showAdvancedSettingsControls(): boolean {
-    return this.showProfessionalInputControls ||
+    return this.showExpertInputControls ||
       this.showAdvancedWeightRangeControls ||
-      this.showProfessionalScalarControls ||
-      this.showProfessionalAccessPrompt ||
-      this.professionalAccessState.message !== null ||
-      this.professionalPeripheralDiagnosticRows.length > 0 ||
+      this.showExpertScalarControls ||
+      this.showExpertAccessPrompt ||
+      this.expertAccessState.message !== null ||
+      this.expertPeripheralDiagnosticRows.length > 0 ||
       this.viewModel.reads.professionalParameters.status === 'available';
   }
 
@@ -1011,31 +1015,31 @@ export class ProductPage implements OnDestroy {
       this.sensitiveActionState.status === 'executing';
   }
 
-  get visibleProfessionalScalarControls(): typeof this.professionalScalarControls {
-    return this.professionalScalarControls.filter((control) =>
-      this.canShowProfessionalField(control.config.field),
+  get visibleExpertScalarControls(): typeof this.expertScalarControls {
+    return this.expertScalarControls.filter((control) =>
+      this.canShowExpertField(control.config.field),
     );
   }
 
-  get professionalAccessGranted(): boolean {
-    return this.professionalAccessService.isAuthenticated(
-      this.currentProfessionalAccessContext(),
+  get expertAccessGranted(): boolean {
+    return this.expertAccessService.isAuthenticated(
+      this.currentExpertAccessContext(),
     );
   }
 
-  get showProfessionalAccessPrompt(): boolean {
+  get showExpertAccessPrompt(): boolean {
     return this.pageContextCurrent &&
       (this.viewModel.reads.professionalParameters.status === 'available' ||
         this.config.family === 'garline') &&
-      this.professionalAccessControlsAvailable &&
-      !this.professionalAccessGranted;
+      this.expertAccessControlsAvailable &&
+      !this.expertAccessGranted;
   }
 
-  get professionalAccessControlsAvailable(): boolean {
-    return this.config.professionalFields.some((field) =>
-      productProfessionalFieldRequiresAccess(this.config.profile, field),
+  get expertAccessControlsAvailable(): boolean {
+    return this.config.expertFields.some((field) =>
+      productExpertFieldRequiresAccess(this.config, field),
     ) || this.sensitiveActions.some((action) =>
-      this.sensitiveActionRequiresProfessionalAccess(action),
+      this.sensitiveActionRequiresExpertAccess(action),
     );
   }
 
@@ -1047,11 +1051,11 @@ export class ProductPage implements OnDestroy {
     return this.canExecuteWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[1]);
   }
 
-  canExecuteWidoorCommand(config: WidoorCommandUiConfig): boolean {
+  canExecuteWidoorCommand(config: ProductMotorCommandUiConfig): boolean {
     return this.canExecuteProductCommand(config);
   }
 
-  canExecuteProductCommand(config: WidoorCommandUiConfig): boolean {
+  canExecuteProductCommand(config: ProductMotorCommandUiConfig): boolean {
     if (!this.productCommands.some((command) => command.config === config) ||
         config.profile !== this.config.profile ||
         !config.enabled ||
@@ -1067,8 +1071,8 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
-        this.professionalInputWriteState.status === 'executing' ||
-        this.professionalScalarWriteState.status === 'executing' ||
+        this.expertInputWriteState.status === 'executing' ||
+        this.expertScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
@@ -1108,7 +1112,7 @@ export class ProductPage implements OnDestroy {
     return this.commandHistoryEntries;
   }
 
-  get displayedOpenCommandStatus(): ProductOpenCommandStatus {
+  get displayedOpenCommandStatus(): ProductMotorCommandStatus {
     if (this.showProductMotorCommands && !this.pageContextCurrent) {
       return this.bleService.connectedDeviceId === null
         ? 'disconnected'
@@ -1194,9 +1198,9 @@ export class ProductPage implements OnDestroy {
     return value === null ? [] : this.createUserRows(value);
   }
 
-  get professionalRows(): readonly ProductDisplayRow[] {
+  get expertRows(): readonly ProductDisplayRow[] {
     const value = this.viewModel.reads.professionalParameters.value;
-    return value === null ? [] : this.createProfessionalRows(value);
+    return value === null ? [] : this.createExpertRows(value);
   }
 
   get userTechnicalRows(): readonly ProductDisplayRow[] {
@@ -1214,30 +1218,30 @@ export class ProductPage implements OnDestroy {
     ];
   }
 
-  get professionalPeripheralDiagnosticRows(): readonly ProductDisplayRow[] {
+  get expertPeripheralDiagnosticRows(): readonly ProductDisplayRow[] {
     const value = this.viewModel.reads.professionalParameters.value;
-    if (value === null || !this.professionalFieldVisible('peripherals')) {
+    if (value === null || !this.expertFieldVisible('peripherals')) {
       return [];
     }
 
-    return createProfessionalPeripheralDiagnosticRows(
+    return createExpertPeripheralDiagnosticRows(
       value,
-      this.text.professionalPeripheralDiagnostics,
+      this.text.expertPeripheralDiagnostics,
       {
         includeLock: value.profile !== 'widoor' || this.widoorLockSupported(),
       },
     );
   }
 
-  get professionalTechnicalRows(): readonly ProductDisplayRow[] {
+  get expertTechnicalRows(): readonly ProductDisplayRow[] {
     const value = this.viewModel.reads.professionalParameters.value;
-    if (value === null || !this.professionalFieldVisible('peripherals')) {
+    if (value === null || !this.expertFieldVisible('peripherals')) {
       return [];
     }
     const peripheralLabel = value.profile === 'widoor' &&
       !this.widoorLockSupported()
-      ? this.text.professional.peripheralsWithoutLock
-      : this.text.professional.peripherals;
+      ? this.text.expert.peripheralsWithoutLock
+      : this.text.expert.peripherals;
     return [this.row(
       'professional-peripherals',
       peripheralLabel,
@@ -1288,7 +1292,7 @@ export class ProductPage implements OnDestroy {
         'current-weight-range',
         this.usesMoventivLayout
           ? this.text.information.currentWeightProfile
-          : this.text.professional.weightRange,
+          : this.text.expert.weightRange,
         this.formatInformationWeightRange(weightRange),
       ));
     }
@@ -1437,8 +1441,8 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
-        this.professionalInputWriteState.status === 'executing' ||
-        this.professionalScalarWriteState.status === 'executing' ||
+        this.expertInputWriteState.status === 'executing' ||
+        this.expertScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
@@ -1664,7 +1668,9 @@ export class ProductPage implements OnDestroy {
     return this.requestWidoorCommand(WIDOOR_COMMAND_UI_CONFIGS[1]);
   }
 
-  async requestWidoorCommand(config: WidoorCommandUiConfig): Promise<void> {
+  async requestWidoorCommand(
+    config: ProductMotorCommandUiConfig,
+  ): Promise<void> {
     return this.requestProductCommand(config);
   }
 
@@ -1914,8 +1920,8 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
-        this.professionalInputWriteState.status === 'executing' ||
-        this.professionalScalarWriteState.status === 'executing' ||
+        this.expertInputWriteState.status === 'executing' ||
+        this.expertScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
@@ -2067,8 +2073,8 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
-        this.professionalInputWriteState.status === 'executing' ||
-        this.professionalScalarWriteState.status === 'executing' ||
+        this.expertInputWriteState.status === 'executing' ||
+        this.expertScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
@@ -2131,8 +2137,8 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
-        this.professionalInputWriteState.status === 'executing' ||
-        this.professionalScalarWriteState.status === 'executing' ||
+        this.expertInputWriteState.status === 'executing' ||
+        this.expertScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
@@ -2154,8 +2160,8 @@ export class ProductPage implements OnDestroy {
       properties.write === true;
   }
 
-  currentProfessionalInputMode(
-    config: ProductProfessionalInputUiConfig,
+  currentExpertInputMode(
+    config: ProductExpertInputUiConfig,
   ): LegacyInputMode | null {
     const value = this.viewModel.reads.professionalParameters.value;
     if (value === null || value.profile !== config.profile) {
@@ -2168,14 +2174,14 @@ export class ProductPage implements OnDestroy {
     return radar ? 'radar' : 'button';
   }
 
-  canChangeProfessionalInput(
-    config: ProductProfessionalInputUiConfig,
+  canChangeExpertInput(
+    config: ProductExpertInputUiConfig,
     mode?: LegacyInputMode,
   ): boolean {
-    if (!this.professionalInputControls.some((control) =>
+    if (!this.expertInputControls.some((control) =>
           control.config === config,
         ) ||
-        !this.showProfessionalInputControls ||
+        !this.showExpertInputControls ||
         !this.isCurrentContext() ||
         this.viewModel.loading ||
         this.productDataLoadService.isLoading ||
@@ -2187,20 +2193,20 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
-        this.professionalInputWriteState.status === 'executing' ||
-        this.professionalScalarWriteState.status === 'executing' ||
+        this.expertInputWriteState.status === 'executing' ||
+        this.expertScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
         this.commandInProgress) {
       return false;
     }
-    const current = this.currentProfessionalInputMode(config);
+    const current = this.currentExpertInputMode(config);
     if ((current === null && config.profile !== 'widoor') ||
         (mode !== undefined && mode === current)) {
       return false;
     }
-    const write = this.professionalInputWrites.get(config.field);
+    const write = this.expertInputWrites.get(config.field);
     if (write === undefined) {
       return false;
     }
@@ -2218,16 +2224,16 @@ export class ProductPage implements OnDestroy {
       properties.write === true;
   }
 
-  get professionalInputControlUnlocked(): boolean {
-    return this.controlLocks.isUnlocked('professional-inputs');
+  get expertInputControlUnlocked(): boolean {
+    return this.controlLocks.isUnlocked('expert-inputs');
   }
 
-  toggleProfessionalInputControlLock(): void {
-    this.controlLocks.toggle('professional-inputs');
+  toggleExpertInputControlLock(): void {
+    this.controlLocks.toggle('expert-inputs');
   }
 
-  async requestProfessionalInputChange(
-    config: ProductProfessionalInputUiConfig,
+  async requestExpertInputChange(
+    config: ProductExpertInputUiConfig,
     eventOrMode: CustomEvent<{ readonly value?: LegacyInputMode }> |
       LegacyInputMode,
   ): Promise<void> {
@@ -2235,18 +2241,18 @@ export class ProductPage implements OnDestroy {
       ? eventOrMode
       : eventOrMode.detail.value;
     if ((mode !== 'button' && mode !== 'radar') ||
-        !this.canChangeProfessionalInput(config, mode) ||
+        !this.canChangeExpertInput(config, mode) ||
         this.context === null) {
       return;
     }
 
     void triggerConfiguredHapticFeedback();
     if (this.isDemoMode) {
-      this.updateProfessionalInputDisplay(config.field, mode);
-      this.professionalInputWriteState = Object.freeze({
+      this.updateExpertInputDisplay(config.field, mode);
+      this.expertInputWriteState = Object.freeze({
         status: 'sent',
         field: config.field,
-        message: this.text.professionalInputControls.sent,
+        message: this.text.expertInputControls.sent,
       });
       return;
     }
@@ -2254,10 +2260,10 @@ export class ProductPage implements OnDestroy {
     const context = this.context;
     const contextStatus = this.writeContextStatus(context, write);
     if (contextStatus !== null) {
-      this.professionalInputWriteState = Object.freeze({
+      this.expertInputWriteState = Object.freeze({
         status: 'failed',
         field: config.field,
-        message: this.text.professionalInputControls.failed,
+        message: this.text.expertInputControls.failed,
       });
       return;
     }
@@ -2265,7 +2271,7 @@ export class ProductPage implements OnDestroy {
     const confirmedAt = Date.now();
     const authorization = this.usesPhase1ImmediateWrite(config.profile)
       ? null
-      : createProductProfessionalInputAuthorization({
+      : createProductExpertInputAuthorization({
           write,
           deviceId: context.deviceId,
           connectionGeneration: context.connectionGeneration,
@@ -2273,10 +2279,10 @@ export class ProductPage implements OnDestroy {
           confirmationId: this.nextCommandIdentifier('confirmation'),
           confirmedAt,
         });
-    this.professionalInputWriteState = Object.freeze({
+    this.expertInputWriteState = Object.freeze({
       status: 'executing',
       field: config.field,
-      message: this.text.professionalInputControls.executing,
+      message: this.text.expertInputControls.executing,
     });
     const result = await this.bleWriteExecutionService.execute({
       write,
@@ -2290,7 +2296,7 @@ export class ProductPage implements OnDestroy {
       policy: this.withPhase1ImmediatePolicy(config.profile, config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
-      this.professionalInputWriteState = Object.freeze({
+      this.expertInputWriteState = Object.freeze({
         status: 'failed',
         field: config.field,
         message: this.text.openCommand.stale,
@@ -2298,21 +2304,21 @@ export class ProductPage implements OnDestroy {
       return;
     }
     if (result.status === 'success') {
-      this.updateProfessionalInputDisplay(config.field, mode);
-      this.professionalInputWriteState = Object.freeze({
+      this.updateExpertInputDisplay(config.field, mode);
+      this.expertInputWriteState = Object.freeze({
         status: 'sent',
         field: config.field,
-        message: this.text.professionalInputControls.sent,
+        message: this.text.expertInputControls.sent,
       });
       if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
         await this.refreshProductData({}, false);
       }
       return;
     }
-    this.professionalInputWriteState = Object.freeze({
+    this.expertInputWriteState = Object.freeze({
       status: 'failed',
       field: config.field,
-      message: this.text.professionalInputControls.failed,
+      message: this.text.expertInputControls.failed,
     });
   }
 
@@ -2382,8 +2388,8 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
-        this.professionalInputWriteState.status === 'executing' ||
-        this.professionalScalarWriteState.status === 'executing' ||
+        this.expertInputWriteState.status === 'executing' ||
+        this.expertScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
@@ -2417,8 +2423,8 @@ export class ProductPage implements OnDestroy {
       properties.write === true;
   }
 
-  currentProfessionalScalarValue(
-    config: ProductProfessionalScalarUiConfig,
+  currentExpertScalarValue(
+    config: ProductExpertScalarUiConfig,
   ): number | null {
     const value = this.viewModel.reads.professionalParameters.value;
     if (value === null || value.profile !== config.profile) {
@@ -2442,33 +2448,33 @@ export class ProductPage implements OnDestroy {
     }
   }
 
-  professionalScalarDraftValue(
-    config: ProductProfessionalScalarUiConfig,
+  expertScalarDraftValue(
+    config: ProductExpertScalarUiConfig,
   ): number {
-    return this.professionalScalarDrafts.get(config.field) ??
-      this.currentProfessionalScalarValue(config) ??
+    return this.expertScalarDrafts.get(config.field) ??
+      this.currentExpertScalarValue(config) ??
       config.range.min;
   }
 
-  setProfessionalScalarDraftValue(
-    config: ProductProfessionalScalarUiConfig,
+  setExpertScalarDraftValue(
+    config: ProductExpertScalarUiConfig,
     eventOrValue: Event | number,
   ): void {
-    if (!this.isProfessionalScalarControl(config) ||
-        !this.canShowProfessionalField(config.field)) {
+    if (!this.isExpertScalarControl(config) ||
+        !this.canShowExpertField(config.field)) {
       return;
     }
     const value = typeof eventOrValue === 'number'
       ? eventOrValue
       : rangeEventNumber(eventOrValue);
     if (value === null ||
-        !isValidProductProfessionalScalarValue(config, value)) {
+        !isValidProductExpertScalarValue(config, value)) {
       return;
     }
-    this.professionalScalarDrafts.set(config.field, value);
-    if (this.professionalScalarWriteState.field === config.field &&
-        this.professionalScalarWriteState.status !== 'executing') {
-      this.professionalScalarWriteState = Object.freeze({
+    this.expertScalarDrafts.set(config.field, value);
+    if (this.expertScalarWriteState.field === config.field &&
+        this.expertScalarWriteState.status !== 'executing') {
+      this.expertScalarWriteState = Object.freeze({
         status: 'idle',
         field: null,
         message: null,
@@ -2476,84 +2482,84 @@ export class ProductPage implements OnDestroy {
     }
   }
 
-  isProfessionalScalarUnlocked(
-    config: ProductProfessionalScalarUiConfig,
+  isExpertScalarUnlocked(
+    config: ProductExpertScalarUiConfig,
   ): boolean {
     return this.controlLocks.isUnlocked(
-      `professional-scalar:${config.field}`,
+      `expert-scalar:${config.field}`,
     );
   }
 
-  toggleProfessionalScalarLock(
-    config: ProductProfessionalScalarUiConfig,
+  toggleExpertScalarLock(
+    config: ProductExpertScalarUiConfig,
   ): void {
-    const key = `professional-scalar:${config.field}`;
+    const key = `expert-scalar:${config.field}`;
     this.toggleProductSliderLock(
       key,
       productProfileRegistry.get(config.profile).ui.phase1SliderInteraction,
     );
   }
 
-  unlockProfessionalScalarFromZone(
-    config: ProductProfessionalScalarUiConfig,
+  unlockExpertScalarFromZone(
+    config: ProductExpertScalarUiConfig,
   ): void {
-    this.unlockWidoorSlider(`professional-scalar:${config.field}`);
+    this.unlockWidoorSlider(`expert-scalar:${config.field}`);
   }
 
-  isProfessionalScalarPrecisionOpen(
-    config: ProductProfessionalScalarUiConfig,
+  isExpertScalarPrecisionOpen(
+    config: ProductExpertScalarUiConfig,
   ): boolean {
     return this.widoorPrecisionSliderKey ===
-      `professional-scalar:${config.field}`;
+      `expert-scalar:${config.field}`;
   }
 
-  toggleProfessionalScalarPrecision(
-    config: ProductProfessionalScalarUiConfig,
+  toggleExpertScalarPrecision(
+    config: ProductExpertScalarUiConfig,
     event: Event,
   ): void {
     this.toggleWidoorSliderPrecision(
-      `professional-scalar:${config.field}`,
-      this.isProfessionalScalarUnlocked(config),
+      `expert-scalar:${config.field}`,
+      this.isExpertScalarUnlocked(config),
       event,
     );
   }
 
-  stepProfessionalScalarDraft(
-    config: ProductProfessionalScalarUiConfig,
+  stepExpertScalarDraft(
+    config: ProductExpertScalarUiConfig,
     direction: ProductDraftStepDirection,
   ): void {
-    if (!this.isProfessionalScalarUnlocked(config)) {
+    if (!this.isExpertScalarUnlocked(config)) {
       return;
     }
-    this.setProfessionalScalarDraftValue(
+    this.setExpertScalarDraftValue(
       config,
       stepProductDraftValue(
-        this.professionalScalarDraftValue(config),
+        this.expertScalarDraftValue(config),
         direction,
         config.range,
       ),
     );
     this.scheduleWidoorSliderWrite(
-      `professional-scalar:${config.field}`,
-      () => this.requestProfessionalScalarChange(config),
+      `expert-scalar:${config.field}`,
+      () => this.requestExpertScalarChange(config),
     );
   }
 
-  onProfessionalScalarSliderReleased(
-    config: ProductProfessionalScalarUiConfig,
+  onExpertScalarSliderReleased(
+    config: ProductExpertScalarUiConfig,
   ): void {
     this.flushWidoorSliderWrite(
-      `professional-scalar:${config.field}`,
-      () => this.requestProfessionalScalarChange(config),
+      `expert-scalar:${config.field}`,
+      () => this.requestExpertScalarChange(config),
     );
   }
 
-  canApplyProfessionalScalar(
-    config: ProductProfessionalScalarUiConfig,
+  canApplyExpertScalar(
+    config: ProductExpertScalarUiConfig,
   ): boolean {
-    if (!this.isProfessionalScalarControl(config) ||
-        !this.canShowProfessionalField(config.field) ||
-        !this.showProfessionalScalarControls ||
+    if (!this.isExpertScalarControl(config) ||
+        !this.canShowExpertField(config.field) ||
+        !this.showExpertScalarControls ||
         !this.isCurrentContext() ||
         this.viewModel.loading ||
         this.productDataLoadService.isLoading ||
@@ -2565,23 +2571,23 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
-        this.professionalInputWriteState.status === 'executing' ||
-        this.professionalScalarWriteState.status === 'executing' ||
+        this.expertInputWriteState.status === 'executing' ||
+        this.expertScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
         this.commandInProgress) {
       return false;
     }
-    const currentValue = this.currentProfessionalScalarValue(config);
-    const draftValue = this.professionalScalarDraftValue(config);
+    const currentValue = this.currentExpertScalarValue(config);
+    const draftValue = this.expertScalarDraftValue(config);
     if ((currentValue === null &&
-          !this.professionalScalarDrafts.has(config.field)) ||
+          !this.expertScalarDrafts.has(config.field)) ||
         (currentValue !== null && draftValue === currentValue) ||
-        !isValidProductProfessionalScalarValue(config, draftValue)) {
+        !isValidProductExpertScalarValue(config, draftValue)) {
       return false;
     }
-    const write = this.professionalScalarWrites.get(config.field);
+    const write = this.expertScalarWrites.get(config.field);
     if (write === undefined) {
       return false;
     }
@@ -2620,8 +2626,8 @@ export class ProductPage implements OnDestroy {
         this.userTimingWriteState.status === 'executing' ||
         this.userPeripheralWriteState.status === 'executing' ||
         this.weightRangeWriteState.status === 'executing' ||
-        this.professionalInputWriteState.status === 'executing' ||
-        this.professionalScalarWriteState.status === 'executing' ||
+        this.expertInputWriteState.status === 'executing' ||
+        this.expertScalarWriteState.status === 'executing' ||
         this.nameRoomWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
@@ -2698,8 +2704,8 @@ export class ProductPage implements OnDestroy {
         !this.widoorLockSupported()) {
       return false;
     }
-    if (this.sensitiveActionRequiresProfessionalAccess(config) &&
-        !this.professionalAccessGranted) {
+    if (this.sensitiveActionRequiresExpertAccess(config) &&
+        !this.expertAccessGranted) {
       return false;
     }
     const current = this.sensitiveActionCurrentEnabled(config);
@@ -2885,7 +2891,9 @@ export class ProductPage implements OnDestroy {
     }
   }
 
-  async requestProductCommand(config: WidoorCommandUiConfig): Promise<void> {
+  async requestProductCommand(
+    config: ProductMotorCommandUiConfig,
+  ): Promise<void> {
     if (!this.canExecuteProductCommand(config) ||
         this.context === null ||
         config.confirmationPolicy === null ||
@@ -2913,7 +2921,7 @@ export class ProductPage implements OnDestroy {
         await this.presentWidoorCommandBlockedAlert(widoorBlock);
         if (this.isCurrentCommandCycle(cycle)) {
           this.openCommandState = Object.freeze({
-            ...initialProductOpenCommandState(
+            ...initialProductMotorCommandState(
               operation,
               config.label,
               config.expectedMotorStateRaw,
@@ -2935,7 +2943,7 @@ export class ProductPage implements OnDestroy {
       let confirmedAt = requestedAt;
       if (!immediatePhase1Command) {
         this.openCommandState = Object.freeze({
-          ...initialProductOpenCommandState(
+          ...initialProductMotorCommandState(
             operation,
             config.label,
             config.expectedMotorStateRaw,
@@ -2962,7 +2970,7 @@ export class ProductPage implements OnDestroy {
         }
         if (dismissal.role !== 'confirm') {
           this.openCommandState = Object.freeze({
-            ...initialProductOpenCommandState(
+            ...initialProductMotorCommandState(
               operation,
               config.label,
               config.expectedMotorStateRaw,
@@ -3002,7 +3010,7 @@ export class ProductPage implements OnDestroy {
             validatedAt: confirmedAt,
           });
       this.openCommandState = Object.freeze({
-        ...initialProductOpenCommandState(
+        ...initialProductMotorCommandState(
           operation,
           config.label,
           config.expectedMotorStateRaw,
@@ -3047,7 +3055,7 @@ export class ProductPage implements OnDestroy {
     } catch {
       if (this.isCurrentCommandCycle(cycle)) {
         this.openCommandState = Object.freeze({
-          ...initialProductOpenCommandState(
+          ...initialProductMotorCommandState(
             operation,
             config.label,
             config.expectedMotorStateRaw,
@@ -3532,25 +3540,25 @@ export class ProductPage implements OnDestroy {
     return null;
   }
 
-  async requestProfessionalScalarChange(
-    config: ProductProfessionalScalarUiConfig,
+  async requestExpertScalarChange(
+    config: ProductExpertScalarUiConfig,
   ): Promise<void> {
-    if (!this.canApplyProfessionalScalar(config) || this.context === null) {
+    if (!this.canApplyExpertScalar(config) || this.context === null) {
       return;
     }
 
     void triggerConfiguredHapticFeedback();
-    const draftValue = this.professionalScalarDraftValue(config);
-    if (!isValidProductProfessionalScalarValue(config, draftValue)) {
+    const draftValue = this.expertScalarDraftValue(config);
+    if (!isValidProductExpertScalarValue(config, draftValue)) {
       return;
     }
     if (this.isDemoMode) {
-      this.updateDemoProfessionalScalar(config.field, draftValue);
-      this.professionalScalarDrafts.delete(config.field);
-      this.professionalScalarWriteState = Object.freeze({
+      this.updateDemoExpertScalar(config.field, draftValue);
+      this.expertScalarDrafts.delete(config.field);
+      this.expertScalarWriteState = Object.freeze({
         status: 'sent',
         field: config.field,
-        message: this.text.professionalScalarControls.sent,
+        message: this.text.expertScalarControls.sent,
       });
       return;
     }
@@ -3558,10 +3566,10 @@ export class ProductPage implements OnDestroy {
     const context = this.context;
     const contextStatus = this.writeContextStatus(context, write);
     if (contextStatus !== null) {
-      this.professionalScalarWriteState = Object.freeze({
+      this.expertScalarWriteState = Object.freeze({
         status: 'failed',
         field: config.field,
-        message: this.professionalScalarFailureMessage(contextStatus),
+        message: this.expertScalarFailureMessage(contextStatus),
       });
       return;
     }
@@ -3570,7 +3578,7 @@ export class ProductPage implements OnDestroy {
     const confirmedAt = Date.now();
     const authorization = this.usesPhase1ImmediateWrite(config.profile)
       ? null
-      : createProductProfessionalScalarAuthorization({
+      : createProductExpertScalarAuthorization({
           write,
           deviceId: context.deviceId,
           connectionGeneration: context.connectionGeneration,
@@ -3578,10 +3586,10 @@ export class ProductPage implements OnDestroy {
           confirmationId: this.nextCommandIdentifier('confirmation'),
           confirmedAt,
         });
-    this.professionalScalarWriteState = Object.freeze({
+    this.expertScalarWriteState = Object.freeze({
       status: 'executing',
       field: config.field,
-      message: this.text.professionalScalarControls.executing,
+      message: this.text.expertScalarControls.executing,
     });
 
     const result = await this.bleWriteExecutionService.execute({
@@ -3596,7 +3604,7 @@ export class ProductPage implements OnDestroy {
       policy: this.withPhase1ImmediatePolicy(config.profile, config.policy),
     });
     if (!this.isCurrentContext() || this.context !== context) {
-      this.professionalScalarWriteState = Object.freeze({
+      this.expertScalarWriteState = Object.freeze({
         status: 'failed',
         field: config.field,
         message: this.text.openCommand.stale,
@@ -3604,96 +3612,96 @@ export class ProductPage implements OnDestroy {
       return;
     }
     if (result.status === 'success') {
-      this.professionalScalarWriteState = Object.freeze({
+      this.expertScalarWriteState = Object.freeze({
         status: 'sent',
         field: config.field,
-        message: this.text.professionalScalarControls.sent,
+        message: this.text.expertScalarControls.sent,
       });
       if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
         await this.refreshProductData({}, false);
       }
       return;
     }
-    this.professionalScalarWriteState = Object.freeze({
+    this.expertScalarWriteState = Object.freeze({
       status: 'failed',
       field: config.field,
-      message: this.text.professionalScalarControls.failed,
+      message: this.text.expertScalarControls.failed,
     });
   }
 
-  async requestProfessionalAccess(): Promise<void> {
-    const context = this.currentProfessionalAccessContext();
-    if (context === null || !this.professionalAccessControlsAvailable) {
+  async requestExpertAccess(): Promise<void> {
+    const context = this.currentExpertAccessContext();
+    if (context === null || !this.expertAccessControlsAvailable) {
       return;
     }
     const alert = await this.alertController.create({
-      header: this.text.professionalAccess.title,
-      message: this.text.professionalAccess.message,
+      header: this.text.expertAccess.title,
+      message: this.text.expertAccess.message,
       inputs: [
         {
-          name: 'professionalAccessCode',
+          name: 'expertAccessCode',
           type: 'password',
-          placeholder: this.text.professionalAccess.placeholder,
+          placeholder: this.text.expertAccess.placeholder,
         },
       ],
       buttons: [
         {
-          text: this.text.professionalAccess.cancel,
+          text: this.text.expertAccess.cancel,
           role: 'cancel',
         },
         {
-          text: this.text.professionalAccess.confirm,
+          text: this.text.expertAccess.confirm,
           role: 'confirm',
         },
       ],
     });
     await alert.present();
     const dismissal = await alert.onDidDismiss<{
-      readonly professionalAccessCode?: string;
+      readonly expertAccessCode?: string;
       readonly values?: {
-        readonly professionalAccessCode?: string;
+        readonly expertAccessCode?: string;
       };
     }>();
     if (dismissal.role !== 'confirm') {
       return;
     }
-    const code = dismissal.data?.values?.professionalAccessCode ??
-      dismissal.data?.professionalAccessCode ??
+    const code = dismissal.data?.values?.expertAccessCode ??
+      dismissal.data?.expertAccessCode ??
       '';
-    this.applyProfessionalAccessCode(context, code);
+    this.applyExpertAccessCode(context, code);
   }
 
-  setProfessionalAccessCode(
+  setExpertAccessCode(
     eventOrValue: CustomEvent<{ readonly value?: string | null }> | string,
   ): void {
-    this.professionalAccessCode = typeof eventOrValue === 'string'
+    this.expertAccessCode = typeof eventOrValue === 'string'
       ? eventOrValue
       : eventOrValue.detail.value ?? '';
   }
 
-  submitProfessionalAccessCode(): void {
-    const context = this.currentProfessionalAccessContext();
-    if (context === null || !this.professionalAccessControlsAvailable) {
+  submitExpertAccessCode(): void {
+    const context = this.currentExpertAccessContext();
+    if (context === null || !this.expertAccessControlsAvailable) {
       return;
     }
-    this.applyProfessionalAccessCode(context, this.professionalAccessCode);
+    this.applyExpertAccessCode(context, this.expertAccessCode);
   }
 
-  private applyProfessionalAccessCode(
-    context: ProfessionalAccessContext,
+  private applyExpertAccessCode(
+    context: ExpertAccessContext,
     code: string,
   ): void {
-    if (this.professionalAccessService.authenticate(context, code)) {
-      this.professionalAccessCode = '';
-      this.professionalAccessState = Object.freeze({
+    if (this.expertAccessService.authenticate(context, code)) {
+      this.expertAccessCode = '';
+      this.expertAccessState = Object.freeze({
         status: 'unlocked',
-        message: this.text.professionalAccess.unlocked,
+        message: this.text.expertAccess.unlocked,
       });
       return;
     }
-    this.professionalAccessState = Object.freeze({
+    this.expertAccessState = Object.freeze({
       status: 'failed',
-      message: this.text.professionalAccess.failed,
+      message: this.text.expertAccess.failed,
     });
   }
 
@@ -4186,8 +4194,8 @@ export class ProductPage implements OnDestroy {
     this.resetUserTimingEditing();
     this.resetUserPeripheralEditing();
     this.resetWeightRangeEditing();
-    this.resetProfessionalScalarEditing();
-    this.resetProfessionalAccess();
+    this.resetExpertScalarEditing();
+    this.resetExpertAccess();
     this.resetProductDateAction();
     this.clearWidoorSliderWrites();
     this.productBackButtonSubscription?.unsubscribe();
@@ -4246,8 +4254,8 @@ export class ProductPage implements OnDestroy {
     const displayName = context?.displayName.trim() || this.config.productName;
     const { name, roomSuffix } = splitProductDisplayName(displayName);
     const demoSnapshot = context?.mode === 'demo' &&
-      isProductDemoProfile(profile)
-      ? createProductDemoSnapshot(profile)
+      isProductDemoProfile(this.config)
+      ? createProductDemoSnapshot(this.config)
       : null;
     return {
       profile,
@@ -4339,8 +4347,8 @@ export class ProductPage implements OnDestroy {
       this.userTimingWriteState.status !== 'executing' &&
       this.userPeripheralWriteState.status !== 'executing' &&
       this.weightRangeWriteState.status !== 'executing' &&
-      this.professionalInputWriteState.status !== 'executing' &&
-      this.professionalScalarWriteState.status !== 'executing' &&
+      this.expertInputWriteState.status !== 'executing' &&
+      this.expertScalarWriteState.status !== 'executing' &&
       this.nameRoomWriteState.status !== 'executing' &&
       !this.productDateActionBusy &&
       !this.sensitiveActionBusy &&
@@ -4357,7 +4365,7 @@ export class ProductPage implements OnDestroy {
       this.config.behavior.showControlsBeforeRead;
   }
 
-  private phase1ShowsProfessionalParameterControls(): boolean {
+  private phase1ShowsExpertControls(): boolean {
     return this.viewModel.reads.professionalParameters.status === 'available' ||
       this.config.behavior.showControlsBeforeRead;
   }
@@ -4521,7 +4529,7 @@ export class ProductPage implements OnDestroy {
   }
 
   private widoorPhase1CommandBlock(
-    config: WidoorCommandUiConfig,
+    config: ProductMotorCommandUiConfig,
   ): 'lock' | 'retention' | null {
     if (config.profile !== 'widoor') {
       return null;
@@ -4622,7 +4630,7 @@ export class ProductPage implements OnDestroy {
       this.userTimingDrafts.clear();
       this.resetNameRoomDraft();
       this.weightRangeDraft = null;
-      this.professionalScalarDrafts.clear();
+      this.expertScalarDrafts.clear();
     }
   }
 
@@ -4633,7 +4641,7 @@ export class ProductPage implements OnDestroy {
     this.commandCycle += 1;
     const operation = this.openCommandState.operation;
     this.openCommandState = Object.freeze({
-      ...initialProductOpenCommandState(
+      ...initialProductMotorCommandState(
         operation,
         this.openCommandState.label,
         this.openCommandState.expectedMotorStateRaw,
@@ -4685,8 +4693,8 @@ export class ProductPage implements OnDestroy {
     this.resetNameRoomEditing();
     this.resetUserPeripheralEditing();
     this.resetWeightRangeEditing();
-    this.resetProfessionalScalarEditing();
-    this.resetProfessionalAccess();
+    this.resetExpertScalarEditing();
+    this.resetExpertAccess();
     this.resetProductDateAction();
     this.sensitiveActionState = Object.freeze({
       status: 'idle',
@@ -4739,16 +4747,16 @@ export class ProductPage implements OnDestroy {
     };
   }
 
-  private updateDemoProfessionalParameters(
+  private updateDemoExpertParameters(
     patch: Partial<BleProfessionalParameters>,
   ): void {
     if (!this.isDemoMode) {
       return;
     }
-    this.updateProfessionalParametersDisplay(patch);
+    this.updateExpertParametersDisplay(patch);
   }
 
-  private updateProfessionalParametersDisplay(
+  private updateExpertParametersDisplay(
     patch: Partial<BleProfessionalParameters>,
   ): void {
     const current = this.viewModel.reads.professionalParameters.value;
@@ -4793,8 +4801,8 @@ export class ProductPage implements OnDestroy {
     });
   }
 
-  private updateProfessionalInputDisplay(
-    field: ProductProfessionalInputField,
+  private updateExpertInputDisplay(
+    field: ProductExpertInputField,
     mode: LegacyInputMode,
   ): void {
     const current = this.viewModel.reads.professionalParameters.value;
@@ -4805,11 +4813,11 @@ export class ProductPage implements OnDestroy {
     const peripheralByte1 = mode === 'radar'
       ? current.peripheralByte1 | mask
       : current.peripheralByte1 & ~mask;
-    this.updateProfessionalParametersDisplay({ peripheralByte1 });
+    this.updateExpertParametersDisplay({ peripheralByte1 });
   }
 
   private updateDemoWeightRange(range: ProductWeightRange): void {
-    this.updateDemoProfessionalParameters({
+    this.updateDemoExpertParameters({
       weightRangeLower: range.lower,
       weightRangeUpper: range.upper,
     });
@@ -4822,31 +4830,31 @@ export class ProductPage implements OnDestroy {
     }
   }
 
-  private updateDemoProfessionalScalar(
-    field: ProductProfessionalScalarField,
+  private updateDemoExpertScalar(
+    field: ProductExpertScalarField,
     value: number,
   ): void {
     switch (field) {
       case 'break-force-at-open':
-        this.updateDemoProfessionalParameters({ breakForceAtOpen: value });
+        this.updateDemoExpertParameters({ breakForceAtOpen: value });
         return;
       case 'near-open-speed':
-        this.updateDemoProfessionalParameters({ nearOpenSpeed: value });
+        this.updateDemoExpertParameters({ nearOpenSpeed: value });
         return;
       case 'near-close-speed':
-        this.updateDemoProfessionalParameters({ nearCloseSpeed: value });
+        this.updateDemoExpertParameters({ nearCloseSpeed: value });
         return;
       case 'near-open-torque':
-        this.updateDemoProfessionalParameters({ nearOpenTorque: value });
+        this.updateDemoExpertParameters({ nearOpenTorque: value });
         return;
       case 'near-close-torque':
-        this.updateDemoProfessionalParameters({ nearCloseTorque: value });
+        this.updateDemoExpertParameters({ nearCloseTorque: value });
         return;
       case 'braking-open-power':
-        this.updateDemoProfessionalParameters({ brakingOpenPower: value });
+        this.updateDemoExpertParameters({ brakingOpenPower: value });
         return;
       case 'obstacle-sensitivity':
-        this.updateDemoProfessionalParameters({ obstacleSensitivity: value });
+        this.updateDemoExpertParameters({ obstacleSensitivity: value });
         return;
     }
   }
@@ -4869,7 +4877,7 @@ export class ProductPage implements OnDestroy {
     if (mask === 0) {
       return;
     }
-    this.updateProfessionalParametersDisplay({
+    this.updateExpertParametersDisplay({
       peripheralByte1: enabled
         ? current.peripheralByte1 | mask
         : current.peripheralByte1 & ~mask,
@@ -4958,27 +4966,27 @@ export class ProductPage implements OnDestroy {
     );
   }
 
-  private resetProfessionalScalarEditing(): void {
-    this.professionalScalarDrafts.clear();
-    this.professionalScalarWriteState = Object.freeze({
+  private resetExpertScalarEditing(): void {
+    this.expertScalarDrafts.clear();
+    this.expertScalarWriteState = Object.freeze({
       status: 'idle',
       field: null,
       message: null,
     });
   }
 
-  private resetProfessionalAccess(): void {
-    const context = this.currentProfessionalAccessContext();
+  private resetExpertAccess(): void {
+    const context = this.currentExpertAccessContext();
     if (context === null) {
-      this.professionalAccessService.reset();
+      this.expertAccessService.reset();
     } else {
-      this.professionalAccessService.reset(context);
+      this.expertAccessService.reset(context);
     }
-    this.professionalAccessState = Object.freeze({
+    this.expertAccessState = Object.freeze({
       status: 'locked',
       message: null,
     });
-    this.professionalAccessCode = '';
+    this.expertAccessCode = '';
   }
 
   private resetProductDateAction(): void {
@@ -5119,40 +5127,40 @@ export class ProductPage implements OnDestroy {
     }
   }
 
-  private isProfessionalScalarControl(
-    config: ProductProfessionalScalarUiConfig,
+  private isExpertScalarControl(
+    config: ProductExpertScalarUiConfig,
   ): boolean {
     return config.profile === this.config.profile &&
-      this.professionalScalarControls.some((control) =>
+      this.expertScalarControls.some((control) =>
         control.config === config,
       );
   }
 
-  private canShowProfessionalField(field: ProductProfessionalField): boolean {
-    return !productProfessionalFieldRequiresAccess(
-      this.config.profile,
+  private canShowExpertField(field: ProductExpertField): boolean {
+    return !productExpertFieldRequiresAccess(
+      this.config,
       field,
-    ) || this.professionalAccessGranted;
+    ) || this.expertAccessGranted;
   }
 
-  private sensitiveActionRequiresProfessionalAccess(
+  private sensitiveActionRequiresExpertAccess(
     config: ProductSensitiveActionUiConfig,
   ): boolean {
     void config;
     return false;
   }
 
-  private currentProfessionalAccessContext():
-    ProfessionalAccessContext | null {
+  private currentExpertAccessContext():
+    ExpertAccessContext | null {
     if (this.context === null || !this.isCurrentContext()) {
       return null;
     }
-    return this.professionalAccessContext(this.context);
+    return this.expertAccessContext(this.context);
   }
 
-  private professionalAccessContext(
+  private expertAccessContext(
     context: ProductPageNavigationState,
-  ): ProfessionalAccessContext {
+  ): ExpertAccessContext {
     return {
       profile: context.profile,
       deviceId: context.deviceId,
@@ -5289,7 +5297,7 @@ export class ProductPage implements OnDestroy {
     }
   }
 
-  private professionalScalarFailureMessage(
+  private expertScalarFailureMessage(
     status: 'disconnected' | 'stale' | 'unavailable',
   ): string {
     switch (status) {
@@ -5298,14 +5306,14 @@ export class ProductPage implements OnDestroy {
       case 'stale':
         return this.text.openCommand.stale;
       case 'unavailable':
-        return this.text.professionalScalarControls.unavailable;
+        return this.text.expertScalarControls.unavailable;
     }
   }
 
   private setOpenCommandContextFailure(
     status: 'disconnected' | 'stale' | 'unavailable',
     startedAt: number,
-    config: WidoorCommandUiConfig,
+    config: ProductMotorCommandUiConfig,
     nativeWriteCompleted = false,
   ): void {
     const message = status === 'disconnected'
@@ -5314,7 +5322,7 @@ export class ProductPage implements OnDestroy {
         ? this.text.openCommand.stale
         : this.text.openCommand.unavailable;
     this.openCommandState = Object.freeze({
-      ...initialProductOpenCommandState(
+      ...initialProductMotorCommandState(
         config.operation as ProductMotorCommandOperation,
         config.label,
         config.expectedMotorStateRaw,
@@ -5335,9 +5343,9 @@ export class ProductPage implements OnDestroy {
   private applyOpenCommandResult(
     result: LegacyBleWriteExecutionResult,
     attemptId: string,
-    config: WidoorCommandUiConfig,
+    config: ProductMotorCommandUiConfig,
   ): void {
-    let status: ProductOpenCommandStatus;
+    let status: ProductMotorCommandStatus;
     let message: string;
     switch (result.status) {
       case 'success':
@@ -5414,11 +5422,11 @@ export class ProductPage implements OnDestroy {
 
   private resetOpenCommandState(): void {
     this.commandCycle += 1;
-    this.openCommandState = initialProductOpenCommandState();
+    this.openCommandState = initialProductMotorCommandState();
     this.commandHistoryEntries = [];
   }
 
-  private addCommandHistory(state: ProductOpenCommandState): void {
+  private addCommandHistory(state: ProductMotorCommandState): void {
     if (state.status === 'idle' ||
         state.status === 'awaiting-confirmation' ||
         state.status === 'executing' ||
@@ -5473,49 +5481,49 @@ export class ProductPage implements OnDestroy {
     return rows;
   }
 
-  private createProfessionalRows(
+  private createExpertRows(
     value: BleProfessionalParameters,
   ): readonly ProductDisplayRow[] {
     const rows: ProductDisplayRow[] = [];
-    this.addProfessionalScalar(
+    this.addExpertScalar(
       rows,
       'weight-range',
-      this.text.professional.weightRange,
+      this.text.expert.weightRange,
       `${value.weightRangeLower}–${value.weightRangeUpper} kg`,
     );
     if (value.profile === 'widoor') {
-      this.addProfessionalScalar(rows, 'break-force-at-open',
-        this.text.professional.breakForceAtOpen,
+      this.addExpertScalar(rows, 'break-force-at-open',
+        this.text.expert.breakForceAtOpen,
         String(value.breakForceAtOpen));
-      this.addProfessionalScalar(rows, 'near-open-proportional',
-        this.text.professional.nearOpenProportional,
+      this.addExpertScalar(rows, 'near-open-proportional',
+        this.text.expert.nearOpenProportional,
         String(value.nearOpenProportional));
-      this.addProfessionalScalar(rows, 'near-close-proportional',
-        this.text.professional.nearCloseProportional,
+      this.addExpertScalar(rows, 'near-close-proportional',
+        this.text.expert.nearCloseProportional,
         String(value.nearCloseProportional));
     } else {
-      this.addProfessionalScalar(rows, 'exact-weight',
-        this.text.professional.exactWeight, `${value.exactWeight} kg`);
-      this.addProfessionalScalar(rows, 'braking-open-power',
-        this.text.professional.brakingOpenPower,
+      this.addExpertScalar(rows, 'exact-weight',
+        this.text.expert.exactWeight, `${value.exactWeight} kg`);
+      this.addExpertScalar(rows, 'braking-open-power',
+        this.text.expert.brakingOpenPower,
         String(value.brakingOpenPower));
-      this.addProfessionalScalar(rows, 'obstacle-sensitivity',
-        this.text.professional.obstacleSensitivity,
+      this.addExpertScalar(rows, 'obstacle-sensitivity',
+        this.text.expert.obstacleSensitivity,
         String(value.obstacleSensitivity));
     }
-    this.addProfessionalScalar(rows, 'near-open-speed',
-      this.text.professional.nearOpenSpeed, `${value.nearOpenSpeed} %`);
-    this.addProfessionalScalar(rows, 'near-close-speed',
-      this.text.professional.nearCloseSpeed, `${value.nearCloseSpeed} %`);
-    this.addProfessionalScalar(rows, 'near-open-torque',
-      this.text.professional.nearOpenTorque, String(value.nearOpenTorque));
-    this.addProfessionalScalar(rows, 'near-close-torque',
-      this.text.professional.nearCloseTorque, String(value.nearCloseTorque));
-    this.addProfessionalScalar(rows, 'near-open-integral',
-      this.text.professional.nearOpenIntegral,
+    this.addExpertScalar(rows, 'near-open-speed',
+      this.text.expert.nearOpenSpeed, `${value.nearOpenSpeed} %`);
+    this.addExpertScalar(rows, 'near-close-speed',
+      this.text.expert.nearCloseSpeed, `${value.nearCloseSpeed} %`);
+    this.addExpertScalar(rows, 'near-open-torque',
+      this.text.expert.nearOpenTorque, String(value.nearOpenTorque));
+    this.addExpertScalar(rows, 'near-close-torque',
+      this.text.expert.nearCloseTorque, String(value.nearCloseTorque));
+    this.addExpertScalar(rows, 'near-open-integral',
+      this.text.expert.nearOpenIntegral,
       String(value.nearOpenIntegral));
-    this.addProfessionalScalar(rows, 'near-close-integral',
-      this.text.professional.nearCloseIntegral,
+    this.addExpertScalar(rows, 'near-close-integral',
+      this.text.expert.nearCloseIntegral,
       String(value.nearCloseIntegral));
     return rows;
   }
@@ -5543,13 +5551,13 @@ export class ProductPage implements OnDestroy {
     }
   }
 
-  private addProfessionalScalar(
+  private addExpertScalar(
     rows: ProductDisplayRow[],
-    key: ProductProfessionalField,
+    key: ProductExpertField,
     label: string,
     value: string,
   ): void {
-    if (this.professionalFieldVisible(key)) {
+    if (this.expertFieldVisible(key)) {
       rows.push(this.row(key, label, value));
     }
   }
@@ -5558,11 +5566,11 @@ export class ProductPage implements OnDestroy {
     return this.config.userFields.includes(field);
   }
 
-  private professionalFieldVisible(
-    field: ProductProfessionalField,
+  private expertFieldVisible(
+    field: ProductExpertField,
   ): boolean {
-    return this.config.professionalFields.includes(field) &&
-      this.canShowProfessionalField(field);
+    return this.config.expertFields.includes(field) &&
+      this.canShowExpertField(field);
   }
 
   private widoorLockSupported(): boolean {
@@ -5771,9 +5779,10 @@ export function isProductPageNavigationState(
   }
   const candidate = value as Partial<ProductPageNavigationState>;
   const mode = candidate.mode ?? 'connected';
+  const definition = productProfileRegistry.resolve(candidate.profile);
   return (mode === 'connected' || mode === 'demo') &&
-    productProfileRegistry.has(candidate.profile) &&
-    (mode !== 'demo' || isProductDemoProfile(candidate.profile)) &&
+    definition !== undefined &&
+    (mode !== 'demo' || isProductDemoProfile(definition)) &&
     typeof candidate.deviceId === 'string' &&
     candidate.deviceId.trim().length > 0 &&
     Number.isInteger(candidate.connectionGeneration) &&

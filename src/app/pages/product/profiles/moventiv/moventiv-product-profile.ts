@@ -4,7 +4,7 @@ import {
 import {
   defineProductProfile,
   ProductProfileDefinition,
-  ProductProfessionalField,
+  ProductExpertField,
   ProductUserField,
   ProductWeightRange,
 } from '../product-profile.types';
@@ -19,7 +19,7 @@ const MOVENTIV_USER_FIELDS: readonly ProductUserField[] = [
   'rgb',
 ];
 
-const MOVENTIV_PROFESSIONAL_FIELDS: readonly ProductProfessionalField[] = [
+const MOVENTIV_EXPERT_FIELDS: readonly ProductExpertField[] = [
   'weight-range',
   'exact-weight',
   'near-open-speed',
@@ -49,7 +49,7 @@ function createMoventivProductProfile(
     maximumWeightLabel: `${variant} kg`,
     weightRanges: legacyWeightRanges(profile),
     userFields: MOVENTIV_USER_FIELDS,
-    professionalFields: MOVENTIV_PROFESSIONAL_FIELDS,
+    expertFields: MOVENTIV_EXPERT_FIELDS,
     visibleLockModes: ['locked-closed'],
     hiddenMotorSwitches: [],
     openSpeedRange: { min: 50, max: 100 },
@@ -65,8 +65,8 @@ function createMoventivProductProfile(
     sensitiveActions: ['learning'],
     capabilities: {
       demo: variant === '60',
-      professionalInputs: true,
-      professionalAccessFields: [
+      expertInputs: true,
+      expertAccessFields: [
         'near-open-torque',
         'near-close-torque',
         'braking-open-power',

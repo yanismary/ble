@@ -1,4 +1,5 @@
-import { PRODUCT_PAGE_CONFIG } from '../product-page.config';
+import { PRODUCT_PAGE_CONFIG } from
+  './product-page-config.facade';
 import {
   ProductProfileDefinition,
 } from './product-profile.types';
@@ -26,7 +27,7 @@ describe('ProductProfileRegistry', () => {
       .toBe('moventiv');
     expect(productProfileRegistry.get('moventiv-80').family)
       .toBe('moventiv');
-    expect(productProfileRegistry.get('garline').professionalFields)
+    expect(productProfileRegistry.get('garline').expertFields)
       .toEqual([
         'near-open-speed',
         'near-close-speed',
@@ -42,7 +43,7 @@ describe('ProductProfileRegistry', () => {
     expect(productProfileRegistry.get('moventiv-80').capabilities.demo)
       .toBeFalse();
     expect(productProfileRegistry.get('garline').capabilities
-      .professionalInputs).toBeFalse();
+      .expertInputs).toBeFalse();
     expect(productProfileRegistry.get('garline').capabilities
       .weightRangeControl).toBe('none');
   });
@@ -117,17 +118,17 @@ describe('ProductProfileRegistry', () => {
     );
   });
 
-  it('should require the peripherals field for professional inputs', () => {
+  it('should require the peripherals field for expert inputs', () => {
     const definitions = fixtureDefinitions();
     const invalid = replaceDefinition(definitions, 'widoor', {
       ...definitions.widoor,
-      professionalFields: definitions.widoor.professionalFields.filter(
+      expertFields: definitions.widoor.expertFields.filter(
         (field) => field !== 'peripherals',
       ),
     });
 
     expect(() => new ProductProfileRegistry(invalid)).toThrowError(
-      'Professional inputs require peripherals for widoor.',
+      'Expert inputs require peripherals for widoor.',
     );
   });
 
@@ -193,8 +194,8 @@ function fixtureDefinition(
     sensitiveActions: ['learning'],
     capabilities: {
       demo: profile !== 'moventiv-80',
-      professionalInputs: profile !== 'garline',
-      professionalAccessFields: [],
+      expertInputs: profile !== 'garline',
+      expertAccessFields: [],
       weightRangeControl: family === 'moventiv' ? 'advanced' : 'none',
     },
     behavior: {
