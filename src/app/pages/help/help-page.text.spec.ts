@@ -1,18 +1,24 @@
 import {
-  getHelpProductGroup,
   helpPageTextFor,
   helpProductTextFor,
 } from './help-page.text';
 
 describe('help page text', () => {
-  it('keeps the Phase 1 Widoor and Moventiv/Garline grouping', () => {
-    expect(getHelpProductGroup('widoor')).toBe('widoor');
-    expect(getHelpProductGroup('moventiv')).toBe('moventiv-garline');
-    expect(getHelpProductGroup('garline')).toBe('moventiv-garline');
+  it('exposes one Widoor and one Moventiv/Garline choice per language', () => {
+    for (const language of ['fr', 'en', 'de', 'pl']) {
+      expect(helpPageTextFor(language).products).toEqual({
+        widoor: 'WIDOOR',
+        'moventiv-garline': 'MOVENTIV / GARLINE',
+      });
+    }
   });
 
   it('keeps the Phase 1 motor-side pairing sequence', () => {
-    const instructions = helpProductTextFor('fr', 'android', 'moventiv');
+    const instructions = helpProductTextFor(
+      'fr',
+      'android',
+      'moventiv-garline',
+    );
 
     expect(instructions.pairing.steps.some((step) =>
       step.includes('switch 1'),

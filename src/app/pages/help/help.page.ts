@@ -55,8 +55,7 @@ export class HelpPage {
   }
   readonly products: readonly HelpProduct[] = Object.freeze([
     'widoor',
-    'moventiv',
-    'garline',
+    'moventiv-garline',
   ]);
 
   selectedProduct: HelpProduct | null = null;

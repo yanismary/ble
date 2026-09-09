@@ -101,6 +101,28 @@ describe('AppMainMenuComponent', () => {
     expect(getComputedStyle(icon!).fontSize).toBe('26px');
   });
 
+  it('should keep every iOS menu button background transparent', () => {
+    document.documentElement.classList.add('ios');
+    try {
+      fixture.detectChanges();
+      const button = fixture.nativeElement.querySelector(
+        '.app-main-menu-button',
+      ) as HTMLIonButtonElement;
+      const style = getComputedStyle(button);
+
+      expect(button.fill).toBe('clear');
+      expect(style.getPropertyValue('--background').trim()).toBe('transparent');
+      expect(style.getPropertyValue('--background-hover').trim())
+        .toBe('transparent');
+      expect(style.getPropertyValue('--background-focused').trim())
+        .toBe('transparent');
+      expect(style.getPropertyValue('--background-activated').trim())
+        .toBe('transparent');
+    } finally {
+      document.documentElement.classList.remove('ios');
+    }
+  });
+
   it('should open from the ai-param click and dismiss without navigation',
     async () => {
       const button = fixture.nativeElement.querySelector(

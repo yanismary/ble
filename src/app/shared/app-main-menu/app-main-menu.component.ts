@@ -26,6 +26,17 @@ import {
       width: 48px;
     }
 
+    :host-context(.ios) .app-main-menu-button {
+      --background: transparent;
+      --background-activated: transparent;
+      --background-focused: transparent;
+      --background-hover: transparent;
+    }
+
+    :host-context(.ios) .scan-menu-icon {
+      color: var(--mantion-blue-contrast);
+    }
+
     .app-main-menu-icon {
       font-size: 26px;
     }

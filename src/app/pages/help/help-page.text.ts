@@ -4,8 +4,7 @@ import {
 } from '../../core/services/app-language';
 
 export type HelpPlatform = 'android' | 'ios' | 'web';
-export type HelpProduct = 'widoor' | 'moventiv' | 'garline';
-export type HelpProductGroup = 'widoor' | 'moventiv-garline';
+export type HelpProduct = 'widoor' | 'moventiv-garline';
 
 export interface HelpSectionText {
   readonly title: string;
@@ -23,7 +22,7 @@ export interface HelpPageText {
   readonly title: string;
   readonly productChoiceTitle: string;
   readonly products: Record<HelpProduct, string>;
-  readonly productHelp: Record<HelpProductGroup, HelpProductText>;
+  readonly productHelp: Record<HelpProduct, HelpProductText>;
 }
 
 const FR_TEXT: HelpPageText = {
@@ -31,8 +30,7 @@ const FR_TEXT: HelpPageText = {
   productChoiceTitle: 'Quel produit souhaitez-vous appairer ?',
   products: {
     widoor: 'WIDOOR',
-    moventiv: 'MOVENTIV',
-    garline: 'GARLINE',
+    'moventiv-garline': 'MOVENTIV / GARLINE',
   },
   productHelp: {
     widoor: {
@@ -87,8 +85,7 @@ const EN_TEXT: HelpPageText = {
   productChoiceTitle: 'Which product do you want to pair?',
   products: {
     widoor: 'WIDOOR',
-    moventiv: 'MOVENTIV',
-    garline: 'GARLINE',
+    'moventiv-garline': 'MOVENTIV / GARLINE',
   },
   productHelp: {
     widoor: {
@@ -143,8 +140,7 @@ const DE_TEXT: HelpPageText = {
   productChoiceTitle: 'Welches Produkt mochten Sie koppeln?',
   products: {
     widoor: 'WIDOOR',
-    moventiv: 'MOVENTIV',
-    garline: 'GARLINE',
+    'moventiv-garline': 'MOVENTIV / GARLINE',
   },
   productHelp: {
     widoor: {
@@ -199,8 +195,7 @@ const PL_TEXT: HelpPageText = {
   productChoiceTitle: 'Ktory produkt chcesz sparowac?',
   products: {
     widoor: 'WIDOOR',
-    moventiv: 'MOVENTIV',
-    garline: 'GARLINE',
+    'moventiv-garline': 'MOVENTIV / GARLINE',
   },
   productHelp: {
     widoor: {
@@ -257,12 +252,6 @@ const HELP_TEXT: Record<AppLanguage, HelpPageText> = {
   pl: PL_TEXT,
 };
 
-export function getHelpProductGroup(
-  product: HelpProduct,
-): HelpProductGroup {
-  return product === 'widoor' ? 'widoor' : 'moventiv-garline';
-}
-
 export function helpPageTextFor(
   language: string | null | undefined,
 ): HelpPageText {
@@ -275,7 +264,7 @@ export function helpProductTextFor(
   product: HelpProduct,
 ): HelpProductText {
   const text = helpPageTextFor(language);
-  const productText = text.productHelp[getHelpProductGroup(product)];
+  const productText = text.productHelp[product];
   const note = platform === 'ios'
     ? iosPairingNote(resolveAppLanguage(language))
     : androidPairingNote(resolveAppLanguage(language));

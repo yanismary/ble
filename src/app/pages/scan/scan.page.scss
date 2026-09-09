@@ -205,6 +205,13 @@
     text-transform: none;
   }
 
+  .scan-spinner-cell {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+  }
+
   .device-list {
     margin-bottom: 32px;
   }

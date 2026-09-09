@@ -59,15 +59,32 @@ describe('HelpPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Aide');
   });
 
-  it('lets the user choose Widoor, Moventiv, or Garline help', async () => {
-    const fixture = await createPage();
-    const buttons = fixture.nativeElement.querySelectorAll(
-      '[data-product-option]',
-    );
+  for (const platform of ['android', 'ios'] as const) {
+    it(`shows two shared product choices on ${platform}`, async () => {
+      const fixture = await createPage(platform);
+      const buttons = fixture.nativeElement.querySelectorAll(
+        '[data-product-option]',
+      );
 
-    expect(Array.from(buttons).map((button) =>
-      (button as HTMLElement).getAttribute('data-product-option'),
-    )).toEqual(['widoor', 'moventiv', 'garline']);
+      expect(Array.from(buttons).map((button) =>
+        (button as HTMLElement).getAttribute('data-product-option'),
+      )).toEqual(['widoor', 'moventiv-garline']);
+      expect(Array.from(buttons).map((button) =>
+        (button as HTMLElement).textContent?.trim(),
+      )).toEqual(['WIDOOR', 'MOVENTIV / GARLINE']);
+    });
+  }
+
+  it('lets the user choose the shared Moventiv/Garline help', async () => {
+    const fixture = await createPage();
+
+    fixture.componentInstance.selectProduct('moventiv-garline');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('MOVENTIV/GARLINE');
+    expect(query(fixture, '[data-help-section="pairing"]')).not.toBeNull();
+    expect(query(fixture, '[data-help-section="troubleshooting"]'))
+      .not.toBeNull();
   });
 
   it('shows Widoor content after product selection', async () => {
@@ -80,15 +97,6 @@ describe('HelpPage', () => {
     expect(query(fixture, '[data-help-section="pairing"]')).not.toBeNull();
     expect(query(fixture, '[data-help-section="troubleshooting"]'))
       .not.toBeNull();
-  });
-
-  it('groups Moventiv and Garline under the historical shared help', async () => {
-    const fixture = await createPage();
-
-    fixture.componentInstance.selectProduct('garline');
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.textContent).toContain('MOVENTIV/GARLINE');
   });
 
   it('uses iOS specific pairing guidance when relevant', async () => {
@@ -104,7 +112,7 @@ describe('HelpPage', () => {
   it('keeps help sections as purely UI accordions', async () => {
     const fixture = await createPage();
 
-    fixture.componentInstance.selectProduct('moventiv');
+    fixture.componentInstance.selectProduct('moventiv-garline');
     fixture.detectChanges();
 
     const group = query<HTMLIonAccordionGroupElement>(
@@ -131,7 +139,7 @@ describe('HelpPage', () => {
   it('does not import or trigger BLE behavior', async () => {
     const fixture = await createPage();
 
-    fixture.componentInstance.selectProduct('moventiv');
+    fixture.componentInstance.selectProduct('moventiv-garline');
     fixture.detectChanges();
 
     expect(fixture.componentInstance).not.toEqual(

@@ -7865,6 +7865,36 @@ describe('ProductPage Demo mode', () => {
     expect(harness.bleService.writeCharacteristic).not.toHaveBeenCalled();
   });
 
+  it('should keep the Widoor Demo setup action but hide its sent message',
+    async () => {
+      const harness = await createDemoHarness('widoor', {
+        confirmProductDateAction: true,
+      });
+      harness.component.setActiveMainTab('settings');
+      harness.component.setActiveSettingsTab('advanced');
+      harness.fixture.detectChanges();
+      const action = harness.fixture.nativeElement.querySelector(
+        'ion-button.advanced-historical-action',
+      ) as HTMLIonButtonElement | null;
+
+      expect(action?.textContent).toContain(
+        harness.component.text.productDateActions.setupLabel,
+      );
+
+      await harness.component.requestProductDateMaintenanceAction();
+      harness.fixture.detectChanges();
+
+      expect(harness.component.productDateActionState.status).toBe('sent');
+      expect(harness.component.productDateActionState.message)
+        .toBe(harness.component.text.productDateActions.setupSent);
+      expect(harness.fixture.nativeElement.textContent).not.toContain(
+        harness.component.text.productDateActions.setupSent,
+      );
+      expect(harness.writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(harness.bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
   it('should update Demo sliders, toggles and name locally without BLE',
     async () => {
       localStorage.removeItem(ROOM_ASSIGNMENTS_STORAGE_KEY);
@@ -7926,7 +7956,10 @@ describe('ProductPage Demo mode', () => {
   );
 });
 
-async function createDemoHarness(profile: ProductDemoProfile): Promise<{
+async function createDemoHarness(
+  profile: ProductDemoProfile,
+  options: { readonly confirmProductDateAction?: boolean } = {},
+): Promise<{
   readonly fixture: ComponentFixture<ProductPage>;
   readonly component: ProductPage;
   readonly bleService: FakeBleService;
@@ -7945,6 +7978,7 @@ async function createDemoHarness(profile: ProductDemoProfile): Promise<{
   const platform = new FakePlatform();
   const routerOutlet = { swipeGesture: true };
   const state = createProductDemoNavigationState(profile);
+  const maintenanceAccessService = new FakeMaintenanceAccessService();
 
   TestBed.resetTestingModule();
   await TestBed.configureTestingModule({
@@ -7956,11 +7990,25 @@ async function createDemoHarness(profile: ProductDemoProfile): Promise<{
         useValue: {
           create: jasmine.createSpy('create').and.resolveTo({
             present: async () => undefined,
-            onDidDismiss: async () => ({ role: 'cancel' }),
+            onDidDismiss: async () => options.confirmProductDateAction
+              ? {
+                  role: 'confirm',
+                  data: {
+                    values: {
+                      maintenanceAccessCode:
+                        PRODUCT_PAGE_MAINTENANCE_ACCESS_TEST_CODE,
+                    },
+                  },
+                }
+              : { role: 'cancel' },
           }),
         },
       },
       { provide: BleWriteExecutionService, useValue: writeExecutionService },
+      {
+        provide: MaintenanceAccessService,
+        useValue: maintenanceAccessService,
+      },
       { provide: ProductDataLoadService, useValue: loadService },
       { provide: ProductDetection, useClass: ProductDetection },
       {
