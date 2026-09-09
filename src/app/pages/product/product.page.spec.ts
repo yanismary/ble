@@ -1734,9 +1734,17 @@ describe('ProductPage', () => {
       await component.refreshProductData();
       const rgbControl = component.userPeripheralControls[0].config;
       await component.requestUserPeripheralChange(rgbControl, true);
+      fixture.detectChanges();
 
       expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
       expect(component.currentUserPeripheralState(rgbControl)).toBeFalse();
+      expect((fixture.nativeElement as HTMLElement).querySelector(
+        '.basic-settings-panel .product-light-icon[data-light-state="off"]',
+      )).not.toBeNull();
+      expect((fixture.nativeElement as HTMLElement).querySelector(
+        '.basic-settings-panel .product-light-icon' +
+          '.peripheral-icon-active',
+      )).toBeNull();
       expect(component.userPeripheralWriteState.status).toBe('failed');
       expect(component.userPeripheralWriteState.message)
         .toBe(component.text.userPeripheralControls.failed);
@@ -4483,11 +4491,11 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
           );
         }
         if (scenario.commandLighting.length > 0) {
-          const commandLightIcon = element.querySelector<HTMLImageElement>(
-            '.user-peripheral-command-controls .cmd-row-icon',
+          const commandLightIcon = element.querySelector<HTMLElement>(
+            '.user-peripheral-command-controls .product-light-icon',
           );
-          expect(commandLightIcon?.getAttribute('src'))
-            .toBe('assets/img/icon_light_on.svg');
+          expect(commandLightIcon?.getAttribute('data-light-state'))
+            .toBe('on');
           expect(commandLightIcon?.classList)
             .toContain('peripheral-icon-active');
         }
@@ -4534,6 +4542,87 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
     },
   );
 
+  for (const scenario of [
+    {
+      profile: 'widoor',
+      field: 'rgb',
+      checked: true,
+      operation: 'rgb-indicator',
+      payloadHex: '05 03 01',
+      iconSelector: '.basic-settings-panel .product-light-icon',
+      settingsTab: true,
+    },
+    {
+      profile: 'moventiv-60',
+      field: 'static-light',
+      checked: false,
+      operation: 'static-light',
+      payloadHex: '05 06 00',
+      iconSelector: '.user-peripheral-command-controls .product-light-icon',
+      settingsTab: false,
+    },
+    {
+      profile: 'garline',
+      field: 'static-light',
+      checked: false,
+      operation: 'static-light',
+      payloadHex: '05 06 00',
+      iconSelector: '.user-peripheral-command-controls .product-light-icon',
+      settingsTab: false,
+    },
+  ] as const) {
+    it(`should immediately mirror the ${scenario.profile} light toggle`,
+      async () => {
+        const { fixture, component, writeExecutionService } =
+          await createProductCommandsUiPage(scenario.profile);
+        const control = component.userPeripheralControls.find((candidate) =>
+          candidate.config.field === scenario.field,
+        )!.config;
+        const result = userPeripheralExecutionResult(
+          scenario.profile,
+          scenario.operation,
+          scenario.payloadHex,
+        );
+        let resolveWrite!: (
+          value: LegacyBleWriteExecutionResult,
+        ) => void;
+        writeExecutionService.execute.and.returnValue(
+          new Promise<LegacyBleWriteExecutionResult>((resolve) => {
+            resolveWrite = resolve;
+          }),
+        );
+        if (scenario.settingsTab) {
+          component.setActiveMainTab('settings');
+          fixture.detectChanges();
+        }
+
+        const pending = component.requestUserPeripheralChange(
+          control,
+          scenario.checked,
+        );
+        fixture.detectChanges();
+
+        const icon = (fixture.nativeElement as HTMLElement)
+          .querySelector<HTMLElement>(scenario.iconSelector);
+        expect(component.userPeripheralWriteState.status).toBe('executing');
+        expect(component.currentUserPeripheralState(control))
+          .toBe(scenario.checked);
+        expect(icon?.getAttribute('data-light-state'))
+          .toBe(scenario.checked ? 'on' : 'off');
+        expect(icon?.classList.contains('peripheral-icon-active'))
+          .toBe(scenario.checked);
+
+        resolveWrite(result);
+        await pending;
+        fixture.detectChanges();
+
+        expect(component.userPeripheralWriteState.status).toBe('sent');
+        expect(component.currentUserPeripheralState(control))
+          .toBe(scenario.checked);
+      },
+    );
+  }
+
   it('should show the Phase 1 information only when Moventiv close lock is enabled',
     async () => {
       const { fixture, component, writeExecutionService } =
@@ -4556,6 +4645,71 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         message: component.text.moventivCloseLockAlert.message,
         buttons: [component.text.moventivCloseLockAlert.ok],
       });
+    },
+  );
+
+  it('should immediately mirror both Moventiv close-lock transitions',
+    async () => {
+      const { fixture, component, writeExecutionService } =
+        await createProductCommandsUiPage('moventiv-60');
+      const control = component.lockModeControls[0].config;
+      let resolveWrite!: (value: LegacyBleWriteExecutionResult) => void;
+      writeExecutionService.execute.and.callFake(() =>
+        new Promise<LegacyBleWriteExecutionResult>((resolve) => {
+          resolveWrite = resolve;
+        }),
+      );
+      const icon = () => (fixture.nativeElement as HTMLElement)
+        .querySelector<HTMLElement>(
+          '.phase1-mov-close-lock-command .product-lock-state-icon',
+        );
+
+      const enable = component.requestLockModeChange(control, true);
+      fixture.detectChanges();
+
+      expect(component.lockModeWriteState.status).toBe('executing');
+      expect(component.isLockModeActive(control)).toBeTrue();
+      expect(icon()?.classList).toContain('ai-lock-close');
+      expect(icon()?.classList).not.toContain('ai-lock-open');
+
+      resolveWrite(lockModeExecutionResult('moventiv-60', '00 02'));
+      await enable;
+
+      const disable = component.requestLockModeChange(control, false);
+      fixture.detectChanges();
+
+      expect(component.lockModeWriteState.status).toBe('executing');
+      expect(component.isLockModeActive(control)).toBeFalse();
+      expect(icon()?.classList).toContain('ai-lock-open');
+      expect(icon()?.classList).not.toContain('ai-lock-close');
+
+      resolveWrite(lockModeExecutionResult('moventiv-60', '00 00'));
+      await disable;
+      expect(component.lockModeWriteState.status).toBe('sent');
+    },
+  );
+
+  it('should restore the Moventiv close-lock icon after a failed write',
+    async () => {
+      const { fixture, component, writeExecutionService } =
+        await createProductCommandsUiPage('moventiv-60');
+      const control = component.lockModeControls[0].config;
+      writeExecutionService.nextResult = {
+        ...lockModeExecutionResult('moventiv-60', '00 02'),
+        status: 'failed',
+        nativeWriteCompleted: false,
+        error: { code: 'native-write-failed', message: 'Native failure' },
+      };
+
+      await component.requestLockModeChange(control, true);
+      fixture.detectChanges();
+
+      expect(component.lockModeWriteState.status).toBe('failed');
+      expect(component.isLockModeActive(control)).toBeFalse();
+      expect((fixture.nativeElement as HTMLElement)
+        .querySelector<HTMLElement>(
+          '.phase1-mov-close-lock-command .product-lock-state-icon',
+        )?.classList).toContain('ai-lock-open');
     },
   );
 
@@ -4632,6 +4786,16 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
           );
           writeExecutionService.execute.calls.reset();
           await component.refreshProductData();
+          fixture.detectChanges();
+
+          expect((fixture.nativeElement as HTMLElement)
+            .querySelector<HTMLElement>(
+              '.phase1-mov-close-lock-command .product-lock-state-icon',
+            )?.classList.contains(
+              transition.current === 'locked-closed'
+                ? 'ai-lock-close'
+                : 'ai-lock-open',
+            )).toBeTrue();
 
           await component.requestLockModeChange(
             closeControl,
@@ -4741,8 +4905,8 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         expect(basicPanel?.querySelector<HTMLImageElement>(
           'img[src="assets/img/icon_room_other.svg"]',
         )).not.toBeNull();
-        expect(basicPanel?.querySelectorAll<HTMLImageElement>(
-          'img[src="assets/img/icon_light_off.svg"]',
+        expect(basicPanel?.querySelectorAll<HTMLElement>(
+          '.product-light-icon[data-light-state="off"]',
         ).length).toBe(scenario.basicLighting.length);
         expect(basicPanel?.querySelector(
           '.peripheral-state-icon.peripheral-icon-active',
@@ -6877,8 +7041,9 @@ describe('ProductPage expert scalar controls',
         expect(element.querySelector(
           '[data-sensitive-action="radar-test-2"]',
         )).toBeNull();
-        expect(element.querySelector<HTMLImageElement>(
-          'img[src="assets/img/icon_lock_off.svg"]',
+        expect(element.querySelector<HTMLElement>(
+          '[data-sensitive-action="professional-peripheral-lock"] ' +
+            '.product-lock-state-icon.ai-lock-open',
         )).not.toBeNull();
         expect(element.textContent).toContain('Configuration des sorties');
         expect(element.textContent).toContain('Commandes supplémentaires');
@@ -7022,7 +7187,7 @@ describe('ProductPage expert scalar controls',
           .querySelector<HTMLElement>(
             '[data-sensitive-action="professional-peripheral-lock"]',
           );
-        expect(lockRow?.querySelector('img[src="assets/img/icon_lock_off.svg"]'))
+        expect(lockRow?.querySelector('.product-lock-state-icon.ai-lock-close'))
           .not.toBeNull();
         expect(lockRow?.querySelector('.advanced-value-positive'))
           .not.toBeNull();
@@ -7041,6 +7206,157 @@ describe('ProductPage expert scalar controls',
         fixture.detectChanges();
         expect((fixture.nativeElement as HTMLElement).textContent)
           .toContain(component.text.sensitiveActions.failed);
+      },
+    );
+
+    it('should immediately mirror both Widoor peripheral-lock transitions',
+      async () => {
+        const {
+          component,
+          fixture,
+          writeExecutionService,
+        } = await createExpertScalarPage(
+          'widoor',
+          professionalValue('widoor', 0, 0, {
+            breakForceAtOpen: 5,
+            nearOpenSpeed: 25,
+            nearCloseSpeed: 35,
+          }),
+        );
+        component.setActiveMainTab('settings');
+        component.setActiveSettingsTab('advanced');
+        fixture.detectChanges();
+        const lock = component.sensitiveActions.find((action) =>
+          action.action === 'professional-peripheral-lock',
+        )!;
+        const result = writeExecutionService.nextResult;
+        let resolveWrite!: (value: LegacyBleWriteExecutionResult) => void;
+        writeExecutionService.execute.and.callFake(() =>
+          new Promise<LegacyBleWriteExecutionResult>((resolve) => {
+            resolveWrite = resolve;
+          }),
+        );
+        const lockRow = () => (fixture.nativeElement as HTMLElement)
+          .querySelector<HTMLElement>(
+            '[data-sensitive-action="professional-peripheral-lock"]',
+          );
+
+        const enable = component.requestSensitiveAction(lock, true);
+        fixture.detectChanges();
+
+        expect(component.sensitiveActionState.status).toBe('executing');
+        expect(component.sensitiveActionCurrentEnabled(lock)).toBeTrue();
+        expect(lockRow()?.querySelector(
+          '.product-lock-state-icon.ai-lock-close',
+        )).not.toBeNull();
+        expect(lockRow()?.querySelector('.product-lock-state-icon.ai-lock-open'))
+          .toBeNull();
+
+        resolveWrite(result);
+        await enable;
+
+        const disable = component.requestSensitiveAction(lock, false);
+        fixture.detectChanges();
+
+        expect(component.sensitiveActionState.status).toBe('executing');
+        expect(component.sensitiveActionCurrentEnabled(lock)).toBeFalse();
+        expect(lockRow()?.querySelector(
+          '.product-lock-state-icon.ai-lock-open',
+        )).not.toBeNull();
+        expect(lockRow()?.querySelector('.product-lock-state-icon.ai-lock-close'))
+          .toBeNull();
+
+        resolveWrite(result);
+        await disable;
+        expect(component.sensitiveActionState.status).toBe('sent');
+      },
+    );
+
+    it('should restore the Widoor lock icon after a failed write',
+      async () => {
+        const {
+          component,
+          fixture,
+          writeExecutionService,
+        } = await createExpertScalarPage(
+          'widoor',
+          professionalValue('widoor', 0, 0, {
+            breakForceAtOpen: 5,
+            nearOpenSpeed: 25,
+            nearCloseSpeed: 35,
+          }),
+        );
+        writeExecutionService.nextResult = {
+          ...writeExecutionService.nextResult,
+          status: 'failed',
+          nativeWriteCompleted: false,
+          error: { code: 'native-write-failed', message: 'Native failure' },
+        };
+        component.setActiveMainTab('settings');
+        component.setActiveSettingsTab('advanced');
+        fixture.detectChanges();
+        const lock = component.sensitiveActions.find((action) =>
+          action.action === 'professional-peripheral-lock',
+        )!;
+
+        await component.requestSensitiveAction(lock, true);
+        fixture.detectChanges();
+
+        expect(component.sensitiveActionState.status).toBe('failed');
+        expect(component.sensitiveActionCurrentEnabled(lock)).toBeFalse();
+        expect((fixture.nativeElement as HTMLElement).querySelector(
+          '[data-sensitive-action="professional-peripheral-lock"] ' +
+            '.product-lock-state-icon.ai-lock-open',
+        )).not.toBeNull();
+      },
+    );
+
+    it('should keep the Widoor firmware guard on a real product',
+      async () => {
+        const {
+          component,
+          writeExecutionService,
+        } = await createExpertScalarPage(
+          'widoor',
+          professionalValue('widoor', 0, 0, {
+            breakForceAtOpen: 5,
+            nearOpenSpeed: 25,
+            nearCloseSpeed: 35,
+          }),
+        );
+        const version = component.viewModel.reads.version;
+        if (version.status !== 'available') {
+          fail('Expected an available Widoor version');
+          return;
+        }
+        component.viewModel = {
+          ...component.viewModel,
+          reads: {
+            ...component.viewModel.reads,
+            version: {
+              ...version,
+              value: {
+                ...version.value!,
+                motorSoftware: {
+                  major: 1,
+                  minor: 0,
+                  patch: 0,
+                  specification: 0,
+                },
+              },
+            },
+          },
+        };
+        const lock = component.sensitiveActions.find((action) =>
+          action.action === 'professional-peripheral-lock',
+        )!;
+
+        expect(component.isDemoMode).toBeFalse();
+        expect(component.canExecuteSensitiveAction(lock)).toBeFalse();
+
+        await component.requestSensitiveAction(lock, true);
+
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
       },
     );
 
@@ -7999,6 +8315,63 @@ describe('ProductPage Demo mode', () => {
       expect(harness.writeExecutionService.execute).not.toHaveBeenCalled();
       expect(harness.bleService.writeCharacteristic).not.toHaveBeenCalled();
       expect(localStorage.getItem(ROOM_ASSIGNMENTS_STORAGE_KEY)).toBeNull();
+    },
+  );
+
+  it('should mirror the Moventiv Demo lock icon locally without BLE',
+    async () => {
+      const moventiv = await createDemoHarness('moventiv-60');
+      const moventivLock = moventiv.component.lockModeControls[0].config;
+
+      await moventiv.component.requestLockModeChange(moventivLock, true);
+      moventiv.fixture.detectChanges();
+
+      expect(moventiv.component.isLockModeActive(moventivLock)).toBeTrue();
+      expect((moventiv.fixture.nativeElement as HTMLElement)
+        .querySelector<HTMLElement>(
+          '.phase1-mov-close-lock-command .product-lock-state-icon',
+        )?.classList).toContain('ai-lock-close');
+      expect(moventiv.writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(moventiv.bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should keep the Widoor Demo lock local and available like Phase 1',
+    async () => {
+      const widoor = await createDemoHarness('widoor');
+      const lock = widoor.component.sensitiveActions.find((action) =>
+        action.action === 'professional-peripheral-lock',
+      )!;
+      widoor.component.setActiveMainTab('settings');
+      widoor.component.setActiveSettingsTab('advanced');
+      widoor.fixture.detectChanges();
+      const row = () => (widoor.fixture.nativeElement as HTMLElement)
+        .querySelector<HTMLElement>(
+          '[data-sensitive-action="professional-peripheral-lock"]',
+        );
+
+      expect(widoor.component.sensitiveActionCurrentEnabled(lock)).toBeFalse();
+      expect(widoor.component.canExecuteSensitiveAction(lock)).toBeTrue();
+      expect(row()?.querySelector<HTMLIonToggleElement>('ion-toggle')?.disabled)
+        .toBeFalse();
+      expect(row()?.querySelector('.product-lock-state-icon.ai-lock-open'))
+        .not.toBeNull();
+
+      await widoor.component.requestSensitiveAction(lock, true);
+      widoor.fixture.detectChanges();
+
+      expect(widoor.component.sensitiveActionCurrentEnabled(lock)).toBeTrue();
+      expect(row()?.querySelector('.product-lock-state-icon.ai-lock-close'))
+        .not.toBeNull();
+
+      await widoor.component.requestSensitiveAction(lock, false);
+      widoor.fixture.detectChanges();
+
+      expect(widoor.component.sensitiveActionCurrentEnabled(lock)).toBeFalse();
+      expect(row()?.querySelector('.product-lock-state-icon.ai-lock-open'))
+        .not.toBeNull();
+      expect(widoor.writeExecutionService.execute).not.toHaveBeenCalled();
+      expect(widoor.bleService.writeCharacteristic).not.toHaveBeenCalled();
     },
   );
 

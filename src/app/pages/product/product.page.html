@@ -153,11 +153,12 @@
             @if (moventivCloseLockControl; as closeLockControl) {
               <div class="cmd-list lock-mode-controls">
                 <div class="cmd-row phase1-mov-close-lock-command">
-                  <img
-                    class="cmd-row-icon"
-                    [src]="productLockIconSrc(closeLockControl.config)"
-                    [alt]="closeLockControl.text.label"
-                  />
+                  <span
+                    class="cmd-row-icon product-lock-state-icon"
+                    [class.ai-lock-close]="isLockModeActive(closeLockControl.config)"
+                    [class.ai-lock-open]="!isLockModeActive(closeLockControl.config)"
+                    aria-hidden="true"
+                  ></span>
                   <span>{{ closeLockControl.text.label }}</span>
                   <ion-toggle
                     class="lock-mode-toggle"
@@ -188,11 +189,12 @@
               </div>
               @for (lockControl of lockModeControls; track lockControl.config.mode) {
                 <div class="cmd-row">
-                  <img
-                    class="cmd-row-icon"
-                    [src]="productLockIconSrc(lockControl.config)"
-                    [alt]="lockControl.text.label"
-                  />
+                  <span
+                    class="cmd-row-icon product-lock-state-icon"
+                    [class.ai-lock-close]="isLockModeActive(lockControl.config)"
+                    [class.ai-lock-open]="!isLockModeActive(lockControl.config)"
+                    aria-hidden="true"
+                  ></span>
                   <span>{{ lockControl.text.label }}</span>
                   <ion-toggle
                     class="lock-mode-toggle"
@@ -227,12 +229,12 @@
               }
               @for (peripheralControl of commandUserPeripheralControls; track peripheralControl.config.field) {
                 <div class="cmd-row">
-                  <img
-                    class="cmd-row-icon peripheral-state-icon"
+                  <span
+                    class="cmd-row-icon peripheral-state-icon product-light-icon"
                     [class.peripheral-icon-active]="currentUserPeripheralState(peripheralControl.config) === true"
-                    [src]="productPeripheralIconSrc(peripheralControl.config)"
-                    [alt]="peripheralControl.text"
-                  />
+                    [attr.data-light-state]="currentUserPeripheralState(peripheralControl.config) === true ? 'on' : 'off'"
+                    aria-hidden="true"
+                  ></span>
                   <span>{{ peripheralControl.text }}</span>
                   <ion-toggle
                     class="user-peripheral-toggle user-peripheral-command-toggle"
@@ -321,14 +323,13 @@
                 }
                 @for (peripheralControl of basicUserPeripheralControls; track peripheralControl.config.field) {
                   <ion-item class="basic-toggle-row basic-lighting-row">
-                    <img
-                      class="basic-row-icon peripheral-state-icon"
+                    <span
+                      class="basic-row-icon peripheral-state-icon product-light-icon"
                       [class.peripheral-icon-active]="currentUserPeripheralState(peripheralControl.config) === true"
-                      [src]="productPeripheralIconSrc(peripheralControl.config)"
-                      alt=""
+                      [attr.data-light-state]="currentUserPeripheralState(peripheralControl.config) === true ? 'on' : 'off'"
                       aria-hidden="true"
                       slot="start"
-                    />
+                    ></span>
                     <ion-label>{{ peripheralControl.text }}</ion-label>
                     <ion-toggle
                       class="user-peripheral-toggle"
@@ -1268,7 +1269,15 @@
                     class="advanced-action-toggle-row"
                     [attr.data-sensitive-action]="action.action"
                   >
-                    @if (sensitiveActionIconSrc(action) !== null) {
+                    @if (action.action === 'professional-peripheral-lock') {
+                      <span
+                        slot="start"
+                        class="advanced-row-icon product-lock-state-icon"
+                        [class.ai-lock-close]="sensitiveActionCurrentEnabled(action) === true"
+                        [class.ai-lock-open]="sensitiveActionCurrentEnabled(action) !== true"
+                        aria-hidden="true"
+                      ></span>
+                    } @else if (sensitiveActionIconSrc(action) !== null) {
                       <img
                         slot="start"
                         class="advanced-row-icon"

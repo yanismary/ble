@@ -78,6 +78,41 @@
   width: 28px;
 }
 
+.product-lock-state-icon {
+  align-items: center;
+  color: #666666;
+  display: inline-flex;
+  justify-content: center;
+  line-height: 1;
+}
+
+.cmd-row-icon.product-lock-state-icon {
+  font-size: 28px;
+}
+
+.advanced-row-icon.product-lock-state-icon {
+  font-size: 24px;
+}
+
+.product-light-icon {
+  background: var(--mantion-grey);
+  display: inline-block;
+  flex: 0 0 auto;
+  -webkit-mask-image: url('/assets/img/icon_light_off.svg');
+  -webkit-mask-position: 50% 50%;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-image: url('/assets/img/icon_light_off.svg');
+  mask-position: 50% 50%;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  opacity: 1;
+}
+
+.product-light-icon.peripheral-icon-active {
+  background: var(--mantion-led-yellow);
+}
+
 ion-toggle[disabled],
 ion-toggle.toggle-disabled,
 ion-toggle.ion-disabled {

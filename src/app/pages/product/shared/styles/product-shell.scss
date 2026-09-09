@@ -93,6 +93,21 @@
   margin-bottom: 12px;
 }
 
+.ios ion-list-header:is(.basic-section-header, .advanced-section-header) {
+  align-items: center;
+  font-size: 14px;
+  font-weight: 400;
+  min-height: 45px;
+}
+
+.ios ion-list-header:is(.basic-section-header, .advanced-section-header)
+  ion-label {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: normal;
+  margin-block: 0;
+}
+
 .product-subsection,
 .technical-details {
   border-top: 1px solid var(--ion-color-light-shade);

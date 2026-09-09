@@ -145,17 +145,17 @@ ion-alert.scan-demo-product-alert
 
 ion-alert.scan-demo-product-alert
   .alert-button.scan-demo-product-button-moventiv {
-  background: #32db64;
+  background: var(--mantion-secondary-green);
 }
 
 ion-alert.scan-demo-product-alert
   .alert-button.scan-demo-product-button-garline {
-  background: #a7c855;
+  background: var(--mantion-green);
 }
 
 ion-alert.scan-demo-product-alert
   .alert-button.scan-demo-product-button-widoor {
-  background: #488aff;
+  background: var(--mantion-ionic-blue);
 }
 
 ion-alert.scan-demo-product-alert

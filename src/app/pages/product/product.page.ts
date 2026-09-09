@@ -426,6 +426,7 @@ export class ProductPage implements OnDestroy {
   userPeripheralWriteState: {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly field: ProductUserPeripheralField | null;
+    readonly targetEnabled?: boolean;
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', field: null, message: null });
   weightRangeWriteState: {
@@ -460,6 +461,7 @@ export class ProductPage implements OnDestroy {
       | 'failed'
       | 'cancelled';
     readonly action: ProductSensitiveAction | null;
+    readonly targetEnabled?: boolean;
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', action: null, message: null });
   productDateActionState: {
@@ -898,18 +900,6 @@ export class ProductPage implements OnDestroy {
     return command.text.label;
   }
 
-  productLockIconSrc(config: ProductLockModeUiConfig): string {
-    return this.isLockModeActive(config)
-      ? 'assets/img/icon_lock_on.svg'
-      : 'assets/img/icon_lock_off.svg';
-  }
-
-  productPeripheralIconSrc(config: ProductUserPeripheralUiConfig): string {
-    return this.currentUserPeripheralState(config) === true
-      ? 'assets/img/icon_light_on.svg'
-      : 'assets/img/icon_light_off.svg';
-  }
-
   expertInputIconSrc(
     config: ProductExpertInputUiConfig,
   ): string {
@@ -944,7 +934,7 @@ export class ProductPage implements OnDestroy {
           ? 'assets/img/icon_test_on.svg'
           : 'assets/img/icon_test_off.svg';
       case 'professional-peripheral-lock':
-        return 'assets/img/icon_lock_off.svg';
+        return null;
       case 'learning':
       case 'reset':
         return null;
@@ -2144,6 +2134,12 @@ export class ProductPage implements OnDestroy {
   ): boolean | null {
     const value = this.viewModel.reads.userParameters.value;
     if (value === null) {
+      if (this.userPeripheralWriteState.field === config.field &&
+          (this.userPeripheralWriteState.status === 'executing' ||
+            this.userPeripheralWriteState.status === 'sent') &&
+          this.userPeripheralWriteState.targetEnabled !== undefined) {
+        return this.userPeripheralWriteState.targetEnabled;
+      }
       return null;
     }
     switch (config.field) {
@@ -2701,6 +2697,13 @@ export class ProductPage implements OnDestroy {
     }
     const value = this.viewModel.reads.professionalParameters.value;
     if (value === null || value.profile !== 'widoor') {
+      if (value === null &&
+          this.sensitiveActionState.action === config.action &&
+          (this.sensitiveActionState.status === 'executing' ||
+            this.sensitiveActionState.status === 'sent') &&
+          this.sensitiveActionState.targetEnabled !== undefined) {
+        return this.sensitiveActionState.targetEnabled;
+      }
       return null;
     }
     const flags = decodeProfessionalPeripheralFlags(value.peripheralByte1);
@@ -2733,7 +2736,8 @@ export class ProductPage implements OnDestroy {
         this.commandInProgress) {
       return false;
     }
-    if (config.action === 'professional-peripheral-lock' &&
+    if (!this.isDemoMode &&
+        config.action === 'professional-peripheral-lock' &&
         !this.widoorLockSupported()) {
       return false;
     }
@@ -2798,6 +2802,7 @@ export class ProductPage implements OnDestroy {
       this.sensitiveActionState = Object.freeze({
         status: 'sent',
         action: config.action,
+        ...(enabled === undefined ? {} : { targetEnabled: enabled }),
         message: this.text.sensitiveActions.sent,
       });
       return;
@@ -2846,12 +2851,19 @@ export class ProductPage implements OnDestroy {
     this.sensitiveActionState = Object.freeze({
       status: 'executing',
       action: config.action,
+      ...(enabled === undefined ? {} : { targetEnabled: enabled }),
       message: this.text.sensitiveActions.executing,
     });
+    if (config.control === 'toggle' && enabled !== undefined) {
+      this.updateSensitiveToggleDisplay(config.action, enabled);
+    }
 
     for (const [index, step] of steps.entries()) {
       const contextStatus = this.writeContextStatus(context, step.write);
       if (contextStatus !== null) {
+        if (config.control === 'toggle' && current !== null) {
+          this.updateSensitiveToggleDisplay(config.action, current);
+        }
         this.sensitiveActionState = Object.freeze({
           status: 'failed',
           action: config.action,
@@ -2884,9 +2896,18 @@ export class ProductPage implements OnDestroy {
         policy: this.withPhase1ImmediatePolicy(config.profile, step.policy),
       });
 
-      if (!this.isCurrentContext() ||
-          this.context !== context ||
-          result.status !== 'success') {
+      if (!this.isCurrentContext() || this.context !== context) {
+        this.sensitiveActionState = Object.freeze({
+          status: 'failed',
+          action: config.action,
+          message: this.text.sensitiveActions.failed,
+        });
+        return;
+      }
+      if (result.status !== 'success') {
+        if (config.control === 'toggle' && current !== null) {
+          this.updateSensitiveToggleDisplay(config.action, current);
+        }
         this.sensitiveActionState = Object.freeze({
           status: 'failed',
           action: config.action,
@@ -2913,6 +2934,7 @@ export class ProductPage implements OnDestroy {
     this.sensitiveActionState = Object.freeze({
       status: 'sent',
       action: config.action,
+      ...(enabled === undefined ? {} : { targetEnabled: enabled }),
       message: this.text.sensitiveActions.sent,
     });
     if (config.control === 'toggle' && enabled !== undefined) {
@@ -3316,6 +3338,7 @@ export class ProductPage implements OnDestroy {
       this.userPeripheralWriteState = Object.freeze({
         status: 'sent',
         field: config.field,
+        targetEnabled: checked,
         message: this.text.userPeripheralControls.sent,
       });
       return;
@@ -3347,8 +3370,10 @@ export class ProductPage implements OnDestroy {
     this.userPeripheralWriteState = Object.freeze({
       status: 'executing',
       field: config.field,
+      targetEnabled: checked,
       message: this.text.userPeripheralControls.executing,
     });
+    this.updateUserPeripheralDisplay(config.field, checked);
 
     const result = await this.bleWriteExecutionService.execute({
       write,
@@ -3373,12 +3398,16 @@ export class ProductPage implements OnDestroy {
       this.userPeripheralWriteState = Object.freeze({
         status: 'sent',
         field: config.field,
+        targetEnabled: checked,
         message: this.text.userPeripheralControls.sent,
       });
       if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
         await this.refreshProductData({}, false);
       }
       return;
+    }
+    if (currentState !== null) {
+      this.updateUserPeripheralDisplay(config.field, currentState);
     }
     this.userPeripheralWriteState = Object.freeze({
       status: 'failed',
@@ -4120,6 +4149,7 @@ export class ProductPage implements OnDestroy {
       status: 'executing',
       message: this.text.lockModeControls.executing,
     });
+    this.updateLockModeDisplay(nextMode);
 
     const result = await this.bleWriteExecutionService.execute({
       write,
@@ -4149,6 +4179,7 @@ export class ProductPage implements OnDestroy {
       }
       return;
     }
+    this.updateLockModeDisplay(currentMode);
     this.lockModeWriteState = Object.freeze({
       status: 'failed',
       message: this.text.lockModeControls.failed,
@@ -4845,8 +4876,17 @@ export class ProductPage implements OnDestroy {
   private updateDemoUserParameters(
     patch: Partial<BleUserParameters>,
   ): void {
+    if (!this.isDemoMode) {
+      return;
+    }
+    this.updateUserParametersDisplay(patch);
+  }
+
+  private updateUserParametersDisplay(
+    patch: Partial<BleUserParameters>,
+  ): void {
     const current = this.viewModel.reads.userParameters.value;
-    if (!this.isDemoMode || current === null) {
+    if (current === null) {
       return;
     }
     this.viewModel = {
@@ -4900,6 +4940,16 @@ export class ProductPage implements OnDestroy {
     field: ProductUserPeripheralField,
     enabled: boolean,
   ): void {
+    if (!this.isDemoMode) {
+      return;
+    }
+    this.updateUserPeripheralDisplay(field, enabled);
+  }
+
+  private updateUserPeripheralDisplay(
+    field: ProductUserPeripheralField,
+    enabled: boolean,
+  ): void {
     const current = this.viewModel.reads.userParameters.value;
     if (current === null) {
       return;
@@ -4909,7 +4959,7 @@ export class ProductPage implements OnDestroy {
       : field === 'dynamic-light'
         ? 'dynamicLight'
         : 'rgbIndicator';
-    this.updateDemoUserParameters({
+    this.updateUserParametersDisplay({
       peripheralFlags: Object.freeze({
         ...current.peripheralFlags,
         [key]: enabled,
@@ -5001,7 +5051,14 @@ export class ProductPage implements OnDestroy {
   }
 
   private updateDemoLockMode(mode: LegacyLockMode): void {
-    this.updateDemoUserParameters({ lockMode: mode });
+    if (!this.isDemoMode) {
+      return;
+    }
+    this.updateLockModeDisplay(mode);
+  }
+
+  private updateLockModeDisplay(mode: LegacyLockMode): void {
+    this.updateUserParametersDisplay({ lockMode: mode });
   }
 
   private updateStoredRoomAssignment(

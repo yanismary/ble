@@ -245,10 +245,13 @@ ion-content:is(.product-profile-moventiv, .product-profile-garline) {
   }
 
   .cmd-row-icon {
-    filter: grayscale(1);
     height: 28px;
-    opacity: 0.72;
     width: 28px;
+  }
+
+  .cmd-row-icon:not(.product-light-icon) {
+    filter: grayscale(1);
+    opacity: 0.72;
   }
 
   .peripheral-state-icon.peripheral-icon-active {
@@ -315,12 +318,15 @@ ion-content:is(.product-profile-moventiv, .product-profile-garline) {
   }
 
   :is(.basic-row-icon, .advanced-row-icon) {
-    filter: grayscale(1);
     height: 28px;
     margin-inline-end: 16px;
     object-fit: contain;
-    opacity: 0.68;
     width: 28px;
+  }
+
+  :is(.basic-row-icon, .advanced-row-icon):not(.product-light-icon) {
+    filter: grayscale(1);
+    opacity: 0.68;
   }
 
   .basic-lighting-row .basic-row-icon {

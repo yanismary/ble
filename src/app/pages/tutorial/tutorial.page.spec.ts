@@ -92,6 +92,10 @@ describe('TutorialPage', () => {
     expect(buttonBackground('widoor')).toBe('#488aff');
     expect(buttonBackground('moventiv')).toBe('#32db64');
     expect(buttonBackground('garline')).toBe('#a7c855');
+    for (const product of choices) {
+      expect(query(fixture, `[data-tutorial-product="${product}"]`)
+        ?.getAttribute('color')).toBeNull();
+    }
   });
 
   it('selects Widoor and renders its first slide', async () => {
