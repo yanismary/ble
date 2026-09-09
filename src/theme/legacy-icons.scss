@@ -32,8 +32,6 @@
 @include make-legacy-icon(param, '\e911');
 @include make-legacy-icon(change-name, '\e90b');
 @include make-legacy-icon(vibrate, '\e916');
-@include make-legacy-icon(lock-close, '\e914');
-@include make-legacy-icon(lock-open, '\e915');
 @include make-legacy-icon(loc-autre, '\e900');
 @include make-legacy-icon(loc-cha, '\e902');
 @include make-legacy-icon(loc-cui, '\e903');
@@ -43,6 +41,21 @@
 @include make-legacy-icon(loc-sdj, '\e907');
 @include make-legacy-icon(loc-sal, '\e908');
 @include make-legacy-icon(loc-wcs, '\e909');
+
+.ai-lock-close,
+.ai-lock-open {
+  background-position: 50% 50%;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.ai-lock-close {
+  background-image: url('../assets/img/icon_padlock_closed.svg');
+}
+
+.ai-lock-open {
+  background-image: url('../assets/img/icon_padlock_open.svg');
+}
 
 [class*='moventiv-'] {
   background: currentColor;

@@ -4671,6 +4671,8 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       expect(component.isLockModeActive(control)).toBeTrue();
       expect(icon()?.classList).toContain('ai-lock-close');
       expect(icon()?.classList).not.toContain('ai-lock-open');
+      expect(getComputedStyle(icon()!).backgroundImage)
+        .toContain('icon_padlock_closed.svg');
 
       resolveWrite(lockModeExecutionResult('moventiv-60', '00 02'));
       await enable;
@@ -4682,6 +4684,8 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       expect(component.isLockModeActive(control)).toBeFalse();
       expect(icon()?.classList).toContain('ai-lock-open');
       expect(icon()?.classList).not.toContain('ai-lock-close');
+      expect(getComputedStyle(icon()!).backgroundImage)
+        .toContain('icon_padlock_open.svg');
 
       resolveWrite(lockModeExecutionResult('moventiv-60', '00 00'));
       await disable;
@@ -7251,6 +7255,9 @@ describe('ProductPage expert scalar controls',
         )).not.toBeNull();
         expect(lockRow()?.querySelector('.product-lock-state-icon.ai-lock-open'))
           .toBeNull();
+        expect(getComputedStyle(lockRow()!.querySelector<HTMLElement>(
+          '.product-lock-state-icon',
+        )!).backgroundImage).toContain('icon_padlock_closed.svg');
 
         resolveWrite(result);
         await enable;
@@ -7265,6 +7272,9 @@ describe('ProductPage expert scalar controls',
         )).not.toBeNull();
         expect(lockRow()?.querySelector('.product-lock-state-icon.ai-lock-close'))
           .toBeNull();
+        expect(getComputedStyle(lockRow()!.querySelector<HTMLElement>(
+          '.product-lock-state-icon',
+        )!).backgroundImage).toContain('icon_padlock_open.svg');
 
         resolveWrite(result);
         await disable;
