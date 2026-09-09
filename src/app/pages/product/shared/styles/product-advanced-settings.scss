@@ -22,6 +22,20 @@
   font-size: 0.98rem;
 }
 
+.advanced-scalar-header ion-label {
+  align-self: center;
+  flex: 1 1 auto;
+  margin-block: 0;
+  min-width: 0;
+  white-space: normal;
+}
+
+.advanced-scalar-header :is(.advanced-value-badge, ion-button) {
+  align-self: center;
+  flex: 0 0 auto;
+  margin-block: 0;
+}
+
 .advanced-access-row,
 .advanced-action-button-row,
 .advanced-action-toggle-row,
@@ -59,6 +73,11 @@
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.advanced-input-toggle,
+.advanced-action-toggle-row ion-toggle {
+  margin-inline-start: 8px;
 }
 
 .advanced-range {

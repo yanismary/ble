@@ -217,6 +217,12 @@ ion-content:is(.product-profile-moventiv, .product-profile-garline) {
     width: 64px;
   }
 
+  .cmd-motor.command-switch-write-pending[disabled],
+  .cmd-motor.command-switch-write-pending.button-disabled,
+  .cmd-motor.command-switch-write-pending.ion-disabled {
+    opacity: 1;
+  }
+
   .cmd-label {
     color: #000;
     font-size: 14px;
@@ -243,6 +249,11 @@ ion-content:is(.product-profile-moventiv, .product-profile-garline) {
     height: 28px;
     opacity: 0.72;
     width: 28px;
+  }
+
+  .peripheral-state-icon.peripheral-icon-active {
+    filter: none;
+    opacity: 1;
   }
 
   :is(.basic-settings-list, .advanced-settings-list,
@@ -523,11 +534,13 @@ ion-content:is(.product-profile-moventiv, .product-profile-garline) {
   .phase1-mov-weight-header {
     --background: #f4f4f4;
     border-left: 0;
-    min-height: 48px;
+    min-height: 44px;
   }
 
   .phase1-mov-weight-row {
-    --min-height: 108px;
+    --min-height: 64px;
+    --padding-bottom: 4px;
+    --padding-top: 4px;
   }
 
   .phase1-mov-weight-row ion-label {

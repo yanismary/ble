@@ -4483,9 +4483,13 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
           );
         }
         if (scenario.commandLighting.length > 0) {
-          expect(element.querySelector<HTMLImageElement>(
+          const commandLightIcon = element.querySelector<HTMLImageElement>(
             '.user-peripheral-command-controls .cmd-row-icon',
-          )?.getAttribute('src')).toBe('assets/img/icon_light_on.svg');
+          );
+          expect(commandLightIcon?.getAttribute('src'))
+            .toBe('assets/img/icon_light_on.svg');
+          expect(commandLightIcon?.classList)
+            .toContain('peripheral-icon-active');
         }
         const commandsSection = element.querySelector<HTMLElement>(
           '[aria-labelledby="commands-title"]',
@@ -4529,6 +4533,62 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
     },
   );
+
+  it('should show the Phase 1 information only when Moventiv close lock is enabled',
+    async () => {
+      const { fixture, component, writeExecutionService } =
+        await createProductCommandsUiPage('moventiv-60');
+      const alertCreate = TestBed.inject(AlertController).create as jasmine.Spy;
+      const closeControl = component.lockModeControls[0].config;
+      writeExecutionService.nextResult = lockModeExecutionResult(
+        'moventiv-60',
+        '00 02',
+      );
+
+      expect(alertCreate).not.toHaveBeenCalled();
+      await component.requestLockModeChange(closeControl, true);
+      await fixture.whenStable();
+
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(alertCreate).toHaveBeenCalledTimes(1);
+      expect(alertCreate).toHaveBeenCalledWith({
+        header: component.text.moventivCloseLockAlert.title,
+        message: component.text.moventivCloseLockAlert.message,
+        buttons: [component.text.moventivCloseLockAlert.ok],
+      });
+    },
+  );
+
+  for (const profile of ['moventiv-60', 'garline'] as const) {
+    it(`should keep ${profile} motor buttons visually stable during a switch write`,
+      async () => {
+        const { fixture, component } =
+          await createProductCommandsUiPage(profile);
+        component.userPeripheralWriteState = Object.freeze({
+          status: 'executing',
+          field: 'static-light',
+          message: component.text.userPeripheralControls.executing,
+        });
+        fixture.detectChanges();
+
+        const buttons = Array.from(
+          (fixture.nativeElement as HTMLElement)
+            .querySelectorAll<HTMLIonButtonElement>(
+            'ion-button.cmd-motor',
+          ),
+        );
+        expect(component.commandSwitchWriteInProgress).toBeTrue();
+        expect(buttons.length).toBeGreaterThan(0);
+        expect(buttons.every((button) => button.disabled)).toBeTrue();
+        expect(buttons.every((button) =>
+          button.classList.contains('command-switch-write-pending'),
+        )).toBeTrue();
+        expect(buttons.every((button) =>
+          getComputedStyle(button).opacity === '1',
+        )).toBeTrue();
+      },
+    );
+  }
 
   for (const profile of ['moventiv-60', 'moventiv-80'] as const) {
     it(`should write only the Phase 1 close lock command for ${profile}`,
@@ -4684,6 +4744,9 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         expect(basicPanel?.querySelectorAll<HTMLImageElement>(
           'img[src="assets/img/icon_light_off.svg"]',
         ).length).toBe(scenario.basicLighting.length);
+        expect(basicPanel?.querySelector(
+          '.peripheral-state-icon.peripheral-icon-active',
+        )).toBeNull();
         const basicToggleLabels = Array.from(
           basicPanel?.querySelectorAll<HTMLElement>(
             '.basic-toggle-row ion-label',

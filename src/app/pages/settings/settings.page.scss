@@ -74,6 +74,10 @@
   text-align: right;
 }
 
+.settings-row[data-setting-row='manual-language'] {
+  --padding-start: 16px;
+}
+
 ion-toggle {
   --handle-background-checked: var(--mantion-green);
   --track-background-checked: rgba(var(--mantion-green-rgb), 0.36);

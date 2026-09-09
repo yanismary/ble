@@ -6,18 +6,6 @@
         <ion-button
           class="tutorial-choice-button"
           color="primary"
-          style="--background: var(--mantion-ionic-blue)"
-          expand="block"
-          size="large"
-          type="button"
-          data-tutorial-product="widoor"
-          (click)="selectProduct('widoor')"
-        >
-          {{ copy.choiceWidoor }}
-        </ion-button>
-        <ion-button
-          class="tutorial-choice-button"
-          color="primary"
           style="--background: var(--mantion-secondary-green)"
           expand="block"
           size="large"
@@ -38,6 +26,18 @@
           (click)="selectProduct('garline')"
         >
           {{ copy.choiceGarline }}
+        </ion-button>
+        <ion-button
+          class="tutorial-choice-button"
+          color="primary"
+          style="--background: var(--mantion-ionic-blue)"
+          expand="block"
+          size="large"
+          type="button"
+          data-tutorial-product="widoor"
+          (click)="selectProduct('widoor')"
+        >
+          {{ copy.choiceWidoor }}
         </ion-button>
       </div>
     </section>

@@ -68,11 +68,34 @@ describe('product page localization', () => {
         .toContain('réinitialisation des paramètres de vitesse');
       expect(text.expertAccess.expertTitle).toBe('Réglages expert');
       expect(text.expertAccess.expertMode).toBe('Mode expert');
+      expect(text.moventivCloseLockAlert).toEqual({
+        title: 'Condamnation de la porte',
+        message:
+          'Vous allez condamner la porte en fermeture, il vous sera impossible de l\u2019ouvrir sans d\u00e9sactiver cette option.',
+        ok: 'OK',
+      });
       expect(text.information.currentWeightProfile).toBe('Profil actuel');
       expect(text.information.maximumWeight).toBe('Poids maximum autorisé');
       expect(productPageTextFor('fr')).toBe(PRODUCT_PAGE_TEXT);
     },
   );
+
+  it('localizes the Moventiv close-lock information in every language', () => {
+    for (const language of ['fr', 'en', 'de', 'pl'] as const) {
+      const alert = productPageTextFor(language, 'moventiv-60')
+        .moventivCloseLockAlert;
+
+      expect(alert.title).toBeTruthy();
+      expect(alert.message).toBeTruthy();
+      expect(alert.ok).toBeTruthy();
+    }
+    expect(productPageTextFor('en', 'moventiv-60')
+      .moventivCloseLockAlert.message).toContain('not be able to open');
+    expect(productPageTextFor('de', 'moventiv-60')
+      .moventivCloseLockAlert.message).toContain('nicht mehr ge\u00f6ffnet');
+    expect(productPageTextFor('pl', 'moventiv-60')
+      .moventivCloseLockAlert.message).toContain('Nie b\u0119dzie mo\u017cna');
+  });
 
   it('uses the shared Phase 1 Moventiv labels for Garline', () => {
     const moventiv = productPageTextFor('fr', 'moventiv-60');

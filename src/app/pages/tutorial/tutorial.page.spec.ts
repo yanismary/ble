@@ -81,7 +81,7 @@ describe('TutorialPage', () => {
       fixture.nativeElement.querySelectorAll('[data-tutorial-product]'),
       (element: Element) => element.getAttribute('data-tutorial-product'),
     );
-    expect(choices).toEqual(['widoor', 'moventiv', 'garline']);
+    expect(choices).toEqual(['moventiv', 'garline', 'widoor']);
     const buttonBackground = (product: string) => {
       const button = query<HTMLElement>(
         fixture,

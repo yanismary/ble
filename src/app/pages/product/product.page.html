@@ -118,6 +118,7 @@
                 @if (command.config.enabled) {
                   <ion-button
                     class="widoor-command motor-command cmd-motor"
+                    [class.command-switch-write-pending]="commandSwitchWriteInProgress"
                     [class.widoor-open-command]="command.config.operation === 'motor-open'"
                     [class.widoor-close-command]="command.config.operation === 'motor-close'"
                     [class.widoor-timed-command]="command.config.isTimedCommand"
@@ -227,7 +228,8 @@
               @for (peripheralControl of commandUserPeripheralControls; track peripheralControl.config.field) {
                 <div class="cmd-row">
                   <img
-                    class="cmd-row-icon"
+                    class="cmd-row-icon peripheral-state-icon"
+                    [class.peripheral-icon-active]="currentUserPeripheralState(peripheralControl.config) === true"
                     [src]="productPeripheralIconSrc(peripheralControl.config)"
                     [alt]="peripheralControl.text"
                   />
@@ -320,7 +322,8 @@
                 @for (peripheralControl of basicUserPeripheralControls; track peripheralControl.config.field) {
                   <ion-item class="basic-toggle-row basic-lighting-row">
                     <img
-                      class="basic-row-icon"
+                      class="basic-row-icon peripheral-state-icon"
+                      [class.peripheral-icon-active]="currentUserPeripheralState(peripheralControl.config) === true"
                       [src]="productPeripheralIconSrc(peripheralControl.config)"
                       alt=""
                       aria-hidden="true"

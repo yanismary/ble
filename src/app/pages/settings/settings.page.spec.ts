@@ -67,10 +67,18 @@ describe('SettingsPage', () => {
 
   it('shows the Phase 1 manual language order', async () => {
     const fixture = await createPage();
+    const manualRow = query<HTMLElement>(
+      fixture,
+      '[data-setting-row="manual-language"]',
+    );
+    const select = manualRow?.querySelector('ion-select');
     const options = Array.from(
       fixture.nativeElement.querySelectorAll('ion-select-option'),
     ) as HTMLIonSelectOptionElement[];
 
+    expect(manualRow?.querySelector('.settings-row-icon')).toBeNull();
+    expect(select?.interface).toBe('alert');
+    expect(select?.value).toBe('fr');
     expect(options.map((option) => option.value)).toEqual([
       'de',
       'en',

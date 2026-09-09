@@ -170,6 +170,12 @@ export const PRODUCT_PAGE_TEXT = {
     no: 'Décliner',
     yes: 'Confirmer',
   },
+  moventivCloseLockAlert: {
+    title: 'Condamnation de la porte',
+    message:
+      'Vous allez condamner la porte en fermeture, il vous sera impossible de l\u2019ouvrir sans d\u00e9sactiver cette option.',
+    ok: 'OK',
+  },
   productDateActions: {
     setupLabel: 'Mise en service effectuée',
     maintenanceLabel: 'Maintenance effectuée',

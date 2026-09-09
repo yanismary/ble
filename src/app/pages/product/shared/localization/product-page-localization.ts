@@ -2,6 +2,37 @@ import { PRODUCT_PAGE_TEXT } from './product-page-text';
 
 export type ProductPageLanguage = 'fr' | 'en' | 'de' | 'pl';
 
+const MOVENTIV_CLOSE_LOCK_ALERT_TEXT = Object.freeze({
+  fr: Object.freeze({
+    title: 'Condamnation de la porte',
+    message:
+      'Vous allez condamner la porte en fermeture, il vous sera impossible de l\u2019ouvrir sans d\u00e9sactiver cette option.',
+    ok: 'OK',
+  }),
+  en: Object.freeze({
+    title: 'Door locked in closed position',
+    message:
+      'You will not be able to open the door without deactivating this option.',
+    ok: 'OK',
+  }),
+  de: Object.freeze({
+    title: 'T\u00fcr geschlossen halten',
+    message:
+      'Die T\u00fcr wird verriegelt und kann ohne Deaktivierung dieser Option nicht mehr ge\u00f6ffnet werden.',
+    ok: 'OK',
+  }),
+  pl: Object.freeze({
+    title: 'Drzwi zablokowane w pozycji zamkni\u0119tej.',
+    message:
+      'Nie b\u0119dzie mo\u017cna otworzy\u0107 drzwi bez dezaktywacji tej opcji.',
+    ok: 'OK',
+  }),
+} satisfies Readonly<Record<ProductPageLanguage, Readonly<{
+  title: string;
+  message: string;
+  ok: string;
+}>>>);
+
 const PRODUCT_LOCALIZED_LABELS = {
   "fr": {
     "sections": {
@@ -611,6 +642,7 @@ export function productPageTextFor(
         label: labels.commands.lockedClosed,
       }),
     }),
+    moventivCloseLockAlert: MOVENTIV_CLOSE_LOCK_ALERT_TEXT[language],
     widoorCommands: Object.freeze({
       ...PRODUCT_PAGE_TEXT.widoorCommands,
       open: Object.freeze({

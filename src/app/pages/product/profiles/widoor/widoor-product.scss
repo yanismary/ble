@@ -430,6 +430,11 @@ ion-content.product-profile-widoor {
     z-index: 2;
   }
 
+  .peripheral-state-icon.peripheral-icon-active {
+    filter: none;
+    opacity: 1;
+  }
+
   :is(.basic-precision-row, .advanced-precision-row) {
     background: #fff;
     display: grid;

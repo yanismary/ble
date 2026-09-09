@@ -1333,6 +1333,12 @@ export class ProductPage implements OnDestroy {
     return rows;
   }
 
+  get commandSwitchWriteInProgress(): boolean {
+    return this.usesMoventivLayout &&
+      (this.lockModeWriteState.status === 'executing' ||
+        this.userPeripheralWriteState.status === 'executing');
+  }
+
   get informationDateRows(): readonly ProductDisplayRow[] {
     return this.datesRows.filter(({ key }) =>
       key === 'first-commissioning' || key === 'total-cycles',
@@ -4069,6 +4075,11 @@ export class ProductPage implements OnDestroy {
       return;
     }
 
+    if (checked && config.mode === 'locked-closed' &&
+        this.isMoventivProfile) {
+      void this.presentMoventivCloseLockInformation();
+    }
+
     void triggerConfiguredHapticFeedback();
     if (this.isDemoMode) {
       this.updateDemoLockMode(nextMode);
@@ -4405,6 +4416,16 @@ export class ProductPage implements OnDestroy {
         this.activeSettingsTab === 'advanced') {
       this.setActiveSettingsTab('basic');
     }
+  }
+
+  private async presentMoventivCloseLockInformation(): Promise<void> {
+    const text = this.text.moventivCloseLockAlert;
+    const alert = await this.alertController.create({
+      header: text.title,
+      message: text.message,
+      buttons: [text.ok],
+    });
+    await alert.present();
   }
 
   private async presentNameRoomWriteFailure(message: string): Promise<void> {

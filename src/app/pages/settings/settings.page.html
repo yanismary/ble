@@ -32,15 +32,10 @@
 
     @if (mode !== 'automatic') {
       <ion-item class="settings-row" data-setting-row="manual-language">
-        <ion-icon
-          class="settings-row-icon"
-          name="chatbubbles"
-          aria-hidden="true"
-        ></ion-icon>
         <ion-label>{{ text.language.manual }}</ion-label>
         <ion-select
           slot="end"
-          interface="popover"
+          interface="alert"
           class="settings-select"
           aria-label="manual language"
           [cancelText]="text.selectCancel"
