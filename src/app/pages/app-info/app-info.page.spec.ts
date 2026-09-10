@@ -34,6 +34,10 @@ describe('AppInfoPage', () => {
 
     expect(element.querySelector('ion-toolbar.main-menu-destination-navbar'))
       .toBeTruthy();
+    expect(element.querySelector('ion-back-button[defaultHref="/help"]'))
+      .toBeTruthy();
+    expect(element.querySelector('.app-version-number')?.textContent)
+      .toContain(component.appVersion);
     expect(text).toContain(component.copy.aboutContentTitle);
     expect(text).toContain(component.copy.versionLabel);
     expect(text).toContain(component.copy.lastModification);

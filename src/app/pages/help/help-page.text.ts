@@ -9,7 +9,6 @@ export type HelpProduct = 'widoor' | 'moventiv-garline';
 export interface HelpSectionText {
   readonly title: string;
   readonly steps: readonly string[];
-  readonly note?: string;
 }
 
 export interface HelpProductText {
@@ -24,6 +23,46 @@ export interface HelpPageText {
   readonly products: Record<HelpProduct, string>;
   readonly productHelp: Record<HelpProduct, HelpProductText>;
 }
+
+const FR_PAIRING_TROUBLESHOOTING: HelpSectionText = Object.freeze({
+  title: 'Difficulte d\u2019appairage',
+  steps: Object.freeze([
+    'Verifiez que le Bluetooth est active sur le smartphone.',
+    'Rapprochez le telephone de la motorisation puis relancez la recherche.',
+    'Verifiez que la motorisation n\u2019est pas deja connectee a un autre telephone.',
+    'Si un ancien jumelage bloque la connexion, supprimez-le depuis les reglages Bluetooth du telephone.',
+  ]),
+});
+
+const EN_PAIRING_TROUBLESHOOTING: HelpSectionText = Object.freeze({
+  title: 'Pairing issues',
+  steps: Object.freeze([
+    'Check that Bluetooth is enabled on the smartphone.',
+    'Move the phone closer to the motor, then start discovery again.',
+    'Check that the motor is not already connected to another phone.',
+    'If old pairing data blocks the connection, remove it from the phone Bluetooth settings.',
+  ]),
+});
+
+const DE_PAIRING_TROUBLESHOOTING: HelpSectionText = Object.freeze({
+  title: 'Verbindungsprobleme',
+  steps: Object.freeze([
+    'Prufen Sie, ob Bluetooth auf dem Smartphone aktiviert ist.',
+    'Bringen Sie das Telefon naher an den Motor und starten Sie die Suche erneut.',
+    'Prufen Sie, ob der Motor nicht bereits mit einem anderen Telefon verbunden ist.',
+    'Wenn eine alte Kopplung die Verbindung blockiert, entfernen Sie sie in den Bluetooth-Einstellungen des Telefons.',
+  ]),
+});
+
+const PL_PAIRING_TROUBLESHOOTING: HelpSectionText = Object.freeze({
+  title: 'Problemy z parowaniem',
+  steps: Object.freeze([
+    'Sprawdz, czy Bluetooth jest wlaczony w smartfonie.',
+    'Zbliz telefon do napedu i ponownie uruchom wyszukiwanie.',
+    'Sprawdz, czy naped nie jest juz polaczony z innym telefonem.',
+    'Jesli stare parowanie blokuje polaczenie, usun je w ustawieniach Bluetooth telefonu.',
+  ]),
+});
 
 const FR_TEXT: HelpPageText = {
   title: 'Aide',
@@ -40,20 +79,12 @@ const FR_TEXT: HelpPageText = {
         steps: [
           'Placez-vous a proximite de la motorisation WIDOOR alimentee.',
           'Sur la motorisation, placez le switch 1 sur OFF.',
-          'Appuyez sur le bouton PRG : l\u2019indicateur doit rester allume en magenta.',
           'Activez le Bluetooth du telephone puis lancez la recherche dans l\u2019application.',
+          'Appuyez sur le bouton PRG : l\u2019indicateur doit rester allume en magenta.',
           'Selectionnez le produit WIDOOR detecte pour lancer la connexion.',
         ],
       },
-      troubleshooting: {
-        title: 'Difficulte d\u2019appairage',
-        steps: [
-          'Verifiez que le Bluetooth est active sur le smartphone.',
-          'Verifiez que la motorisation est alimentee et proche du telephone.',
-          'Si un produit etait deja connecte, revenez au scan et deconnectez-le proprement.',
-          'Relancez la recherche puis selectionnez a nouveau le produit detecte.',
-        ],
-      },
+      troubleshooting: FR_PAIRING_TROUBLESHOOTING,
     },
     'moventiv-garline': {
       title: 'MOVENTIV/GARLINE',
@@ -62,20 +93,12 @@ const FR_TEXT: HelpPageText = {
         steps: [
           'Placez-vous a proximite de la motorisation alimentee.',
           'Sur la motorisation, placez le switch 1 sur OFF.',
-          'Appuyez sur le bouton PRG : l\u2019indicateur doit rester allume en magenta.',
           'Activez le Bluetooth du telephone puis lancez la recherche dans l\u2019application.',
+          'Appuyez sur le bouton PRG : l\u2019indicateur doit rester allume en magenta.',
           'Selectionnez le produit MOVENTIV ou GARLINE detecte pour lancer la connexion.',
         ],
       },
-      troubleshooting: {
-        title: 'Difficulte d\u2019appairage',
-        steps: [
-          'Verifiez que le Bluetooth est active sur le smartphone.',
-          'Rapprochez le telephone de la motorisation puis relancez la recherche.',
-          'Verifiez que la motorisation n\u2019est pas deja connectee a un autre telephone.',
-          'Si un ancien jumelage bloque la connexion, supprimez-le depuis les reglages Bluetooth du telephone.',
-        ],
-      },
+      troubleshooting: FR_PAIRING_TROUBLESHOOTING,
     },
   },
 };
@@ -95,20 +118,12 @@ const EN_TEXT: HelpPageText = {
         steps: [
           'Stay close to the powered WIDOOR motor.',
           'On the motor, set switch 1 to OFF.',
-          'Press the PRG button: the indicator must remain lit in magenta.',
           'Enable Bluetooth on the phone, then start discovery in the app.',
+          'Press the PRG button: the indicator must remain lit in magenta.',
           'Select the detected WIDOOR product to start the connection.',
         ],
       },
-      troubleshooting: {
-        title: 'Pairing issues',
-        steps: [
-          'Check that Bluetooth is enabled on the smartphone.',
-          'Check that the motor is powered and close to the phone.',
-          'If a product was already connected, return to scan and disconnect it cleanly.',
-          'Start discovery again, then select the detected product.',
-        ],
-      },
+      troubleshooting: EN_PAIRING_TROUBLESHOOTING,
     },
     'moventiv-garline': {
       title: 'MOVENTIV/GARLINE',
@@ -117,20 +132,12 @@ const EN_TEXT: HelpPageText = {
         steps: [
           'Stay close to the powered motor.',
           'On the motor, set switch 1 to OFF.',
-          'Press the PRG button: the indicator must remain lit in magenta.',
           'Enable Bluetooth on the phone, then start discovery in the app.',
+          'Press the PRG button: the indicator must remain lit in magenta.',
           'Select the detected MOVENTIV or GARLINE product to start the connection.',
         ],
       },
-      troubleshooting: {
-        title: 'Pairing issues',
-        steps: [
-          'Check that Bluetooth is enabled on the smartphone.',
-          'Move the phone closer to the motor, then start discovery again.',
-          'Check that the motor is not already connected to another phone.',
-          'If old pairing data blocks the connection, remove it from the phone Bluetooth settings.',
-        ],
-      },
+      troubleshooting: EN_PAIRING_TROUBLESHOOTING,
     },
   },
 };
@@ -150,20 +157,12 @@ const DE_TEXT: HelpPageText = {
         steps: [
           'Bleiben Sie in der Nahe des eingeschalteten WIDOOR Motors.',
           'Stellen Sie am Motor den Switch 1 auf OFF.',
-          'Drucken Sie die PRG-Taste: die Anzeige muss dauerhaft magenta leuchten.',
           'Aktivieren Sie Bluetooth am Telefon und starten Sie die Suche in der App.',
+          'Drucken Sie die PRG-Taste: die Anzeige muss dauerhaft magenta leuchten.',
           'Wahlen Sie das erkannte WIDOOR Produkt aus, um die Verbindung zu starten.',
         ],
       },
-      troubleshooting: {
-        title: 'Verbindungsprobleme',
-        steps: [
-          'Prufen Sie, ob Bluetooth auf dem Smartphone aktiviert ist.',
-          'Prufen Sie, ob der Motor mit Strom versorgt wird und sich in der Nahe des Telefons befindet.',
-          'Wenn bereits ein Produkt verbunden war, kehren Sie zum Scan zuruck und trennen Sie es sauber.',
-          'Starten Sie die Suche erneut und wahlen Sie das erkannte Produkt aus.',
-        ],
-      },
+      troubleshooting: DE_PAIRING_TROUBLESHOOTING,
     },
     'moventiv-garline': {
       title: 'MOVENTIV/GARLINE',
@@ -172,20 +171,12 @@ const DE_TEXT: HelpPageText = {
         steps: [
           'Bleiben Sie in der Nahe des eingeschalteten Motors.',
           'Stellen Sie am Motor den Switch 1 auf OFF.',
-          'Drucken Sie die PRG-Taste: die Anzeige muss dauerhaft magenta leuchten.',
           'Aktivieren Sie Bluetooth am Telefon und starten Sie die Suche in der App.',
+          'Drucken Sie die PRG-Taste: die Anzeige muss dauerhaft magenta leuchten.',
           'Wahlen Sie das erkannte MOVENTIV oder GARLINE Produkt aus, um die Verbindung zu starten.',
         ],
       },
-      troubleshooting: {
-        title: 'Verbindungsprobleme',
-        steps: [
-          'Prufen Sie, ob Bluetooth auf dem Smartphone aktiviert ist.',
-          'Bringen Sie das Telefon naher an den Motor und starten Sie die Suche erneut.',
-          'Prufen Sie, ob der Motor nicht bereits mit einem anderen Telefon verbunden ist.',
-          'Wenn eine alte Kopplung die Verbindung blockiert, entfernen Sie sie in den Bluetooth-Einstellungen des Telefons.',
-        ],
-      },
+      troubleshooting: DE_PAIRING_TROUBLESHOOTING,
     },
   },
 };
@@ -205,20 +196,12 @@ const PL_TEXT: HelpPageText = {
         steps: [
           'Pozostan blisko zasilonego napedu WIDOOR.',
           'Po stronie napedu ustaw przelacznik 1 w pozycji OFF.',
-          'Nacisnij przycisk PRG: wskaznik powinien swiecic stale na kolor magenta.',
           'Wlacz Bluetooth w telefonie, a nastepnie uruchom wyszukiwanie w aplikacji.',
+          'Nacisnij przycisk PRG: wskaznik powinien swiecic stale na kolor magenta.',
           'Wybierz wykryty produkt WIDOOR, aby rozpoczac polaczenie.',
         ],
       },
-      troubleshooting: {
-        title: 'Problemy z parowaniem',
-        steps: [
-          'Sprawdz, czy Bluetooth jest wlaczony w smartfonie.',
-          'Sprawdz, czy naped jest zasilany i znajduje sie blisko telefonu.',
-          'Jesli produkt byl juz polaczony, wroc do skanowania i rozlacz go poprawnie.',
-          'Uruchom wyszukiwanie ponownie, a nastepnie wybierz wykryty produkt.',
-        ],
-      },
+      troubleshooting: PL_PAIRING_TROUBLESHOOTING,
     },
     'moventiv-garline': {
       title: 'MOVENTIV/GARLINE',
@@ -227,20 +210,12 @@ const PL_TEXT: HelpPageText = {
         steps: [
           'Pozostan blisko zasilonego napedu.',
           'Po stronie napedu ustaw przelacznik 1 w pozycji OFF.',
-          'Nacisnij przycisk PRG: wskaznik powinien swiecic stale na kolor magenta.',
           'Wlacz Bluetooth w telefonie, a nastepnie uruchom wyszukiwanie w aplikacji.',
+          'Nacisnij przycisk PRG: wskaznik powinien swiecic stale na kolor magenta.',
           'Wybierz wykryty produkt MOVENTIV lub GARLINE, aby rozpoczac polaczenie.',
         ],
       },
-      troubleshooting: {
-        title: 'Problemy z parowaniem',
-        steps: [
-          'Sprawdz, czy Bluetooth jest wlaczony w smartfonie.',
-          'Zbliz telefon do napedu i ponownie uruchom wyszukiwanie.',
-          'Sprawdz, czy naped nie jest juz polaczony z innym telefonem.',
-          'Jesli stare parowanie blokuje polaczenie, usun je w ustawieniach Bluetooth telefonu.',
-        ],
-      },
+      troubleshooting: PL_PAIRING_TROUBLESHOOTING,
     },
   },
 };
@@ -265,43 +240,52 @@ export function helpProductTextFor(
 ): HelpProductText {
   const text = helpPageTextFor(language);
   const productText = text.productHelp[product];
-  const note = platform === 'ios'
-    ? iosPairingNote(resolveAppLanguage(language))
-    : androidPairingNote(resolveAppLanguage(language));
 
   return {
     ...productText,
     pairing: {
       ...productText.pairing,
-      note,
+      steps: [
+        ...productText.pairing.steps,
+        platformPairingStep(resolveAppLanguage(language), platform),
+      ],
     },
   };
 }
 
-function androidPairingNote(language: AppLanguage): string {
+function platformPairingStep(
+  language: AppLanguage,
+  platform: HelpPlatform,
+): string {
+  return platform === 'ios'
+    ? iosPairingStep(language)
+    : androidPairingStep(language);
+}
+
+function androidPairingStep(language: AppLanguage): string {
   switch (language) {
     case 'fr':
-      return 'Sur Android recent, la recherche BLE se fait dans l\u2019application : il n\u2019est pas necessaire d\u2019activer le GPS.';
+      return 'Appuyez sur \u00ab Associer \u00bb lorsque la fenetre d\u2019appairage Android apparait.';
     case 'de':
-      return 'Auf aktuellen Android-Versionen erfolgt die BLE-Suche in der App; GPS muss nicht aktiviert werden.';
+      return 'Tippen Sie auf \u00ab Koppeln \u00bb, wenn das Android-Kopplungsfenster erscheint.';
     case 'pl':
-      return 'W nowszych wersjach Androida skanowanie BLE odbywa sie w aplikacji; wlaczanie GPS nie jest wymagane.';
+      return 'Nacisnij \u00ab Sparuj \u00bb, gdy pojawi sie okno parowania systemu Android.';
     case 'en':
     default:
-      return 'On recent Android versions, BLE discovery is handled in the app; GPS does not need to be enabled.';
+      return 'Tap \u00ab Pair \u00bb when the Android pairing dialog appears.';
   }
 }
 
-function iosPairingNote(language: AppLanguage): string {
+function iosPairingStep(language: AppLanguage): string {
   switch (language) {
     case 'fr':
-      return 'Sur iOS, acceptez la demande de jumelage si le systeme l\u2019affiche pendant la connexion.';
+      return 'Appuyez sur \u00ab Jumeler \u00bb lorsque la fenetre d\u2019appairage iOS apparait.';
     case 'de':
-      return 'Unter iOS bestatigen Sie die Kopplungsanfrage, falls das System sie wahrend der Verbindung anzeigt.';
+      return 'Tippen Sie auf \u00ab Koppeln \u00bb, wenn das iOS-Kopplungsfenster erscheint.';
     case 'pl':
-      return 'W systemie iOS zaakceptuj prosbe o parowanie, jesli pojawi sie podczas polaczenia.';
+      return 'Nacisnij \u00ab Polacz w pare \u00bb, gdy pojawi sie okno parowania systemu iOS.';
     case 'en':
     default:
-      return 'On iOS, accept the pairing request if the system displays it during connection.';
+      return 'Tap \u00ab Pair \u00bb when the iOS pairing dialog appears.';
   }
 }

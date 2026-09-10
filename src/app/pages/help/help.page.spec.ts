@@ -99,14 +99,20 @@ describe('HelpPage', () => {
       .not.toBeNull();
   });
 
-  it('uses iOS specific pairing guidance when relevant', async () => {
+  it('renders the iOS native pairing action as the sixth step', async () => {
     storeManualAppLanguage('en');
     const fixture = await createPage('ios');
 
     fixture.componentInstance.selectProduct('widoor');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('pairing request');
+    const pairingSteps = fixture.nativeElement.querySelectorAll(
+      '[data-help-section="pairing"] li',
+    );
+
+    expect(pairingSteps.length).toBe(6);
+    expect(pairingSteps[5].textContent)
+      .toContain('Tap \u00ab Pair \u00bb');
   });
 
   it('keeps help sections as purely UI accordions', async () => {

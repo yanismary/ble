@@ -59,6 +59,10 @@
   z-index: 1;
 }
 
+.ios .main-menu-destination-navbar ion-back-button {
+  --color: var(--mantion-blue-contrast);
+}
+
 .mantion-page-background {
   --background: var(--mantion-page-background);
 }
