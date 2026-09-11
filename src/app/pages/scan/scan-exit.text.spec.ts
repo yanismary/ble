@@ -8,7 +8,7 @@ describe('scanExitTextFor', () => {
       exit: 'Quitter',
     });
     expect(scanExitTextFor('en')).toEqual({
-      message: 'Would you like to exit application ?',
+      message: 'Would you like to exit the application?',
       cancel: 'Cancel',
       exit: 'Exit',
     });

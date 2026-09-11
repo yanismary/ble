@@ -9,7 +9,7 @@
         type="button"
         fill="clear"
         class="product-navbar-button product-back-button"
-        aria-label="Retour"
+        [attr.aria-label]="text.backToScan"
         [disabled]="returningToScan"
         (click)="backToScan()"
       >
@@ -176,7 +176,7 @@
                   type="button"
                   size="small"
                   fill="clear"
-                  [attr.aria-label]="lockModeControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                  [attr.aria-label]="lockModeControlUnlocked ? text.user.lockSetting : text.user.unlockSetting"
                   (click)="toggleLockModeControlLock()"
                 >
                   <img
@@ -211,12 +211,12 @@
             <div class="cmd-list user-peripheral-command-controls">
               @if (!usesMoventivLayout) {
               <div class="cmd-head">
-                <h3>Éclairage</h3>
+                <h3>{{ text.user.lighting }}</h3>
                 <ion-button
                   type="button"
                   size="small"
                   fill="clear"
-                  [attr.aria-label]="userPeripheralControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                  [attr.aria-label]="userPeripheralControlUnlocked ? text.user.lockSetting : text.user.unlockSetting"
                   (click)="toggleUserPeripheralControlLock()"
                 >
                   <img
@@ -309,7 +309,7 @@
                     <ion-button
                       type="button"
                       fill="clear"
-                      [attr.aria-label]="userPeripheralControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      [attr.aria-label]="userPeripheralControlUnlocked ? text.user.lockSetting : text.user.unlockSetting"
                       (click)="toggleUserPeripheralControlLock()"
                     >
                       <img
@@ -367,7 +367,7 @@
                     <ion-button
                       type="button"
                       fill="clear"
-                      [attr.aria-label]="isUserSpeedUnlocked(speedControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      [attr.aria-label]="isUserSpeedUnlocked(speedControl.config) ? text.user.lockSetting : text.user.unlockSetting"
                       (click)="$event.stopPropagation(); toggleUserSpeedLock(speedControl.config)"
                     >
                       @if (usesPhase1SliderInteraction) {
@@ -420,7 +420,7 @@
                         slot="end"
                         [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                         [attr.aria-expanded]="isUserSpeedPrecisionOpen(speedControl.config)"
-                        aria-label="Afficher le réglage précis"
+                        [attr.aria-label]="text.shell.showPrecision"
                         (click)="toggleUserSpeedPrecision(speedControl.config, $event)"
                       >
                         <ion-icon
@@ -431,11 +431,11 @@
                     }
                   </ion-item>
                   @if (isUserSpeedUnlocked(speedControl.config) && (!usesPhase1SliderInteraction || isUserSpeedPrecisionOpen(speedControl.config))) {
-                    <div class="basic-precision-row" aria-label="Réglage précis">
+                    <div class="basic-precision-row" [attr.aria-label]="text.shell.preciseAdjustment">
                       <ion-button
                         type="button"
                         fill="outline"
-                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.decrease : 'Diminuer de 1'"
+                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.decrease : text.shell.decreaseByOne"
                         [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                         (click)="stepUserSpeedDraft(speedControl.config, -1)"
                       >
@@ -450,7 +450,7 @@
                       <ion-button
                         type="button"
                         fill="outline"
-                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.increase : 'Augmenter de 1'"
+                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.increase : text.shell.increaseByOne"
                         [disabled]="!isUserSpeedUnlocked(speedControl.config)"
                         (click)="stepUserSpeedDraft(speedControl.config, 1)"
                       >
@@ -502,7 +502,7 @@
                     <ion-button
                       type="button"
                       fill="clear"
-                      [attr.aria-label]="isUserTimingUnlocked(timingControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      [attr.aria-label]="isUserTimingUnlocked(timingControl.config) ? text.user.lockSetting : text.user.unlockSetting"
                       (click)="$event.stopPropagation(); toggleUserTimingLock(timingControl.config)"
                     >
                       @if (usesPhase1SliderInteraction) {
@@ -555,7 +555,7 @@
                         slot="end"
                         [disabled]="!isUserTimingUnlocked(timingControl.config)"
                         [attr.aria-expanded]="isUserTimingPrecisionOpen(timingControl.config)"
-                        aria-label="Afficher le réglage précis"
+                        [attr.aria-label]="text.shell.showPrecision"
                         (click)="toggleUserTimingPrecision(timingControl.config, $event)"
                       >
                         <ion-icon
@@ -566,11 +566,11 @@
                     }
                   </ion-item>
                   @if (isUserTimingUnlocked(timingControl.config) && (!usesPhase1SliderInteraction || isUserTimingPrecisionOpen(timingControl.config))) {
-                    <div class="basic-precision-row" aria-label="Réglage précis">
+                    <div class="basic-precision-row" [attr.aria-label]="text.shell.preciseAdjustment">
                       <ion-button
                         type="button"
                         fill="outline"
-                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.decrease : 'Diminuer de 1'"
+                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.decrease : text.shell.decreaseByOne"
                         [disabled]="!isUserTimingUnlocked(timingControl.config)"
                         (click)="stepUserTimingDraft(timingControl.config, -1)"
                       >
@@ -588,7 +588,7 @@
                       <ion-button
                         type="button"
                         fill="outline"
-                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.increase : 'Augmenter de 1'"
+                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.increase : text.shell.increaseByOne"
                         [disabled]="!isUserTimingUnlocked(timingControl.config)"
                         (click)="stepUserTimingDraft(timingControl.config, 1)"
                       >
@@ -636,7 +636,7 @@
                   <ion-button
                     type="button"
                     fill="clear"
-                    [attr.aria-label]="weightRangeControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                    [attr.aria-label]="weightRangeControlUnlocked ? text.user.lockSetting : text.user.unlockSetting"
                     (click)="toggleWeightRangeControlLock()"
                   >
                     <img
@@ -707,7 +707,7 @@
                     <ion-button
                       type="button"
                       fill="clear"
-                      [attr.aria-label]="nameRoomControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      [attr.aria-label]="nameRoomControlUnlocked ? text.user.lockSetting : text.user.unlockSetting"
                       (click)="toggleNameRoomControlLock()"
                     >
                       <img
@@ -841,7 +841,7 @@
                       size="small"
                       fill="clear"
                       class="advanced-lock-button"
-                      [attr.aria-label]="expertInputControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      [attr.aria-label]="expertInputControlUnlocked ? text.user.lockSetting : text.user.unlockSetting"
                       (click)="toggleExpertInputControlLock()"
                     >
                       <img
@@ -936,7 +936,7 @@
                     size="small"
                     fill="clear"
                     class="advanced-lock-button"
-                    [attr.aria-label]="weightRangeControlUnlocked ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                    [attr.aria-label]="weightRangeControlUnlocked ? text.user.lockSetting : text.user.unlockSetting"
                     (click)="toggleWeightRangeControlLock()"
                   >
                     <img
@@ -1073,7 +1073,7 @@
                       size="small"
                       fill="clear"
                       class="advanced-lock-button"
-                      [attr.aria-label]="isExpertScalarUnlocked(scalarControl.config) ? 'Verrouiller le réglage' : 'Déverrouiller le réglage'"
+                      [attr.aria-label]="isExpertScalarUnlocked(scalarControl.config) ? text.user.lockSetting : text.user.unlockSetting"
                       (click)="$event.stopPropagation(); toggleExpertScalarLock(scalarControl.config)"
                     >
                       @if (usesPhase1SliderInteraction) {
@@ -1128,7 +1128,7 @@
                         slot="end"
                         [disabled]="!isExpertScalarUnlocked(scalarControl.config)"
                         [attr.aria-expanded]="isExpertScalarPrecisionOpen(scalarControl.config)"
-                        aria-label="Afficher le réglage précis"
+                        [attr.aria-label]="text.shell.showPrecision"
                         (click)="toggleExpertScalarPrecision(scalarControl.config, $event)"
                       >
                         <ion-icon
@@ -1141,14 +1141,14 @@
                   @if (isExpertScalarUnlocked(scalarControl.config) && (!usesPhase1SliderInteraction || isExpertScalarPrecisionOpen(scalarControl.config))) {
                     <div
                       class="advanced-precision-row"
-                      aria-label="Réglage précis"
+                      [attr.aria-label]="text.shell.preciseAdjustment"
                       [attr.data-professional-scalar-precision]="scalarControl.config.field"
                     >
                       <ion-button
                         type="button"
                         size="small"
                         fill="outline"
-                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.decrease : 'Diminuer de 1'"
+                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.decrease : text.shell.decreaseByOne"
                         (click)="stepExpertScalarDraft(scalarControl.config, -1)"
                       >
                         @if (usesPhase1SliderInteraction) {
@@ -1166,7 +1166,7 @@
                         type="button"
                         size="small"
                         fill="outline"
-                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.increase : 'Augmenter de 1'"
+                        [attr.aria-label]="usesPhase1SliderInteraction ? text.shell.increase : text.shell.increaseByOne"
                         (click)="stepExpertScalarDraft(scalarControl.config, 1)"
                       >
                         @if (usesPhase1SliderInteraction) {

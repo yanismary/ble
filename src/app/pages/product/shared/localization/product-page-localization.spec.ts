@@ -97,15 +97,15 @@ describe('product page localization', () => {
       .moventivCloseLockAlert.message).toContain('Nie b\u0119dzie mo\u017cna');
   });
 
-  it('uses the shared Phase 1 Moventiv labels for Garline', () => {
+  it('uses family labels for Garline while keeping its product name', () => {
     const moventiv = productPageTextFor('fr', 'moventiv-60');
     const garline = productPageTextFor('fr', 'garline');
 
     expect(garline.sections.expertSettings)
       .toBe(moventiv.sections.expertSettings);
     expect(garline.user.staticLight).toBe(moventiv.user.staticLight);
-    expect(garline.nameRoomControls.nameLabel)
-      .toBe(moventiv.nameRoomControls.nameLabel);
+    expect(garline.nameRoomControls.nameLabel).toContain('GARLINE');
+    expect(moventiv.nameRoomControls.nameLabel).toContain('MOVENTIV');
     expect(garline.expertAccess.expertTitle)
       .toBe(moventiv.expertAccess.expertTitle);
     expect(garline.information.currentWeightProfile)

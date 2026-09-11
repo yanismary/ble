@@ -52,10 +52,10 @@ const SETTINGS_TEXT: Record<AppLanguage, SettingsPageText> = {
     selectCancel: 'Annuler',
     selectOk: 'Valider',
     sections: {
-      language: 'Langage',
-      scan: 'Affichage de l\'adresse MAC',
+      language: 'Langue',
+      scan: 'Identification Bluetooth',
       productTabs: 'Affichage des onglets',
-      other: 'Option',
+      other: 'Options',
     },
     language: {
       automatic: 'D\u00e9tection automatique de la langue',
@@ -72,7 +72,7 @@ const SETTINGS_TEXT: Record<AppLanguage, SettingsPageText> = {
       information: 'Informations',
     },
     other: {
-      haptics: 'Retour vibrations',
+      haptics: 'Retour haptique',
       bluetooth: 'Activation/d\u00e9sactivation automatique Bluetooth',
     },
     status: {
@@ -99,27 +99,27 @@ const SETTINGS_TEXT: Record<AppLanguage, SettingsPageText> = {
     selectOk: 'OK',
     sections: {
       language: 'Language',
-      scan: 'Scan page',
-      productTabs: 'Display of the tab pages',
+      scan: 'Bluetooth identification',
+      productTabs: 'Tab display',
       other: 'Options',
     },
     language: {
       automatic: 'Language auto-detection',
-      manual: 'Select your langage',
+      manual: 'Select your language',
       status: (language) =>
         `Automatic mode active - current language: ${language}.`,
     },
     scan: {
-      showBleIdentifierAndroid: 'Display of MAC address',
-      showBleIdentifierIos: 'Display of UUID',
+      showBleIdentifierAndroid: 'Show MAC address',
+      showBleIdentifierIos: 'Show UUID',
     },
     productTabs: {
       settings: 'Tuning',
-      information: 'Informations',
+      information: 'Information',
     },
     other: {
-      haptics: 'Rumble feedback',
-      bluetooth: 'Enable/disable automatic Bluetooth switch',
+      haptics: 'Haptic feedback',
+      bluetooth: 'Automatically enable/disable Bluetooth',
     },
     status: {
       manualLanguage:
@@ -131,19 +131,19 @@ const SETTINGS_TEXT: Record<AppLanguage, SettingsPageText> = {
       hideSettings: 'Product settings hidden.',
       showInformation: 'Product information shown.',
       hideInformation: 'Product information hidden.',
-      enableBluetooth: 'Automatic Bluetooth enable active for scans.',
-      disableBluetooth: 'Automatic Bluetooth enable disabled.',
+      enableBluetooth: 'Automatic Bluetooth activation enabled for scans.',
+      disableBluetooth: 'Automatic Bluetooth activation disabled.',
       enableHaptics: 'Vibration enabled.',
       disableHaptics: 'Vibration disabled.',
     },
   },
   de: {
-    title: 'App Einstellungen',
+    title: 'App-Einstellungen',
     selectCancel: 'Abbrechen',
     selectOk: 'OK',
     sections: {
       language: 'Sprache',
-      scan: 'Anzeige der MAC Adresse',
+      scan: 'Bluetooth-Kennung',
       productTabs: 'Ansicht der Tabs',
       other: 'Optionen',
     },
@@ -154,7 +154,7 @@ const SETTINGS_TEXT: Record<AppLanguage, SettingsPageText> = {
         `Automatikmodus aktiv - aktuelle Sprache: ${language}.`,
     },
     scan: {
-      showBleIdentifierAndroid: 'Anzeige der MAC Adresse',
+      showBleIdentifierAndroid: 'Anzeige der MAC-Adresse',
       showBleIdentifierIos: 'Anzeige der UUID',
     },
     productTabs: {
@@ -163,7 +163,7 @@ const SETTINGS_TEXT: Record<AppLanguage, SettingsPageText> = {
     },
     other: {
       haptics: 'Vibration',
-      bluetooth: 'Aktiviere/deaktiviere Bluetooth automatisch',
+      bluetooth: 'Bluetooth automatisch aktivieren/deaktivieren',
     },
     status: {
       manualLanguage:
@@ -188,7 +188,7 @@ const SETTINGS_TEXT: Record<AppLanguage, SettingsPageText> = {
     selectOk: 'OK',
     sections: {
       language: 'J\u0119zyk',
-      scan: 'Wy\u015bwietlanie adresu MAC',
+      scan: 'Identyfikacja Bluetooth',
       productTabs: 'Wy\u015bwietlanie zak\u0142adek',
       other: 'Opcje',
     },

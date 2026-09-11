@@ -63,11 +63,11 @@ interface LegacyContactCopy {
 
 const APP_INFO_NAV_LABELS = {
   "fr": {
-    "who": "Qui sommes nous ?",
+    "who": "Qui sommes-nous ?",
     "legal": "Mentions légales"
   },
   "en": {
-    "who": "Who are we ?",
+    "who": "Who are we?",
     "legal": "Legal notice"
   },
   "de": {
@@ -85,10 +85,10 @@ const PHASE2_SUPPORT_EMAIL = 'appsupport@mantion-smt.fr';
 const LEGACY_APP_INFO = {
   "fr": {
     "ABOUT_PAGE": {
-      "NAVBAR_TITLE": "A propos",
+      "NAVBAR_TITLE": "À propos",
       "CONTENT_TITLE": "MANTION Door Control",
       "VERSION": "Version :",
-      "LAST_MODIFICATION": "Dernières modifications : ",
+      "LAST_MODIFICATION": "Dernières modifications :",
       "PARAGRAPHE1": "Nouvelle application regroupant les anciennes applications MANTION. Les fonctionnalités principales restent identiques, avec une meilleure stabilité et une interface utilisateur améliorée.",
       "PARAGRAPHE2": "Ajout d'un avertissement lors du changement de poids",
       "PARAGRAPHE2_LIST": {
@@ -96,8 +96,8 @@ const LEGACY_APP_INFO = {
         "ITEM2": "",
         "ITEM3": ""
       },
-      "PARAGRAPHE3": "Ajout de cette page (A propos), Ajout de la page : Qui sommes nous ?",
-      "PARAGRAPHE4": "Ajout de la plage de poids 60-80kg (moteur aprés SN-2307 seulement)"
+      "PARAGRAPHE3": "Ajout de cette page (À propos) et de la page « Qui sommes-nous ? »",
+      "PARAGRAPHE4": "Ajout de la plage de poids 60-80 kg (uniquement pour les moteurs après SN-2307)"
     },
     "CONTACT_PAGE": {
       "NAVBAR_TITLE": "Contact",
@@ -127,7 +127,7 @@ const LEGACY_APP_INFO = {
         },
         "ADDRESS": {
           "NAME": "MANTION SMT",
-          "STATE": "FRANCE",
+          "STATE": "France",
           "STREET": "2 rue des métiers",
           "CITY": "21110 Genlis"
         },
@@ -144,17 +144,17 @@ const LEGACY_APP_INFO = {
     "ABOUT_PAGE": {
       "NAVBAR_TITLE": "About",
       "CONTENT_TITLE": "MANTION Door Control",
-      "VERSION": "Version :",
-      "LAST_MODIFICATION": "Last modifications : ",
-      "PARAGRAPHE1": "New application bringing together the previous MANTION apps. The main features remain the same, with improved stability and an improved user interface.",
-      "PARAGRAPHE2": "Addition of a warning when changing weight",
+      "VERSION": "Version:",
+      "LAST_MODIFICATION": "Latest changes:",
+      "PARAGRAPHE1": "New application bringing together the previous MANTION apps. The main features remain the same, with improved stability and user interface.",
+      "PARAGRAPHE2": "Added a warning when changing the weight",
       "PARAGRAPHE2_LIST": {
         "ITEM1": "",
         "ITEM2": "",
         "ITEM3": ""
       },
-      "PARAGRAPHE3": "Adding this page (About), Adding the page: Who are we?",
-      "PARAGRAPHE4": "Added weight range 60-80kg (motor after SN-2307 only)"
+      "PARAGRAPHE3": "Added the About and Who are we? pages",
+      "PARAGRAPHE4": "Added the 60-80 kg weight range (motors after SN-2307 only)"
     },
     "CONTACT_PAGE": {
       "NAVBAR_TITLE": "Contact",
@@ -184,7 +184,7 @@ const LEGACY_APP_INFO = {
         },
         "ADDRESS": {
           "NAME": "MANTION SMT",
-          "STATE": "FRANCE",
+          "STATE": "France",
           "STREET": "2 rue des métiers",
           "CITY": "21110 Genlis"
         },
@@ -199,31 +199,31 @@ const LEGACY_APP_INFO = {
   },
   "de": {
     "ABOUT_PAGE": {
-      "NAVBAR_TITLE": "Über",
+      "NAVBAR_TITLE": "Über uns",
       "CONTENT_TITLE": "MANTION Door Control",
-      "VERSION": "Version :",
-      "LAST_MODIFICATION": "Letzte Änderungen : ",
+      "VERSION": "Version:",
+      "LAST_MODIFICATION": "Letzte Änderungen:",
       "PARAGRAPHE1": "Neue Anwendung, die die bisherigen MANTION Apps zusammenführt. Die Hauptfunktionen bleiben unverändert, mit besserer Stabilität und einer verbesserten Benutzeroberfläche.",
-      "PARAGRAPHE2": "Hinzufügen einer Warnung beim Ändern des Gewichts",
+      "PARAGRAPHE2": "Warnhinweis beim Ändern des Gewichts hinzugefügt",
       "PARAGRAPHE2_LIST": {
         "ITEM1": "",
         "ITEM2": "",
         "ITEM3": ""
       },
-      "PARAGRAPHE3": "Hinzufügen dieser Seite (Über), Hinzufügen der Seite: Wer sind wir?",
-      "PARAGRAPHE4": "Gewichtsbereich 60-80kg hinzugefügt (nur Motor nach SN-2307)"
+      "PARAGRAPHE3": "Die Seiten „Über uns“ und „Wer sind wir?“ wurden hinzugefügt",
+      "PARAGRAPHE4": "Gewichtsbereich 60-80 kg hinzugefügt (nur Motoren nach SN-2307)"
     },
     "CONTACT_PAGE": {
       "NAVBAR_TITLE": "Kontakt",
       "SEND_A_MESSAGE": "Senden Sie eine Nachricht",
       "CONTACT_1": {
         "PHONE": {
-          "USERSEE": "Tél +33 (0)3 81 50 56 77",
+          "USERSEE": "Tel. +33 (0)3 81 50 56 77",
           "SYSTEMCALL": "492056582690"
         },
         "ADDRESS": {
           "NAME": "MANTION SAS",
-          "STATE": "FRANCE",
+          "STATE": "Frankreich",
           "STREET": "7 rue Gay Lussac",
           "CITY": "25000 BESANÇON"
         },
@@ -260,7 +260,7 @@ const LEGACY_APP_INFO = {
       "CONTENT_TITLE": "MANTION Door Control",
       "VERSION": "Wersja:",
       "LAST_MODIFICATION": "Ostatnie modyfikacje:",
-      "PARAGRAPHE1": "Lista wyboru wagi zapamiętuje ostatnio wybraną wartość.",
+      "PARAGRAPHE1": "Nowa aplikacja łączy wcześniejsze aplikacje MANTION. Główne funkcje pozostają bez zmian, a stabilność i interfejs użytkownika zostały ulepszone.",
       "PARAGRAPHE2": "Dodanie ostrzeżenia przy zmianie wagi.",
       "PARAGRAPHE2_LIST": {
         "ITEM1": "",
@@ -298,7 +298,7 @@ const LEGACY_APP_INFO = {
         },
         "ADDRESS": {
           "NAME": "MANTION SMT",
-          "STATE": "FRANCE",
+          "STATE": "FRANCJA",
           "STREET": "2 rue des métiers",
           "CITY": "21110 Genlis"
         },

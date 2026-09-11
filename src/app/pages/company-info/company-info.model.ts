@@ -34,46 +34,46 @@ interface LegacyCompanyInfoCopy {
 
 const LEGACY_WHO = {
   "fr": {
-    "NAVBAR_TITLE": "Qui sommes nous ?",
+    "NAVBAR_TITLE": "Qui sommes-nous ?",
     "CONTENT_TITLE": "MANTION SMT",
     "CONTENT_SUBTITLE": "LE SPÉCIALISTE DE LA MOTORISATION POUR L'HABITAT",
     "PARGRAPH1": "De la conception à la réalisation, de la fabrication à la commercialisation, MANTION SMT vous accompagne dans vos projets de motorisation, grâce à une équipe soucieuse de répondre à vos besoins.",
-    "PARGRAPH2": "MANTION SMT propose une gamme complète de produits de qualité, garantis 5 ans",
+    "PARGRAPH2": "MANTION SMT propose une gamme complète de produits de qualité, garantis 5 ans.",
     "PARGRAPH2_LIST": {
       "ITEM1": "Motorisations pour volets battants",
       "ITEM2": "Motorisations pour volets coulissants",
       "ITEM3": "Motorisations pour portes intérieures coulissantes"
     },
     "PARGRAPH3": "Les produits MANTION SMT sont innovants et brevetés. Ils apportent un confort important et une réelle avancée dans le domaine de l'aide à la personne.",
-    "PARGRAPH4": "Des solutions simples aux solutions les plus élaborées, MANTION SMT met son savoir faire à votre disposition afin de vous satisfaire. Le département MANTION SMT réalise des produits \"à la carte\" (devis sur demande)",
+    "PARGRAPH4": "Des solutions simples aux solutions les plus élaborées, MANTION SMT met son savoir-faire à votre disposition afin de répondre à vos besoins. Le département MANTION SMT réalise des produits \"à la carte\" (devis sur demande).",
     "ADDRESS": {
       "PRESENTATION": "L’ensemble des services commerciaux, la R&D, la fabrication, les services administratifs ainsi qu’une salle d’exposition sont situés :",
       "LOCALIZATION": "2, rue des métiers, ZA de la Tille, 21110 GENLIS (France)"
     }
   },
   "en": {
-    "NAVBAR_TITLE": "Who are we ?",
+    "NAVBAR_TITLE": "Who are we?",
     "CONTENT_TITLE": "MANTION SMT",
-    "CONTENT_SUBTITLE": "The specialist in motors for home",
-    "PARGRAPH1": "From design to completion, from manufacturing to marketing, MANTION SMT support you in your  projects, thanks to a team committed to respond to your requests.",
-    "PARGRAPH2": "MANTION SMT offers a wide range of high quality products, with 5 years warranty",
+    "CONTENT_SUBTITLE": "THE SPECIALIST IN HOME AUTOMATION MOTORS",
+    "PARGRAPH1": "From design and manufacturing to marketing, MANTION SMT supports your automation projects with a team committed to meeting your needs.",
+    "PARGRAPH2": "MANTION SMT offers a comprehensive range of high-quality products with a 5-year warranty.",
     "PARGRAPH2_LIST": {
-      "ITEM1": "Hinged shutters motors",
-      "ITEM2": "Sliding shutters motors",
-      "ITEM3": "Sliding indoor doors motors"
+      "ITEM1": "Motors for hinged shutters",
+      "ITEM2": "Motors for sliding shutters",
+      "ITEM3": "Motors for sliding interior doors"
     },
-    "PARGRAPH3": "MANTION SMT products are innovating and patented. They provide an important comfort and a real progress in the field of aid to individuals.",
-    "PARGRAPH4": "From simple solutions to the most elaborated solutions, MANTION SMT puts their knowledge at your disposal to completely meet your needs. MANTION SMT manufacture products upon application (quotation on demand)",
+    "PARGRAPH3": "MANTION SMT products are innovative and patented. They provide greater comfort and genuine progress in solutions that assist people in their daily lives.",
+    "PARGRAPH4": "From simple systems to the most advanced solutions, MANTION SMT puts its expertise at your disposal to meet your needs. MANTION SMT also manufactures custom products (quotation on request).",
     "ADDRESS": {
-      "PRESENTATION": "All commercial services, the research and development service, the manufacturing, and administrative services are located :",
-      "LOCALIZATION": "2, rue des métiers, ZA de la Tille, 21110 GENLIS (FRANCE)"
+      "PRESENTATION": "The sales, research and development, manufacturing and administrative departments, as well as a showroom, are located at:",
+      "LOCALIZATION": "2, rue des Métiers, ZA de la Tille, 21110 GENLIS (France)"
     }
   },
   "de": {
     "NAVBAR_TITLE": "Wer sind wir?",
     "CONTENT_TITLE": "MANTION SMT",
-    "CONTENT_SUBTITLE": "Der Spezialist für Heimmotoren",
-    "PARGRAPH1": "Vom Design bis zur Entwicklung, von der Herstellung bis zum Marketing, unterstützt Sie MANTION SMT bei Ihren Projekten mit einem Team, das sich vollstens um Ihre Zufriedenheit bemüht.",
+    "CONTENT_SUBTITLE": "DER SPEZIALIST FÜR ANTRIEBE IM WOHNBEREICH",
+    "PARGRAPH1": "Von der Entwicklung über die Herstellung bis zur Vermarktung begleitet MANTION SMT Ihre Antriebsprojekte mit einem Team, das sich engagiert um Ihre Anforderungen kümmert.",
     "PARGRAPH2": "MANTION SMT bietet ein breites Sortiment an Qualitätsprodukten mit 5 Jahren Garantie.",
     "PARGRAPH2_LIST": {
       "ITEM1": "Motoren für Klappläden",
@@ -81,9 +81,9 @@ const LEGACY_WHO = {
       "ITEM3": "Motoren für Schiebetüren im Innenbereich"
     },
     "PARGRAPH3": "MANTION SMT Produkte sind innovativ und patentiert. Sie bieten wichtigen Komfort und echten Fortschritt im Bereich der Motorisierung Ihres Zuhauses.",
-    "PARGRAPH4": "MANTION SMT bieten Ihnen von einfachen bis komplexen Lösungen alles, um Ihren Ansprüchen gerecht zu werden. MANTION SMT stellt auch auf Ihre Wünsche individuell zugeschnitten Produkte her. (Preis auf Anfrage.)",
+    "PARGRAPH4": "MANTION SMT bietet Ihnen von einfachen bis zu komplexen Lösungen alles, um Ihren Anforderungen gerecht zu werden. MANTION SMT stellt auch individuell auf Ihre Wünsche zugeschnittene Produkte her (Preis auf Anfrage).",
     "ADDRESS": {
-      "PRESENTATION": "Alle kommerziellen Dienstleistungen, die Forschungs- und Entwicklungsabteilung, die Herstellung sowie alle administrativen Dienste haben Ihren Standort hier:",
+      "PRESENTATION": "Vertrieb, Forschung und Entwicklung, Fertigung und Verwaltung sowie ein Ausstellungsraum befinden sich an folgendem Standort:",
       "LOCALIZATION": "2, rue des métiers, ZA de la Tille, 21110 GENLIS (Frankreich)"
     }
   },
@@ -102,7 +102,7 @@ const LEGACY_WHO = {
     "PARGRAPH4": "Od prostych instalacji po kompleksowe projekty — eksperci MANTION SMT są gotowi sprostać każdemu wyzwaniu. Produkcja na zamówienie — wycena na żądanie.",
     "ADDRESS": {
       "PRESENTATION": "Siedziba firmy, w której mieszczą się działy handlowy, badań i rozwoju, produkcji oraz administracji:",
-      "LOCALIZATION": "2, rue des Métiers, Z.A. de la Tille, 21110 GENLIS (FRANCE)"
+      "LOCALIZATION": "2, rue des Métiers, Z.A. de la Tille, 21110 GENLIS (Francja)"
     }
   }
 } as const satisfies Readonly<

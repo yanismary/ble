@@ -1,4 +1,5 @@
 import { PRODUCT_PAGE_TEXT } from './product-page-text';
+import { translatedProductPageTextFor } from './product-page-translations';
 
 export type ProductPageLanguage = 'fr' | 'en' | 'de' | 'pl';
 
@@ -42,10 +43,10 @@ const PRODUCT_LOCALIZED_LABELS = {
       "information": "Informations",
       "basic": "Basiques",
       "advanced": "Avancés",
-      "motorState": "Etats des switchs",
+      "motorState": "États des switchs",
       "general": "Informations générales",
       "version": "Versions des logiciels",
-      "hardware": "Materiel",
+      "hardware": "Matériel",
       "maintenance": "Maintenance"
     },
     "commands": {
@@ -56,11 +57,14 @@ const PRODUCT_LOCALIZED_LABELS = {
       "lockedClosed": "Porte condamnée en position fermée"
     },
     "user": {
+      "lighting": "Éclairage",
+      "lockSetting": "Verrouiller le réglage",
+      "unlockSetting": "Déverrouiller le réglage",
       "openSpeed": "Vitesse d'ouverture",
       "closeSpeed": "Vitesse de fermeture",
       "shortTiming": "Temporisation courte à la fermeture",
       "longTiming": "Temporisation longue à la fermeture",
-      "dynamicLight": "Eclairage lors de l'ouverture",
+      "dynamicLight": "Éclairage lors de l'ouverture",
       "rgb": "LED Principale",
       "nameRoom": "Nom et localisation",
       "nameLabel": "Modifier le nom de votre WIDOOR",
@@ -86,7 +90,7 @@ const PRODUCT_LOCALIZED_LABELS = {
       "nearOpenTorque": "Force en fin d'ouverture",
       "nearCloseTorque": "Force en fin de fermeture",
       "brakingOpenPower": "Freinage en ouverture",
-      "obstacleSensitivity": "Sensibilité de la detection d'obstacle",
+      "obstacleSensitivity": "Sensibilité de la détection d'obstacle",
       "breakForceAtOpen": "Force de freinage à l'ouverture"
     },
     "inputs": {
@@ -110,7 +114,7 @@ const PRODUCT_LOCALIZED_LABELS = {
     },
     "maintenance": {
       "initializationCount": "Nombre de redémarrages",
-      "cyclesSinceInitialization": "Nombre de cycle depuis le dernier redémarrage",
+      "cyclesSinceInitialization": "Nombre de cycles depuis le dernier redémarrage",
       "obstacleDetectionCount": "Nombre de détections d'obstacles",
       "wrongStopOpenCount": "Nombre de mauvaises arrivées en ouverture",
       "wrongStopCloseCount": "Nombre de mauvaises arrivées en fermeture",
@@ -153,7 +157,7 @@ const PRODUCT_LOCALIZED_LABELS = {
       "currentWeightProfile": "Profil actuel",
       "maximumWeight": "Poids maximum autorisé",
       "weightSelectTitle": "Sélectionner le poids de la porte",
-      "weightWarning": "ATTENTION : La modification de ce paramètre entrainera la réinitialisation des paramètres de vitesse !",
+      "weightWarning": "ATTENTION : La modification de ce paramètre entraînera la réinitialisation des paramètres de vitesse !",
       "weightCancel": "Annuler",
       "weightConfirm": "Valider",
       "directionLeft": "opposé sortie câbles",
@@ -162,16 +166,16 @@ const PRODUCT_LOCALIZED_LABELS = {
   },
   "en": {
     "sections": {
-      "navbarTitle": "Command",
+      "navbarTitle": "Commands",
       "commands": "Commands",
       "settings": "Tuning",
-      "information": "Informations",
+      "information": "Information",
       "basic": "Basic",
       "advanced": "Advanced",
       "motorState": "Switch states",
-      "general": "General informations",
-      "version": "Firmwares versions",
-      "hardware": "Hardware version",
+      "general": "General information",
+      "version": "Firmware versions",
+      "hardware": "Hardware",
       "maintenance": "Maintenance"
     },
     "commands": {
@@ -182,6 +186,9 @@ const PRODUCT_LOCALIZED_LABELS = {
       "lockedClosed": "Door locked in closed position"
     },
     "user": {
+      "lighting": "Lighting",
+      "lockSetting": "Lock setting",
+      "unlockSetting": "Unlock setting",
       "openSpeed": "Open speed",
       "closeSpeed": "Close speed",
       "shortTiming": "Short delay before closing",
@@ -202,21 +209,21 @@ const PRODUCT_LOCALIZED_LABELS = {
       "kitchen": "Kitchen",
       "bathroom": "Bathroom",
       "toilet": "Toilet",
-      "garageUtilityRoom": "Garage / utilityroom",
+      "garageUtilityRoom": "Garage / utility room",
       "playroom": "Playroom"
     },
     "expert": {
       "weightRange": "Weight tuning",
       "nearOpenSpeed": "Speed at end of open",
       "nearCloseSpeed": "Speed at end of close",
-      "nearOpenTorque": "Strenght at end of open",
-      "nearCloseTorque": "Strenght at end of close",
-      "brakingOpenPower": "Braking in open",
-      "obstacleSensitivity": "Obstacle detection sensibility",
-      "breakForceAtOpen": "Break power at open"
+      "nearOpenTorque": "Force at end of opening",
+      "nearCloseTorque": "Force at end of closing",
+      "brakingOpenPower": "Braking on opening",
+      "obstacleSensitivity": "Obstacle detection sensitivity",
+      "breakForceAtOpen": "Braking force on opening"
     },
     "inputs": {
-      "title": "Configuration of inputs",
+      "title": "Input configuration",
       "input1": "Input 1",
       "input2": "Input 2",
       "radar": "Radar",
@@ -226,7 +233,7 @@ const PRODUCT_LOCALIZED_LABELS = {
       "firstCommissioning": "Date of the first use",
       "lastMaintenance": "Date of the last maintenance",
       "totalCycles": "Number of open/close cycles since the first use",
-      "cyclesSinceMaintenance": "Number of open/close cycles since the first use"
+      "cyclesSinceMaintenance": "Number of open/close cycles since the last maintenance"
     },
     "version": {
       "motor": "Door controller firmware",
@@ -235,12 +242,12 @@ const PRODUCT_LOCALIZED_LABELS = {
       "controlHardware": "Door controller"
     },
     "maintenance": {
-      "initializationCount": "Reboot numbers",
+      "initializationCount": "Number of restarts",
       "cyclesSinceInitialization": "Number of cycles since last reboot",
-      "obstacleDetectionCount": "Number of obstacles detections",
+      "obstacleDetectionCount": "Number of obstacle detections",
       "wrongStopOpenCount": "Number of wrong arrivals in open",
       "wrongStopCloseCount": "Number of wrong arrivals in close",
-      "learningCycleCount": "Number of learning",
+      "learningCycleCount": "Number of learning cycles",
       "encoderErrorCount": "Number of encoder errors",
       "motorErrorCount": "Number of motor errors"
     },
@@ -266,7 +273,7 @@ const PRODUCT_LOCALIZED_LABELS = {
       "reset": "Reset all parameters",
       "peripheralLock": "Locker",
       "outputsTitle": "Configuration of outputs",
-      "additionalTitle": "Additionnal commands",
+      "additionalTitle": "Additional commands",
       "maintenance": "Maintenance done",
       "setup": "Setup done"
     },
@@ -276,7 +283,7 @@ const PRODUCT_LOCALIZED_LABELS = {
       "expertTitle": "Expert settings",
       "expertMode": "Expert mode",
       "expertPlaceholder": "Enter password",
-      "currentWeightProfile": "Actuel weight profile",
+      "currentWeightProfile": "Current weight profile",
       "maximumWeight": "Maximum weight",
       "weightSelectTitle": "Select door weight",
       "weightWarning": "CAUTION: Changing this setting will reset the speed settings!",
@@ -296,8 +303,8 @@ const PRODUCT_LOCALIZED_LABELS = {
       "advanced": "Fortgeschrittene Einstellungen",
       "motorState": "Status",
       "general": "Allgemeine Informationen",
-      "version": "Firmware Versionen",
-      "hardware": "Hardware Version",
+      "version": "Firmware-Versionen",
+      "hardware": "Hardware-Version",
       "maintenance": "Wartung"
     },
     "commands": {
@@ -308,13 +315,16 @@ const PRODUCT_LOCALIZED_LABELS = {
       "lockedClosed": "Tür geschlossen halten"
     },
     "user": {
+      "lighting": "Beleuchtung",
+      "lockSetting": "Einstellung sperren",
+      "unlockSetting": "Einstellung entsperren",
       "openSpeed": "Öffnungsgeschwindigkeit",
       "closeSpeed": "Schließgeschwindigkeit",
       "shortTiming": "Schließverzögerung",
       "longTiming": "Lange Schließverzögerung",
-      "dynamicLight": "LED Leuchte während des Öffnens",
-      "rgb": "Haupt LED",
-      "nameRoom": "Name und Ort",
+      "dynamicLight": "LED-Leuchte während des Öffnens",
+      "rgb": "Haupt-LED",
+      "nameRoom": "Name und Raum",
       "nameLabel": "Ändern Sie den Namen Ihres WIDOOR Motors",
       "roomLabel": "Verknüpfen Sie den Raum Ihres WIDOOR Motors",
       "validate": "BESTÄTIGEN",
@@ -327,7 +337,7 @@ const PRODUCT_LOCALIZED_LABELS = {
       "diningRoom": "Esszimmer",
       "kitchen": "Küche",
       "bathroom": "Badezimmer",
-      "toilet": "Bad",
+      "toilet": "Toilette",
       "garageUtilityRoom": "Garage / Abstellraum",
       "playroom": "Spielzimmer"
     },
@@ -337,45 +347,45 @@ const PRODUCT_LOCALIZED_LABELS = {
       "nearCloseSpeed": "Endgeschwindigkeit beim Schließen",
       "nearOpenTorque": "Öffnungsende Drehmoment",
       "nearCloseTorque": "Schließungsende Drehmoment",
-      "brakingOpenPower": "Braking in open",
-      "obstacleSensitivity": "Obstacle detection sensibility",
+      "brakingOpenPower": "Bremsung beim Öffnen",
+      "obstacleSensitivity": "Empfindlichkeit der Hinderniserkennung",
       "breakForceAtOpen": "Abbremsung beim Öffnen"
     },
     "inputs": {
       "title": "Eingänge konfigurieren",
       "input1": "Eingang 1",
       "input2": "Eingang 2",
-      "radar": "Funk",
-      "button": "Kabel"
+      "radar": "Radar",
+      "button": "Taster"
     },
     "dates": {
       "firstCommissioning": "Datum der ersten Nutzung",
       "lastMaintenance": "Datum der letzten Wartung",
       "totalCycles": "Anzahl der Öffnungs- und Schließzyklen seit erster Nutzung",
-      "cyclesSinceMaintenance": "Anzahl der Öffnungs- und Schließzyklen seit erster Nutzung"
+      "cyclesSinceMaintenance": "Anzahl der Öffnungs- und Schließzyklen seit der letzten Wartung"
     },
     "version": {
-      "motor": "Tür Fernbedienung Firmware",
-      "ble": "Bluetooth Firmware",
-      "stack": "Bluetooth Stack Version",
-      "controlHardware": "Tür Fernbedienung"
+      "motor": "Firmware der Türsteuerung",
+      "ble": "Bluetooth-Firmware",
+      "stack": "Bluetooth-Stack-Version",
+      "controlHardware": "Türsteuerung"
     },
     "maintenance": {
-      "initializationCount": "Anzahl Neustarts",
+      "initializationCount": "Anzahl der Neustarts",
       "cyclesSinceInitialization": "Anzahl der Öffnungs- und Schließzyklen seit dem letzten Neustart",
       "obstacleDetectionCount": "Anzahl erkannter Hindernisse",
       "wrongStopOpenCount": "Anzahl falscher Öffnungen",
       "wrongStopCloseCount": "Anzahl falscher Schließungen",
       "learningCycleCount": "Lernanzahl",
-      "encoderErrorCount": "Anzahl Encoder Fehler",
-      "motorErrorCount": "Anzahl Motorfehler"
+      "encoderErrorCount": "Anzahl der Encoderfehler",
+      "motorErrorCount": "Anzahl der Motorfehler"
     },
     "motor": {
       "pushAndGo": "Push'n Go",
       "ble": "Bluetooth",
       "automaticManual": "Schließmodus",
       "direction": "Öffnen",
-      "pairing": "Verbunden / Anlernen"
+      "pairing": "Kopplung / Einlernen"
     },
     "motorStates": {
       "enabled": "Aktiviert",
@@ -394,12 +404,12 @@ const PRODUCT_LOCALIZED_LABELS = {
       "outputsTitle": "Ausgänge konfigurieren",
       "additionalTitle": "Weitere Befehle",
       "maintenance": "Wartung abgeschlossen",
-      "setup": "Einstellungen abgeschlossen"
+      "setup": "Inbetriebnahme abgeschlossen"
     },
     "moventiv": {
       "staticLight": "Aktivierung des LED",
       "advancedTuning": "Fortgeschrittene Justierung",
-      "expertTitle": "Experten Einstellungen",
+      "expertTitle": "Experteneinstellungen",
       "expertMode": "Expertenmodus",
       "expertPlaceholder": "Passwort eingeben",
       "currentWeightProfile": "Gewichtsprofil",
@@ -434,6 +444,9 @@ const PRODUCT_LOCALIZED_LABELS = {
       "lockedClosed": "Drzwi zablokowane w pozycji zamkniętej."
     },
     "user": {
+      "lighting": "Oświetlenie",
+      "lockSetting": "Zablokuj ustawienie",
+      "unlockSetting": "Odblokuj ustawienie",
       "openSpeed": "Prędkość otwierania",
       "closeSpeed": "Prędkość zamykania",
       "shortTiming": "Opóźnienie zamykania drzwi (sekundy)",
@@ -601,16 +614,22 @@ export function productPageTextFor(
 ) {
   const usesMoventivPage = profile?.startsWith('moventiv-') === true ||
     profile === 'garline';
+  const productName = profile === 'garline'
+    ? 'GARLINE'
+    : usesMoventivPage
+      ? 'MOVENTIV'
+      : 'WIDOOR';
   if (language === 'fr' && profile !== 'widoor' && !usesMoventivPage) {
     return PRODUCT_PAGE_TEXT;
   }
 
   const labels = PRODUCT_LOCALIZED_LABELS[language];
+  const baseText = translatedProductPageTextFor(language);
 
   return Object.freeze({
-    ...PRODUCT_PAGE_TEXT,
+    ...baseText,
     sections: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.sections,
+      ...baseText.sections,
       navbarTitle: labels.sections.navbarTitle,
       commands: labels.sections.commands,
       settings: labels.sections.settings,
@@ -622,57 +641,53 @@ export function productPageTextFor(
       maintenance: labels.sections.maintenance,
       expertSettings: usesMoventivPage
         ? labels.moventiv.advancedTuning
-        : PRODUCT_PAGE_TEXT.sections.expertSettings,
+        : baseText.sections.expertSettings,
     }),
     shell: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.shell,
+      ...baseText.shell,
       basic: labels.sections.basic,
       advanced: labels.sections.advanced,
       increase: labels.user.increase,
       decrease: labels.user.decrease,
     }),
     lockModeControls: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.lockModeControls,
+      ...baseText.lockModeControls,
       lockedOpen: Object.freeze({
-        ...PRODUCT_PAGE_TEXT.lockModeControls.lockedOpen,
+        ...baseText.lockModeControls.lockedOpen,
         label: labels.commands.lockedOpen,
       }),
       lockedClosed: Object.freeze({
-        ...PRODUCT_PAGE_TEXT.lockModeControls.lockedClosed,
+        ...baseText.lockModeControls.lockedClosed,
         label: labels.commands.lockedClosed,
       }),
     }),
     moventivCloseLockAlert: MOVENTIV_CLOSE_LOCK_ALERT_TEXT[language],
     widoorCommands: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.widoorCommands,
+      ...baseText.widoorCommands,
       open: Object.freeze({
-        ...PRODUCT_PAGE_TEXT.widoorCommands.open,
+        ...baseText.widoorCommands.open,
         label: labels.commands.open,
         confirmAction: labels.commands.open,
       }),
       close: Object.freeze({
-        ...PRODUCT_PAGE_TEXT.widoorCommands.close,
+        ...baseText.widoorCommands.close,
         label: labels.commands.close,
         confirmAction: labels.commands.close,
       }),
     }),
     nameRoomControls: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.nameRoomControls,
+      ...baseText.nameRoomControls,
       title: labels.user.nameRoom,
-      nameLabel: usesMoventivPage
-        ? labels.user.nameLabel.replace('WIDOOR', 'MOVENTIV')
-        : labels.user.nameLabel,
-      roomLabel: usesMoventivPage
-        ? labels.user.roomLabel.replace('WIDOOR', 'MOVENTIV')
-        : labels.user.roomLabel,
+      nameLabel: labels.user.nameLabel.replace('WIDOOR', productName),
+      roomLabel: labels.user.roomLabel.replace('WIDOOR', productName),
       apply: labels.user.validate,
       rooms: Object.freeze({
-        ...PRODUCT_PAGE_TEXT.nameRoomControls.rooms,
+        ...baseText.nameRoomControls.rooms,
         ...labels.rooms,
       }),
     }),
     expertInputControls: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.expertInputControls,
+      ...baseText.expertInputControls,
       title: labels.inputs.title,
       input1: labels.inputs.input1,
       input2: labels.inputs.input2,
@@ -680,39 +695,39 @@ export function productPageTextFor(
       button: labels.inputs.button,
     }),
     weightRangeControls: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.weightRangeControls,
+      ...baseText.weightRangeControls,
       selectTitle: usesMoventivPage
         ? labels.moventiv.weightSelectTitle
-        : PRODUCT_PAGE_TEXT.weightRangeControls.selectTitle,
+        : baseText.weightRangeControls.selectTitle,
       warning: usesMoventivPage
         ? labels.moventiv.weightWarning
-        : PRODUCT_PAGE_TEXT.weightRangeControls.warning,
+        : baseText.weightRangeControls.warning,
       cancel: usesMoventivPage
         ? labels.moventiv.weightCancel
-        : PRODUCT_PAGE_TEXT.weightRangeControls.cancel,
+        : baseText.weightRangeControls.cancel,
       confirm: usesMoventivPage
         ? labels.moventiv.weightConfirm
-        : PRODUCT_PAGE_TEXT.weightRangeControls.confirm,
+        : baseText.weightRangeControls.confirm,
     }),
     expertAccess: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.expertAccess,
+      ...baseText.expertAccess,
       expertTitle: usesMoventivPage
         ? labels.moventiv.expertTitle
-        : PRODUCT_PAGE_TEXT.expertAccess.expertTitle,
+        : baseText.expertAccess.expertTitle,
       expertMode: usesMoventivPage
         ? labels.moventiv.expertMode
-        : PRODUCT_PAGE_TEXT.expertAccess.expertMode,
+        : baseText.expertAccess.expertMode,
       expertPlaceholder: usesMoventivPage
         ? labels.moventiv.expertPlaceholder
-        : PRODUCT_PAGE_TEXT.expertAccess.expertPlaceholder,
+        : baseText.expertAccess.expertPlaceholder,
     }),
     productDateActions: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.productDateActions,
+      ...baseText.productDateActions,
       setupLabel: labels.actions.setup,
       maintenanceLabel: labels.actions.maintenance,
     }),
     sensitiveActions: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.sensitiveActions,
+      ...baseText.sensitiveActions,
       learning: labels.actions.learning,
       reset: labels.actions.reset,
       peripheralLock: labels.actions.peripheralLock,
@@ -720,19 +735,22 @@ export function productPageTextFor(
       additionalTitle: labels.actions.additionalTitle,
     }),
     user: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.user,
+      ...baseText.user,
+      lighting: labels.user.lighting,
+      lockSetting: labels.user.lockSetting,
+      unlockSetting: labels.user.unlockSetting,
       openSpeed: labels.user.openSpeed,
       closeSpeed: labels.user.closeSpeed,
       shortTiming: labels.user.shortTiming,
       longTiming: labels.user.longTiming,
       staticLight: usesMoventivPage
         ? labels.moventiv.staticLight
-        : PRODUCT_PAGE_TEXT.user.staticLight,
+        : baseText.user.staticLight,
       dynamicLight: labels.user.dynamicLight,
       rgb: labels.user.rgb,
     }),
     expert: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.expert,
+      ...baseText.expert,
       weightRange: labels.expert.weightRange,
       nearOpenSpeed: labels.expert.nearOpenSpeed,
       nearCloseSpeed: labels.expert.nearCloseSpeed,
@@ -743,31 +761,31 @@ export function productPageTextFor(
       breakForceAtOpen: labels.expert.breakForceAtOpen,
     }),
     information: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.information,
+      ...baseText.information,
       currentWeightProfile: usesMoventivPage
         ? labels.moventiv.currentWeightProfile
-        : PRODUCT_PAGE_TEXT.information.currentWeightProfile,
+        : baseText.information.currentWeightProfile,
       maximumWeight: usesMoventivPage
         ? labels.moventiv.maximumWeight
-        : PRODUCT_PAGE_TEXT.information.maximumWeight,
+        : baseText.information.maximumWeight,
     }),
     dates: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.dates,
+      ...baseText.dates,
       ...labels.dates,
     }),
     version: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.version,
+      ...baseText.version,
       motor: labels.version.motor,
       ble: labels.version.ble,
       stack: labels.version.stack,
       controlHardware: labels.version.controlHardware,
     }),
     maintenance: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.maintenance,
+      ...baseText.maintenance,
       ...labels.maintenance,
     }),
     motor: Object.freeze({
-      ...PRODUCT_PAGE_TEXT.motor,
+      ...baseText.motor,
       pushAndGo: labels.motor.pushAndGo,
       ble: labels.motor.ble,
       automaticManual: labels.motor.automaticManual,

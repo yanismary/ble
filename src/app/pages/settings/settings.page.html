@@ -24,7 +24,7 @@
       <ion-label>{{ text.language.automatic }}</ion-label>
       <ion-toggle
         slot="end"
-        aria-label="automatic language"
+        [attr.aria-label]="text.language.automatic"
         [checked]="mode === 'automatic'"
         (ionChange)="setAutomaticLanguage($event)"
       ></ion-toggle>
@@ -37,7 +37,7 @@
           slot="end"
           interface="alert"
           class="settings-select"
-          aria-label="manual language"
+          [attr.aria-label]="text.language.manual"
           [cancelText]="text.selectCancel"
           [okText]="text.selectOk"
           [value]="manualLanguage"
@@ -67,7 +67,7 @@
       <ion-label>{{ bleIdentifierLabel }}</ion-label>
       <ion-toggle
         slot="end"
-        aria-label="show BLE identifier"
+        [attr.aria-label]="bleIdentifierLabel"
         [checked]="showBleIdentifier"
         (ionChange)="setShowBleIdentifier($event)"
       ></ion-toggle>
@@ -84,7 +84,7 @@
       <ion-label>{{ text.productTabs.settings }}</ion-label>
       <ion-toggle
         slot="end"
-        aria-label="show product settings tab"
+        [attr.aria-label]="text.productTabs.settings"
         [checked]="showProductSettings"
         (ionChange)="setShowProductSettings($event)"
       ></ion-toggle>
@@ -99,7 +99,7 @@
       <ion-label>{{ text.productTabs.information }}</ion-label>
       <ion-toggle
         slot="end"
-        aria-label="show product information tab"
+        [attr.aria-label]="text.productTabs.information"
         [checked]="showProductInformation"
         (ionChange)="setShowProductInformation($event)"
       ></ion-toggle>
@@ -116,7 +116,7 @@
       <ion-label>{{ text.other.haptics }}</ion-label>
       <ion-toggle
         slot="end"
-        aria-label="haptic feedback"
+        [attr.aria-label]="text.other.haptics"
         [checked]="hapticFeedback"
         (ionChange)="setHapticFeedback($event)"
       ></ion-toggle>
@@ -132,7 +132,7 @@
         <ion-label>{{ text.other.bluetooth }}</ion-label>
         <ion-toggle
           slot="end"
-          aria-label="auto enable bluetooth"
+          [attr.aria-label]="text.other.bluetooth"
           [checked]="autoEnableBluetooth"
           (ionChange)="setAutoEnableBluetooth($event)"
         ></ion-toggle>

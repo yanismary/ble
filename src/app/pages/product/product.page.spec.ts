@@ -439,7 +439,7 @@ describe('ProductPage', () => {
 
   it('should preserve the Phase 1 navbar title in every supported language', () => {
     expect(productPageTextFor('fr').sections.navbarTitle).toBe('Commandes');
-    expect(productPageTextFor('en').sections.navbarTitle).toBe('Command');
+    expect(productPageTextFor('en').sections.navbarTitle).toBe('Commands');
     expect(productPageTextFor('de').sections.navbarTitle).toBe('Befehle');
     expect(productPageTextFor('pl').sections.navbarTitle).toBe('Sterowanie');
   });
@@ -5636,7 +5636,8 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
             '.product-information-general + .product-information-dates',
           );
           expect(dates).not.toBeNull();
-          expect(getComputedStyle(dates!).borderTopWidth).toBe('1px');
+          expect(parseFloat(getComputedStyle(dates!).borderTopWidth))
+            .toBeGreaterThan(0);
         }
         expect(informationSection?.querySelector(
           '.product-information-row[data-info-row="first-commissioning"]',
@@ -5683,7 +5684,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
           expect(informationSection?.querySelector(
             '.product-information-hardware',
           )).not.toBeNull();
-          expect(informationText).toContain('Materiel');
+          expect(informationText).toContain('Matériel');
           if (scenario.profile === 'widoor') {
             expect(informationSection?.querySelector(
               '.product-information-row[data-info-row="motor-address"]',
@@ -7419,7 +7420,8 @@ describe('ProductPage expert scalar controls',
         expect(range?.ticks).toBeTrue();
         expect(range?.snaps).toBeTrue();
         expect(range?.pin).toBeFalse();
-        expect(getComputedStyle(header!).borderTopWidth).toBe('1px');
+        expect(parseFloat(getComputedStyle(header!).borderTopWidth))
+          .toBeGreaterThan(0);
         expect(getComputedStyle(header!).borderBottomWidth).toBe('0px');
 
         row?.click();

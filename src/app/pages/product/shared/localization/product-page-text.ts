@@ -84,7 +84,7 @@ export const PRODUCT_PAGE_TEXT = {
     apply: 'Appliquer',
     selectTitle: 'Sélectionner le poids de la porte',
     warning:
-      'ATTENTION : La modification de ce paramètre entrainera la ' +
+      'ATTENTION : La modification de ce paramètre entraînera la ' +
       'réinitialisation des paramètres de vitesse !',
     cancel: 'Annuler',
     confirm: 'Valider',
@@ -166,7 +166,7 @@ export const PRODUCT_PAGE_TEXT = {
   },
   moventivAdvancedAlert: {
     title: 'Attention',
-    message: 'La modifications de ces paramètres peut affecter le bon fonctionnement du système. Veuillez lire la notice au préalable avant toute modification.',
+    message: 'La modification de ces paramètres peut affecter le bon fonctionnement du système. Veuillez lire la notice au préalable avant toute modification.',
     no: 'Décliner',
     yes: 'Confirmer',
   },
@@ -352,6 +352,10 @@ export const PRODUCT_PAGE_TEXT = {
     advanced: 'Avancé',
     increase: 'Incrémenter',
     decrease: 'Décrémenter',
+    showPrecision: 'Afficher le réglage précis',
+    preciseAdjustment: 'Réglage précis',
+    increaseByOne: 'Augmenter de 1',
+    decreaseByOne: 'Diminuer de 1',
   },
   states: {
     available: 'Disponible',
@@ -429,6 +433,9 @@ export const PRODUCT_PAGE_TEXT = {
     motorErrorCount: 'Erreurs moteur',
   },
   user: {
+    lighting: 'Éclairage',
+    lockSetting: 'Verrouiller le réglage',
+    unlockSetting: 'Déverrouiller le réglage',
     lockMode: 'Mode de condamnation',
     lockModeRaw: 'Mode de condamnation brut',
     openSpeed: 'Vitesse d’ouverture',

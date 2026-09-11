@@ -20,7 +20,7 @@ const SCAN_PRODUCT_CONNECTION_TEXT: Readonly<
       "Impossible de se connecter à l'appareil. Vérifiez qu'il est allumé, " +
       'à proximité et correctement appairé avec votre téléphone, puis réessayez.',
     discoveryFailed:
-      'Decouverte des services Bluetooth impossible.',
+      'Découverte des services Bluetooth impossible.',
     productNotRecognized: 'Produit non reconnu.',
     ok: 'OK',
   }),

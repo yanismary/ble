@@ -17,7 +17,7 @@ const SCAN_EXIT_TEXT: Readonly<Record<AppLanguage, ScanExitText>> =
       exit: 'Quitter',
     }),
     en: Object.freeze({
-      message: 'Would you like to exit application ?',
+      message: 'Would you like to exit the application?',
       cancel: 'Cancel',
       exit: 'Exit',
     }),

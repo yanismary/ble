@@ -10,6 +10,7 @@ import {
 
 import {
   AppMainMenuItem,
+  appMainMenuButtonLabelFor,
   appMainMenuItemsFor,
 } from './app-main-menu.model';
 
@@ -58,6 +59,9 @@ export class AppMainMenuComponent {
 
   get items(): readonly AppMainMenuItem[] {
     return appMainMenuItemsFor();
+  }
+  get buttonLabel(): string {
+    return appMainMenuButtonLabelFor();
   }
   menuOpen = false;
   private presenting = false;

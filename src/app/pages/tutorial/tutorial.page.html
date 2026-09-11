@@ -43,7 +43,7 @@
       class="tutorial-skip-button"
       fill="clear"
       type="button"
-      aria-label="skip tutorial"
+      [attr.aria-label]="copy.skip"
       (click)="finish()"
     >
       {{ copy.skip }}

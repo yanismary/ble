@@ -30,10 +30,10 @@ describe('help page text', () => {
 
   it('uses the exact localized Android pairing action as step 6', () => {
     const expected: Record<string, string> = {
-      fr: 'Appuyez sur \u00ab Associer \u00bb lorsque la fenetre d\u2019appairage Android apparait.',
+      fr: 'Appuyez sur « Associer » lorsque la fenêtre d’appairage Android apparaît.',
       en: 'Tap \u00ab Pair \u00bb when the Android pairing dialog appears.',
-      de: 'Tippen Sie auf \u00ab Koppeln \u00bb, wenn das Android-Kopplungsfenster erscheint.',
-      pl: 'Nacisnij \u00ab Sparuj \u00bb, gdy pojawi sie okno parowania systemu Android.',
+      de: 'Tippen Sie auf „Koppeln“, wenn das Android-Kopplungsfenster erscheint.',
+      pl: 'Naciśnij „Sparuj”, gdy pojawi się okno parowania systemu Android.',
     };
 
     for (const [language, step] of Object.entries(expected)) {
@@ -44,10 +44,10 @@ describe('help page text', () => {
 
   it('uses the exact localized iOS pairing action as step 6', () => {
     const expected: Record<string, string> = {
-      fr: 'Appuyez sur \u00ab Jumeler \u00bb lorsque la fenetre d\u2019appairage iOS apparait.',
+      fr: 'Appuyez sur « Jumeler » lorsque la fenêtre d’appairage iOS apparaît.',
       en: 'Tap \u00ab Pair \u00bb when the iOS pairing dialog appears.',
-      de: 'Tippen Sie auf \u00ab Koppeln \u00bb, wenn das iOS-Kopplungsfenster erscheint.',
-      pl: 'Nacisnij \u00ab Polacz w pare \u00bb, gdy pojawi sie okno parowania systemu iOS.',
+      de: 'Tippen Sie auf „Koppeln“, wenn das iOS-Kopplungsfenster erscheint.',
+      pl: 'Naciśnij „Połącz w parę”, gdy pojawi się okno parowania systemu iOS.',
     };
 
     for (const [language, step] of Object.entries(expected)) {

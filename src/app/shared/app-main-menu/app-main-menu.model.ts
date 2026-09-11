@@ -24,7 +24,7 @@ const APP_MAIN_MENU_LABELS: Readonly<
     settings: "Configuration de l'application",
     help: 'Aide',
     about: 'À propos',
-    company: 'Qui sommes nous ?',
+    company: 'Qui sommes-nous ?',
     contact: 'Contacts',
     legal: 'Mentions légales',
   }),
@@ -32,12 +32,12 @@ const APP_MAIN_MENU_LABELS: Readonly<
     settings: 'App configuration',
     help: 'Help',
     about: 'About',
-    company: 'Who are we ?',
+    company: 'Who are we?',
     contact: 'Contacts',
     legal: 'Legal notice',
   }),
   de: Object.freeze({
-    settings: 'App Einstellungen',
+    settings: 'App-Einstellungen',
     help: 'Hilfe',
     about: 'Über uns',
     company: 'Wer sind wir?',
@@ -53,6 +53,14 @@ const APP_MAIN_MENU_LABELS: Readonly<
     legal: 'Informacje prawne',
   }),
 });
+
+const APP_MAIN_MENU_BUTTON_LABELS: Readonly<Record<AppLanguage, string>> =
+  Object.freeze({
+    fr: 'Ouvrir le menu principal',
+    en: 'Open main menu',
+    de: 'Hauptmenü öffnen',
+    pl: 'Otwórz menu główne',
+  });
 
 const APP_MAIN_MENU_ROUTES: Readonly<
   Record<AppMainMenuDestination, readonly string[]>
@@ -83,4 +91,10 @@ export function appMainMenuItemsFor(
     label: labels[destination],
     route: APP_MAIN_MENU_ROUTES[destination],
   })));
+}
+
+export function appMainMenuButtonLabelFor(
+  language: AppLanguage = currentAppLanguage(),
+): string {
+  return APP_MAIN_MENU_BUTTON_LABELS[language];
 }

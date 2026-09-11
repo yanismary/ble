@@ -25,12 +25,12 @@ export interface HelpPageText {
 }
 
 const FR_PAIRING_TROUBLESHOOTING: HelpSectionText = Object.freeze({
-  title: 'Difficulte d\u2019appairage',
+  title: 'Difficulté d’appairage',
   steps: Object.freeze([
-    'Verifiez que le Bluetooth est active sur le smartphone.',
-    'Rapprochez le telephone de la motorisation puis relancez la recherche.',
-    'Verifiez que la motorisation n\u2019est pas deja connectee a un autre telephone.',
-    'Si un ancien jumelage bloque la connexion, supprimez-le depuis les reglages Bluetooth du telephone.',
+    'Vérifiez que le Bluetooth est activé sur le smartphone.',
+    'Rapprochez le téléphone de la motorisation puis relancez la recherche.',
+    'Vérifiez que la motorisation n’est pas déjà connectée à un autre téléphone.',
+    'Si un ancien jumelage bloque la connexion, supprimez-le depuis les réglages Bluetooth du téléphone.',
   ]),
 });
 
@@ -47,9 +47,9 @@ const EN_PAIRING_TROUBLESHOOTING: HelpSectionText = Object.freeze({
 const DE_PAIRING_TROUBLESHOOTING: HelpSectionText = Object.freeze({
   title: 'Verbindungsprobleme',
   steps: Object.freeze([
-    'Prufen Sie, ob Bluetooth auf dem Smartphone aktiviert ist.',
-    'Bringen Sie das Telefon naher an den Motor und starten Sie die Suche erneut.',
-    'Prufen Sie, ob der Motor nicht bereits mit einem anderen Telefon verbunden ist.',
+    'Prüfen Sie, ob Bluetooth auf dem Smartphone aktiviert ist.',
+    'Bringen Sie das Telefon näher an den Motor und starten Sie die Suche erneut.',
+    'Prüfen Sie, ob der Motor nicht bereits mit einem anderen Telefon verbunden ist.',
     'Wenn eine alte Kopplung die Verbindung blockiert, entfernen Sie sie in den Bluetooth-Einstellungen des Telefons.',
   ]),
 });
@@ -57,10 +57,10 @@ const DE_PAIRING_TROUBLESHOOTING: HelpSectionText = Object.freeze({
 const PL_PAIRING_TROUBLESHOOTING: HelpSectionText = Object.freeze({
   title: 'Problemy z parowaniem',
   steps: Object.freeze([
-    'Sprawdz, czy Bluetooth jest wlaczony w smartfonie.',
-    'Zbliz telefon do napedu i ponownie uruchom wyszukiwanie.',
-    'Sprawdz, czy naped nie jest juz polaczony z innym telefonem.',
-    'Jesli stare parowanie blokuje polaczenie, usun je w ustawieniach Bluetooth telefonu.',
+    'Sprawdź, czy Bluetooth jest włączony w smartfonie.',
+    'Zbliż telefon do napędu i ponownie uruchom wyszukiwanie.',
+    'Sprawdź, czy napęd nie jest już połączony z innym telefonem.',
+    'Jeśli stare parowanie blokuje połączenie, usuń je w ustawieniach Bluetooth telefonu.',
   ]),
 });
 
@@ -77,11 +77,11 @@ const FR_TEXT: HelpPageText = {
       pairing: {
         title: 'Appairage',
         steps: [
-          'Placez-vous a proximite de la motorisation WIDOOR alimentee.',
+          'Placez-vous à proximité de la motorisation WIDOOR alimentée.',
           'Sur la motorisation, placez le switch 1 sur OFF.',
-          'Activez le Bluetooth du telephone puis lancez la recherche dans l\u2019application.',
-          'Appuyez sur le bouton PRG : l\u2019indicateur doit rester allume en magenta.',
-          'Selectionnez le produit WIDOOR detecte pour lancer la connexion.',
+          'Activez le Bluetooth du téléphone puis lancez la recherche dans l’application.',
+          'Appuyez sur le bouton PRG : l’indicateur doit rester allumé en magenta.',
+          'Sélectionnez le produit WIDOOR détecté pour lancer la connexion.',
         ],
       },
       troubleshooting: FR_PAIRING_TROUBLESHOOTING,
@@ -91,11 +91,11 @@ const FR_TEXT: HelpPageText = {
       pairing: {
         title: 'Appairage',
         steps: [
-          'Placez-vous a proximite de la motorisation alimentee.',
+          'Placez-vous à proximité de la motorisation alimentée.',
           'Sur la motorisation, placez le switch 1 sur OFF.',
-          'Activez le Bluetooth du telephone puis lancez la recherche dans l\u2019application.',
-          'Appuyez sur le bouton PRG : l\u2019indicateur doit rester allume en magenta.',
-          'Selectionnez le produit MOVENTIV ou GARLINE detecte pour lancer la connexion.',
+          'Activez le Bluetooth du téléphone puis lancez la recherche dans l’application.',
+          'Appuyez sur le bouton PRG : l’indicateur doit rester allumé en magenta.',
+          'Sélectionnez le produit MOVENTIV ou GARLINE détecté pour lancer la connexion.',
         ],
       },
       troubleshooting: FR_PAIRING_TROUBLESHOOTING,
@@ -155,11 +155,11 @@ const DE_TEXT: HelpPageText = {
       pairing: {
         title: 'Verbindung',
         steps: [
-          'Bleiben Sie in der Nahe des eingeschalteten WIDOOR Motors.',
+          'Bleiben Sie in der Nähe des eingeschalteten WIDOOR-Motors.',
           'Stellen Sie am Motor den Switch 1 auf OFF.',
           'Aktivieren Sie Bluetooth am Telefon und starten Sie die Suche in der App.',
-          'Drucken Sie die PRG-Taste: die Anzeige muss dauerhaft magenta leuchten.',
-          'Wahlen Sie das erkannte WIDOOR Produkt aus, um die Verbindung zu starten.',
+          'Drücken Sie die PRG-Taste: Die Anzeige muss dauerhaft magenta leuchten.',
+          'Wählen Sie das erkannte WIDOOR-Produkt aus, um die Verbindung zu starten.',
         ],
       },
       troubleshooting: DE_PAIRING_TROUBLESHOOTING,
@@ -169,11 +169,11 @@ const DE_TEXT: HelpPageText = {
       pairing: {
         title: 'Verbindung',
         steps: [
-          'Bleiben Sie in der Nahe des eingeschalteten Motors.',
+          'Bleiben Sie in der Nähe des eingeschalteten Motors.',
           'Stellen Sie am Motor den Switch 1 auf OFF.',
           'Aktivieren Sie Bluetooth am Telefon und starten Sie die Suche in der App.',
-          'Drucken Sie die PRG-Taste: die Anzeige muss dauerhaft magenta leuchten.',
-          'Wahlen Sie das erkannte MOVENTIV oder GARLINE Produkt aus, um die Verbindung zu starten.',
+          'Drücken Sie die PRG-Taste: Die Anzeige muss dauerhaft magenta leuchten.',
+          'Wählen Sie das erkannte MOVENTIV- oder GARLINE-Produkt aus, um die Verbindung zu starten.',
         ],
       },
       troubleshooting: DE_PAIRING_TROUBLESHOOTING,
@@ -194,11 +194,11 @@ const PL_TEXT: HelpPageText = {
       pairing: {
         title: 'Parowanie',
         steps: [
-          'Pozostan blisko zasilonego napedu WIDOOR.',
-          'Po stronie napedu ustaw przelacznik 1 w pozycji OFF.',
-          'Wlacz Bluetooth w telefonie, a nastepnie uruchom wyszukiwanie w aplikacji.',
-          'Nacisnij przycisk PRG: wskaznik powinien swiecic stale na kolor magenta.',
-          'Wybierz wykryty produkt WIDOOR, aby rozpoczac polaczenie.',
+          'Pozostań blisko zasilanego napędu WIDOOR.',
+          'Po stronie napędu ustaw przełącznik 1 w pozycji OFF.',
+          'Włącz Bluetooth w telefonie, a następnie uruchom wyszukiwanie w aplikacji.',
+          'Naciśnij przycisk PRG: wskaźnik powinien świecić stale na kolor magenta.',
+          'Wybierz wykryty produkt WIDOOR, aby rozpocząć połączenie.',
         ],
       },
       troubleshooting: PL_PAIRING_TROUBLESHOOTING,
@@ -208,11 +208,11 @@ const PL_TEXT: HelpPageText = {
       pairing: {
         title: 'Parowanie',
         steps: [
-          'Pozostan blisko zasilonego napedu.',
-          'Po stronie napedu ustaw przelacznik 1 w pozycji OFF.',
-          'Wlacz Bluetooth w telefonie, a nastepnie uruchom wyszukiwanie w aplikacji.',
-          'Nacisnij przycisk PRG: wskaznik powinien swiecic stale na kolor magenta.',
-          'Wybierz wykryty produkt MOVENTIV lub GARLINE, aby rozpoczac polaczenie.',
+          'Pozostań blisko zasilanego napędu.',
+          'Po stronie napędu ustaw przełącznik 1 w pozycji OFF.',
+          'Włącz Bluetooth w telefonie, a następnie uruchom wyszukiwanie w aplikacji.',
+          'Naciśnij przycisk PRG: wskaźnik powinien świecić stale na kolor magenta.',
+          'Wybierz wykryty produkt MOVENTIV lub GARLINE, aby rozpocząć połączenie.',
         ],
       },
       troubleshooting: PL_PAIRING_TROUBLESHOOTING,
@@ -265,11 +265,11 @@ function platformPairingStep(
 function androidPairingStep(language: AppLanguage): string {
   switch (language) {
     case 'fr':
-      return 'Appuyez sur \u00ab Associer \u00bb lorsque la fenetre d\u2019appairage Android apparait.';
+      return 'Appuyez sur « Associer » lorsque la fenêtre d’appairage Android apparaît.';
     case 'de':
-      return 'Tippen Sie auf \u00ab Koppeln \u00bb, wenn das Android-Kopplungsfenster erscheint.';
+      return 'Tippen Sie auf „Koppeln“, wenn das Android-Kopplungsfenster erscheint.';
     case 'pl':
-      return 'Nacisnij \u00ab Sparuj \u00bb, gdy pojawi sie okno parowania systemu Android.';
+      return 'Naciśnij „Sparuj”, gdy pojawi się okno parowania systemu Android.';
     case 'en':
     default:
       return 'Tap \u00ab Pair \u00bb when the Android pairing dialog appears.';
@@ -279,11 +279,11 @@ function androidPairingStep(language: AppLanguage): string {
 function iosPairingStep(language: AppLanguage): string {
   switch (language) {
     case 'fr':
-      return 'Appuyez sur \u00ab Jumeler \u00bb lorsque la fenetre d\u2019appairage iOS apparait.';
+      return 'Appuyez sur « Jumeler » lorsque la fenêtre d’appairage iOS apparaît.';
     case 'de':
-      return 'Tippen Sie auf \u00ab Koppeln \u00bb, wenn das iOS-Kopplungsfenster erscheint.';
+      return 'Tippen Sie auf „Koppeln“, wenn das iOS-Kopplungsfenster erscheint.';
     case 'pl':
-      return 'Nacisnij \u00ab Polacz w pare \u00bb, gdy pojawi sie okno parowania systemu iOS.';
+      return 'Naciśnij „Połącz w parę”, gdy pojawi się okno parowania systemu iOS.';
     case 'en':
     default:
       return 'Tap \u00ab Pair \u00bb when the iOS pairing dialog appears.';

@@ -586,7 +586,7 @@ describe('ScanPage', () => {
     const expected = {
       fr: ['Sélection', 'Rechercher', 'Aucune motorisation détectée.', 'Démo'],
       en: ['Selection', 'Search', 'No motor detected.', 'Demo'],
-      de: ['Auswahl', 'Suche', 'Kein Motor gefunden.', 'Demo'],
+      de: ['Auswahl', 'Suchen', 'Kein Motor gefunden.', 'Demo'],
       pl: ['Wybór napędów', 'Wyszukiwanie', 'Nie znaleziono napędu.', 'Demo'],
     } as const;
 
@@ -852,7 +852,7 @@ describe('ScanPage', () => {
         "Configuration de l'application",
         'Aide',
         'À propos',
-        'Qui sommes nous ?',
+        'Qui sommes-nous ?',
         'Contacts',
         'Mentions légales',
       ]);
@@ -2714,7 +2714,7 @@ describe('ScanPage', () => {
     expect(bleService.disconnect).toHaveBeenCalledTimes(1);
     expect(component.devices).toHaveSize(1);
     expect(toastOptions).toContain(jasmine.objectContaining({
-      message: 'Decouverte des services Bluetooth impossible.',
+      message: 'Découverte des services Bluetooth impossible.',
       duration: 3_000,
       position: 'bottom',
     }));

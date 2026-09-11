@@ -2,7 +2,7 @@
   type="button"
   fill="clear"
   [class]="'app-main-menu-button ' + buttonClass"
-  aria-label="Ouvrir le menu principal"
+  [attr.aria-label]="buttonLabel"
   (click)="openMenu($event)"
 >
   <span

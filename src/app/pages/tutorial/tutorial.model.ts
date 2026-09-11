@@ -39,7 +39,7 @@ const LEGACY_INFOSLIDE = {
     },
     "END": {
       "READY": "Prêt à utiliser votre Widoor ?",
-      "PREVIOUS": "PrÃ©cÃ©dent",
+      "PREVIOUS": "Précédent",
       "NEXT": "Suivant",
       "CONTINUE": "Continuer"
     },
@@ -53,15 +53,15 @@ const LEGACY_INFOSLIDE = {
     },
     "SLIDE3": {
       "TITLE": "Régler votre motorisation",
-      "DESC": "Vous pouvez ajuster la vitesse de votre motorisation, changer la temporisation de fermeture etc..."
+      "DESC": "Vous pouvez ajuster la vitesse de votre motorisation et modifier la temporisation de fermeture."
     },
     "SLIDE4": {
       "TITLE": "Configurer votre motorisation",
-      "DESC": "Changez l'assignement des borniers, lancer un apprentissage des butées etc..."
+      "DESC": "Changez l’affectation des borniers et lancez un apprentissage des butées."
     },
     "SLIDE5": {
       "TITLE": "Accéder aux informations",
-      "DESC": "Vous pouvez par exemple connaitre la position des switchs."
+      "DESC": "Vous pouvez par exemple connaître la position des switchs."
     },
     "SLIDE6": {
       "TITLE": "Configurer l'application",
@@ -70,21 +70,21 @@ const LEGACY_INFOSLIDE = {
     "SLIDE7": {
       "ANDROID": {
         "TITLE": "Appairage avec votre Widoor",
-        "DESC": "Du coté du smartphone se rendre dans le menu Bluetooth (généralement : paramètres > connexions > Bluetooth > ANALYSER). Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement). Ensuite du coté du téléphone appuyer sur Widoor, celui-ci doit migrer dans PERIPHERIQUES Associés. "
+        "DESC": "Sur le smartphone, ouvrez le menu Bluetooth (généralement : Paramètres > Connexions > Bluetooth > Rechercher des appareils). Sur la motorisation, placez le switch 1 sur OFF, puis appuyez sur le bouton PRG (l’indicateur doit rester allumé en magenta). Sélectionnez ensuite Widoor sur le téléphone : il doit apparaître dans les appareils associés."
       },
       "IOS": {
         "TITLE": "Appairage avec votre Widoor",
-        "DESC": "Du coté de votre smartphone, effectuer une recherche de motorisation via l'appli. Du coté de la motorisation, mettre le switch 1 sur OFF, appuyer sur le bouton prg (l'indicateur doit s'allumer magenta fixement). Ensuite dans l'application appuyer sur Widoor et accepter la demande de jumelage. "
+        "DESC": "Sur votre smartphone, recherchez la motorisation dans l’application. Sur la motorisation, placez le switch 1 sur OFF, puis appuyez sur le bouton PRG (l’indicateur doit rester allumé en magenta). Dans l’application, sélectionnez ensuite Widoor et acceptez la demande de jumelage."
       }
     },
     "SLIDE8": {
       "ANDROID": {
         "TITLE": "Renommer votre Widoor",
-        "DESC": "Une fois connecté vous pouver renommer votre Widoor et l'associer à une pièce"
+        "DESC": "Une fois connecté, vous pouvez renommer votre Widoor et l’associer à une pièce."
       },
       "IOS": {
         "TITLE": "Renommer votre Widoor",
-        "DESC": "Une fois connecté vous pouver renommer votre Widoor et l'associer à une pièce. (Le renommage peut mettre quelques minutes à être visible depuis votre smartphone)"
+        "DESC": "Une fois connecté, vous pouvez renommer votre Widoor et l’associer à une pièce. Le nouveau nom peut mettre quelques minutes à apparaître sur votre smartphone."
       }
     }
   },
@@ -97,67 +97,67 @@ const LEGACY_INFOSLIDE = {
       "GARLINE": "Garline tutorial"
     },
     "END": {
-      "READY": "Ready to use your Widoor ?",
+      "READY": "Ready to use your Widoor?",
       "PREVIOUS": "Previous",
       "NEXT": "Next",
       "CONTINUE": "Continue"
     },
     "SLIDE1": {
-      "TITLE": "Welcome in the tutorial !",
+      "TITLE": "Welcome to the tutorial!",
       "DESC": "This tutorial will show you the key features of the app."
     },
     "SLIDE2": {
-      "TITLE": "Drive your motorization",
-      "DESC": "You can drive your motorization with your smartphone as with a remote controler."
+      "TITLE": "Control your motor",
+      "DESC": "You can control your motor with your smartphone, just as you would with a remote control."
     },
     "SLIDE3": {
-      "TITLE": "Tune your motorization",
-      "DESC": "You can tune the spped of your motorization, change the waiting tile before closing etc..."
+      "TITLE": "Adjust your motor",
+      "DESC": "You can adjust the motor speed and change the delay before closing."
     },
     "SLIDE4": {
-      "TITLE": "Configure your motorization",
-      "DESC": "Change the terminals assignement, launch stops  learningetc..."
+      "TITLE": "Configure your motor",
+      "DESC": "Change the terminal assignments and start end-stop learning."
     },
     "SLIDE5": {
-      "TITLE": "Acces to informations",
-      "DESC": "For example you can know the switch positions"
+      "TITLE": "View information",
+      "DESC": "For example, you can check the switch positions."
     },
     "SLIDE6": {
-      "TITLE": "Configure the App",
-      "DESC": "You can for example disable the menus you dislike"
+      "TITLE": "Configure the app",
+      "DESC": "For example, you can hide menus that you do not use."
     },
     "SLIDE7": {
       "ANDROID": {
         "TITLE": "Pair with Widoor",
-        "DESC": "On the phone side go to the pairing menu (usually : parameters-> connections->Bluetooth-> search devices. On the motorization side, put the Switch 1 on OFF state, press the prg button (LED indicator should be static magenta). Then on the phone side, select the Widoor device. It should translate to the PAIRED DEVICES"
+        "DESC": "On the smartphone, open the Bluetooth menu (usually Settings > Connections > Bluetooth > Search for devices). On the motor, set switch 1 to OFF, then press the PRG button (the indicator must remain lit in magenta). Select Widoor on the phone: it should appear under paired devices."
       },
       "IOS": {
         "TITLE": "Pair with WIDOOR",
-        "DESC": "On the Iphone side, search motorizations with the APP. On the Moventiv side, mput the switch 1 OFF, push and release the prg button(lED indicator should be magenta). Then in the APP clic on WIDOOR and accept the pairing request. "
+        "DESC": "On your smartphone, search for the motor in the app. On the motor, set switch 1 to OFF, then press the PRG button (the indicator must remain lit in magenta). In the app, select Widoor and accept the pairing request."
       }
     },
     "SLIDE8": {
       "ANDROID": {
         "TITLE": "Rename your Widoor",
-        "DESC": "Once connected you can rename your Widoor and associate it with a room"
+        "DESC": "Once connected, you can rename your Widoor and associate it with a room."
       },
       "IOS": {
         "TITLE": "Rename your Widoor",
-        "DESC": "Once connected you can rename your Widoor and associate it with a room (new name could take some minutes to be visible on your iPhone)"
+        "DESC": "Once connected, you can rename your Widoor and associate it with a room. The new name may take a few minutes to appear on your iPhone."
       }
     }
   },
   "de": {
     "SKIP": "Überspringen",
     "CHOICE": {
-      "TITLE": "Tutorial auswahlen",
+      "TITLE": "Tutorial auswählen",
       "WIDOOR": "Widoor Tutorial",
       "MOVENTIV": "Moventiv Tutorial",
       "GARLINE": "Garline Tutorial"
     },
     "END": {
       "READY": "Sind Sie bereit Ihren WIDOOR zu benutzen?",
-      "PREVIOUS": "Zuruck",
+      "PREVIOUS": "Zurück",
       "NEXT": "Weiter",
       "CONTINUE": "Fortfahren"
     },
@@ -170,39 +170,39 @@ const LEGACY_INFOSLIDE = {
       "DESC": "Sie können Ihren Motor mit dem Smartphone oder einer Fernbedienung nutzen."
     },
     "SLIDE3": {
-      "TITLE": "Justieren Sie Ihren Motor",
+      "TITLE": "Motor einstellen",
       "DESC": "Sie können die Geschwindigkeit, die Zeit bis zum automatischen Schließen und anderes einstellen."
     },
     "SLIDE4": {
       "TITLE": "Konfigurieren Sie Ihren Motor",
-      "DESC": "Ändern Sie die Zuordnung der Terminals, beginnen Sie das Anerlernen etc."
+      "DESC": "Ändern Sie die Zuordnung der Anschlüsse und starten Sie das Einlernen der Endlagen."
     },
     "SLIDE5": {
-      "TITLE": "Informationen zum Motor",
-      "DESC": "Beispielsweise die SWITCH POSITIONS"
+      "TITLE": "Motorinformationen anzeigen",
+      "DESC": "Sie können beispielsweise die Schalterstellungen prüfen."
     },
     "SLIDE6": {
-      "TITLE": "App Einstellungen",
+      "TITLE": "App-Einstellungen",
       "DESC": "Deaktivieren Sie nicht genutzte Menüs."
     },
     "SLIDE7": {
       "ANDROID": {
         "TITLE": "Mit WIDOOR verbinden",
-        "DESC": "Gehen Sie in Ihrem Smartphone in die Bluetooth-Verbindungen (Einstellungen -> Bluetooth -> Meine Geräte) Stellen Sie den SWITCH 1 in die OFF Position beim Motor, drücken Sie den Programmierknopf (die LED Lampe sollte dauerhaft magenta leuchten). Wählen Sie in Ihrem Smartphone dann WIDOOR aus, dann sollte der Motor sich mit Ihrem Smartphone verbinden."
+        "DESC": "Öffnen Sie auf dem Smartphone das Bluetooth-Menü (normalerweise Einstellungen > Verbindungen > Bluetooth > Geräte suchen). Stellen Sie am Motor den Schalter 1 auf OFF und drücken Sie anschließend die PRG-Taste (die Anzeige muss dauerhaft magenta leuchten). Wählen Sie Widoor auf dem Smartphone aus: Der Motor sollte unter den gekoppelten Geräten erscheinen."
       },
       "IOS": {
         "TITLE": "Mit WIDOOR verbinden",
-        "DESC": "Gehen Sie in Ihrem iPhone in die Bluetooth-Verbindungen (Einstellungen -> Bluetooth -> Meine Geräte) Stellen Sie den SWITCH 1 in die OFF Position beim Motor, drücken Sie den Programmierknopf (die LED Lampe sollte dauerhaft magenta leuchten). Wählen Sie in Ihrer App dann WIDOR und akzeptieren Sie die Verbindung."
+        "DESC": "Suchen Sie den Motor auf Ihrem Smartphone in der App. Stellen Sie am Motor den Schalter 1 auf OFF und drücken Sie anschließend die PRG-Taste (die Anzeige muss dauerhaft magenta leuchten). Wählen Sie Widoor in der App aus und bestätigen Sie die Kopplungsanfrage."
       }
     },
     "SLIDE8": {
       "ANDROID": {
-        "TITLE": "Ändern Sie den Namen Ihres WIDOORS",
-        "DESC": "Sobald der WIDOOR verbunden ist, können Sie den Namen ändern und ihn einem Raum zuordnen"
+        "TITLE": "Widoor umbenennen",
+        "DESC": "Sobald Widoor verbunden ist, können Sie den Namen ändern und den Motor einem Raum zuordnen."
       },
       "IOS": {
-        "TITLE": "Ändern Sie den Namen Ihres WIDOORS",
-        "DESC": "Sobald der WIDOOR verbunden ist, können Sie den Namen ändern und ihn einem Raum zuordnen (es kann einige Minuten dauern, bis der neue Name im iPhone sichtbar ist)."
+        "TITLE": "Widoor umbenennen",
+        "DESC": "Sobald Widoor verbunden ist, können Sie den Namen ändern und den Motor einem Raum zuordnen. Es kann einige Minuten dauern, bis der neue Name auf dem iPhone angezeigt wird."
       }
     }
   },
@@ -251,7 +251,7 @@ const LEGACY_INFOSLIDE = {
       },
       "IOS": {
         "TITLE": "Sparuj z napędem",
-        "DESC": "Na iPhonie wyszukaj napęd za pomocą aplikacji. Po stronie \"nazwa Twojego napędu\" ustaw Przełącznik 1 w pozycji OFF i naciśnij oraz zwolnij przycisk PRG (dioda LED powinna świecić purpurowym światłem). Następnie w aplikacji naciśnij \"nazwa Twojego napędu\" i zaakceptuj prośbę o parowanie. "
+        "DESC": "Na iPhonie wyszukaj napęd za pomocą aplikacji. Na napędzie ustaw przełącznik 1 w pozycji OFF, a następnie naciśnij i zwolnij przycisk PRG (dioda LED powinna świecić ciągłym purpurowym światłem). Następnie wybierz napęd w aplikacji i zaakceptuj prośbę o parowanie."
       }
     },
     "SLIDE8": {

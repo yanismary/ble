@@ -2956,6 +2956,8 @@ export class ProductPage implements OnDestroy {
       return;
     }
 
+    const commandText = this.text.widoorCommands[config.textKey];
+
     if (this.isDemoMode) {
       return;
     }
@@ -2978,7 +2980,7 @@ export class ProductPage implements OnDestroy {
           this.openCommandState = Object.freeze({
             ...initialProductMotorCommandState(
               operation,
-              config.label,
+              commandText.label,
               config.expectedMotorStateRaw,
             ),
             status: 'unavailable',
@@ -3000,7 +3002,7 @@ export class ProductPage implements OnDestroy {
         this.openCommandState = Object.freeze({
           ...initialProductMotorCommandState(
             operation,
-            config.label,
+            commandText.label,
             config.expectedMotorStateRaw,
           ),
           status: 'awaiting-confirmation',
@@ -3008,11 +3010,11 @@ export class ProductPage implements OnDestroy {
           message: this.text.openCommand.awaitingConfirmation,
         });
         const alert = await this.alertController.create({
-          header: config.confirmationTitle,
-          message: config.confirmationMessage,
+          header: commandText.confirmTitle,
+          message: commandText.confirmMessage,
           buttons: [
             { text: this.text.openCommand.cancel, role: 'cancel' },
-            { text: config.confirmationButtonLabel, role: 'confirm' },
+            { text: commandText.confirmAction, role: 'confirm' },
           ],
         });
         if (!this.isCurrentCommandCycle(cycle)) {
@@ -3027,7 +3029,7 @@ export class ProductPage implements OnDestroy {
           this.openCommandState = Object.freeze({
             ...initialProductMotorCommandState(
               operation,
-              config.label,
+              commandText.label,
               config.expectedMotorStateRaw,
             ),
             status: 'cancelled',
@@ -3067,7 +3069,7 @@ export class ProductPage implements OnDestroy {
       this.openCommandState = Object.freeze({
         ...initialProductMotorCommandState(
           operation,
-          config.label,
+          commandText.label,
           config.expectedMotorStateRaw,
         ),
         status: 'executing',
@@ -3112,7 +3114,7 @@ export class ProductPage implements OnDestroy {
         this.openCommandState = Object.freeze({
           ...initialProductMotorCommandState(
             operation,
-            config.label,
+            commandText.label,
             config.expectedMotorStateRaw,
           ),
           status: 'failed',
@@ -5489,6 +5491,7 @@ export class ProductPage implements OnDestroy {
     config: ProductMotorCommandUiConfig,
     nativeWriteCompleted = false,
   ): void {
+    const commandText = this.text.widoorCommands[config.textKey];
     const message = status === 'disconnected'
       ? this.text.openCommand.disconnected
       : status === 'stale'
@@ -5497,7 +5500,7 @@ export class ProductPage implements OnDestroy {
     this.openCommandState = Object.freeze({
       ...initialProductMotorCommandState(
         config.operation as ProductMotorCommandOperation,
-        config.label,
+        commandText.label,
         config.expectedMotorStateRaw,
       ),
       status,
@@ -5518,6 +5521,7 @@ export class ProductPage implements OnDestroy {
     attemptId: string,
     config: ProductMotorCommandUiConfig,
   ): void {
+    const commandText = this.text.widoorCommands[config.textKey];
     let status: ProductMotorCommandStatus;
     let message: string;
     switch (result.status) {
@@ -5527,15 +5531,15 @@ export class ProductPage implements OnDestroy {
           message = this.text.openCommand.sent;
         } else if (result.confirmationStatus === 'confirmed') {
           status = 'confirmed';
-          message = config.confirmationSuccessMessage;
+          message = commandText.confirmed;
         } else {
           status = 'timeout';
-          message = config.unconfirmedMessage;
+          message = commandText.notConfirmed;
         }
         break;
       case 'timeout':
         status = 'timeout';
-        message = config.unconfirmedMessage;
+        message = commandText.notConfirmed;
         break;
       case 'unavailable':
         status = 'unavailable';
@@ -5561,7 +5565,7 @@ export class ProductPage implements OnDestroy {
     }
     this.openCommandState = Object.freeze({
       operation: config.operation as ProductMotorCommandOperation,
-      label: config.label,
+      label: commandText.label,
       status,
       startedAt: result.startedAt,
       completedAt: result.completedAt,

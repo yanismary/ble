@@ -18,7 +18,7 @@ describe('scanSurfaceTextFor', () => {
     }));
     expect(scanSurfaceTextFor('de')).toEqual(jasmine.objectContaining({
       title: 'Auswahl',
-      search: 'Suche',
+      search: 'Suchen',
       searching: 'Suche läuft...',
       noMotorDetected: 'Kein Motor gefunden.',
       demo: 'Demo',

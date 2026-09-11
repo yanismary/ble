@@ -91,8 +91,8 @@ import {
 import {
   PRODUCT_PAGE_CONFIG,
 } from '../product/profiles/product-page-config.facade';
-import { PRODUCT_PAGE_TEXT } from
-  '../product/shared/localization/product-page-text';
+import { productPageTextFor } from
+  '../product/shared/localization/product-page-localization';
 import {
   ProductPageNavigationState,
 } from '../product/shared/models/product-view.model';
@@ -284,7 +284,9 @@ export class ScanPage implements OnDestroy {
   motorTestStatus: MotorTestStatus = 'idle';
   readonly motorTestText = SCAN_MOTOR_TEST_TEXT;
   readonly productReadText = SCAN_PRODUCT_READ_TEXT;
-  readonly productPageText = PRODUCT_PAGE_TEXT;
+  get productPageText() {
+    return productPageTextFor(currentAppLanguage());
+  }
   productReadResult: ProductDataLoadResult | null = null;
   productReadStatus: 'idle' | 'loading' | ProductDataLoadStatus = 'idle';
   productProfile: ProductProfile = 'unknown';
