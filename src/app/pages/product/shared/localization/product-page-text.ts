@@ -58,6 +58,9 @@ export const PRODUCT_PAGE_TEXT = {
     sent:
       'Nom et pièce envoyés. Une nouvelle recherche peut être nécessaire.',
     failed: 'Échec de l’envoi du nom et de la pièce.',
+    writeTimeout: 'L’envoi du nom et de la pièce a expiré.',
+    disconnected:
+      'Le produit s’est déconnecté pendant la modification du nom et de la pièce.',
     unavailable: 'Commande nom/pièce indisponible',
     rooms: {
       bedroom: 'Chambre',

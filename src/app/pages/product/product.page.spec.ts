@@ -461,6 +461,25 @@ describe('ProductPage', () => {
     expect(writeExecutionService.execute).not.toHaveBeenCalled();
   });
 
+  it('should allow only the German advanced-tab label to wrap', () => {
+    component.setActiveMainTab('settings');
+    storeManualAppLanguage('de');
+    fixture.detectChanges();
+
+    const advancedLabel = fixture.nativeElement.querySelector(
+      'ion-segment-button[value="advanced"] span',
+    ) as HTMLElement;
+    expect(advancedLabel.textContent?.trim())
+      .toBe(productPageTextFor('de').shell.advanced);
+    expect(advancedLabel.classList.contains('product-advanced-label-de'))
+      .toBeTrue();
+
+    storeManualAppLanguage('fr');
+    fixture.detectChanges();
+    expect(advancedLabel.classList.contains('product-advanced-label-de'))
+      .toBeFalse();
+  });
+
   it('should open the anchored global menu without selecting product settings',
     async () => {
     const menu = fixture.debugElement.query(
@@ -928,7 +947,6 @@ describe('ProductPage', () => {
       'widoor',
       '43 6f 75 6c 6f 69 72 23 43 48 41',
     );
-
     component.setNameRoomDraftName('Couloir');
     await component.requestNameRoomChange();
 
@@ -952,7 +970,7 @@ describe('ProductPage', () => {
       useLegacyAndroidWriteApi: true,
     }));
     expect(request.authorization).toBeNull();
-    expect(delaySpy.calls.allArgs()).toEqual([[200], [1_800]]);
+    expect(delaySpy.calls.allArgs()).toEqual([[200], [2_500]]);
     expect(component.viewModel.displayedName).toBe('Couloir');
     expect(component.viewModel.roomSuffix).toBe('#CHA');
     expect(component.nameRoomWriteState.status).toBe('sent');
@@ -965,7 +983,6 @@ describe('ProductPage', () => {
         'widoor',
         '50 6f 72 74 65 23 53 44 42',
       );
-
       component.setNameRoomDraftRoom('#SDB');
       await component.requestNameRoomChange();
 
@@ -993,7 +1010,6 @@ describe('ProductPage', () => {
         'widoor',
         '50 6f 72 74 65',
       );
-
       component.setNameRoomDraftRoom(null);
       await component.requestNameRoomChange();
 
@@ -1014,7 +1030,6 @@ describe('ProductPage', () => {
       'widoor',
       '47 61 72 61 67 65 23 47 41 52',
     );
-
     component.setNameRoomDraftName('Garage');
     component.setNameRoomDraftRoom('#GAR');
     await component.requestNameRoomChange();
@@ -1051,7 +1066,6 @@ describe('ProductPage', () => {
           profile,
           '47 61 72 61 67 65 23 47 41 52',
         );
-
         harness.component.setNameRoomDraftName('Garage');
         harness.component.setNameRoomDraftRoom('#GAR');
         await harness.component.requestNameRoomChange();
@@ -1118,7 +1132,7 @@ describe('ProductPage', () => {
     );
   });
 
-  it('should keep current name and room when a name write fails', async () => {
+  it('should restore the last application-confirmed name and room when a write fails', async () => {
     localStorage.setItem(ROOM_ASSIGNMENTS_STORAGE_KEY, JSON.stringify({
       'DEVICE-1': { name: 'Ancien', suffix: '#SAL', updatedAt: 42 },
     }));
@@ -1142,7 +1156,7 @@ describe('ProductPage', () => {
     expect(component.viewModel.displayedName).toBe('Porte');
     expect(component.viewModel.roomSuffix).toBe('#CHA');
     expect(component.nameRoomDraftValue()).toEqual({
-      name: 'Couloir',
+      name: 'Porte',
       roomSuffix: '#CHA',
     });
     expect(component.nameRoomWriteState.status).toBe('failed');
@@ -1156,9 +1170,9 @@ describe('ProductPage', () => {
     expect(bleService.connectedDeviceId).toBe('device-1');
     expect(routerNavigate).not.toHaveBeenCalled();
     expect(readRoomCacheEntry('device-1')).toEqual({
-      name: 'Ancien',
-      suffix: '#SAL',
-      updatedAt: 42,
+      name: 'Porte',
+      suffix: '#CHA',
+      updatedAt: jasmine.any(Number),
     });
   });
 

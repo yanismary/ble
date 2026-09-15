@@ -1,12 +1,15 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import {
   BleClient,
+  BluetoothLe,
   BleService as DiscoveredBleService,
   ScanResult,
 } from '@capacitor-community/bluetooth-le';
 import { Capacitor } from '@capacitor/core';
 import { Device } from '@capacitor/device';
 import { Observable, Subject } from 'rxjs';
+
+import { BLE_UUIDS } from './ble-profile-catalog';
 
 export type BleOperationErrorCode =
   | 'initialization-failed'
@@ -32,6 +35,10 @@ export interface BleCharacteristicWriteOptions {
   readonly useLegacyAndroidWriteApi?: boolean;
 }
 
+interface NameRoomRecoveryPlugin {
+  recoverNameRoomWrite(options: { readonly deviceId: string }): Promise<void>;
+}
+
 export class BleOperationError extends Error {
   constructor(
     readonly code: BleOperationErrorCode,
@@ -42,6 +49,30 @@ export class BleOperationError extends Error {
     this.name = 'BleOperationError';
     Object.setPrototypeOf(this, BleOperationError.prototype);
   }
+}
+
+function dataViewHex(value: DataView | Uint8Array): string {
+  const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  return [...bytes]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join(' ');
+}
+
+function bleNameRoomErrorDetails(
+  error: unknown,
+): Readonly<Record<string, unknown>> {
+  if (error instanceof Error) {
+    const nativeCause = (error as Error & { readonly cause?: unknown }).cause;
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack ?? null,
+      nativeCause: nativeCause === undefined
+        ? null
+        : String(nativeCause),
+    };
+  }
+  return { value: String(error) };
 }
 
 export function isBleOperationError(
@@ -447,6 +478,85 @@ export class BleService implements OnDestroy {
     }
   }
 
+  async recoverTimedOutNameRoomWrite(deviceId: string): Promise<void> {
+    const targetDeviceId = deviceId.trim();
+    this.logNameRoomRecovery('service-recovery-requested', {
+      targetDeviceId,
+      connectedDeviceId: this.connectedDeviceIdValue,
+      platform: this.platform,
+      disconnectAlreadyPending: this.disconnectPromise !== null,
+      timestamp: Date.now(),
+    });
+    if (this.connectedDeviceIdValue !== targetDeviceId) {
+      this.logNameRoomRecovery('service-recovery-skipped-device-mismatch', {
+        targetDeviceId,
+        connectedDeviceId: this.connectedDeviceIdValue,
+        timestamp: Date.now(),
+      }, 'error');
+      return;
+    }
+    if (this.platform !== 'android') {
+      this.logNameRoomRecovery('service-standard-disconnect-dispatched', {
+        targetDeviceId,
+        platform: this.platform,
+        timestamp: Date.now(),
+      });
+      await this.disconnect();
+      return;
+    }
+    if (this.disconnectPromise !== null) {
+      this.logNameRoomRecovery('service-awaiting-existing-disconnect', {
+        targetDeviceId,
+        timestamp: Date.now(),
+      });
+      await this.disconnectPromise;
+      return;
+    }
+
+    this.locallyDisconnectingDeviceId = targetDeviceId;
+    this.remoteDuringLocalDisconnectDeviceIds.delete(targetDeviceId);
+    this.forgetNotificationSubscriptions(targetDeviceId);
+    const recovery = (BluetoothLe as unknown as NameRoomRecoveryPlugin)
+      .recoverNameRoomWrite({ deviceId: targetDeviceId });
+    this.disconnectPromise = recovery;
+    this.logNameRoomRecovery('native-recovery-dispatched', {
+      targetDeviceId,
+      timestamp: Date.now(),
+    });
+
+    try {
+      await recovery;
+      this.logNameRoomRecovery('native-recovery-resolved', {
+        targetDeviceId,
+        timestamp: Date.now(),
+      });
+      this.completeLocalDisconnection(targetDeviceId);
+    } catch (error: unknown) {
+      this.logNameRoomRecovery('native-recovery-rejected', {
+        targetDeviceId,
+        timestamp: Date.now(),
+        error: bleNameRoomErrorDetails(error),
+      }, 'error');
+      if (this.remoteDuringLocalDisconnectDeviceIds.has(targetDeviceId)) {
+        this.completeLocalDisconnection(targetDeviceId);
+        return;
+      }
+      throw error;
+    } finally {
+      this.locallyDisconnectingDeviceId = null;
+      this.remoteDuringLocalDisconnectDeviceIds.delete(targetDeviceId);
+      if (this.disconnectPromise === recovery) {
+        this.disconnectPromise = null;
+      }
+      this.logNameRoomRecovery('service-recovery-finished', {
+        targetDeviceId,
+        connectedDeviceId: this.connectedDeviceIdValue,
+        disconnectPending: this.disconnectPromise !== null,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
   async discoverServices(deviceId?: string): Promise<DiscoveredBleService[]> {
     if (this.connectedDeviceIdValue === null) {
       throw new Error('No BLE device is connected.');
@@ -640,14 +750,47 @@ export class BleService implements OnDestroy {
     options: BleCharacteristicWriteOptions = {},
   ): Promise<void> {
     const connectedDeviceId = this.connectedDeviceIdValue;
+    const normalizedRequestedCharacteristicUuid =
+      characteristicUuid.trim().toLowerCase();
+    const isNameRoomWrite = normalizedRequestedCharacteristicUuid ===
+      BLE_UUIDS.nameCharacteristic;
+    const requestedAt = Date.now();
+    if (isNameRoomWrite) {
+      this.logNameRoomWrite('write-request-received', {
+        timestamp: requestedAt,
+        connectedDeviceId,
+        requestedDeviceId: deviceId ?? null,
+        serviceUuid: serviceUuid.trim().toLowerCase(),
+        characteristicUuid: normalizedRequestedCharacteristicUuid,
+        payloadLength: value.byteLength,
+        payloadHex: dataViewHex(value),
+        timeoutMs: options.timeoutMs ?? null,
+        useLegacyAndroidWriteApi:
+          options.useLegacyAndroidWriteApi === true,
+        writeAlreadyPending: this.writePromise !== null,
+        activeNotifications: Array.from(
+          this.notificationSubscriptions.values(),
+        ).map((subscription) => ({
+          deviceId: subscription.deviceId,
+          serviceUuid: subscription.serviceUuid,
+          characteristicUuid: subscription.characteristicUuid,
+        })),
+        connectionGeneration: this.connectionGenerationValue,
+      });
+    }
 
     if (connectedDeviceId === null) {
+      if (isNameRoomWrite) {
+        this.logNameRoomWrite('write-rejected-no-connected-device', {
+          timestamp: Date.now(),
+        }, 'error');
+      }
       throw new Error('No BLE device is connected.');
     }
 
     const normalizedServiceUuid = serviceUuid.trim().toLowerCase();
     const normalizedCharacteristicUuid =
-      characteristicUuid.trim().toLowerCase();
+      normalizedRequestedCharacteristicUuid;
     const targetDeviceId = deviceId === undefined
       ? connectedDeviceId
       : deviceId.trim();
@@ -680,6 +823,12 @@ export class BleService implements OnDestroy {
     }
 
     if (this.writePromise !== null) {
+      if (isNameRoomWrite) {
+        this.logNameRoomWrite('write-rejected-service-busy', {
+          timestamp: Date.now(),
+          elapsedSinceRequestMs: Date.now() - requestedAt,
+        }, 'error');
+      }
       throw new Error('A BLE write is already in progress.');
     }
 
@@ -695,6 +844,21 @@ export class BleService implements OnDestroy {
         ? { useLegacyAndroidWriteApi: true }
         : {}),
     };
+    if (isNameRoomWrite) {
+      this.logNameRoomWrite('plugin-write-dispatch', {
+        timestamp: Date.now(),
+        elapsedSinceRequestMs: Date.now() - requestedAt,
+        targetDeviceId,
+        serviceUuid: normalizedServiceUuid,
+        characteristicUuid: normalizedCharacteristicUuid,
+        payloadLength: dataView.byteLength,
+        payloadHex: dataViewHex(dataView),
+        timeoutMs: nativeOptions.timeout ?? null,
+        useLegacyAndroidWriteApi:
+          nativeOptions.useLegacyAndroidWriteApi === true,
+        pluginMethod: 'write-with-response',
+      });
+    }
     const write = options.timeoutMs === undefined &&
         !options.useLegacyAndroidWriteApi
       ? BleClient.write(
@@ -714,13 +878,39 @@ export class BleService implements OnDestroy {
 
     try {
       await write;
+      if (isNameRoomWrite) {
+        this.logNameRoomWrite('plugin-write-resolved', {
+          timestamp: Date.now(),
+          elapsedSinceRequestMs: Date.now() - requestedAt,
+          targetDeviceId,
+          connectedDeviceId: this.connectedDeviceIdValue,
+        });
+      }
 
       if (this.connectedDeviceIdValue !== targetDeviceId) {
         throw new Error('The BLE device disconnected during the write.');
       }
+    } catch (error: unknown) {
+      if (isNameRoomWrite) {
+        this.logNameRoomWrite('plugin-write-rejected', {
+          timestamp: Date.now(),
+          elapsedSinceRequestMs: Date.now() - requestedAt,
+          targetDeviceId,
+          connectedDeviceId: this.connectedDeviceIdValue,
+          error: bleNameRoomErrorDetails(error),
+        }, 'error');
+      }
+      throw error;
     } finally {
       if (this.writePromise === write) {
         this.writePromise = null;
+      }
+      if (isNameRoomWrite) {
+        this.logNameRoomWrite('write-promise-cleared', {
+          timestamp: Date.now(),
+          elapsedSinceRequestMs: Date.now() - requestedAt,
+          writeStillPending: this.writePromise !== null,
+        });
       }
     }
   }
@@ -932,6 +1122,28 @@ export class BleService implements OnDestroy {
     this.disconnectionSubject.next({ deviceId, reason: 'local' });
   }
 
+  private logNameRoomWrite(
+    event: string,
+    details: Readonly<Record<string, unknown>>,
+    level: 'info' | 'error' = 'info',
+  ): void {
+    console[level](`[NAME_ROOM_BLE_SERVICE] ${JSON.stringify({
+      event,
+      ...details,
+    })}`);
+  }
+
+  private logNameRoomRecovery(
+    event: string,
+    details: Readonly<Record<string, unknown>>,
+    level: 'info' | 'error' = 'info',
+  ): void {
+    console[level](`[NAME_ROOM_RECOVERY] ${JSON.stringify({
+      event,
+      ...details,
+    })}`);
+  }
+
   private toBleOperationError(
     error: unknown,
     fallbackCode: BleOperationErrorCode,
@@ -1111,6 +1323,14 @@ export class BleService implements OnDestroy {
         // A physical disconnection already stops native notifications.
       }
     }));
+  }
+
+  private forgetNotificationSubscriptions(deviceId: string): void {
+    for (const [key, subscription] of this.notificationSubscriptions) {
+      if (subscription.deviceId === deviceId) {
+        this.notificationSubscriptions.delete(key);
+      }
+    }
   }
 
   private clearDiscoveredServices(): void {

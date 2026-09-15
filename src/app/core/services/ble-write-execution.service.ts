@@ -158,7 +158,19 @@ export class BleWriteExecutionService implements OnDestroy {
   ): Promise<LegacyBleWriteExecutionResult> {
     const startedAt = Date.now();
     const stableRequest = snapshotRequest(request);
+    this.logNameRoomWrite(stableRequest, 'execution-requested', {
+      startedAt,
+      connectionGeneration: stableRequest.connectionGeneration,
+      confirmationPolicy: stableRequest.confirmationPolicy.kind,
+      gattWriteTimeoutMs: stableRequest.policy?.gattWriteTimeoutMs ?? null,
+      useLegacyAndroidWriteApi:
+        stableRequest.policy?.useLegacyAndroidWriteApi === true,
+      serviceBusy: this.activeAttemptToken !== null,
+    });
     if (this.activeAttemptToken !== null) {
+      this.logNameRoomWrite(stableRequest, 'execution-rejected-busy', {
+        timestamp: Date.now(),
+      }, 'error');
       return this.result(
         stableRequest,
         startedAt,
@@ -173,6 +185,9 @@ export class BleWriteExecutionService implements OnDestroy {
 
     const attemptToken = Symbol(stableRequest.attemptId);
     this.activeAttemptToken = attemptToken;
+    this.logNameRoomWrite(stableRequest, 'execution-lock-acquired', {
+      timestamp: Date.now(),
+    });
     try {
       return await this.executeLocked(
         stableRequest,
@@ -180,6 +195,10 @@ export class BleWriteExecutionService implements OnDestroy {
         attemptToken,
       );
     } catch (error: unknown) {
+      this.logNameRoomWrite(stableRequest, 'execution-unexpected-error', {
+        timestamp: Date.now(),
+        error: nameRoomErrorDetails(error),
+      }, 'error');
       return this.result(
         stableRequest,
         startedAt,
@@ -194,6 +213,10 @@ export class BleWriteExecutionService implements OnDestroy {
     } finally {
       if (this.activeAttemptToken === attemptToken) {
         this.activeAttemptToken = null;
+        this.logNameRoomWrite(stableRequest, 'execution-lock-released', {
+          timestamp: Date.now(),
+          elapsedMs: Date.now() - startedAt,
+        });
       }
     }
   }
@@ -210,12 +233,22 @@ export class BleWriteExecutionService implements OnDestroy {
   ): Promise<LegacyBleWriteExecutionResult> {
     const invalid = this.validateRequest(request, startedAt);
     if (invalid !== null) {
+      this.logNameRoomWrite(request, 'request-validation-failed', {
+        timestamp: Date.now(),
+        errorCode: invalid.error?.code ?? null,
+        errorMessage: invalid.error?.message ?? null,
+      }, 'error');
       return invalid;
     }
 
     const write = request.write;
     const policy = this.validatePolicy(request, startedAt);
     if (policy !== null) {
+      this.logNameRoomWrite(request, 'policy-validation-failed', {
+        timestamp: Date.now(),
+        errorCode: policy.error?.code ?? null,
+        errorMessage: policy.error?.message ?? null,
+      }, 'error');
       return policy;
     }
 
@@ -224,6 +257,10 @@ export class BleWriteExecutionService implements OnDestroy {
       write.characteristicUuid,
       request.deviceId,
     );
+    this.logNameRoomWrite(request, 'gatt-properties-checked', {
+      timestamp: Date.now(),
+      ...properties,
+    });
     if (!properties.servicePresent) {
       return this.result(
         request, startedAt, 'unavailable', false, 'unavailable', false,
@@ -264,6 +301,11 @@ export class BleWriteExecutionService implements OnDestroy {
       false,
     );
     if (contextFailure !== null) {
+      this.logNameRoomWrite(request, 'context-invalid-before-write', {
+        timestamp: Date.now(),
+        errorCode: contextFailure.error?.code ?? null,
+        errorMessage: contextFailure.error?.message ?? null,
+      }, 'error');
       return contextFailure;
     }
 
@@ -272,8 +314,19 @@ export class BleWriteExecutionService implements OnDestroy {
       startedAt,
     );
     if (authorizationFailure !== null) {
+      this.logNameRoomWrite(request, 'authorization-failed', {
+        timestamp: Date.now(),
+        errorCode: authorizationFailure.error?.code ?? null,
+        errorMessage: authorizationFailure.error?.message ?? null,
+      }, 'error');
       return authorizationFailure;
     }
+    this.logNameRoomWrite(request, 'authorization-accepted', {
+      timestamp: Date.now(),
+      authorizationRequired: request.authorization !== null,
+      confirmationId: request.authorization?.confirmationId ?? null,
+      authorizationExpiresAt: request.authorization?.expiresAt ?? null,
+    });
     // Authorization is consumed at the last synchronous boundary before the
     // native write (or a Widoor motor-state confirmation flow) begins.
     this.consumeAuthorization(request.authorization);
@@ -552,6 +605,13 @@ export class BleWriteExecutionService implements OnDestroy {
     startedAt: number,
     context: ExecutionContext,
   ): Promise<LegacyBleWriteExecutionResult> {
+    const nativeWriteStartedAt = Date.now();
+    this.logNameRoomWrite(request, 'native-write-dispatch', {
+      timestamp: nativeWriteStartedAt,
+      timeoutMs: request.policy?.gattWriteTimeoutMs ?? null,
+      useLegacyAndroidWriteApi:
+        request.policy?.useLegacyAndroidWriteApi === true,
+    });
     try {
       const writeArguments = [
         request.write.serviceUuid,
@@ -575,7 +635,16 @@ export class BleWriteExecutionService implements OnDestroy {
           writeOptions,
         );
       }
+      this.logNameRoomWrite(request, 'native-write-resolved', {
+        timestamp: Date.now(),
+        elapsedMs: Date.now() - nativeWriteStartedAt,
+      });
     } catch (error: unknown) {
+      this.logNameRoomWrite(request, 'native-write-rejected', {
+        timestamp: Date.now(),
+        elapsedMs: Date.now() - nativeWriteStartedAt,
+        error: nameRoomErrorDetails(error),
+      }, 'error');
       return this.contextFailure(request, startedAt, context, false) ??
         this.result(
           request, startedAt, 'failed', false, 'not-validated',
@@ -593,6 +662,29 @@ export class BleWriteExecutionService implements OnDestroy {
           : 'not-validated',
         this.overrideUsed(request),
       );
+  }
+
+  private logNameRoomWrite(
+    request: LegacyBleWriteRequest,
+    event: string,
+    details: Readonly<Record<string, unknown>>,
+    level: 'info' | 'error' = 'info',
+  ): void {
+    if (request.write.operation !== 'name-room') {
+      return;
+    }
+    const entry = JSON.stringify({
+      event,
+      attemptId: request.attemptId,
+      product: request.profile,
+      deviceId: request.deviceId,
+      serviceUuid: request.write.serviceUuid,
+      characteristicUuid: request.write.characteristicUuid,
+      payloadHex: request.write.payloadHex,
+      payloadLength: request.write.payload.length,
+      ...details,
+    });
+    console[level](`[NAME_ROOM_EXECUTION] ${entry}`);
   }
 
   private async executeWidoorMotorCommand(
@@ -980,6 +1072,23 @@ function isTargetCompatible(write: LegacyBleWrite): boolean {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function nameRoomErrorDetails(
+  error: unknown,
+): Readonly<Record<string, unknown>> {
+  if (error instanceof Error) {
+    const nativeCause = (error as Error & { readonly cause?: unknown }).cause;
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack ?? null,
+      nativeCause: nativeCause === undefined
+        ? null
+        : String(nativeCause),
+    };
+  }
+  return { value: String(error) };
 }
 
 function snapshotRequest(

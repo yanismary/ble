@@ -195,6 +195,7 @@ const PHASE1_CONNECT_ATTEMPTS = 3;
 const PHASE1_CONNECT_RETRY_DELAYS_MS = [500, 1_000] as const;
 const PHASE1_BLUETOOTH_ENABLE_CHECK_DELAYS_MS = [400, 600, 800] as const;
 const EXIT_SCAN_CLEANUP_TIMEOUT_MS = 1_000;
+const DISABLE_MOTOR_STATE_NOTIFICATION_FOR_NAME_ROOM_DEBUG = true;
 
 @Component({
   selector: 'app-scan',
@@ -1694,6 +1695,27 @@ export class ScanPage implements OnDestroy {
     expectedConnectionGeneration: number,
     services: readonly DiscoveredBleService[],
   ): Promise<void> {
+    if (
+      DISABLE_MOTOR_STATE_NOTIFICATION_FOR_NAME_ROOM_DEBUG &&
+      this.bleService.platform === 'android'
+    ) {
+      this.subscribingMotorState = false;
+      this.motorStateNotificationsActive = false;
+      this.motorNotificationError = null;
+      console.info(
+        '[NAME_ROOM_TEST] motor-state-notification-skipped',
+        JSON.stringify({
+          timestamp: Date.now(),
+          deviceId,
+          expectedConnectionGeneration,
+          serviceUuid: BLE_UUIDS.shdoService,
+          characteristicUuid: BLE_UUIDS.motorStateCharacteristic,
+          platform: this.bleService.platform,
+        }),
+      );
+      return;
+    }
+
     const motorStateCharacteristic = services
       .find(
         ({ uuid }) => this.normalizeUuid(uuid) === BLE_UUIDS.shdoService,

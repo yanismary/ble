@@ -68,6 +68,9 @@ const PRODUCT_PAGE_TRANSLATIONS = {
       executing: 'Sending name and room…',
       sent: 'Name and room sent. A new scan may be required.',
       failed: 'Failed to send the name and room.',
+      writeTimeout: 'Sending the name and room timed out.',
+      disconnected:
+        'The product disconnected while changing the name and room.',
       unavailable: 'Name/room command unavailable',
       rooms: {
         entrance: 'Entrance',
@@ -431,6 +434,9 @@ const PRODUCT_PAGE_TRANSLATIONS = {
       executing: 'Name und Raum werden gesendet…',
       sent: 'Name und Raum gesendet. Eine neue Suche kann erforderlich sein.',
       failed: 'Name und Raum konnten nicht gesendet werden.',
+      writeTimeout: 'Das Senden von Name und Raum ist abgelaufen.',
+      disconnected:
+        'Das Produkt wurde während der Änderung von Name und Raum getrennt.',
       unavailable: 'Befehl für Name/Raum nicht verfügbar',
       rooms: { entrance: 'Eingang', hall: 'Flur' },
       errors: {
@@ -556,7 +562,10 @@ const PRODUCT_PAGE_TRANSLATIONS = {
     userTimingControls: { apply: 'Zastosuj', current: 'Bieżąca wartość:', draft: 'Wartość do zastosowania:', executing: 'Wysyłanie opóźnienia…', sent: 'Opóźnienie wysłane. Trwa odczyt kontrolny.', failed: 'Nie udało się wysłać opóźnienia.', unavailable: 'Polecenie opóźnienia niedostępne' },
     userPeripheralControls: { title: 'Oświetlenie i wskaźniki', executing: 'Wysyłanie ustawienia oświetlenia…', sent: 'Ustawienie oświetlenia wysłane. Trwa odczyt kontrolny.', failed: 'Nie udało się wysłać ustawienia oświetlenia.', unavailable: 'Polecenie oświetlenia niedostępne' },
     nameRoomControls: {
-      current: 'Bieżąca wartość:', draft: 'Wartość do zapisania:', executing: 'Wysyłanie nazwy i pomieszczenia…', sent: 'Nazwa i pomieszczenie wysłane. Może być wymagane ponowne wyszukiwanie.', failed: 'Nie udało się wysłać nazwy i pomieszczenia.', unavailable: 'Polecenie nazwy/pomieszczenia niedostępne',
+      current: 'Bieżąca wartość:', draft: 'Wartość do zapisania:', executing: 'Wysyłanie nazwy i pomieszczenia…', sent: 'Nazwa i pomieszczenie wysłane. Może być wymagane ponowne wyszukiwanie.', failed: 'Nie udało się wysłać nazwy i pomieszczenia.',
+      writeTimeout: 'Upłynął limit czasu wysyłania nazwy i pomieszczenia.',
+      disconnected: 'Produkt rozłączył się podczas zmiany nazwy i pomieszczenia.',
+      unavailable: 'Polecenie nazwy/pomieszczenia niedostępne',
       rooms: { entrance: 'Przedpokój', hall: 'Hol' },
       errors: { empty: 'Nazwa jest wymagana.', invalidCharacters: 'Dozwolone są wyłącznie litery, cyfry, spacje i łączniki.', tooLong: 'Pełna nazwa jest ograniczona do 15 znaków.', tooShort: 'Nazwa musi zawierać co najmniej 5 znaków.', invalidRoom: 'Nieznane pomieszczenie.' },
     },

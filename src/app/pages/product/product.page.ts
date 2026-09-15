@@ -69,9 +69,7 @@ import {
   HistoricalBleDate,
   decodeProfessionalPeripheralFlags,
 } from '../../core/services/ble-read-decoders';
-import {
-  BleTypedReadResult,
-} from '../../core/services/ble-read.service';
+import { BleTypedReadResult } from '../../core/services/ble-read.service';
 import {
   KnownProductProfile,
   ProductDataLoadOptions,
@@ -213,10 +211,12 @@ import {
 import {
   PRODUCT_NAME_ROOM_CONFIRMATION_POLICY,
   PRODUCT_NAME_ROOM_EXECUTION_POLICY,
-  PRODUCT_NAME_ROOM_POST_WRITE_COOLDOWN_MS,
   PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS,
+  PRODUCT_NAME_ROOM_POST_WRITE_STABILIZATION_MS,
   PRODUCT_ROOM_OPTIONS,
   ProductNameRoomDraft,
+  ProductNameRoomValidationFailure,
+  ProductNameRoomValue,
   ProductRoomSuffix,
   createProductNameRoomAuthorization,
   createProductNameRoomDraft,
@@ -247,6 +247,7 @@ type ProductBackToScanOptions = Readonly<{
   preserveInactivityExpiration?: boolean;
 }>;
 type LocalizedProductPageText = ReturnType<typeof productPageTextFor>;
+const SKIP_INITIAL_PRODUCT_READS_FOR_NAME_ROOM_DEBUG = true;
 type WidoorHistoricalHeadings = Readonly<{
   outputs: string;
   additionalActions: string;
@@ -343,6 +344,10 @@ export class ProductPage implements OnDestroy {
   readonly config: ProductProfileDefinition;
   get text(): ReturnType<typeof productPageTextFor> {
     return productPageTextFor(currentAppLanguage(), this.config.profile);
+  }
+
+  get usesGermanProductLabels(): boolean {
+    return currentAppLanguage() === 'de';
   }
 
   get widoorHistoricalHeadings(): WidoorHistoricalHeadings {
@@ -452,6 +457,14 @@ export class ProductPage implements OnDestroy {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', message: null });
+  private nameRoomDebugAttempt: {
+    readonly attemptId: string;
+    readonly mode: 'name-only' | 'room-only' | 'name+room';
+    readonly startedAt: number;
+    readonly payloadHex: string;
+    readonly length: number;
+    readonly finishedAt?: number;
+  } | null = null;
   sensitiveActionState: {
     readonly status:
       | 'idle'
@@ -1762,7 +1775,13 @@ export class ProductPage implements OnDestroy {
     if (result.valid || result.error === 'unchanged') {
       return null;
     }
-    switch (result.error) {
+    return this.nameRoomValidationMessageForError(result.error);
+  }
+
+  private nameRoomValidationMessageForError(
+    error: ProductNameRoomValidationFailure['error'],
+  ): string {
+    switch (error) {
       case 'empty':
         return this.text.nameRoomControls.errors.empty;
       case 'invalid-characters':
@@ -1773,6 +1792,8 @@ export class ProductPage implements OnDestroy {
         return this.text.nameRoomControls.errors.tooShort;
       case 'invalid-room':
         return this.text.nameRoomControls.errors.invalidRoom;
+      case 'unchanged':
+        return this.text.nameRoomControls.failed;
     }
   }
 
@@ -3952,21 +3973,59 @@ export class ProductPage implements OnDestroy {
   }
 
   async requestNameRoomChange(): Promise<void> {
-    if (!this.canRequestNameRoomChange() || this.context === null) {
+    const submitReceivedAt = Date.now();
+    const canRequest = this.canRequestNameRoomChange();
+    this.logNameRoom('NAME_ROOM_DEBUG', 'submit-received', {
+      product: this.config.profile,
+      timestamp: submitReceivedAt,
+      timestampIso: new Date(submitReceivedAt).toISOString(),
+      canRequest,
+      hasContext: this.context !== null,
+      isDemo: this.isDemoMode,
+      writeState: this.nameRoomWriteState.status,
+      globalWriteExecuting: this.bleWriteExecutionService.isExecuting,
+      connectedDeviceId: this.bleService.connectedDeviceId,
+      currentValue: this.currentNameRoomValue(),
+      requestedDraft: this.nameRoomDraftValue(),
+    });
+    if (!canRequest || this.context === null) {
+      this.logNameRoom('NAME_ROOM_DEBUG', 'submit-blocked', {
+        product: this.config.profile,
+        timestamp: Date.now(),
+        canRequest,
+        hasContext: this.context !== null,
+        writeState: this.nameRoomWriteState.status,
+        globalWriteExecuting: this.bleWriteExecutionService.isExecuting,
+      }, 'error');
       return;
     }
 
-    const validation = validateProductNameRoomDraft(
-      this.currentNameRoomValue(),
-      this.nameRoomDraftValue(),
+    const currentValue = this.currentNameRoomValue();
+    const requestedDraft = this.nameRoomDraftValue();
+    const requestedValidation = validateProductNameRoomDraft(
+      currentValue,
+      requestedDraft,
     );
-    if (!validation.valid) {
+    this.logNameRoom('NAME_ROOM_DEBUG', 'draft-validation-result', {
+      product: this.config.profile,
+      timestamp: Date.now(),
+      currentValue,
+      requestedDraft,
+      validation: requestedValidation,
+    });
+    if (!requestedValidation.valid) {
       const message = this.nameRoomValidationMessage();
       if (message !== null) {
         this.nameRoomWriteState = Object.freeze({
           status: 'failed',
           message,
         });
+        this.logNameRoom('NAME_ROOM_DEBUG', 'validation-error-presented', {
+          product: this.config.profile,
+          timestamp: Date.now(),
+          validationError: requestedValidation.error,
+          message,
+        }, 'error');
         await this.presentNameRoomWriteFailure(message);
       }
       return;
@@ -3975,18 +4034,28 @@ export class ProductPage implements OnDestroy {
     if (this.isDemoMode) {
       this.viewModel = {
         ...this.viewModel,
-        displayedName: validation.baseName,
-        roomSuffix: validation.roomSuffix,
+        displayedName: requestedValidation.baseName,
+        roomSuffix: requestedValidation.roomSuffix,
       };
       this.resetNameRoomDraft();
       this.nameRoomWriteState = Object.freeze({
         status: 'sent',
         message: this.text.nameRoomControls.sent,
       });
+      this.logNameRoom('NAME_ROOM_DEBUG', 'demo-state-committed-no-ble', {
+        product: this.config.profile,
+        timestamp: Date.now(),
+        userName: requestedValidation.baseName,
+        room: requestedValidation.roomSuffix,
+        physicalName: requestedValidation.valueToWrite,
+      });
       return;
     }
-    const write = encodeProductNameRoomWrite(this.config.profile, validation);
+
     const context = this.context;
+    const confirmedBeforeWrite = currentValue;
+    const validation = requestedValidation;
+    const write = encodeProductNameRoomWrite(this.config.profile, validation);
     const contextStatus = this.writeContextStatus(context, write);
     if (contextStatus !== null) {
       const message = this.nameRoomFailureMessage(contextStatus);
@@ -3994,11 +4063,70 @@ export class ProductPage implements OnDestroy {
         status: 'failed',
         message,
       });
+      this.logNameRoom('NAME_ROOM_DEBUG', 'write-context-rejected', {
+        product: this.config.profile,
+        timestamp: Date.now(),
+        contextStatus,
+        deviceId: context.deviceId,
+        connectionGeneration: context.connectionGeneration,
+        message,
+      }, 'error');
       await this.presentNameRoomWriteFailure(message);
       return;
     }
 
     const attemptId = this.nextCommandIdentifier('attempt');
+    const debugMode = requestedValidation.nameChanged &&
+        requestedValidation.roomChanged
+      ? 'name+room'
+      : requestedValidation.nameChanged
+        ? 'name-only'
+        : 'room-only';
+    this.nameRoomWriteState = Object.freeze({
+      status: 'executing',
+      message: this.text.nameRoomControls.executing,
+    });
+    const debugStartedAt = Date.now();
+    this.nameRoomDebugAttempt = Object.freeze({
+      attemptId,
+      mode: debugMode,
+      startedAt: debugStartedAt,
+      payloadHex: write.payloadHex,
+      length: write.payload.length,
+    });
+    this.logNameRoom('NAME_ROOM_DEBUG', 'current-confirmed-state', {
+      product: this.config.profile,
+      attemptId,
+      userName: confirmedBeforeWrite.name,
+      room: confirmedBeforeWrite.roomSuffix,
+      timestamp: debugStartedAt,
+      timestampIso: new Date(debugStartedAt).toISOString(),
+    });
+    this.logNameRoom('NAME_ROOM_DEBUG', 'requested-name', {
+      product: this.config.profile,
+      mode: debugMode,
+      requestedName: validation.baseName,
+      attemptId,
+    });
+    this.logNameRoom('NAME_ROOM_DEBUG', 'requested-room', {
+      product: this.config.profile,
+      mode: debugMode,
+      requestedRoom: validation.roomSuffix,
+      attemptId,
+    });
+    this.logNameRoom('NAME_ROOM_DEBUG', 'physical-name', {
+      product: this.config.profile,
+      mode: debugMode,
+      physicalName: validation.valueToWrite,
+      length: write.payload.length,
+      hex: write.payloadHex,
+      serviceUuid: write.serviceUuid,
+      characteristicUuid: write.characteristicUuid,
+      writeType: 'with-response',
+      attemptId,
+      timestamp: debugStartedAt,
+      timestampIso: new Date(debugStartedAt).toISOString(),
+    });
     const confirmedAt = Date.now();
     const authorization = this.usesPhase1ImmediateWrite(this.config.profile)
       ? null
@@ -4010,22 +4138,66 @@ export class ProductPage implements OnDestroy {
           confirmationId: this.nextCommandIdentifier('confirmation'),
           confirmedAt,
         });
-    this.nameRoomWriteState = Object.freeze({
-      status: 'executing',
-      message: this.text.nameRoomControls.executing,
+    this.logNameRoom('NAME_ROOM_DEBUG', 'authorization-prepared', {
+      product: this.config.profile,
+      mode: debugMode,
+      attemptId,
+      authorizationRequired: authorization !== null,
+      confirmationId: authorization?.confirmationId ?? null,
+      confirmedAt,
+      expiresAt: authorization?.expiresAt ?? null,
+      connectionGeneration: context.connectionGeneration,
+      timestamp: Date.now(),
     });
-
+    const preWriteDelayStartedAt = Date.now();
+    this.logNameRoom('NAME_ROOM_DEBUG', 'pre-write-delay-start', {
+      product: this.config.profile,
+      mode: debugMode,
+      attemptId,
+      durationMs: PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS,
+      timestamp: preWriteDelayStartedAt,
+    });
     await this.delay(PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS);
+    this.logNameRoom('NAME_ROOM_DEBUG', 'pre-write-delay-complete', {
+      product: this.config.profile,
+      mode: debugMode,
+      attemptId,
+      elapsedMs: Date.now() - preWriteDelayStartedAt,
+      timestamp: Date.now(),
+      contextStillCurrent:
+        this.isCurrentContext() && this.context === context,
+    });
     if (!this.isCurrentContext() || this.context !== context) {
-      const message = this.text.openCommand.stale;
-      this.nameRoomWriteState = Object.freeze({
-        status: 'failed',
+      const message = this.nameRoomDisconnectedOrStaleMessage();
+      this.logNameRoom('NAME_ROOM_DEBUG', 'operation-aborted-after-pre-delay', {
+        product: this.config.profile,
+        mode: debugMode,
+        attemptId,
+        timestamp: Date.now(),
+        connectedDeviceId: this.bleService.connectedDeviceId,
         message,
-      });
-      await this.presentNameRoomWriteFailure(message);
+      }, 'error');
+      await this.failNameRoomOperation(message, confirmedBeforeWrite);
       return;
     }
 
+    const writeStartedAt = Date.now();
+    this.logNameRoom('NAME_ROOM_DEBUG', 'write-start', {
+      product: this.config.profile,
+      mode: debugMode,
+      attemptId,
+      timestamp: writeStartedAt,
+      timestampIso: new Date(writeStartedAt).toISOString(),
+      timeoutMs: PRODUCT_NAME_ROOM_EXECUTION_POLICY.gattWriteTimeoutMs,
+      preWriteDelayMs: PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS,
+      confirmationPolicy: PRODUCT_NAME_ROOM_CONFIRMATION_POLICY.kind,
+      useLegacyAndroidWriteApi:
+        PRODUCT_NAME_ROOM_EXECUTION_POLICY.useLegacyAndroidWriteApi === true,
+      serviceUuid: write.serviceUuid,
+      characteristicUuid: write.characteristicUuid,
+      payloadHex: write.payloadHex,
+      payloadLength: write.payload.length,
+    });
     const result = await this.bleWriteExecutionService.execute({
       write,
       deviceId: context.deviceId,
@@ -4040,43 +4212,140 @@ export class ProductPage implements OnDestroy {
         PRODUCT_NAME_ROOM_EXECUTION_POLICY,
       ),
     });
-    if (!this.isCurrentContext() || this.context !== context) {
-      const message = this.text.openCommand.stale;
-      this.nameRoomWriteState = Object.freeze({
-        status: 'failed',
-        message,
-      });
-      await this.presentNameRoomWriteFailure(message);
-      return;
-    }
-    if (result.status === 'success') {
-      this.viewModel = {
-        ...this.viewModel,
-        displayedName: validation.baseName,
-        roomSuffix: validation.roomSuffix,
-      };
-      this.updateStoredRoomAssignment(
-        context.deviceId,
-        validation.baseName,
-        validation.roomSuffix ?? '',
-      );
-      this.resetNameRoomDraft();
-      this.nameRoomWriteState = Object.freeze({
-        status: 'sent',
-        message: this.text.nameRoomControls.sent,
-      });
-      await this.delay(PRODUCT_NAME_ROOM_POST_WRITE_COOLDOWN_MS);
-      if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
-        await this.refreshProductData({}, false);
-      }
-      return;
-    }
-    const message = this.text.nameRoomControls.failed;
-    this.nameRoomWriteState = Object.freeze({
-      status: 'failed',
-      message,
+    const writeFinishedAt = Date.now();
+    this.nameRoomDebugAttempt = Object.freeze({
+      ...this.nameRoomDebugAttempt!,
+      finishedAt: writeFinishedAt,
     });
-    await this.presentNameRoomWriteFailure(message);
+    const resultLog = {
+      product: this.config.profile,
+      mode: debugMode,
+      attemptId,
+      timestamp: writeFinishedAt,
+      timestampIso: new Date(writeFinishedAt).toISOString(),
+      durationMs: writeFinishedAt - writeStartedAt,
+      status: result.status,
+      nativeWriteCompleted: result.nativeWriteCompleted,
+      confirmationStatus: result.confirmationStatus,
+      errorCode: result.error?.code ?? null,
+      errorMessage: result.error?.message ?? null,
+      nativeCause: nameRoomErrorDetails(result.error?.nativeCause),
+    };
+    if (result.status === 'success') {
+      this.logNameRoom('NAME_ROOM_DEBUG', 'write-success', resultLog);
+    } else {
+      this.logNameRoom(
+        'NAME_ROOM_DEBUG',
+        'write-error',
+        resultLog,
+        'error',
+      );
+    }
+    if (!this.isCurrentContext() || this.context !== context) {
+      const message = this.nameRoomDisconnectedOrStaleMessage();
+      this.logNameRoom('NAME_ROOM_DEBUG', 'operation-aborted-after-write', {
+        product: this.config.profile,
+        mode: debugMode,
+        attemptId,
+        timestamp: Date.now(),
+        resultStatus: result.status,
+        connectedDeviceId: this.bleService.connectedDeviceId,
+        message,
+      }, 'error');
+      await this.failNameRoomOperation(message, confirmedBeforeWrite);
+      return;
+    }
+    if (result.status !== 'success') {
+      const message = this.nameRoomExecutionFailureMessage(result);
+      this.logNameRoom('NAME_ROOM_DEBUG', 'write-failure-classified', {
+        product: this.config.profile,
+        mode: debugMode,
+        attemptId,
+        timestamp: Date.now(),
+        resultStatus: result.status,
+        errorCode: result.error?.code ?? null,
+        errorMessage: result.error?.message ?? null,
+        isNativeWriteTimeout: this.isTimedOutNameRoomNativeWrite(result),
+        userMessage: message,
+      }, 'error');
+      if (this.isTimedOutNameRoomNativeWrite(result)) {
+        await this.recoverTimedOutNameRoomWrite(
+          context,
+          confirmedBeforeWrite,
+          message,
+          attemptId,
+          debugMode,
+        );
+        return;
+      }
+      await this.failNameRoomOperation(message, confirmedBeforeWrite);
+      return;
+    }
+
+    const stabilizationStartedAt = Date.now();
+    this.logNameRoom('NAME_ROOM_DEBUG', 'stabilization-start', {
+      product: this.config.profile,
+      mode: debugMode,
+      attemptId,
+      durationMs: PRODUCT_NAME_ROOM_POST_WRITE_STABILIZATION_MS,
+      writeState: this.nameRoomWriteState.status,
+      timestamp: stabilizationStartedAt,
+      timestampIso: new Date(stabilizationStartedAt).toISOString(),
+    });
+    await this.delay(PRODUCT_NAME_ROOM_POST_WRITE_STABILIZATION_MS);
+    if (!this.isCurrentContext() || this.context !== context) {
+      const message = this.nameRoomDisconnectedOrStaleMessage();
+      this.logNameRoom(
+        'NAME_ROOM_DEBUG',
+        'stabilization-aborted-disconnected-or-stale',
+        {
+          product: this.config.profile,
+          mode: debugMode,
+          attemptId,
+          timestamp: Date.now(),
+          elapsedMs: Date.now() - stabilizationStartedAt,
+          connectedDeviceId: this.bleService.connectedDeviceId,
+          message,
+        },
+        'error',
+      );
+      await this.failNameRoomOperation(message, confirmedBeforeWrite);
+      return;
+    }
+    const stabilizationCompletedAt = Date.now();
+    this.logNameRoom('NAME_ROOM_DEBUG', 'stabilization-complete', {
+      product: this.config.profile,
+      mode: debugMode,
+      attemptId,
+      durationMs: stabilizationCompletedAt - stabilizationStartedAt,
+      writeState: this.nameRoomWriteState.status,
+      timestamp: stabilizationCompletedAt,
+      timestampIso: new Date(stabilizationCompletedAt).toISOString(),
+    });
+
+    this.applyConfirmedNameRoomValue(
+      context.deviceId,
+      Object.freeze({
+        name: validation.baseName,
+        roomSuffix: validation.roomSuffix,
+      }),
+    );
+    this.nameRoomWriteState = Object.freeze({
+      status: 'sent',
+      message: this.text.nameRoomControls.sent,
+    });
+    const stateCommittedAt = Date.now();
+    this.logNameRoom('NAME_ROOM_DEBUG', 'state-committed', {
+      product: this.config.profile,
+      mode: debugMode,
+      attemptId,
+      userName: validation.baseName,
+      room: validation.roomSuffix,
+      physicalName: validation.valueToWrite,
+      writeState: this.nameRoomWriteState.status,
+      timestamp: stateCommittedAt,
+      timestampIso: new Date(stateCommittedAt).toISOString(),
+    });
   }
 
   get lockModeControlUnlocked(): boolean {
@@ -4248,7 +4517,31 @@ export class ProductPage implements OnDestroy {
       this.routerOutlet.swipeGesture = false;
     }
     if (this.viewModel.lastUpdatedAt === null && this.canRefresh) {
-      void this.refreshProductData();
+      if (
+        SKIP_INITIAL_PRODUCT_READS_FOR_NAME_ROOM_DEBUG &&
+        this.bleService.platform === 'android' &&
+        !this.isDemoMode &&
+        this.context !== null
+      ) {
+        console.info(
+          '[NAME_ROOM_TEST] initial-product-reads-skipped',
+          JSON.stringify({
+            timestamp: Date.now(),
+            product: this.config.profile,
+            deviceId: this.context.deviceId,
+            readsSkipped: [
+              'version',
+              'datesAndCycles',
+              'maintenance',
+              'userParameters',
+              'professionalParameters',
+            ],
+            readsKeptForDetection: ['version'],
+          }),
+        );
+      } else {
+        void this.refreshProductData();
+      }
     }
   }
 
@@ -4472,6 +4765,159 @@ export class ProductPage implements OnDestroy {
       ],
     });
     await alert.present();
+  }
+
+  private nameRoomExecutionFailureMessage(
+    result: LegacyBleWriteExecutionResult,
+  ): string {
+    if (result.status === 'timeout') {
+      return this.text.nameRoomControls.writeTimeout;
+    }
+    if (result.status === 'disconnected') {
+      return this.text.nameRoomControls.disconnected;
+    }
+    return this.text.nameRoomControls.failed;
+  }
+
+  private nameRoomDisconnectedOrStaleMessage(): string {
+    return this.bleService.connectedDeviceId === null
+      ? this.text.nameRoomControls.disconnected
+      : this.text.openCommand.stale;
+  }
+
+  private isTimedOutNameRoomNativeWrite(
+    result: LegacyBleWriteExecutionResult,
+  ): boolean {
+    return result.error?.code === 'native-write-failed' &&
+      result.error.message.trim().toLowerCase().replace(/[.!]+$/, '') ===
+        'write timeout';
+  }
+
+  private async recoverTimedOutNameRoomWrite(
+    context: ProductPageNavigationState,
+    confirmedBeforeWrite: ProductNameRoomValue,
+    message: string,
+    attemptId: string,
+    mode: 'name-only' | 'room-only' | 'name+room',
+  ): Promise<void> {
+    const timeoutDetectedAt = Date.now();
+    this.logNameRoom('NAME_ROOM_RECOVERY', 'write-timeout-detected', {
+      product: this.config.profile,
+      attemptId,
+      mode,
+      timestamp: timeoutDetectedAt,
+      timestampIso: new Date(timeoutDetectedAt).toISOString(),
+    }, 'error');
+    this.logNameRoom('NAME_ROOM_RECOVERY', 'recovery-start', {
+      product: this.config.profile,
+      deviceId: context.deviceId,
+      attemptId,
+      timestamp: Date.now(),
+    });
+
+    this.applyConfirmedNameRoomValue(context.deviceId, confirmedBeforeWrite);
+    this.logNameRoom('NAME_ROOM_RECOVERY', 'confirmed-state-restored', {
+      product: this.config.profile,
+      attemptId,
+      confirmedUserName: confirmedBeforeWrite.name,
+      confirmedRoom: confirmedBeforeWrite.roomSuffix,
+      timestamp: Date.now(),
+    });
+    try {
+      await this.bleService.recoverTimedOutNameRoomWrite(context.deviceId);
+      this.logNameRoom('NAME_ROOM_RECOVERY', 'disconnect-result', {
+        product: this.config.profile,
+        attemptId,
+        success: true,
+        timestamp: Date.now(),
+      });
+    } catch (error: unknown) {
+      this.logNameRoom('NAME_ROOM_RECOVERY', 'disconnect-result', {
+        product: this.config.profile,
+        attemptId,
+        success: false,
+        error: nameRoomErrorDetails(error),
+        timestamp: Date.now(),
+      }, 'error');
+    }
+
+    this.nameRoomWriteState = Object.freeze({ status: 'failed', message });
+    this.logNameRoom('NAME_ROOM_RECOVERY', 'local-session-reset', {
+      product: this.config.profile,
+      attemptId,
+      connectedDeviceId: this.bleService.connectedDeviceId,
+      timestamp: Date.now(),
+    });
+    this.logNameRoom('NAME_ROOM_RECOVERY', 'rescan-start', {
+      product: this.config.profile,
+      attemptId,
+      timestamp: Date.now(),
+    });
+    const navigated = await this.backToScan();
+    this.logNameRoom('NAME_ROOM_RECOVERY', 'rescan-result', {
+      product: this.config.profile,
+      attemptId,
+      navigated,
+      timestamp: Date.now(),
+    });
+    await this.presentNameRoomWriteFailure(message);
+  }
+
+  private async failNameRoomOperation(
+    message: string,
+    confirmedValue?: ProductNameRoomValue,
+  ): Promise<void> {
+    this.logNameRoom('NAME_ROOM_DEBUG', 'operation-failed-rollback-start', {
+      product: this.config.profile,
+      attemptId: this.nameRoomDebugAttempt?.attemptId ?? null,
+      timestamp: Date.now(),
+      message,
+      confirmedValue: confirmedValue ?? null,
+      hasContext: this.context !== null,
+    }, 'error');
+    if (confirmedValue === undefined || this.context === null) {
+      this.resetNameRoomDraft();
+    } else {
+      this.applyConfirmedNameRoomValue(this.context.deviceId, confirmedValue);
+    }
+    this.nameRoomWriteState = Object.freeze({
+      status: 'failed',
+      message,
+    });
+    this.logNameRoom('NAME_ROOM_DEBUG', 'operation-failed-rollback-complete', {
+      product: this.config.profile,
+      attemptId: this.nameRoomDebugAttempt?.attemptId ?? null,
+      timestamp: Date.now(),
+      restoredValue: this.currentNameRoomValue(),
+      writeState: this.nameRoomWriteState.status,
+    }, 'error');
+    await this.presentNameRoomWriteFailure(message);
+  }
+
+  private logNameRoom(
+    tag: 'NAME_ROOM_DEBUG' | 'NAME_ROOM_RECOVERY',
+    event: string,
+    details: Readonly<Record<string, unknown>>,
+    level: 'info' | 'error' = 'info',
+  ): void {
+    console[level](`[${tag}] ${JSON.stringify({ event, ...details })}`);
+  }
+
+  private applyConfirmedNameRoomValue(
+    deviceId: string,
+    value: ProductNameRoomValue,
+  ): void {
+    this.viewModel = {
+      ...this.viewModel,
+      displayedName: value.name,
+      roomSuffix: value.roomSuffix,
+    };
+    this.updateStoredRoomAssignment(
+      deviceId,
+      value.name,
+      value.roomSuffix ?? '',
+    );
+    this.resetNameRoomDraft();
   }
 
   private nameRoomRequestContextAvailable(): boolean {
@@ -4777,6 +5223,25 @@ export class ProductPage implements OnDestroy {
   private handleDisconnection(event: BleDisconnectionEvent): void {
     if (this.context === null || event.deviceId !== this.context.deviceId) {
       return;
+    }
+    if (event.reason === 'remote' && this.nameRoomDebugAttempt !== null) {
+      const disconnectedAt = Date.now();
+      this.logNameRoom('NAME_ROOM_DEBUG', 'remote-disconnect', {
+        product: this.config.profile,
+        attemptId: this.nameRoomDebugAttempt.attemptId,
+        mode: this.nameRoomDebugAttempt.mode,
+        payloadHex: this.nameRoomDebugAttempt.payloadHex,
+        payloadLength: this.nameRoomDebugAttempt.length,
+        writeStatus: this.nameRoomWriteState.status,
+        timestamp: disconnectedAt,
+        timestampIso: new Date(disconnectedAt).toISOString(),
+        elapsedSinceWriteStartMs:
+          disconnectedAt - this.nameRoomDebugAttempt.startedAt,
+        elapsedSinceWriteResultMs:
+          this.nameRoomDebugAttempt.finishedAt === undefined
+            ? null
+            : disconnectedAt - this.nameRoomDebugAttempt.finishedAt,
+      }, 'error');
     }
     const inactivitySessionId = this.connectedProductInactivitySessionId();
     const preserveInactivityExpiration = inactivitySessionId !== null &&
@@ -5970,6 +6435,31 @@ export function isProductPageNavigationState(
       (mode === 'demo' ? 'demo' : 'strong') &&
     (candidate.motorState === null ||
       isMotorStateFrame(candidate.motorState));
+}
+
+function nameRoomErrorDetails(error: unknown): unknown {
+  if (error === null || error === undefined) {
+    return null;
+  }
+  if (error instanceof Error) {
+    const nativeCause = (error as Error & { readonly cause?: unknown }).cause;
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack ?? null,
+      nativeCause: nativeCause === undefined
+        ? null
+        : String(nativeCause),
+    };
+  }
+  if (typeof error === 'object') {
+    try {
+      return JSON.parse(JSON.stringify(error));
+    } catch {
+      return String(error);
+    }
+  }
+  return String(error);
 }
 
 function isMotorStateFrame(value: unknown): value is MotorStateFrame {

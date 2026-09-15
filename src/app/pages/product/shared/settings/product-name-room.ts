@@ -79,7 +79,7 @@ export interface ProductNameRoomAuthorizationInput {
 export const PRODUCT_NAME_ROOM_MIN_TYPED_NAME_LENGTH = 5;
 export const PRODUCT_NAME_ROOM_MAX_LENGTH = 15;
 export const PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS = 200;
-export const PRODUCT_NAME_ROOM_POST_WRITE_COOLDOWN_MS = 1_800;
+export const PRODUCT_NAME_ROOM_POST_WRITE_STABILIZATION_MS = 2_500;
 export const PRODUCT_NAME_ROOM_WRITE_TIMEOUT_MS = 15_000;
 
 const PRODUCT_NAME_ROOM_AUTHORIZATION_TTL_MS = 30_000;
@@ -123,6 +123,14 @@ export function splitProductDisplayName(
   });
 }
 
+export function buildProductPhysicalName(
+  userName: string,
+  roomSuffix: ProductRoomSuffix | null,
+): string {
+  const { name } = splitProductDisplayName(userName);
+  return `${name}${roomSuffix ?? ''}`.trim();
+}
+
 export function createProductNameRoomDraft(
   current: ProductNameRoomValue,
 ): ProductNameRoomDraft {
@@ -137,8 +145,8 @@ export function validateProductNameRoomDraft(
   draft: ProductNameRoomDraft,
 ): ProductNameRoomValidationResult {
   const typedName = draft.name.trim();
-  const currentName = current.name.trim();
-  const baseName = typedName || currentName;
+  const currentName = splitProductDisplayName(current.name).name;
+  const baseName = splitProductDisplayName(typedName || currentName).name;
   const roomSuffix = draft.roomSuffix;
 
   if (roomSuffix !== null && !isKnownRoomSuffix(roomSuffix)) {
@@ -153,7 +161,7 @@ export function validateProductNameRoomDraft(
     return { valid: false, error: 'empty' };
   }
   if (typedName &&
-      typedName.length < PRODUCT_NAME_ROOM_MIN_TYPED_NAME_LENGTH) {
+      baseName.length < PRODUCT_NAME_ROOM_MIN_TYPED_NAME_LENGTH) {
     return { valid: false, error: 'too-short' };
   }
 
@@ -162,14 +170,14 @@ export function validateProductNameRoomDraft(
     return { valid: false, error: encoded.error };
   }
 
-  const nameChanged = !!typedName && typedName !== currentName;
+  const nameChanged = !!typedName && baseName !== currentName;
   const roomChanged = roomSuffix !== current.roomSuffix;
   if (!nameChanged && !roomChanged) {
     return { valid: false, error: 'unchanged' };
   }
   return Object.freeze({
     valid: true,
-    valueToWrite: encoded.value,
+    valueToWrite: buildProductPhysicalName(baseName, roomSuffix),
     baseName,
     roomSuffix,
     nameChanged,

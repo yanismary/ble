@@ -1,19 +1,83 @@
 diff --git a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt
-index ac18a9c..1908db2 100644
+index ac18a9c..bad9c65 100644
 --- a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt
 +++ b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt
-@@ -678,8 +678,9 @@ class BluetoothLe : Plugin() {
+@@ -25,6 +25,7 @@ import android.os.ParcelUuid
+ import android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+ import android.provider.Settings.ACTION_BLUETOOTH_SETTINGS
+ import android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS
++import android.util.Log
+ import androidx.activity.result.ActivityResult
+ import androidx.core.location.LocationManagerCompat
+ import com.getcapacitor.JSArray
+@@ -87,6 +88,8 @@ class BluetoothLe : Plugin() {
+         private const val MAX_SCAN_DURATION: Long = 30000
+         private const val CONNECTION_TIMEOUT: Float = 10000.0F
+         private const val DEFAULT_TIMEOUT: Float = 5000.0F
++        private const val NAME_ROOM_CHARACTERISTIC = "e36d5943-cc43-4d59-89ed-bcd58a70d85d"
++        private const val NAME_ROOM_PLUGIN_TAG = "NAME_ROOM_PLUGIN"
+     }
+
+     private var bluetoothAdapter: BluetoothAdapter? = null
+@@ -524,6 +527,26 @@ class BluetoothLe : Plugin() {
+         }
+     }
+
++    @PluginMethod
++    fun recoverNameRoomWrite(call: PluginCall) {
++        assertBluetoothAdapter(call) ?: return
++        val deviceId = getDeviceId(call) ?: return
++        val device = deviceMap[deviceId]
++        if (device == null) {
++            call.resolve()
++            return
++        }
++        device.recoverNameRoomWrite { response ->
++            device.cleanup()
++            deviceMap.remove(device.getId())
++            if (response.success) {
++                call.resolve()
++            } else {
++                call.reject(response.value)
++            }
++        }
++    }
++
+     @PluginMethod
+     fun getServices(call: PluginCall) {
+         val device = getDevice(call) ?: return
+@@ -678,10 +701,29 @@ class BluetoothLe : Plugin() {
          }
          val writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
          val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
 +        val useLegacyAndroidWriteApi = call.getBoolean("useLegacyAndroidWriteApi", false) as Boolean
++        val isNameRoomWrite = characteristic.second.toString()
++            .equals(NAME_ROOM_CHARACTERISTIC, ignoreCase = true)
++        if (isNameRoomWrite) {
++            Log.i(
++                NAME_ROOM_PLUGIN_TAG,
++                "plugin-write-received t=${System.currentTimeMillis()} deviceId=${device.getId()} " +
++                    "service=${characteristic.first} characteristic=${characteristic.second} " +
++                    "encodedValue=$value encodedLength=${value.length} writeType=$writeType " +
++                    "timeoutMs=$timeout useLegacyAndroidWriteApi=$useLegacyAndroidWriteApi"
++            )
++        }
          device.write(
 -            characteristic.first, characteristic.second, value, writeType, timeout
 +            characteristic.first, characteristic.second, value, writeType, timeout, useLegacyAndroidWriteApi
          ) { response ->
              run {
++                if (isNameRoomWrite) {
++                    Log.i(
++                        NAME_ROOM_PLUGIN_TAG,
++                        "plugin-write-callback t=${System.currentTimeMillis()} deviceId=${device.getId()} " +
++                            "success=${response.success} response=${response.value}"
++                    )
++                }
                  if (response.success) {
-@@ -703,7 +704,7 @@ class BluetoothLe : Plugin() {
+                     call.resolve()
+                 } else {
+@@ -703,7 +745,7 @@ class BluetoothLe : Plugin() {
          val writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
          val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
          device.write(
@@ -23,10 +87,434 @@ index ac18a9c..1908db2 100644
              run {
                  if (response.success) {
 diff --git a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt
-index 5546881..12713b0 100644
+index 5546881..58b9dc7 100644
 --- a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt
 +++ b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt
-@@ -555,6 +555,7 @@ class Device(
+@@ -19,6 +19,7 @@ import android.os.Build
+ import android.os.Handler
+ import android.os.HandlerThread
+ import android.os.Looper
++import android.util.Log
+ import androidx.annotation.RequiresApi
+ import com.getcapacitor.Logger
+ import java.util.Collections
+@@ -33,7 +34,21 @@ class CallbackResponse(
+
+ class TimeoutHandler(
+     val key: String,
+-    val handler: Handler
++    val handler: Handler,
++    val createdAt: Long,
++    val timeoutMs: Long,
++)
++
++data class GattOperationTrace(
++    val key: String,
++    val type: String,
++    val startedAt: Long,
++    var acceptedAt: Long? = null,
++    var acceptedResult: String? = null,
++    var callbackAt: Long? = null,
++    var callbackStatus: Int? = null,
++    var pluginFinishedAt: Long? = null,
++    var pluginOutcome: String? = null,
+ )
+
+ fun <T> ConcurrentLinkedQueue<T>.popFirstMatch(predicate: (T) -> Boolean): T? {
+@@ -63,6 +78,13 @@ class Device(
+         private const val STATE_CONNECTING = 1
+         private const val STATE_CONNECTED = 2
+         private const val CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb"
++        private const val NAME_ROOM_CHARACTERISTIC = "e36d5943-cc43-4d59-89ed-bcd58a70d85d"
++        private const val NAME_ROOM_GATT_TAG = "NAME_ROOM_GATT"
++        private const val NAME_ROOM_GATT_QUEUE_TAG = "NAME_ROOM_GATT_QUEUE"
++        private const val NAME_ROOM_CONN_PARAMS_TAG = "NAME_ROOM_CONN_PARAMS"
++        private const val NAME_ROOM_RECOVERY_TAG = "NAME_ROOM_RECOVERY"
++        private const val NAME_ROOM_TEST_TAG = "NAME_ROOM_TEST"
++        private const val DISABLE_MTU_REQUEST_FOR_NAME_ROOM_DEBUG = true
+         private const val REQUEST_MTU = 512
+     }
+
+@@ -70,11 +92,17 @@ class Device(
+     private var device: BluetoothDevice = bluetoothAdapter.getRemoteDevice(address)
+     private var bluetoothGatt: BluetoothGatt? = null
+     private var callbackMap = HashMap<String, ((CallbackResponse) -> Unit)>()
++    private val callbackRegisteredAt = ConcurrentHashMap<String, Long>()
+     private val timeoutQueue = ConcurrentLinkedQueue<TimeoutHandler>()
++    private val gattOperationTraces = ConcurrentHashMap<String, GattOperationTrace>()
++    private var lastGattOperationKey: String? = null
+     private var bondStateReceiver: BroadcastReceiver? = null
+     private val pendingBondKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+     private var currentMtu = -1
+     private var skipDescriptorDiscovery = false
++    private var lastNameRoomWriteAt: Long? = null
++    private var lastNameRoomWriteKey: String? = null
++    private var nameRoomRecoveryStartedAt: Long? = null
+
+     private lateinit var callbacksHandlerThread: HandlerThread
+     private lateinit var callbacksHandler: Handler
+@@ -115,11 +143,51 @@ class Device(
+         override fun onConnectionStateChange(
+             gatt: BluetoothGatt, status: Int, newState: Int
+         ) {
++            val connectionKey = if (
++                newState == BluetoothProfile.STATE_DISCONNECTED && callbackMap.containsKey("disconnect")
++            ) "disconnect" else "connect"
++            Log.i(
++                NAME_ROOM_GATT_QUEUE_TAG,
++                "operation-callback t=${System.currentTimeMillis()} device=$address " +
++                    "callbackType=connection-state key=$connectionKey status=$status newState=$newState " +
++                    "localStateBefore=$connectionState pendingCallbacks=${callbackMap.size}"
++            )
++            traceNativeCallback(connectionKey, status, "connection-state:$newState")
++            lastNameRoomWriteAt?.let { writeAt ->
++                val now = System.currentTimeMillis()
++                val pendingKey = lastNameRoomWriteKey
++                Log.i(
++                    NAME_ROOM_GATT_TAG,
++                    "onConnectionStateChange t=$now status=$status newState=$newState " +
++                        "previousLocalState=$connectionState device=$address " +
++                        "sameGatt=${gatt === bluetoothGatt} hasGatt=${bluetoothGatt != null} " +
++                        "nameRoomCallbackPending=${pendingKey?.let { callbackMap.containsKey(it) }} " +
++                        "pendingCallbacks=${callbackMap.size} pendingTimeouts=${timeoutQueue.size} " +
++                        "elapsedSinceWriteMs=${now - writeAt}"
++                )
++                nameRoomRecoveryStartedAt?.let { recoveryAt ->
++                    Log.i(
++                        NAME_ROOM_RECOVERY_TAG,
++                        "onConnectionStateChange-after-teardown t=$now status=$status " +
++                            "newState=$newState elapsedSinceRecoveryMs=${now - recoveryAt}"
++                    )
++                }
++            }
+             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                 connectionState = STATE_CONNECTED
++                val priorityAccepted = bluetoothGatt?.requestConnectionPriority(
++                    BluetoothGatt.CONNECTION_PRIORITY_HIGH
++                ) ?: false
++                Log.i(
++                    NAME_ROOM_CONN_PARAMS_TAG,
++                    "connection-priority-request t=${System.currentTimeMillis()} device=$address " +
++                        "priority=HIGH priorityValue=${BluetoothGatt.CONNECTION_PRIORITY_HIGH} " +
++                        "accepted=$priorityAccepted sdk=${Build.VERSION.SDK_INT}"
++                )
+                 // service discovery is required to use services
+                 Logger.debug(TAG, "Connected to GATT server. Starting service discovery.")
+                 val result = bluetoothGatt?.discoverServices()
++                traceNativeAccepted("connect", "discoverServicesAccepted=$result")
+                 if (result != true) {
+                     reject("connect", "Starting service discovery failed.")
+                 }
+@@ -134,13 +202,44 @@ class Device(
+             }
+         }
+
++        // Hidden from public SDK stubs, but dispatched by Android runtimes that expose it.
++        fun onConnectionUpdated(
++            gatt: BluetoothGatt,
++            interval: Int,
++            latency: Int,
++            timeout: Int,
++            status: Int,
++        ) {
++            Log.i(
++                NAME_ROOM_CONN_PARAMS_TAG,
++                "onConnectionUpdated t=${System.currentTimeMillis()} device=$address " +
++                    "intervalUnits=$interval intervalMs=${interval * 1.25} latency=$latency " +
++                    "supervisionTimeoutUnits=$timeout supervisionTimeoutMs=${timeout * 10} " +
++                    "status=$status statusSuccess=${status == BluetoothGatt.GATT_SUCCESS} " +
++                    "sameGatt=${gatt === bluetoothGatt} sdk=${Build.VERSION.SDK_INT}"
++            )
++        }
++
+         override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+             super.onServicesDiscovered(gatt, status)
++            val key = if (callbackMap.containsKey("discoverServices")) "discoverServices" else "connect"
++            traceNativeCallback(key, status, "services-discovered")
+             if (status == BluetoothGatt.GATT_SUCCESS) {
+                 resolve("discoverServices", "Services discovered.")
+                 if (connectCallOngoing()) {
+-                    // Try requesting a larger MTU. Maximally supported MTU will be selected.
+-                    requestMtu(REQUEST_MTU)
++                    if (DISABLE_MTU_REQUEST_FOR_NAME_ROOM_DEBUG) {
++                        val knownMtu = if (currentMtu > 0) currentMtu.toString() else "unknown"
++                        Log.i(
++                            NAME_ROOM_TEST_TAG,
++                            "mtu-request-skipped t=${System.currentTimeMillis()} " +
++                                "deviceId=$address platform=android sdk=${Build.VERSION.SDK_INT} " +
++                                "knownMtu=$knownMtu"
++                        )
++                        resolve("connect", "Connected without requesting MTU for name/room debug.")
++                    } else {
++                        // Try requesting a larger MTU. Maximally supported MTU will be selected.
++                        requestMtu(REQUEST_MTU)
++                    }
+                 }
+             } else {
+                 reject("discoverServices", "Service discovery failed.")
+@@ -150,6 +249,7 @@ class Device(
+
+         override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
+             super.onMtuChanged(gatt, mtu, status)
++            traceNativeCallback("connect", status, "mtu-changed:$mtu")
+             if (status == BluetoothGatt.GATT_SUCCESS) {
+                 currentMtu = mtu
+                 Logger.debug(TAG, "MTU changed: $mtu")
+@@ -162,6 +262,7 @@ class Device(
+         override fun onReadRemoteRssi(gatt: BluetoothGatt?, rssi: Int, status: Int) {
+             super.onReadRemoteRssi(gatt, rssi, status)
+             val key = "readRssi"
++            traceNativeCallback(key, status, "remote-rssi")
+             if (status == BluetoothGatt.GATT_SUCCESS) {
+                 resolve(key, rssi.toString())
+             } else {
+@@ -180,6 +281,7 @@ class Device(
+             Logger.verbose(TAG, "Using deprecated onCharacteristicRead.")
+             super.onCharacteristicRead(gatt, characteristic, status)
+             val key = "read|${characteristic.service.uuid}|${characteristic.uuid}"
++            traceNativeCallback(key, status, "characteristic-read-legacy")
+             if (status == BluetoothGatt.GATT_SUCCESS) {
+                 val data = characteristic.value
+                 if (data != null) {
+@@ -203,6 +305,7 @@ class Device(
+             Logger.verbose(TAG, "Using onCharacteristicRead from API level 33.")
+             super.onCharacteristicRead(gatt, characteristic, data, status)
+             val key = "read|${characteristic.service.uuid}|${characteristic.uuid}"
++            traceNativeCallback(key, status, "characteristic-read-modern")
+             if (status == BluetoothGatt.GATT_SUCCESS) {
+                 val value = bytesToString(data)
+                 resolve(key, value)
+@@ -215,7 +318,30 @@ class Device(
+             gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int
+         ) {
+             super.onCharacteristicWrite(gatt, characteristic, status)
++            if (characteristic.uuid.toString().equals(NAME_ROOM_CHARACTERISTIC, ignoreCase = true)) {
++                val now = System.currentTimeMillis()
++                val key = "write|${characteristic.service.uuid}|${characteristic.uuid}"
++                Log.i(
++                    NAME_ROOM_GATT_TAG,
++                    "onCharacteristicWrite t=$now " +
++                        "service=${characteristic.service.uuid} characteristic=${characteristic.uuid} " +
++                        "status=$status writeType=${characteristic.writeType} " +
++                        "statusSuccess=${status == BluetoothGatt.GATT_SUCCESS} " +
++                        "callbackPending=${callbackMap.containsKey(key)} " +
++                        "pendingCallbacks=${callbackMap.size} pendingTimeouts=${timeoutQueue.size} " +
++                        "elapsedSinceWriteMs=${lastNameRoomWriteAt?.let { now - it }} " +
++                        "elapsedSinceRecoveryMs=${nameRoomRecoveryStartedAt?.let { now - it }}"
++                )
++                nameRoomRecoveryStartedAt?.let { recoveryAt ->
++                    Log.i(
++                        NAME_ROOM_RECOVERY_TAG,
++                        "onCharacteristicWrite-late t=$now status=$status " +
++                            "elapsedSinceRecoveryMs=${now - recoveryAt}"
++                    )
++                }
++            }
+             val key = "write|${characteristic.service.uuid}|${characteristic.uuid}"
++            traceNativeCallback(key, status, "characteristic-write")
+             if (status == BluetoothGatt.GATT_SUCCESS) {
+                 resolve(key, "Characteristic successfully written.")
+             } else {
+@@ -265,6 +391,7 @@ class Device(
+             super.onDescriptorRead(gatt, descriptor, status)
+             val key =
+                 "readDescriptor|${descriptor.characteristic.service.uuid}|${descriptor.characteristic.uuid}|${descriptor.uuid}"
++            traceNativeCallback(key, status, "descriptor-read-legacy")
+             if (status == BluetoothGatt.GATT_SUCCESS) {
+                 val data = descriptor.value
+                 if (data != null) {
+@@ -286,6 +413,7 @@ class Device(
+             super.onDescriptorRead(gatt, descriptor, status, data)
+             val key =
+                 "readDescriptor|${descriptor.characteristic.service.uuid}|${descriptor.characteristic.uuid}|${descriptor.uuid}"
++            traceNativeCallback(key, status, "descriptor-read-modern")
+             if (status == BluetoothGatt.GATT_SUCCESS) {
+                 val value = bytesToString(data)
+                 resolve(key, value)
+@@ -300,6 +428,7 @@ class Device(
+             super.onDescriptorWrite(gatt, descriptor, status)
+             val key =
+                 "writeDescriptor|${descriptor.characteristic.service.uuid}|${descriptor.characteristic.uuid}|${descriptor.uuid}"
++            traceNativeCallback(key, status, "descriptor-write")
+             if (status == BluetoothGatt.GATT_SUCCESS) {
+                 resolve(key, "Descriptor successfully written.")
+             } else {
+@@ -323,7 +452,7 @@ class Device(
+     ) {
+         val key = "connect"
+         this.skipDescriptorDiscovery = skipDescriptorDiscovery
+-        callbackMap[key] = callback
++        registerCallback(key, "connect", callback)
+         if (isConnected()) {
+             resolve(key, "Already connected.")
+             return
+@@ -349,6 +478,7 @@ class Device(
+                 context, false, gattCallback
+             )
+         }
++        traceNativeAccepted(key, "connectGattCreated=${bluetoothGatt != null}")
+         setConnectionTimeout(key, "Connection timeout.", bluetoothGatt, timeout)
+     }
+
+@@ -363,6 +493,7 @@ class Device(
+     private fun requestMtu(mtu: Int) {
+         Logger.debug(TAG, "requestMtu $mtu")
+         val result = bluetoothGatt?.requestMtu(mtu)
++        traceNativeAccepted("connect", "requestMtu=$mtu accepted=$result")
+         if (result != true) {
+             reject("connect", "Starting requestMtu failed.")
+         }
+@@ -378,7 +509,7 @@ class Device(
+
+     fun createBond(timeout: Long, callback: (CallbackResponse) -> Unit) {
+         val key = "createBond"
+-        callbackMap[key] = callback
++        registerCallback(key, "create-bond", callback)
+
+         // Check if already bonded first to avoid race condition
+         if (isBonded()) {
+@@ -394,6 +525,7 @@ class Device(
+             return
+         }
+         val result = device.createBond()
++        traceNativeAccepted(key, "accepted=$result")
+         if (!result) {
+             reject(key, "Creating bond failed.")
+             return
+@@ -427,6 +559,7 @@ class Device(
+
+                             // Handle createBond callback
+                             if (callbackMap.containsKey("createBond")) {
++                                traceNativeCallback("createBond", state, "bond-state:$prev->$state")
+                                 if (state == BluetoothDevice.BOND_BONDED) {
+                                     resolve("createBond", "Creating bond succeeded.")
+                                 } else if (prev == BluetoothDevice.BOND_BONDING && state == BluetoothDevice.BOND_NONE) {
+@@ -467,15 +600,83 @@ class Device(
+         timeout: Long, callback: (CallbackResponse) -> Unit
+     ) {
+         val key = "disconnect"
+-        callbackMap[key] = callback
++        registerCallback(key, "disconnect", callback)
+         if (bluetoothGatt == null) {
+             resolve(key, "Disconnected.")
+             return
+         }
+         bluetoothGatt?.disconnect()
++        traceNativeAccepted(key, "disconnectRequested=true")
+         setTimeout(key, "Disconnection timeout.", timeout)
+     }
+
++    fun recoverNameRoomWrite(callback: (CallbackResponse) -> Unit) {
++        val startedAt = System.currentTimeMillis()
++        nameRoomRecoveryStartedAt = startedAt
++        Log.i(NAME_ROOM_RECOVERY_TAG, "recovery-start t=$startedAt")
++
++        val pendingCallbacks = callbackMap.size
++        callbackMap.clear()
++        callbackRegisteredAt.clear()
++        var clearedTimeouts = 0
++        while (true) {
++            val timeoutHandler = timeoutQueue.poll() ?: break
++            timeoutHandler.handler.removeCallbacksAndMessages(null)
++            clearedTimeouts += 1
++        }
++        pendingBondKeys.clear()
++        Log.i(
++            NAME_ROOM_RECOVERY_TAG,
++            "pending-operation-cleared t=${System.currentTimeMillis()} " +
++                "nameRoomKey=$lastNameRoomWriteKey callbacks=$pendingCallbacks timeouts=$clearedTimeouts"
++        )
++
++        val gatt = bluetoothGatt
++        try {
++            Log.i(
++                NAME_ROOM_RECOVERY_TAG,
++                "disconnect-requested t=${System.currentTimeMillis()} " +
++                    "hasGatt=${gatt != null}"
++            )
++            gatt?.disconnect()
++            Log.i(
++                NAME_ROOM_RECOVERY_TAG,
++                "disconnect-result t=${System.currentTimeMillis()} requested=${gatt != null}"
++            )
++        } catch (error: Exception) {
++            Log.e(
++                NAME_ROOM_RECOVERY_TAG,
++                "disconnect-result t=${System.currentTimeMillis()} " +
++                    "requested=false error=${error.localizedMessage}",
++                error
++            )
++        }
++
++        try {
++            Log.i(NAME_ROOM_RECOVERY_TAG, "close-requested t=${System.currentTimeMillis()}")
++            gatt?.close()
++            Log.i(
++                NAME_ROOM_RECOVERY_TAG,
++                "close-result t=${System.currentTimeMillis()} closed=${gatt != null}"
++            )
++        } catch (error: Exception) {
++            Log.e(
++                NAME_ROOM_RECOVERY_TAG,
++                "close-result t=${System.currentTimeMillis()} " +
++                    "closed=false error=${error.localizedMessage}",
++                error
++            )
++        }
++
++        bluetoothGatt = null
++        connectionState = STATE_DISCONNECTED
++        currentMtu = -1
++        lastNameRoomWriteKey = null
++        cleanup()
++        onDisconnect()
++        callback(CallbackResponse(true, "Name/room GATT session closed."))
++    }
++
+     fun getServices(): MutableList<BluetoothGattService> {
+         return bluetoothGatt?.services ?: mutableListOf()
+     }
+@@ -488,9 +689,10 @@ class Device(
+         timeout: Long, callback: (CallbackResponse) -> Unit
+     ) {
+         val key = "discoverServices"
+-        callbackMap[key] = callback
++        registerCallback(key, "discover-services", callback)
+         refreshDeviceCache()
+         val result = bluetoothGatt?.discoverServices()
++        traceNativeAccepted(key, "accepted=$result")
+         if (result != true) {
+             reject(key, "Service discovery failed.")
+             return
+@@ -518,8 +720,9 @@ class Device(
+         timeout: Long, callback: (CallbackResponse) -> Unit
+     ) {
+         val key = "readRssi"
+-        callbackMap[key] = callback
++        registerCallback(key, "read-rssi", callback)
+         val result = bluetoothGatt?.readRemoteRssi()
++        traceNativeAccepted(key, "accepted=$result")
+         if (result != true) {
+             reject(key, "Reading RSSI failed.")
+             return
+@@ -534,7 +737,7 @@ class Device(
+         callback: (CallbackResponse) -> Unit
+     ) {
+         val key = "read|$serviceUUID|$characteristicUUID"
+-        callbackMap[key] = callback
++        registerCallback(key, "characteristic-read", callback)
+         val service = bluetoothGatt?.getService(serviceUUID)
+         val characteristic = service?.getCharacteristic(characteristicUUID)
+         if (characteristic == null) {
+@@ -542,6 +745,7 @@ class Device(
+             return
+         }
+         val result = bluetoothGatt?.readCharacteristic(characteristic)
++        traceNativeAccepted(key, "accepted=$result")
+         if (result != true) {
+             reject(key, "Reading characteristic failed.")
+             return
+@@ -555,33 +759,120 @@ class Device(
          value: String,
          writeType: Int,
          timeout: Long,
@@ -34,13 +522,84 @@ index 5546881..12713b0 100644
          callback: (CallbackResponse) -> Unit
      ) {
          val key = "write|$serviceUUID|$characteristicUUID"
-@@ -567,13 +568,14 @@ class Device(
+-        callbackMap[key] = callback
++        logGattIdleBeforeWrite(key, serviceUUID, characteristicUUID)
++        val isNameRoomWrite = characteristicUUID.toString()
++            .equals(NAME_ROOM_CHARACTERISTIC, ignoreCase = true)
++        if (isNameRoomWrite) {
++            logGattQueueBeforeNameRoomWrite()
++            Log.i(
++                NAME_ROOM_GATT_TAG,
++                "device-write-received t=${System.currentTimeMillis()} device=$address key=$key " +
++                    "connectionState=$connectionState hasGatt=${bluetoothGatt != null} " +
++                    "bondState=${device.bondState} timeoutMs=$timeout requestedWriteType=$writeType " +
++                    "callbackAlreadyPending=${callbackMap.containsKey(key)} " +
++                    "pendingCallbacksBefore=${callbackMap.size} pendingTimeoutsBefore=${timeoutQueue.size}"
++            )
++        }
++        registerCallback(key, "characteristic-write", callback)
+         val service = bluetoothGatt?.getService(serviceUUID)
+         val characteristic = service?.getCharacteristic(characteristicUUID)
++        if (isNameRoomWrite) {
++            Log.i(
++                NAME_ROOM_GATT_TAG,
++                "gatt-lookup t=${System.currentTimeMillis()} key=$key serviceFound=${service != null} " +
++                    "characteristicFound=${characteristic != null} " +
++                    "properties=${characteristic?.properties} permissions=${characteristic?.permissions} " +
++                    "callbackRegistered=${callbackMap.containsKey(key)} pendingCallbacks=${callbackMap.size}"
++            )
++        }
+         if (characteristic == null) {
+             reject(key, "Characteristic not found.")
+             return
          }
          val bytes = stringToBytes(value)
- 
++        // API 33 passes an immutable value to Android and avoids mutating the shared
++        // BluetoothGattCharacteristic instance used by the deprecated write API.
++        val useModernAndroidWriteApi =
++            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
++        val selectedWriteApi = if (useModernAndroidWriteApi) "modern" else "legacy"
++        val legacyRequestIgnored = useModernAndroidWriteApi && useLegacyAndroidWriteApi
++        Log.i(
++            NAME_ROOM_GATT_QUEUE_TAG,
++            "write-api-selected t=${System.currentTimeMillis()} device=$address key=$key " +
++                "service=$serviceUUID characteristic=$characteristicUUID api=$selectedWriteApi " +
++                "sdk=${Build.VERSION.SDK_INT} legacyRequested=$useLegacyAndroidWriteApi " +
++                "legacyRequestIgnored=$legacyRequestIgnored"
++        )
++        if (isNameRoomWrite) {
++            lastNameRoomWriteAt = System.currentTimeMillis()
++            lastNameRoomWriteKey = key
++            Log.i(
++                NAME_ROOM_GATT_TAG,
++                "write-start t=$lastNameRoomWriteAt service=$serviceUUID " +
++                    "characteristic=$characteristicUUID length=${bytes.size} " +
++                    "payload=${bytes.joinToString(" ") { byte -> "%02x".format(byte.toInt() and 0xff) }} " +
++                    "requestedWriteType=$writeType sdk=${Build.VERSION.SDK_INT} " +
++                    "api=$selectedWriteApi " +
++                    "useLegacyAndroidWriteApi=$useLegacyAndroidWriteApi " +
++                    "legacyRequestIgnored=$legacyRequestIgnored mtu=$currentMtu " +
++                    "connectionState=$connectionState bondState=${device.bondState}"
++            )
++        }
+
 -        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !useLegacyAndroidWriteApi) {
++        if (useModernAndroidWriteApi) {
              val statusCode = bluetoothGatt?.writeCharacteristic(characteristic, bytes, writeType)
++            if (isNameRoomWrite) {
++                Log.i(
++                    NAME_ROOM_GATT_TAG,
++                    "writeCharacteristic-return t=${System.currentTimeMillis()} " +
++                        "api=modern sdk=${Build.VERSION.SDK_INT} statusCode=$statusCode " +
++                        "statusSuccess=${statusCode == BluetoothStatusCodes.SUCCESS} " +
++                        "effectiveWriteType=$writeType"
++                )
++            }
++            traceNativeAccepted(
++                key,
++                "api=$selectedWriteApi sdk=${Build.VERSION.SDK_INT} " +
++                    "statusCode=$statusCode writeType=$writeType"
++            )
              if (statusCode != BluetoothStatusCodes.SUCCESS) {
                  reject(key, "Writing characteristic failed with status code $statusCode.")
                  return
@@ -50,3 +609,337 @@ index 5546881..12713b0 100644
              characteristic.value = bytes
              characteristic.writeType = writeType
              val result = bluetoothGatt?.writeCharacteristic(characteristic)
++            if (isNameRoomWrite) {
++                Log.i(
++                    NAME_ROOM_GATT_TAG,
++                    "writeCharacteristic-return t=${System.currentTimeMillis()} api=legacy " +
++                        "sdk=${Build.VERSION.SDK_INT} accepted=$result " +
++                        "effectiveWriteType=${characteristic.writeType}"
++                )
++            }
++            traceNativeAccepted(
++                key,
++                "api=legacy sdk=${Build.VERSION.SDK_INT} accepted=$result " +
++                    "writeType=${characteristic.writeType}"
++            )
+             if (result != true) {
+                 reject(key, "Writing characteristic failed.")
+                 return
+             }
+         }
++        if (isNameRoomWrite) {
++            Log.i(
++                NAME_ROOM_GATT_TAG,
++                "native-timeout-scheduling t=${System.currentTimeMillis()} key=$key " +
++                    "timeoutMs=$timeout callbackPending=${callbackMap.containsKey(key)}"
++            )
++        }
+         setTimeout(key, "Write timeout.", timeout)
+     }
+
+@@ -595,9 +886,9 @@ class Device(
+     ) {
+         val key = "writeDescriptor|$serviceUUID|$characteristicUUID|$CLIENT_CHARACTERISTIC_CONFIG"
+         val notifyKey = "notification|$serviceUUID|$characteristicUUID"
+-        callbackMap[key] = callback
++        registerCallback(key, "notification-descriptor-write", callback)
+         if (notifyCallback != null) {
+-            callbackMap[notifyKey] = notifyCallback
++            registerCallback(notifyKey, "notification-listener", notifyCallback, nativeOperation = false)
+         }
+         val service = bluetoothGatt?.getService(serviceUUID)
+         val characteristic = service?.getCharacteristic(characteristicUUID)
+@@ -645,6 +936,7 @@ class Device(
+
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+             val statusCode = bluetoothGatt?.writeDescriptor(descriptor, value)
++            traceNativeAccepted(key, "api=modern statusCode=$statusCode enable=$enable")
+             if (statusCode != BluetoothStatusCodes.SUCCESS) {
+                 reject(key, "Setting notification failed with status code $statusCode.")
+                 return
+@@ -652,6 +944,7 @@ class Device(
+         } else {
+             descriptor.value = value
+             val resultDesc = bluetoothGatt?.writeDescriptor(descriptor)
++            traceNativeAccepted(key, "api=legacy accepted=$resultDesc enable=$enable")
+             if (resultDesc != true) {
+                 reject(key, "Setting notification failed.")
+                 return
+@@ -670,7 +963,7 @@ class Device(
+         callback: (CallbackResponse) -> Unit
+     ) {
+         val key = "readDescriptor|$serviceUUID|$characteristicUUID|$descriptorUUID"
+-        callbackMap[key] = callback
++        registerCallback(key, "descriptor-read", callback)
+         val service = bluetoothGatt?.getService(serviceUUID)
+         val characteristic = service?.getCharacteristic(characteristicUUID)
+         if (characteristic == null) {
+@@ -683,6 +976,7 @@ class Device(
+             return
+         }
+         val result = bluetoothGatt?.readDescriptor(descriptor)
++        traceNativeAccepted(key, "accepted=$result")
+         if (result != true) {
+             reject(key, "Reading descriptor failed.")
+             return
+@@ -699,7 +993,7 @@ class Device(
+         callback: (CallbackResponse) -> Unit
+     ) {
+         val key = "writeDescriptor|$serviceUUID|$characteristicUUID|$descriptorUUID"
+-        callbackMap[key] = callback
++        registerCallback(key, "descriptor-write", callback)
+         val service = bluetoothGatt?.getService(serviceUUID)
+         val characteristic = service?.getCharacteristic(characteristicUUID)
+         if (characteristic == null) {
+@@ -715,6 +1009,7 @@ class Device(
+
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+             val statusCode = bluetoothGatt?.writeDescriptor(descriptor, bytes)
++            traceNativeAccepted(key, "api=modern statusCode=$statusCode")
+             if (statusCode != BluetoothStatusCodes.SUCCESS) {
+                 reject(key, "Writing descriptor failed with status code $statusCode.")
+                 return
+@@ -722,6 +1017,7 @@ class Device(
+         } else {
+             descriptor.value = bytes
+             val result = bluetoothGatt?.writeDescriptor(descriptor)
++            traceNativeAccepted(key, "api=legacy accepted=$result")
+             if (result != true) {
+                 reject(key, "Writing descriptor failed.")
+                 return
+@@ -730,21 +1026,172 @@ class Device(
+         setTimeout(key, "Write timeout.", timeout)
+     }
+
++    private fun registerCallback(
++        key: String,
++        type: String,
++        callback: (CallbackResponse) -> Unit,
++        nativeOperation: Boolean = true,
++    ) {
++        val now = System.currentTimeMillis()
++        callbackMap[key] = callback
++        callbackRegisteredAt[key] = now
++        if (nativeOperation) {
++            val trace = GattOperationTrace(key, type, now)
++            gattOperationTraces[key] = trace
++            lastGattOperationKey = key
++        }
++        Log.i(
++            NAME_ROOM_GATT_QUEUE_TAG,
++            "operation-start t=$now device=$address type=$type key=$key " +
++                "nativeOperation=$nativeOperation pendingCallbacks=${callbackMap.size} " +
++                "pendingTimeouts=${timeoutQueue.size}"
++        )
++    }
++
++    private fun traceNativeAccepted(key: String, result: String) {
++        val now = System.currentTimeMillis()
++        gattOperationTraces[key]?.let { trace ->
++            trace.acceptedAt = now
++            trace.acceptedResult = result
++        }
++        Log.i(
++            NAME_ROOM_GATT_QUEUE_TAG,
++            "operation-native-accepted t=$now device=$address key=$key result=$result " +
++                "callbackPending=${callbackMap.containsKey(key)}"
++        )
++    }
++
++    private fun traceNativeCallback(key: String, status: Int, callbackType: String) {
++        val now = System.currentTimeMillis()
++        val trace = gattOperationTraces[key]
++        trace?.callbackAt = now
++        trace?.callbackStatus = status
++        Log.i(
++            NAME_ROOM_GATT_QUEUE_TAG,
++            "operation-callback t=$now device=$address callbackType=$callbackType key=$key " +
++                "status=$status callbackPending=${callbackMap.containsKey(key)} " +
++                "elapsedSinceStartMs=${trace?.let { now - it.startedAt }}"
++        )
++    }
++
++    private fun tracePluginFinished(key: String, outcome: String) {
++        val now = System.currentTimeMillis()
++        val trace = gattOperationTraces[key]
++        trace?.pluginFinishedAt = now
++        trace?.pluginOutcome = outcome
++        Log.i(
++            NAME_ROOM_GATT_QUEUE_TAG,
++            "operation-finished t=$now device=$address key=$key outcome=$outcome " +
++                "nativeCallbackReceived=${trace?.callbackAt != null} " +
++                "elapsedSinceStartMs=${trace?.let { now - it.startedAt }}"
++        )
++    }
++
++    private fun logGattIdleBeforeWrite(
++        key: String,
++        serviceUUID: UUID,
++        characteristicUUID: UUID,
++    ) {
++        val now = System.currentTimeMillis()
++        val lastTrace = lastGattOperationKey?.let { gattOperationTraces[it] }
++        val lastCompletedAt = lastTrace?.pluginFinishedAt ?: lastTrace?.callbackAt
++        Log.i(
++            NAME_ROOM_GATT_QUEUE_TAG,
++            "pre-write-idle t=$now device=$address key=$key service=$serviceUUID " +
++                "characteristic=$characteristicUUID lastOperationKey=${lastTrace?.key} " +
++                "lastOperationType=${lastTrace?.type} lastCallbackAt=${lastTrace?.callbackAt} " +
++                "lastPluginFinishedAt=${lastTrace?.pluginFinishedAt} " +
++                "lastCompletedAt=$lastCompletedAt " +
++                "idleSinceLastGattOperationMs=${lastCompletedAt?.let { now - it }}"
++        )
++    }
++
++    private fun logGattQueueBeforeNameRoomWrite() {
++        val now = System.currentTimeMillis()
++        val callbackKeySnapshot = try {
++            callbackMap.keys.toList()
++        } catch (error: Exception) {
++            Log.e(
++                NAME_ROOM_GATT_QUEUE_TAG,
++                "callback-snapshot-failed t=$now device=$address error=${error.localizedMessage}",
++                error
++            )
++            emptyList()
++        }
++        val callbackKeys = callbackKeySnapshot.sorted().joinToString(" ; ") { key ->
++            val registeredAt = callbackRegisteredAt[key]
++            "$key(ageMs=${registeredAt?.let { now - it }})"
++        }
++        val timeoutKeys = timeoutQueue.toList().joinToString(" ; ") { timeout ->
++            val age = now - timeout.createdAt
++            "${timeout.key}(ageMs=$age,timeoutMs=${timeout.timeoutMs},remainingMs=${timeout.timeoutMs - age})"
++        }
++        val notificationKeys = callbackKeySnapshot
++            .filter { it.startsWith("notification|") }
++            .sorted()
++            .joinToString(" ; ")
++        val lastTrace = lastGattOperationKey?.let { gattOperationTraces[it] }
++        val lastCompletedAt = lastTrace?.pluginFinishedAt ?: lastTrace?.callbackAt
++        val suspectedNativeOperations = gattOperationTraces.values
++            .filter { it.acceptedAt != null && it.callbackAt == null }
++            .sortedBy { it.startedAt }
++            .joinToString(" ; ") { trace ->
++                "${trace.key}(type=${trace.type},ageMs=${now - trace.startedAt}," +
++                    "pluginOutcome=${trace.pluginOutcome})"
++            }
++        Log.i(
++            NAME_ROOM_GATT_QUEUE_TAG,
++            "pre-name-room-snapshot t=$now device=$address connectionState=$connectionState " +
++                "bondState=${device.bondState} mtu=$currentMtu hasGatt=${bluetoothGatt != null} " +
++                "callbackKeys=[$callbackKeys] timeoutKeys=[$timeoutKeys] " +
++                "activeNotifications=[$notificationKeys] " +
++                "lastOperationKey=${lastTrace?.key} lastOperationType=${lastTrace?.type} " +
++                "lastStartedAt=${lastTrace?.startedAt} lastAcceptedAt=${lastTrace?.acceptedAt} " +
++                "lastCallbackAt=${lastTrace?.callbackAt} lastCallbackStatus=${lastTrace?.callbackStatus} " +
++                "lastPluginFinishedAt=${lastTrace?.pluginFinishedAt} " +
++                "idleSinceLastGattOperationMs=${lastCompletedAt?.let { now - it }} " +
++                "lastPluginOutcome=${lastTrace?.pluginOutcome} " +
++                "suspectedNativeOperations=[$suspectedNativeOperations]"
++        )
++    }
++
+     private fun resolve(key: String, value: String) {
+         pendingBondKeys.remove(key)
+-        callbackMap.remove(key)?.let { callback ->
++        val callback = callbackMap.remove(key)
++        callbackRegisteredAt.remove(key)
++        tracePluginFinished(key, "resolved:$value")
++        if (key.contains(NAME_ROOM_CHARACTERISTIC, ignoreCase = true)) {
++            Log.i(
++                NAME_ROOM_GATT_TAG,
++                "callback-resolve t=${System.currentTimeMillis()} key=$key callbackFound=${callback != null} " +
++                    "value=$value pendingCallbacksAfterRemove=${callbackMap.size} " +
++                    "elapsedSinceWriteMs=${lastNameRoomWriteAt?.let { System.currentTimeMillis() - it }}"
++            )
++        }
++        callback?.let {
+             Logger.debug(TAG, "resolve: $key $value")
+             timeoutQueue.popFirstMatch { it.key == key }?.handler?.removeCallbacksAndMessages(null)
+-            callback?.invoke(CallbackResponse(true, value))
++            it.invoke(CallbackResponse(true, value))
+         }
+     }
+
+     private fun reject(key: String, value: String) {
+         pendingBondKeys.remove(key)
+-        callbackMap.remove(key)?.let { callback ->
++        val callback = callbackMap.remove(key)
++        callbackRegisteredAt.remove(key)
++        tracePluginFinished(key, "rejected:$value")
++        if (key.contains(NAME_ROOM_CHARACTERISTIC, ignoreCase = true)) {
++            Log.e(
++                NAME_ROOM_GATT_TAG,
++                "callback-reject t=${System.currentTimeMillis()} key=$key callbackFound=${callback != null} " +
++                    "value=$value pendingCallbacksAfterRemove=${callbackMap.size} " +
++                    "elapsedSinceWriteMs=${lastNameRoomWriteAt?.let { System.currentTimeMillis() - it }}"
++            )
++        }
++        callback?.let {
+             Logger.debug(TAG, "reject: $key $value")
+             timeoutQueue.popFirstMatch { it.key == key }?.handler?.removeCallbacksAndMessages(null)
+-            callback?.invoke(CallbackResponse(false, value))
++            it.invoke(CallbackResponse(false, value))
+         }
+     }
+
+@@ -752,8 +1199,35 @@ class Device(
+         key: String, message: String, timeout: Long
+     ) {
+         val handler = Handler(Looper.getMainLooper())
+-        timeoutQueue.add(TimeoutHandler(key, handler))
++        val scheduledAt = System.currentTimeMillis()
++        timeoutQueue.add(TimeoutHandler(key, handler, scheduledAt, timeout))
++        Log.i(
++            NAME_ROOM_GATT_QUEUE_TAG,
++            "timeout-scheduled t=$scheduledAt device=$address key=$key timeoutMs=$timeout " +
++                "queueSize=${timeoutQueue.size} callbackPending=${callbackMap.containsKey(key)}"
++        )
++        if (key.contains(NAME_ROOM_CHARACTERISTIC, ignoreCase = true)) {
++            Log.i(
++                NAME_ROOM_GATT_TAG,
++                "timeout-scheduled t=${System.currentTimeMillis()} key=$key timeoutMs=$timeout " +
++                    "queueSize=${timeoutQueue.size} callbackPending=${callbackMap.containsKey(key)}"
++            )
++        }
+         handler.postDelayed({
++            Log.e(
++                NAME_ROOM_GATT_QUEUE_TAG,
++                "timeout-fired t=${System.currentTimeMillis()} device=$address key=$key " +
++                    "timeoutMs=$timeout queueSize=${timeoutQueue.size} " +
++                    "callbackPending=${callbackMap.containsKey(key)}"
++            )
++            if (key.contains(NAME_ROOM_CHARACTERISTIC, ignoreCase = true)) {
++                Log.e(
++                    NAME_ROOM_GATT_TAG,
++                    "timeout-fired t=${System.currentTimeMillis()} key=$key timeoutMs=$timeout " +
++                        "queueSize=${timeoutQueue.size} callbackPending=${callbackMap.containsKey(key)} " +
++                        "elapsedSinceWriteMs=${lastNameRoomWriteAt?.let { System.currentTimeMillis() - it }}"
++                )
++            }
+             reject(key, message)
+         }, timeout)
+     }
+@@ -765,8 +1239,20 @@ class Device(
+         timeout: Long,
+     ) {
+         val handler = Handler(Looper.getMainLooper())
+-        timeoutQueue.add(TimeoutHandler(key, handler))
++        val scheduledAt = System.currentTimeMillis()
++        timeoutQueue.add(TimeoutHandler(key, handler, scheduledAt, timeout))
++        Log.i(
++            NAME_ROOM_GATT_QUEUE_TAG,
++            "timeout-scheduled t=$scheduledAt device=$address key=$key timeoutMs=$timeout " +
++                "queueSize=${timeoutQueue.size} callbackPending=${callbackMap.containsKey(key)}"
++        )
+         handler.postDelayed({
++            Log.e(
++                NAME_ROOM_GATT_QUEUE_TAG,
++                "timeout-fired t=${System.currentTimeMillis()} device=$address key=$key " +
++                    "timeoutMs=$timeout queueSize=${timeoutQueue.size} " +
++                    "callbackPending=${callbackMap.containsKey(key)}"
++            )
+             connectionState = STATE_DISCONNECTED
+             gatt?.disconnect()
+             gatt?.close()

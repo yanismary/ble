@@ -4,10 +4,11 @@ import { encodeLegacyLockMode } from
 import {
   PRODUCT_KNOWN_ROOM_OPTIONS,
   PRODUCT_NAME_ROOM_EXECUTION_POLICY,
-  PRODUCT_NAME_ROOM_POST_WRITE_COOLDOWN_MS,
   PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS,
+  PRODUCT_NAME_ROOM_POST_WRITE_STABILIZATION_MS,
   PRODUCT_NAME_ROOM_WRITE_TIMEOUT_MS,
   PRODUCT_ROOM_OPTIONS,
+  buildProductPhysicalName,
   createProductNameRoomAuthorization,
   createProductNameRoomDraft,
   encodeProductNameRoomWrite,
@@ -18,7 +19,7 @@ import {
 describe('Product name and room controls', () => {
   it('keeps the Phase 1 timing contract scoped to name-room writes', () => {
     expect(PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS).toBe(200);
-    expect(PRODUCT_NAME_ROOM_POST_WRITE_COOLDOWN_MS).toBe(1_800);
+    expect(PRODUCT_NAME_ROOM_POST_WRITE_STABILIZATION_MS).toBe(2_500);
     expect(PRODUCT_NAME_ROOM_WRITE_TIMEOUT_MS).toBe(15_000);
     expect(PRODUCT_NAME_ROOM_EXECUTION_POLICY).toEqual({
       allowPhase1ReferenceOnly: true,
@@ -47,6 +48,10 @@ describe('Product name and room controls', () => {
     expect(splitProductDisplayName('Door#cha')).toEqual({
       name: 'Door#cha',
       roomSuffix: null,
+    });
+    expect(splitProductDisplayName('Door#internal#SAL')).toEqual({
+      name: 'Door#internal',
+      roomSuffix: '#SAL',
     });
     expect(splitProductDisplayName('  Door - 1#SAL  ')).toEqual({
       name: 'Door - 1',
@@ -153,10 +158,21 @@ describe('Product name and room controls', () => {
     })).toEqual({ valid: false, error: 'too-long' });
   });
 
+  it('builds physical names from a clean base without duplicate suffixes', () => {
+    expect(buildProductPhysicalName('Mov-BE-L', '#CHA'))
+      .toBe('Mov-BE-L#CHA');
+    expect(buildProductPhysicalName('Mov-BE-L#SAL', '#CHA'))
+      .toBe('Mov-BE-L#CHA');
+    expect(buildProductPhysicalName('Mov#internal', '#CHA'))
+      .toBe('Mov#internal#CHA');
+    expect(buildProductPhysicalName('Mov-BE-L#ABC', null))
+      .toBe('Mov-BE-L#ABC');
+  });
+
   it('replaces the existing suffix once for Widoor and Moventiv', () => {
     const validation = validateProductNameRoomDraft(
       splitProductDisplayName('Mov-BE-L#SAL'),
-      { name: 'Mov-BE-L', roomSuffix: '#CHA' },
+      { name: 'Mov-BE-L#SAL', roomSuffix: '#CHA' },
     );
 
     expect(validation).toEqual(jasmine.objectContaining({
@@ -267,6 +283,53 @@ describe('Product name and room controls', () => {
       ).profile,
     )).toEqual(['widoor', 'moventiv-60', 'moventiv-80', 'garline']);
   });
+
+  it('keeps exact name-only, room-only and combined payloads for every profile',
+    () => {
+      const profiles = [
+        'widoor',
+        'moventiv-60',
+        'moventiv-80',
+        'garline',
+      ] as const;
+      const scenarios = [
+        {
+          current: 'Mov-BE-L#SAL',
+          draft: { name: 'Nouveau', roomSuffix: '#SAL' as const },
+          expected: 'Nouveau#SAL',
+        },
+        {
+          current: 'Mov-BE-L#SAL',
+          draft: { name: 'Mov-BE-L', roomSuffix: '#CHA' as const },
+          expected: 'Mov-BE-L#CHA',
+        },
+        {
+          current: 'Mov-BE-L#SAL',
+          draft: { name: 'Nouveau', roomSuffix: '#CHA' as const },
+          expected: 'Nouveau#CHA',
+        },
+      ];
+
+      for (const profile of profiles) {
+        for (const scenario of scenarios) {
+          const validation = validateProductNameRoomDraft(
+            splitProductDisplayName(scenario.current),
+            scenario.draft,
+          );
+          expect(validation.valid).withContext(profile).toBeTrue();
+          if (!validation.valid) {
+            continue;
+          }
+          const write = encodeProductNameRoomWrite(profile, validation);
+          expect(String.fromCharCode(...write.payload))
+            .withContext(`${profile}: ${scenario.expected}`)
+            .toBe(scenario.expected);
+          expect(write.serviceUuid).toBe(BLE_UUIDS.shdoService);
+          expect(write.characteristicUuid).toBe(BLE_UUIDS.nameCharacteristic);
+        }
+      }
+    },
+  );
 
   it('creates scoped authorizations only for catalogued name-room writes',
     () => {

@@ -73,7 +73,9 @@
           value="advanced"
           (click)="requestActiveSettingsTab('advanced')"
         >
-          <span>{{ text.shell.advanced }}</span>
+          <span [class.product-advanced-label-de]="usesGermanProductLabels">
+            {{ text.shell.advanced }}
+          </span>
         </ion-segment-button>
       </ion-segment>
     }
