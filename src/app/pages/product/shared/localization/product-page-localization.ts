@@ -51,7 +51,7 @@ const PRODUCT_LOCALIZED_LABELS = {
     },
     "commands": {
       "open": "Ouvrir",
-      "openDelayed": "Ouvrir dans {{seconds}} s",
+      "openDelayed": "Ouvrir {{seconds}} s",
       "close": "Fermer",
       "lockedOpen": "Maintien de la porte en position ouverte",
       "lockedClosed": "Porte condamnée en position fermée"
@@ -180,7 +180,7 @@ const PRODUCT_LOCALIZED_LABELS = {
     },
     "commands": {
       "open": "Open",
-      "openDelayed": "Open in {{seconds}} s",
+      "openDelayed": "Open {{seconds}} s",
       "close": "Close",
       "lockedOpen": "Keep door open",
       "lockedClosed": "Door locked in closed position"
@@ -309,7 +309,7 @@ const PRODUCT_LOCALIZED_LABELS = {
     },
     "commands": {
       "open": "Öffnen",
-      "openDelayed": "In {{seconds}} s öffnen",
+      "openDelayed": "{{seconds}} s öffnen",
       "close": "Schließen",
       "lockedOpen": "Tür geöffnet halten",
       "lockedClosed": "Tür geschlossen halten"
