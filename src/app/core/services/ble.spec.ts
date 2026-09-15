@@ -17,6 +17,7 @@ describe('BleService', () => {
   let requestLEScanSpy: jasmine.Spy<typeof BleClient.requestLEScan>;
   let connectSpy: jasmine.Spy<typeof BleClient.connect>;
   let writeSpy: jasmine.Spy<typeof BleClient.write>;
+  let delaySpy: jasmine.Spy;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
@@ -37,6 +38,7 @@ describe('BleService', () => {
     spyOn(BleClient, 'stopNotifications').and.resolveTo();
 
     service = TestBed.inject(BleService);
+    delaySpy = spyOn<any>(service, 'delay').and.resolveTo();
   });
 
   it('should be created', () => {
@@ -323,6 +325,35 @@ describe('BleService', () => {
     expect(service.isScanning()).toBeFalse();
   });
 
+  it('should wait 400 ms after stopping scan before native connection',
+    async () => {
+      const callback = jasmine.createSpy<(result: ScanResult) => void>(
+        'deviceFound',
+      );
+      let releaseDelay!: () => void;
+      delaySpy.and.callFake((milliseconds: number) => {
+        expect(milliseconds).toBe(400);
+        return new Promise<void>((resolve) => {
+          releaseDelay = resolve;
+        });
+      });
+      await service.startScan(callback);
+
+      const connection = service.connect('device-1');
+      await settlePromises();
+
+      expect(BleClient.stopLEScan).toHaveBeenCalledTimes(1);
+      expect(delaySpy).toHaveBeenCalledOnceWith(400);
+      expect(BleClient.connect).not.toHaveBeenCalled();
+
+      releaseDelay();
+      await connection;
+
+      expect(BleClient.stopLEScan).toHaveBeenCalledBefore(BleClient.connect);
+      expect(BleClient.connect).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('should reset its connection state when connecting fails', async () => {
     const connectionError = new Error('Connection failed');
     connectSpy.and.rejectWith(connectionError);
@@ -567,6 +598,7 @@ describe('BleService', () => {
     await expectAsync(service.connect('device-2')).toBeRejectedWithError(
       'A BLE connection is already in progress.',
     );
+    await settlePromises();
     expect(connectSpy).toHaveBeenCalledTimes(1);
 
     releaseConnection();
@@ -706,6 +738,37 @@ describe('BleService', () => {
     )).toBe('available');
     expect(service.connectionGeneration).toBe(generation);
   });
+
+  it('should wait 500 ms only before the first discovery of a connection',
+    async () => {
+      let releaseDiscoveryDelay!: () => void;
+      delaySpy.and.callFake((milliseconds: number) => {
+        if (milliseconds !== 500) {
+          return Promise.resolve();
+        }
+        return new Promise<void>((resolve) => {
+          releaseDiscoveryDelay = resolve;
+        });
+      });
+      await service.connect('device-1');
+
+      const firstDiscovery = service.discoverServices('device-1');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(delaySpy).toHaveBeenCalledWith(500);
+      expect(BleClient.getServices).not.toHaveBeenCalled();
+
+      releaseDiscoveryDelay();
+      await firstDiscovery;
+      await service.discoverServices('device-1');
+
+      expect(delaySpy.calls.allArgs().filter(([milliseconds]) =>
+        milliseconds === 500,
+      )).toHaveSize(1);
+      expect(BleClient.getServices).toHaveBeenCalledTimes(2);
+    },
+  );
 
   it('should report precise GATT characteristic availability', async () => {
     expect(service.getGattCharacteristicAvailability(
@@ -1385,4 +1448,10 @@ function createCharacteristicProperties(
     writeWithoutResponse: false,
     ...overrides,
   };
+}
+
+async function settlePromises(): Promise<void> {
+  for (let index = 0; index < 8; index += 1) {
+    await Promise.resolve();
+  }
 }

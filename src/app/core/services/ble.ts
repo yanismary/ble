@@ -85,6 +85,14 @@ interface NotificationSubscription {
   readonly startPromise: Promise<void>;
 }
 
+interface ServiceDiscoveryStabilization {
+  readonly deviceId: string;
+  readonly connectionGeneration: number;
+}
+
+const SCAN_STOP_STABILIZATION_DELAY_MS = 400;
+const SERVICE_DISCOVERY_STABILIZATION_DELAY_MS = 500;
+
 @Injectable({
   providedIn: 'root',
 })
@@ -107,6 +115,8 @@ export class BleService implements OnDestroy {
   private notificationSequenceValue = 0;
   private connectionGenerationValue = 0;
   private activeConnectionToken: symbol | null = null;
+  private serviceDiscoveryStabilization: ServiceDiscoveryStabilization | null =
+    null;
   private connecting = false;
   private scanning = false;
 
@@ -356,6 +366,18 @@ export class BleService implements OnDestroy {
 
     if (targetDeviceId !== this.connectedDeviceIdValue) {
       throw new Error('The target device is not the connected BLE device.');
+    }
+
+    await this.stabilizeFirstServiceDiscovery(
+      targetDeviceId,
+      connectionGeneration,
+    );
+
+    if (
+      this.connectedDeviceIdValue !== targetDeviceId
+      || this.connectionGenerationValue !== connectionGeneration
+    ) {
+      throw new Error('The BLE device disconnected during service discovery.');
     }
 
     const services = await BleClient.getServices(targetDeviceId);
@@ -669,6 +691,7 @@ export class BleService implements OnDestroy {
       await this.stopScan();
     }
 
+    await this.delay(SCAN_STOP_STABILIZATION_DELAY_MS);
     await this.initialize();
     let disconnectedDuringConnection = false;
     const connectionToken = Symbol(deviceId);
@@ -695,6 +718,10 @@ export class BleService implements OnDestroy {
       this.connectedDeviceIdValue = deviceId;
       this.clearDiscoveredServices();
       this.connectionGenerationValue += 1;
+      this.serviceDiscoveryStabilization = {
+        deviceId,
+        connectionGeneration: this.connectionGenerationValue,
+      };
       return;
     }
 
@@ -957,6 +984,30 @@ export class BleService implements OnDestroy {
   private clearDiscoveredServices(): void {
     this.discoveredServicesValue = [];
     this.discoveredServicesDeviceIdValue = null;
+    this.serviceDiscoveryStabilization = null;
+  }
+
+  private async stabilizeFirstServiceDiscovery(
+    deviceId: string,
+    connectionGeneration: number,
+  ): Promise<void> {
+    const stabilization = this.serviceDiscoveryStabilization;
+    if (
+      stabilization === null
+      || stabilization.deviceId !== deviceId
+      || stabilization.connectionGeneration !== connectionGeneration
+    ) {
+      return;
+    }
+
+    await this.delay(SERVICE_DISCOVERY_STABILIZATION_DELAY_MS);
+    if (this.serviceDiscoveryStabilization === stabilization) {
+      this.serviceDiscoveryStabilization = null;
+    }
+  }
+
+  private async delay(milliseconds: number): Promise<void> {
+    await new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
   }
 
   private copyDiscoveredServices(
