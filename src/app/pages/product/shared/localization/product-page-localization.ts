@@ -168,7 +168,7 @@ const PRODUCT_LOCALIZED_LABELS = {
     "sections": {
       "navbarTitle": "Commands",
       "commands": "Commands",
-      "settings": "Tuning",
+      "settings": "Settings",
       "information": "Information",
       "basic": "Basic",
       "advanced": "Advanced",

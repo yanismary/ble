@@ -114,7 +114,7 @@ const SETTINGS_TEXT: Record<AppLanguage, SettingsPageText> = {
       showBleIdentifierIos: 'Show UUID',
     },
     productTabs: {
-      settings: 'Tuning',
+      settings: 'Settings',
       information: 'Information',
     },
     other: {
