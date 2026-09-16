@@ -253,6 +253,7 @@ export class ScanPage implements OnDestroy {
   private rootBackButtonSubscription: Subscription | null = null;
   private exitConfirmationOpen = false;
   private exitingApplication = false;
+  private connectionPerformanceStartedAt: number | null = null;
 
   devices: ScannedDevice[] = [];
   connectedDeviceId: string | null = null;
@@ -919,6 +920,7 @@ export class ScanPage implements OnDestroy {
       return;
     }
 
+    this.startConnectionPerformanceTrace(device);
     this.selectDevice(device);
     await this.connectSelectedDevice();
   }
@@ -934,6 +936,10 @@ export class ScanPage implements OnDestroy {
       return;
     }
 
+    if (this.connectionPerformanceStartedAt === null) {
+      this.startConnectionPerformanceTrace(device);
+    }
+
     this.connectionError = null;
     this.connectionRetryDeviceId = null;
     this.discoveryError = null;
@@ -947,7 +953,11 @@ export class ScanPage implements OnDestroy {
 
     try {
       await this.stopScan();
+      this.logConnectionPerformance('Scan stopped');
       await this.delay(PHASE1_CONNECT_STABILIZATION_DELAY_MS);
+      this.logConnectionPerformance('Pre-connect stabilization finished', {
+        delayMs: PHASE1_CONNECT_STABILIZATION_DELAY_MS,
+      });
       await this.connectDeviceWithPhase1Retries(device.deviceId);
       if (this.destroyed || this.selectedDeviceId !== device.deviceId) {
         await this.bleService.disconnect().catch(() => undefined);
@@ -963,6 +973,9 @@ export class ScanPage implements OnDestroy {
       this.connectedDeviceId = this.bleService.connectedDeviceId;
       this.connectedBleGeneration = nativeGeneration;
       await this.delay(PHASE1_POST_CONNECTION_STABILIZATION_DELAY_MS);
+      this.logConnectionPerformance('Post-connect stabilization finished', {
+        delayMs: PHASE1_POST_CONNECTION_STABILIZATION_DELAY_MS,
+      });
       if (!this.isCurrentBleConnection(device.deviceId, nativeGeneration)) {
         if (
           this.bleService.connectedDeviceId === device.deviceId &&
@@ -1182,15 +1195,23 @@ export class ScanPage implements OnDestroy {
       profile,
       deviceId,
       connectionGeneration: generation,
+      ...(this.connectionPerformanceStartedAt === null
+        ? {}
+        : {
+          connectionPerformanceStartedAt:
+            this.connectionPerformanceStartedAt,
+        }),
       displayName: this.selectedDevice?.name ??
         PRODUCT_PAGE_CONFIG[profile].productName,
       identificationConfidence: 'strong',
       motorState: this.hasCurrentMotorStateSource() ? this.motorState : null,
     };
+    this.logConnectionPerformance('Navigation start', { profile });
     await this.router.navigate(
       [PRODUCT_PAGE_CONFIG[profile].route],
       { state },
     );
+    this.logConnectionPerformance('Navigation finished', { profile });
   }
 
   private async openProductPageIfReady(
@@ -1386,7 +1407,11 @@ export class ScanPage implements OnDestroy {
     this.services = [];
 
     try {
+      this.logConnectionPerformance('Service discovery start');
       const services = await this.bleService.discoverServices(deviceId);
+      this.logConnectionPerformance('Service discovery finished', {
+        serviceCount: services.length,
+      });
 
       if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
         this.services = services;
@@ -1453,11 +1478,13 @@ export class ScanPage implements OnDestroy {
     this.identificationError = null;
 
     try {
+      this.logConnectionPerformance('Identification read start');
       const value = await this.bleService.readCharacteristic(
         BLE_UUIDS.shdoService,
         BLE_UUIDS.versionCharacteristic,
         deviceId,
       );
+      this.logConnectionPerformance('Identification read finished');
 
       if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
         const identification = this.productDetection.interpretVersion(
@@ -1479,7 +1506,10 @@ export class ScanPage implements OnDestroy {
           );
           return;
         }
-        await this.startMotorStateNotifications(
+        this.logConnectionPerformance('Product detected', {
+          profile: this.productProfile,
+        });
+        void this.startMotorStateNotifications(
           deviceId,
           expectedConnectionGeneration,
           services,
@@ -1615,9 +1645,15 @@ export class ScanPage implements OnDestroy {
 
       this.retryingConnection = manualRetryInProgress || attempt > 1;
       try {
+        this.logConnectionPerformance('connect() start', { attempt });
         await this.bleService.connect(deviceId);
+        this.logConnectionPerformance('connect() success', { attempt });
         return;
       } catch (error: unknown) {
+        this.logConnectionPerformance('connect() failed', {
+          attempt,
+          error: error instanceof Error ? error.message : String(error),
+        });
         lastError = error;
         await this.cleanupFailedPhase1ConnectionAttempt(deviceId);
 
@@ -1634,6 +1670,28 @@ export class ScanPage implements OnDestroy {
     }
 
     throw lastError ?? new Error('BLE connection failed.');
+  }
+
+  private startConnectionPerformanceTrace(device: ScannedDevice): void {
+    this.connectionPerformanceStartedAt = Date.now();
+    this.logConnectionPerformance('Device selected', {
+      deviceId: device.deviceId,
+      name: device.name,
+    });
+  }
+
+  private logConnectionPerformance(
+    step: string,
+    details: Readonly<Record<string, unknown>> = {},
+  ): void {
+    const startedAt = this.connectionPerformanceStartedAt;
+    if (startedAt === null) {
+      return;
+    }
+    console.info(
+      `[BLE PERF] ${step} +${Date.now() - startedAt} ms`,
+      details,
+    );
   }
 
   private async cleanupFailedPhase1ConnectionAttempt(
@@ -1671,7 +1729,11 @@ export class ScanPage implements OnDestroy {
       `${this.detectedSecondaryProfile} — ${reason} ` +
       '(confiance forte)';
     this.identificationError = null;
-    await this.startMotorStateNotifications(
+    this.logConnectionPerformance('Product detected', {
+      profile: this.productProfile,
+      source: 'bluetooth-name',
+    });
+    void this.startMotorStateNotifications(
       deviceId,
       expectedConnectionGeneration,
       services,
@@ -1720,6 +1782,7 @@ export class ScanPage implements OnDestroy {
     this.motorNotificationError = null;
 
     try {
+      this.logConnectionPerformance('Motor notification start');
       await this.bleService.startNotifications(
         BLE_UUIDS.shdoService,
         BLE_UUIDS.motorStateCharacteristic,
@@ -1762,6 +1825,7 @@ export class ScanPage implements OnDestroy {
       );
       if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
         this.motorStateNotificationsActive = true;
+        this.logConnectionPerformance('Motor notification ready');
       }
     } catch (error: unknown) {
       if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {
@@ -1769,6 +1833,9 @@ export class ScanPage implements OnDestroy {
         this.motorNotificationError = details
           ? `Impossible de s’abonner à l’état moteur : ${details}`
           : 'Impossible de s’abonner à l’état moteur.';
+        this.logConnectionPerformance('Motor notification failed', {
+          error: details,
+        });
       }
     } finally {
       if (this.isCurrentBleConnection(deviceId, expectedConnectionGeneration)) {

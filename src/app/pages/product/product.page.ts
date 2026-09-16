@@ -305,6 +305,8 @@ export class ProductPage implements OnDestroy {
     inject(ConnectedProductInactivityService);
   private readonly subscriptions = new Subscription();
   private productBackButtonSubscription: Subscription | null = null;
+  private initialPageInitializationInProgress = false;
+  private initialPageReadyLogged = false;
   private readonly controlLocks = new ProductControlUnlockRegistry();
   private readonly context: ProductPageNavigationState | null;
   private loadCycle = 0;
@@ -1567,6 +1569,7 @@ export class ProductPage implements OnDestroy {
     if (!this.canRefresh || this.context === null || this.isDemoMode) {
       return;
     }
+    const initialLoad = this.viewModel.lastUpdatedAt === null;
     const cycle = ++this.loadCycle;
     const context = this.context;
     this.viewModel = {
@@ -1574,6 +1577,9 @@ export class ProductPage implements OnDestroy {
       loading: showLoading,
       globalError: null,
     };
+    if (initialLoad) {
+      this.logConnectionPerformance('Initial reads start');
+    }
 
     try {
       const result = await this.productDataLoadService.loadProductData(
@@ -1590,12 +1596,24 @@ export class ProductPage implements OnDestroy {
         return;
       }
       this.applyLoadResult(result);
+      if (initialLoad) {
+        this.logConnectionPerformance('Initial reads finished', {
+          status: result.status,
+          executedOrder: result.executedOrder,
+        });
+      }
     } finally {
       if (cycle === this.loadCycle && !this.destroyed) {
         this.viewModel = {
           ...this.viewModel,
           loading: false,
         };
+        if (initialLoad && !this.initialPageReadyLogged) {
+          this.initialPageReadyLogged = true;
+          this.logConnectionPerformance('Page ready', {
+            loadStatus: this.viewModel.loadStatus,
+          });
+        }
       }
     }
   }
@@ -2269,9 +2287,20 @@ export class ProductPage implements OnDestroy {
     const mode = typeof eventOrMode === 'string'
       ? eventOrMode
       : eventOrMode.detail.value;
+    console.info('[INPUT] change-event', {
+      profile: config.profile,
+      deviceId: this.context?.deviceId ?? null,
+      field: config.field,
+      source: typeof eventOrMode === 'string' ? 'ionChange-toggle-or-direct-call' : 'ionChange-select',
+      requestedMode: mode,
+      currentMode: this.currentExpertInputMode(config),
+      readStatus: this.viewModel.reads.professionalParameters.status,
+      at: Date.now(),
+    });
     if ((mode !== 'button' && mode !== 'radar') ||
         !this.canChangeExpertInput(config, mode) ||
         this.context === null) {
+      console.info('[INPUT] change-ignored', { field: config.field, requestedMode: mode, at: Date.now() });
       return;
     }
 
@@ -2286,6 +2315,17 @@ export class ProductPage implements OnDestroy {
       return;
     }
     const write = config.catalogFactory(mode);
+    console.info('[INPUT] write-prepared', {
+      profile: config.profile,
+      deviceId: this.context.deviceId,
+      field: config.field,
+      logicalMode: mode,
+      bleValue: write.payload[2],
+      payloadHex: write.payloadHex,
+      serviceUuid: write.serviceUuid,
+      characteristicUuid: write.characteristicUuid,
+      at: Date.now(),
+    });
     const context = this.context;
     const contextStatus = this.writeContextStatus(context, write);
     if (contextStatus !== null) {
@@ -2323,6 +2363,14 @@ export class ProductPage implements OnDestroy {
       attemptId,
       confirmationPolicy: config.confirmationPolicy,
       policy: this.withPhase1ImmediatePolicy(config.profile, config.policy),
+    });
+    console.info('[INPUT] write-result', {
+      profile: config.profile,
+      deviceId: context.deviceId,
+      field: config.field,
+      requestedMode: mode,
+      status: result.status,
+      at: Date.now(),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       this.expertInputWriteState = Object.freeze({
@@ -4239,6 +4287,13 @@ export class ProductPage implements OnDestroy {
   }
 
   ionViewWillEnter(): void {
+    console.info('[INPUT] product-page-entered', {
+      profile: this.config.profile,
+      deviceId: this.context?.deviceId ?? null,
+      connectionState: this.viewModel.connectionState,
+      professionalReadStatus: this.viewModel.reads.professionalParameters.status,
+      at: Date.now(),
+    });
     this.productBackButtonSubscription?.unsubscribe();
     this.productBackButtonSubscription =
       this.platform.backButton.subscribeWithPriority(10, () =>
@@ -4247,9 +4302,14 @@ export class ProductPage implements OnDestroy {
     if (this.routerOutlet !== null) {
       this.routerOutlet.swipeGesture = false;
     }
+    this.logConnectionPerformance('Product page entered');
     if (this.viewModel.lastUpdatedAt === null && this.canRefresh) {
-      void this.refreshProductData();
+      void this.initializeConnectedProductPage();
     }
+  }
+
+  ionViewDidEnter(): void {
+    this.logConnectionPerformance('Product page displayed');
   }
 
   ionViewWillLeave(): void {
@@ -4284,6 +4344,57 @@ export class ProductPage implements OnDestroy {
 
   private scrollContentToTop(): void {
     void this.content?.scrollToTop(0);
+  }
+
+  private async initializeConnectedProductPage(): Promise<void> {
+    const context = this.context;
+    if (context === null || this.isDemoMode ||
+        this.initialPageInitializationInProgress || !this.canRefresh) {
+      return;
+    }
+
+    this.initialPageInitializationInProgress = true;
+    this.viewModel = { ...this.viewModel, loading: true };
+    this.logConnectionPerformance('Motor notification wait start');
+
+    try {
+      await this.bleService.waitForNotificationStart(
+        BLE_UUIDS.shdoService,
+        BLE_UUIDS.motorStateCharacteristic,
+        context.deviceId,
+      );
+      this.logConnectionPerformance('Motor notification wait finished');
+    } catch (error: unknown) {
+      this.logConnectionPerformance('Motor notification wait failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      if (!this.destroyed) {
+        this.viewModel = { ...this.viewModel, loading: false };
+      }
+    }
+
+    try {
+      if (this.canRefresh) {
+        await this.refreshProductData();
+      }
+    } finally {
+      this.initialPageInitializationInProgress = false;
+    }
+  }
+
+  private logConnectionPerformance(
+    step: string,
+    details: Readonly<Record<string, unknown>> = {},
+  ): void {
+    const startedAt = this.context?.connectionPerformanceStartedAt;
+    if (startedAt === undefined) {
+      return;
+    }
+    console.info(
+      `[BLE PERF] ${step} +${Date.now() - startedAt} ms`,
+      details,
+    );
   }
 
   private connectedProductInactivitySessionId(): string | null {
@@ -4754,6 +4865,20 @@ export class ProductPage implements OnDestroy {
       lastUpdatedAt: result.completedAt,
       globalError: result.error?.message ?? null,
     };
+    if (result.results.professionalParameters !== undefined) {
+      console.info('[INPUT] ui-read-applied', {
+        profile: this.config.profile,
+        deviceId: this.context?.deviceId ?? null,
+        readStatus: this.viewModel.reads.professionalParameters.status,
+        input1: this.expertInputControls[0]
+          ? this.currentExpertInputMode(this.expertInputControls[0].config)
+          : null,
+        input2: this.expertInputControls[1]
+          ? this.currentExpertInputMode(this.expertInputControls[1].config)
+          : null,
+        at: Date.now(),
+      });
+    }
     const receivedInitialUserParameters =
       !hadConfirmedUserParameters &&
       result.results.userParameters !== undefined &&
@@ -5964,6 +6089,9 @@ export function isProductPageNavigationState(
     candidate.deviceId.trim().length > 0 &&
     Number.isInteger(candidate.connectionGeneration) &&
     (candidate.connectionGeneration ?? -1) >= 0 &&
+    (candidate.connectionPerformanceStartedAt === undefined ||
+      (Number.isFinite(candidate.connectionPerformanceStartedAt) &&
+        (candidate.connectionPerformanceStartedAt ?? -1) >= 0)) &&
     typeof candidate.displayName === 'string' &&
     candidate.displayName.trim().length > 0 &&
     candidate.identificationConfidence ===

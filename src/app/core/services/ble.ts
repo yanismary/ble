@@ -775,6 +775,25 @@ export class BleService implements OnDestroy {
     }
   }
 
+  async waitForNotificationStart(
+    serviceUuid: string,
+    characteristicUuid: string,
+    deviceId?: string,
+  ): Promise<void> {
+    const target = this.validateNotificationTarget(
+      serviceUuid,
+      characteristicUuid,
+      deviceId,
+    );
+    const subscription = this.notificationSubscriptions.get(
+      this.notificationKey(target),
+    );
+
+    if (subscription !== undefined) {
+      await subscription.startPromise;
+    }
+  }
+
   async stopNotifications(
     serviceUuid: string,
     characteristicUuid: string,

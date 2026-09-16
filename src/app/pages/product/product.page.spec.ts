@@ -121,6 +121,9 @@ class FakeBleService {
   readonly getGattCharacteristicProperties = jasmine.createSpy(
     'getGattCharacteristicProperties',
   ).and.returnValue(writableGattProperties());
+  readonly waitForNotificationStart = jasmine.createSpy(
+    'waitForNotificationStart',
+  ).and.resolveTo();
 
   readonly disconnections$: Observable<BleDisconnectionEvent> =
     this.disconnectionSubject.asObservable();
@@ -853,9 +856,9 @@ describe('ProductPage', () => {
 
       expect(component.activeMainTab).toBe('commands');
       expect(component.productCommandDisplayLabel(shortTimedCommand))
-        .toBe('Ouvrir dans 4 s');
+        .toBe('Ouvrir 4 s');
       expect(fixture.nativeElement.querySelector('.cmd-timed .cmd-label')
-        ?.textContent).toContain('Ouvrir dans 4 s');
+        ?.textContent).toContain('Ouvrir 4 s');
 
       component.setActiveMainTab('settings');
       component.setActiveSettingsTab('basic');
@@ -867,6 +870,34 @@ describe('ProductPage', () => {
       expect(component.viewModel.loading).toBeFalse();
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should wait for the motor notification before initial product reads',
+    async () => {
+      let releaseNotification!: () => void;
+      const notificationStart = new Promise<void>((resolve) => {
+        releaseNotification = resolve;
+      });
+      bleService.waitForNotificationStart.and.returnValue(notificationStart);
+
+      component.ionViewWillEnter();
+      await Promise.resolve();
+
+      expect(component.viewModel.loading).toBeTrue();
+      expect(loadService.loadProductData).not.toHaveBeenCalled();
+
+      releaseNotification();
+      await waitForCondition(() =>
+        loadService.loadProductData.calls.count() === 1 &&
+        !component.viewModel.loading,
+      );
+
+      expect(bleService.waitForNotificationStart).toHaveBeenCalledOnceWith(
+        BLE_UUIDS.shdoService,
+        BLE_UUIDS.motorStateCharacteristic,
+        'device-1',
+      );
     },
   );
 
@@ -1202,7 +1233,7 @@ describe('ProductPage', () => {
       expect(element.querySelector('ion-button.widoor-close-command'))
         .not.toBeNull();
       expect(component.productCommandDisplayLabel(shortTimedCommand))
-        .toBe('Ouvrir dans 1 s');
+        .toBe('Ouvrir 1 s');
       expect(component.productCommandDisplayLabel(shortTimedCommand))
         .not.toBe(component.text.widoorCommands.openShortTimed.label);
       expect(element.textContent).toContain('Apprentissage');
@@ -5210,7 +5241,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         )!.config;
 
         expect(component.productCommandDisplayLabel(command))
-          .toBe('Ouvrir dans 0 s');
+          .toBe('Ouvrir 0 s');
         expect(component.productCommandDisplayLabel(command))
           .not.toBe(component.text.widoorCommands.openShortTimed.label);
 
@@ -5218,9 +5249,9 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         fixture.detectChanges();
 
         expect(component.productCommandDisplayLabel(command))
-          .toBe('Ouvrir dans 4 s');
+          .toBe('Ouvrir 4 s');
         expect(fixture.nativeElement.querySelector('.cmd-timed .cmd-label')
-          ?.textContent).toContain('Ouvrir dans 4 s');
+          ?.textContent).toContain('Ouvrir 4 s');
       },
     );
   }
@@ -5255,7 +5286,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       };
       component.setUserTimingDraftValue(timing, 1);
       expect(component.productCommandDisplayLabel(command))
-        .toBe('Ouvrir dans 1 s');
+        .toBe('Ouvrir 1 s');
       loadService.nextResult = {
         ...loaded,
         executedOrder: ['userParameters'],
@@ -5274,9 +5305,9 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
       expect(component.currentUserTimingValue(timing)).toBe(4);
       expect(component.userTimingDraftValue(timing)).toBe(4);
       expect(component.productCommandDisplayLabel(command))
-        .toBe('Ouvrir dans 4 s');
+        .toBe('Ouvrir 4 s');
       expect(fixture.nativeElement.querySelector('.cmd-timed .cmd-label')
-        ?.textContent).toContain('Ouvrir dans 4 s');
+        ?.textContent).toContain('Ouvrir 4 s');
     },
   );
 
@@ -8306,7 +8337,7 @@ describe('ProductPage Demo mode', () => {
       await harness.component.requestUserSpeedChange(speed);
       harness.component.setUserTimingDraftValue(timing, 4);
       expect(harness.component.productCommandDisplayLabel(shortTimedCommand))
-        .toBe('Ouvrir dans 4 s');
+        .toBe('Ouvrir 4 s');
       await harness.component.requestUserTimingChange(timing);
       await harness.component.requestUserPeripheralChange(
         peripheral,

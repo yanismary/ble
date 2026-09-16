@@ -3477,6 +3477,35 @@ describe('ScanPage', () => {
     );
   });
 
+  it('should navigate without waiting for the motor notification setup',
+    async () => {
+      let releaseNotification!: () => void;
+      const notificationStart = new Promise<void>((resolve) => {
+        releaseNotification = resolve;
+      });
+      bleService.servicesResult = createIdentificationServices();
+      bleService.readResult = createVersionWord(0, 1);
+      spyOn(bleService, 'startNotifications')
+        .and.returnValue(notificationStart);
+      await component.startScan();
+      bleService.emit(createScanResult('device-1', -42, 'Produit'));
+      component.selectDevice(component.devices[0]);
+
+      await component.connectSelectedDevice();
+
+      expect(routerNavigate).toHaveBeenCalledOnceWith(
+        ['/product/moventiv-60'],
+        jasmine.any(Object),
+      );
+      expect(component.subscribingMotorState).toBeTrue();
+
+      releaseNotification();
+      await notificationStart;
+      await settlePromises();
+      expect(component.motorStateNotificationsActive).toBeTrue();
+    },
+  );
+
   it('should keep motor state notifications internal and increment their count', async () => {
     bleService.servicesResult = createIdentificationServices();
     bleService.readResult = createVersionWord(0, 1);

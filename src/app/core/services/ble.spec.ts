@@ -1515,6 +1515,40 @@ describe('BleService', () => {
     expect(BleClient.startNotifications).toHaveBeenCalledTimes(1);
   });
 
+  it('should expose the pending notification start without starting it twice',
+    async () => {
+      let releaseNotification!: () => void;
+      const nativeStart = new Promise<void>((resolve) => {
+        releaseNotification = resolve;
+      });
+      (BleClient.startNotifications as jasmine.Spy)
+        .and.returnValue(nativeStart);
+      await service.connect('device-1');
+
+      const start = service.startNotifications(
+        'service-uuid',
+        'characteristic-uuid',
+        jasmine.createSpy('notification'),
+      );
+      const wait = service.waitForNotificationStart(
+        'service-uuid',
+        'characteristic-uuid',
+      );
+      let waitFinished = false;
+      void wait.then(() => {
+        waitFinished = true;
+      });
+      await Promise.resolve();
+
+      expect(waitFinished).toBeFalse();
+      expect(BleClient.startNotifications).toHaveBeenCalledTimes(1);
+
+      releaseNotification();
+      await Promise.all([start, wait]);
+      expect(waitFinished).toBeTrue();
+    },
+  );
+
   it('should stop active notifications before a local disconnection', async () => {
     const callback = jasmine.createSpy<(value: DataView) => void>(
       'notification',

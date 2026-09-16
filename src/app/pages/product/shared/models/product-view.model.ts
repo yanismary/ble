@@ -82,6 +82,7 @@ export interface ProductPageNavigationState {
   readonly profile: KnownProductProfile;
   readonly deviceId: string;
   readonly connectionGeneration: number;
+  readonly connectionPerformanceStartedAt?: number;
   readonly displayName: string;
   readonly identificationConfidence: 'strong' | 'demo';
   readonly motorState: MotorStateFrame | null;
