@@ -29,7 +29,7 @@ export type BleOperationErrorCode =
 
 export interface BleCharacteristicWriteOptions {
   readonly timeoutMs?: number;
-  readonly useLegacyAndroidWriteApi?: boolean;
+  readonly disconnectOnAndroidTimeout?: boolean;
 }
 
 export class BleOperationError extends Error {
@@ -113,6 +113,7 @@ export class BleService implements OnDestroy {
   private discoveredServicesDeviceIdValue: string | null = null;
   private connectingDeviceId: string | null = null;
   private locallyDisconnectingDeviceId: string | null = null;
+  private timedOutSessionDeviceId: string | null = null;
   private readonly remoteDuringLocalDisconnectDeviceIds = new Set<string>();
   private writePromise: Promise<void> | null = null;
   private notificationSequenceValue = 0;
@@ -368,6 +369,10 @@ export class BleService implements OnDestroy {
 
     if (!normalizedDeviceId) {
       throw new Error('A deviceId is required to connect.');
+    }
+
+    if (this.timedOutSessionDeviceId !== null || this.disconnectPromise !== null) {
+      throw new Error('The previous BLE session is still closing.');
     }
 
     if (this.connectionPromise !== null) {
@@ -684,19 +689,7 @@ export class BleService implements OnDestroy {
     }
 
     const dataView = new DataView(value.buffer, value.byteOffset, value.byteLength);
-    const nativeOptions: {
-      readonly timeout?: number;
-      readonly useLegacyAndroidWriteApi?: boolean;
-    } = {
-      ...(options.timeoutMs === undefined
-        ? {}
-        : { timeout: options.timeoutMs }),
-      ...(options.useLegacyAndroidWriteApi
-        ? { useLegacyAndroidWriteApi: true }
-        : {}),
-    };
-    const write = options.timeoutMs === undefined &&
-        !options.useLegacyAndroidWriteApi
+    const write = options.timeoutMs === undefined
       ? BleClient.write(
           targetDeviceId,
           normalizedServiceUuid,
@@ -708,7 +701,7 @@ export class BleService implements OnDestroy {
           normalizedServiceUuid,
           normalizedCharacteristicUuid,
           dataView,
-          nativeOptions,
+          { timeout: options.timeoutMs },
         );
     this.writePromise = write;
 
@@ -718,6 +711,15 @@ export class BleService implements OnDestroy {
       if (this.connectedDeviceIdValue !== targetDeviceId) {
         throw new Error('The BLE device disconnected during the write.');
       }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error
+          ? String(error.message) : String(error);
+      if (options.disconnectOnAndroidTimeout && this.platform === 'android' &&
+          message === 'Write timeout.') {
+        await this.closeTimedOutNameRoomSession(targetDeviceId);
+      }
+      throw error;
     } finally {
       if (this.writePromise === write) {
         this.writePromise = null;
@@ -749,6 +751,9 @@ export class BleService implements OnDestroy {
       target.serviceUuid,
       target.characteristicUuid,
       (value: DataView) => {
+        if (this.timedOutSessionDeviceId === target.deviceId) {
+          return;
+        }
         this.notificationSequenceValue += 1;
         this.notificationSubject.next({
           ...target,
@@ -917,6 +922,10 @@ export class BleService implements OnDestroy {
   }
 
   private handleRemoteDisconnection(deviceId: string): void {
+    if (this.timedOutSessionDeviceId === deviceId) {
+      this.finishTimedOutSession(deviceId);
+      return;
+    }
     if (this.locallyDisconnectingDeviceId === deviceId) {
       this.remoteDuringLocalDisconnectDeviceIds.add(deviceId);
       return;
@@ -949,6 +958,58 @@ export class BleService implements OnDestroy {
     this.connectionGenerationValue += 1;
     this.activeConnectionToken = null;
     this.disconnectionSubject.next({ deviceId, reason: 'local' });
+  }
+
+  private async closeTimedOutNameRoomSession(deviceId: string): Promise<void> {
+    if (this.connectedDeviceIdValue !== deviceId) {
+      return;
+    }
+    this.timedOutSessionDeviceId = deviceId;
+    this.locallyDisconnectingDeviceId = deviceId;
+    this.connectedDeviceIdValue = null;
+    this.clearDiscoveredServices();
+    this.connectionGenerationValue += 1;
+    // The native ATT request survives its JS timeout. Do not enqueue CCCD
+    // writes on that session; disconnect directly and keep its token for a late callback.
+    for (const [key, subscription] of this.notificationSubscriptions) {
+      if (subscription.deviceId === deviceId) {
+        this.notificationSubscriptions.delete(key);
+      }
+    }
+    this.logNameRoomRecovery('write-timeout-session-invalidated', deviceId);
+    const disconnection = BleClient.disconnect(deviceId);
+    this.disconnectPromise = disconnection;
+    this.logNameRoomRecovery('disconnect-requested', deviceId);
+    this.disconnectionSubject.next({ deviceId, reason: 'local' });
+    try {
+      await disconnection;
+      this.finishTimedOutSession(deviceId);
+      this.logNameRoomRecovery('disconnect-complete', deviceId);
+    } catch (error: unknown) {
+      // Do not allow another connection until native disconnection is confirmed.
+      // Preserve the original write error for the caller.
+      this.logNameRoomRecovery('disconnect-failed', deviceId, String(error));
+    } finally {
+      if (this.disconnectPromise === disconnection) {
+        this.disconnectPromise = null;
+      }
+    }
+  }
+
+  private finishTimedOutSession(deviceId: string): void {
+    if (this.timedOutSessionDeviceId !== deviceId) {
+      return;
+    }
+    this.timedOutSessionDeviceId = null;
+    this.locallyDisconnectingDeviceId = null;
+    this.activeConnectionToken = null;
+    this.logNameRoomRecovery('native-session-disconnected', deviceId);
+  }
+
+  private logNameRoomRecovery(event: string, deviceId: string, error?: string): void {
+    console.info('[NAME_ROOM_RECOVERY] ' + JSON.stringify({
+      event, deviceId, timestamp: new Date().toISOString(), error,
+    }));
   }
 
   private toBleOperationError(

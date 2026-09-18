@@ -133,8 +133,8 @@ export type DoorLockMode =
 export interface UserPeripheralFlags {
   readonly dynamicLight: boolean;
   readonly staticLight: boolean;
-  readonly light1: boolean;
-  readonly light2: boolean;
+  readonly input1Radar: boolean;
+  readonly input2Radar: boolean;
   readonly rgbIndicator: boolean;
 }
 
@@ -150,27 +150,27 @@ export interface BleUserParameters {
   readonly peripheralFlags: UserPeripheralFlags;
 }
 
-export interface ProfessionalPeripheralFlags {
-  readonly input1Radar: boolean;
-  readonly input2Radar: boolean;
+export interface AdvancedPeripheralFlags {
+  readonly bit7Set: boolean;
+  readonly bit6Set: boolean;
   readonly radarTest1: boolean;
   readonly radarTest2: boolean;
   readonly locked: boolean;
 }
 
-export function decodeProfessionalPeripheralFlags(
+export function decodeAdvancedPeripheralFlags(
   peripheralByte1: number,
-): ProfessionalPeripheralFlags {
+): AdvancedPeripheralFlags {
   return Object.freeze({
-    input1Radar: Boolean(peripheralByte1 & 0x80),
-    input2Radar: Boolean(peripheralByte1 & 0x40),
+    bit7Set: Boolean(peripheralByte1 & 0x80),
+    bit6Set: Boolean(peripheralByte1 & 0x40),
     radarTest1: Boolean(peripheralByte1 & 0x20),
     radarTest2: Boolean(peripheralByte1 & 0x10),
     locked: Boolean(peripheralByte1 & 0x08),
   });
 }
 
-interface CommonProfessionalParameters {
+interface CommonAdvancedParameters {
   readonly weightRangeLower: number;
   readonly weightRangeUpper: number;
   readonly nearOpenSpeed: number;
@@ -181,8 +181,8 @@ interface CommonProfessionalParameters {
   readonly peripheralByte2: number;
 }
 
-export interface WidoorProfessionalParameters
-  extends CommonProfessionalParameters {
+export interface WidoorAdvancedParameters
+  extends CommonAdvancedParameters {
   readonly profile: 'widoor';
   readonly breakForceAtOpen: number;
   readonly nearOpenProportional: number;
@@ -191,8 +191,8 @@ export interface WidoorProfessionalParameters
   readonly nearCloseIntegral: number;
 }
 
-export interface MoventivProfessionalParameters
-  extends CommonProfessionalParameters {
+export interface MoventivAdvancedParameters
+  extends CommonAdvancedParameters {
   readonly profile: 'moventiv-60' | 'moventiv-80';
   readonly exactWeight: number;
   readonly brakingOpenPower: number;
@@ -201,8 +201,8 @@ export interface MoventivProfessionalParameters
   readonly nearCloseIntegral: number;
 }
 
-export interface GarlineProfessionalParameters
-  extends CommonProfessionalParameters {
+export interface GarlineAdvancedParameters
+  extends CommonAdvancedParameters {
   readonly profile: 'garline';
   readonly exactWeight: number;
   readonly brakingOpenPower: number;
@@ -211,17 +211,17 @@ export interface GarlineProfessionalParameters
   readonly nearCloseIntegral: number;
 }
 
-export type BleProfessionalParameters =
-  | WidoorProfessionalParameters
-  | MoventivProfessionalParameters
-  | GarlineProfessionalParameters;
+export type BleAdvancedParameters =
+  | WidoorAdvancedParameters
+  | MoventivAdvancedParameters
+  | GarlineAdvancedParameters;
 
 export const BLE_READ_MIN_LENGTHS = {
   version: 20,
   datesAndCycles: 17,
   maintenance: 18,
   userParameters: 7,
-  professionalParameters: 13,
+  advancedParameters: 13,
 } as const;
 
 export const HISTORICAL_DATE_SENTINEL = 0xff;
@@ -428,30 +428,48 @@ export function decodeBleUserParameters(
     peripheralFlags: {
       dynamicLight: Boolean(bytes[5] & 0x80),
       staticLight: Boolean(bytes[5] & 0x40),
-      light1: Boolean(bytes[5] & 0x20),
-      light2: Boolean(bytes[5] & 0x10),
+      input1Radar: Boolean(bytes[5] & 0x20),
+      input2Radar: Boolean(bytes[5] & 0x10),
       rgbIndicator: Boolean(bytes[5] & 0x08),
     },
   });
 }
 
-export function decodeBleProfessionalParameters(
+export function withUserInputRadar(
+  value: BleUserParameters,
+  input: 1 | 2,
+  radar: boolean,
+): BleUserParameters {
+  const mask = input === 1 ? 0x20 : 0x10;
+  return Object.freeze({
+    ...value,
+    peripheralByte1: radar
+      ? value.peripheralByte1 | mask
+      : value.peripheralByte1 & ~mask,
+    peripheralFlags: Object.freeze({
+      ...value.peripheralFlags,
+      [input === 1 ? 'input1Radar' : 'input2Radar']: radar,
+    }),
+  });
+}
+
+export function decodeBleAdvancedParameters(
   profile: ProductProfile,
   value: BleBytes,
-): BleDecodeResult<BleProfessionalParameters> {
+): BleDecodeResult<BleAdvancedParameters> {
   const bytes = toUint8Array(value);
 
   if (profile === 'unknown' || profile === 'ambiguous') {
     return invalidResult(
       bytes,
-      `Professional parameters cannot be decoded for profile "${profile}".`,
+      `Advanced parameters cannot be decoded for profile "${profile}".`,
     );
   }
 
   const failure = validateMinimumLength(
     bytes,
-    BLE_READ_MIN_LENGTHS.professionalParameters,
-    'professional parameters',
+    BLE_READ_MIN_LENGTHS.advancedParameters,
+    'advanced parameters',
   );
 
   if (failure !== null) {

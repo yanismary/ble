@@ -8,6 +8,7 @@ import {
   LegacyBleWrite,
   LegacyInputMode,
   encodeLegacyProfessionalPeripheral,
+  encodeMoventivUserInputMode,
   isCataloguedLegacyBleWrite,
 } from '../../../../core/services/legacy-ble-write-catalog';
 import type { ProductProfileDefinition } from
@@ -53,11 +54,15 @@ export function productExpertInputConfigsFor(
     field: definition.field,
     textKey: definition.textKey,
     catalogFactory: (mode: LegacyInputMode) =>
-      encodeLegacyProfessionalPeripheral(
-        config.profile,
-        definition.operation,
-        mode,
-      ),
+      config.profile === 'moventiv-60' || config.profile === 'moventiv-80'
+        ? encodeMoventivUserInputMode(
+            config.profile, definition.field === 'input-1' ? 1 : 2, mode,
+          )
+        : encodeLegacyProfessionalPeripheral(
+            config.profile,
+            definition.operation,
+            mode,
+          ),
     confirmationPolicy: { kind: 'gatt-only' } as const,
     policy: { allowPhase1ReferenceOnly: true } as const,
   })));

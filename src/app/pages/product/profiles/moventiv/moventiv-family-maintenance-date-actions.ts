@@ -197,21 +197,30 @@ export function prepareMaintenanceDateAction(
 export function prepareProductDateMaintenanceFlow(
   input: FirstCommissioningDatePreparationInput,
 ): ProductDateMaintenanceFlowPreparationResult {
+  if (input.firstCommissioningDate === null ||
+      input.firstCommissioningDate.status === 'invalid') {
+    return flowFailure('first-commissioning-date-invalid');
+  }
+  if (input.firstCommissioningDate.status === 'not-initialized') {
+    const maintenance = prepareMaintenanceDateAction(input);
+    if (!maintenance.ok) {
+      return flowFailure(maintenance.reason);
+    }
+    const firstCommissioning = prepareFirstCommissioningDateAction({
+      ...input,
+      confirmationId: `${input.confirmationId}:first-commissioning`,
+    });
+    return firstCommissioning.ok
+      ? flowSuccess('first-commissioning', [
+          maintenance,
+          firstCommissioning,
+        ])
+      : flowFailure(firstCommissioning.reason);
+  }
   const maintenance = prepareMaintenanceDateAction(input);
-  if (!maintenance.ok) {
-    return flowFailure(maintenance.reason);
-  }
-  if (input.firstCommissioningDate?.status !== 'not-initialized') {
-    return flowSuccess('maintenance', [maintenance]);
-  }
-  const firstCommissioning = prepareFirstCommissioningDateAction(input);
-  if (!firstCommissioning.ok) {
-    return flowFailure(firstCommissioning.reason);
-  }
-  return flowSuccess('first-commissioning', [
-    maintenance,
-    firstCommissioning,
-  ]);
+  return maintenance.ok
+    ? flowSuccess('maintenance', [maintenance])
+    : flowFailure(maintenance.reason);
 }
 
 export function createProductDateActionAuthorization(

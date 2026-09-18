@@ -1,7 +1,7 @@
 import {
   BleDatesAndCycles,
   BleMaintenance,
-  BleProfessionalParameters,
+  BleAdvancedParameters,
   BleUserParameters,
   BleVersionFrame,
 } from '../../../../core/services/ble-read-decoders';
@@ -55,8 +55,8 @@ export interface ProductReadViewStates {
   readonly datesAndCycles: ProductReadViewState<BleDatesAndCycles>;
   readonly maintenance: ProductReadViewState<BleMaintenance>;
   readonly userParameters: ProductReadViewState<BleUserParameters>;
-  readonly professionalParameters: ProductReadViewState<
-    BleProfessionalParameters
+  readonly advancedParameters: ProductReadViewState<
+    BleAdvancedParameters
   >;
 }
 

@@ -17,7 +17,7 @@ export type ProductSensitiveAction =
   | 'learning'
   | 'radar-test-1'
   | 'radar-test-2'
-  | 'professional-peripheral-lock'
+  | 'advanced-peripheral-lock'
   | 'reset';
 
 export type ProductSensitiveActionTextKey =
@@ -69,7 +69,7 @@ const SENSITIVE_ACTION_PRESENTATION = {
     control: 'toggle',
     requiresConfirmation: false,
   },
-  'professional-peripheral-lock': {
+  'advanced-peripheral-lock': {
     textKey: 'peripheralLock',
     control: 'toggle',
     requiresConfirmation: false,

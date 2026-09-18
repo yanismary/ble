@@ -1,3 +1,5 @@
+import { normalizeBleProductName } from '../../core/services/ble-product-name';
+
 export interface ScanDisplayNameParts {
   readonly displayName: string;
   readonly roomSuffix: string | null;
@@ -54,7 +56,7 @@ export function getBleSignalQualityAsset(rssi: number | null): string {
 }
 
 export function splitScanDisplayName(name: string): ScanDisplayNameParts {
-  const trimmed = name.trim();
+  const trimmed = normalizeBleProductName(name);
   const roomSuffix = KNOWN_ROOM_SUFFIXES.find((suffix) =>
     trimmed.endsWith(suffix),
   ) ?? null;

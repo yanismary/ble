@@ -8,12 +8,12 @@ import {
   BleDatesAndCycles,
   BleDecodeResult,
   BleMaintenance,
-  BleProfessionalParameters,
+  BleAdvancedParameters,
   BleUserParameters,
   BleVersionFrame,
   decodeBleDatesAndCycles,
   decodeBleMaintenance,
-  decodeBleProfessionalParameters,
+  decodeBleAdvancedParameters,
   decodeBleUserParameters,
   decodeBleVersion,
 } from './ble-read-decoders';
@@ -27,7 +27,7 @@ export type BleReadType =
   | 'dates-and-cycles'
   | 'maintenance'
   | 'user-parameters'
-  | 'professional-parameters';
+  | 'advanced-parameters';
 
 export type BleReadStatus =
   | 'success'
@@ -126,22 +126,67 @@ export class BleReadService implements OnDestroy {
     profile: ProductProfile,
     deviceId?: string,
   ): Promise<BleTypedReadResult<BleUserParameters>> {
+    console.info('[INPUT] user-read-requested', JSON.stringify({
+      profile, deviceId, at: Date.now(),
+    }));
     return this.executeRead(profile, deviceId, {
       type: 'user-parameters',
       characteristicUuid: BLE_UUIDS.userParametersCharacteristic,
       decode: (_profile, value) => decodeBleUserParameters(value),
+    }).then((result) => {
+      const value = result.decoded?.valid ? result.decoded.value : null;
+      console.info('[INPUT] user-read-result', JSON.stringify({
+        profile,
+        deviceId,
+        status: result.status,
+        rawHex: result.decoded?.rawHex ?? null,
+        peripheralByte1: value?.peripheralByte1 ?? null,
+        input1Radar: value?.peripheralFlags.input1Radar ?? null,
+        input2Radar: value?.peripheralFlags.input2Radar ?? null,
+        error: result.error,
+      }));
+      return result;
     });
   }
 
-  readProfessionalParameters(
+  readAdvancedParameters(
     profile: ProductProfile,
     deviceId?: string,
-  ): Promise<BleTypedReadResult<BleProfessionalParameters>> {
+  ): Promise<BleTypedReadResult<BleAdvancedParameters>> {
+    console.info(
+      '[INPUT] advanced-read-requested',
+      JSON.stringify({
+        profile,
+        deviceId,
+        at: Date.now() }),
+      );
     return this.executeRead(profile, deviceId, {
-      type: 'professional-parameters',
+      type: 'advanced-parameters',
       characteristicUuid: BLE_UUIDS.professionalParametersCharacteristic,
       decode: (targetProfile, value) =>
-        decodeBleProfessionalParameters(targetProfile, value),
+        decodeBleAdvancedParameters(targetProfile, value),
+    }).then((result) => {
+      console.log(
+        '[INPUT] advanced-read-result',
+        JSON.stringify({
+          status: result.status,
+          rawHex: result.decoded?.rawHex ?? null,
+          peripheralByte1:
+            result.decoded?.valid
+              ? result.decoded.value.peripheralByte1
+              : null,
+          bit7Set:
+            result.decoded?.valid
+              ? (result.decoded.value.peripheralByte1 & 0x80) !== 0
+              : null,
+          bit6Set:
+            result.decoded?.valid
+              ? (result.decoded.value.peripheralByte1 & 0x40) !== 0
+              : null,
+          error: result.error,
+        }),
+      );
+      return result;
     });
   }
 
@@ -263,7 +308,7 @@ export class BleReadService implements OnDestroy {
   ): string {
     if (
         definition.type === 'user-parameters' ||
-        definition.type === 'professional-parameters') {
+        definition.type === 'advanced-parameters') {
       if (profile === 'widoor') {
         return BLE_UUIDS.widoorService;
       }

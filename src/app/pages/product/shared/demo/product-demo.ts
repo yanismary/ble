@@ -1,7 +1,7 @@
 import {
   BleDatesAndCycles,
   BleMaintenance,
-  BleProfessionalParameters,
+  BleAdvancedParameters,
   BleUserParameters,
   BleVersionFrame,
 } from '../../../../core/services/ble-read-decoders';
@@ -30,7 +30,7 @@ export interface ProductDemoSnapshot {
   readonly datesAndCycles: BleDatesAndCycles;
   readonly maintenance: BleMaintenance;
   readonly userParameters: BleUserParameters;
-  readonly professionalParameters: BleProfessionalParameters;
+  readonly advancedParameters: BleAdvancedParameters;
   readonly motorState: MotorStateFrame;
 }
 
@@ -139,12 +139,12 @@ export function createProductDemoSnapshot(
       peripheralFlags: Object.freeze({
         dynamicLight: false,
         staticLight: false,
-        light1: false,
-        light2: false,
+        input1Radar: false,
+        input2Radar: false,
         rgbIndicator: true,
       }),
     }),
-    professionalParameters: demoProfessionalParameters(demoProfile),
+    advancedParameters: demoAdvancedParameters(demoProfile),
     motorState: demoMotorState(),
   });
 }
@@ -179,9 +179,9 @@ function implementedDemoProfile(
   }
 }
 
-function demoProfessionalParameters(
+function demoAdvancedParameters(
   profile: ProductDemoProfile,
-): BleProfessionalParameters {
+): BleAdvancedParameters {
   const common = {
     weightRangeLower: 0,
     weightRangeUpper: 0,

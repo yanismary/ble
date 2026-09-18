@@ -1,6 +1,6 @@
 import {
-  BleProfessionalParameters,
-  decodeProfessionalPeripheralFlags,
+  BleAdvancedParameters,
+  decodeAdvancedPeripheralFlags,
 } from '../../../../core/services/ble-read-decoders';
 import { ProductDisplayRow } from '../models/product-view.model';
 
@@ -17,11 +17,11 @@ export interface ExpertPeripheralDiagnosticOptions {
 }
 
 export function createExpertPeripheralDiagnosticRows(
-  value: BleProfessionalParameters,
+  value: BleAdvancedParameters,
   text: ExpertPeripheralDiagnosticText,
   options: ExpertPeripheralDiagnosticOptions,
 ): readonly ProductDisplayRow[] {
-  const flags = decodeProfessionalPeripheralFlags(value.peripheralByte1);
+  const flags = decodeAdvancedPeripheralFlags(value.peripheralByte1);
   const rows: ProductDisplayRow[] = [
     Object.freeze({
       key: 'expert-radar-test-1',
@@ -37,7 +37,7 @@ export function createExpertPeripheralDiagnosticRows(
 
   if (options.includeLock) {
     rows.push(Object.freeze({
-      key: 'professional-peripheral-lock',
+      key: 'advanced-peripheral-lock',
       label: text.peripheralLock,
       value: flags.locked ? text.enabled : text.disabled,
     }));

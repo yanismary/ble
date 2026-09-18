@@ -85,7 +85,6 @@ export interface LegacyBleWriteExecutionPolicy {
   readonly allowLearning?: true;
   readonly allowReset?: true;
   readonly gattWriteTimeoutMs?: number;
-  readonly useLegacyAndroidWriteApi?: true;
   readonly allowPhysicalValidationAttempt?: {
     readonly operation: WidoorPhysicalValidationOperation;
     readonly profile: 'widoor';
@@ -552,6 +551,28 @@ export class BleWriteExecutionService implements OnDestroy {
     startedAt: number,
     context: ExecutionContext,
   ): Promise<LegacyBleWriteExecutionResult> {
+    const traceNameRoom = (event: string, error?: unknown): void => {
+      if (request.write.operation !== 'name-room') {
+        return;
+      }
+      console.info('[NAME_ROOM_EXECUTION] ' + JSON.stringify({
+        event, timestamp: new Date().toISOString(),
+        elapsedMs: Date.now() - startedAt,
+        attemptId: request.attemptId,
+        platform: this.bleService.platform,
+        profile: request.profile,
+        deviceId: request.deviceId,
+        connectionGeneration: request.connectionGeneration,
+        serviceUuid: request.write.serviceUuid,
+        characteristicUuid: request.write.characteristicUuid,
+        writeType: 'with-response',
+        payloadHex: Array.from(request.write.payload,
+          byte => byte.toString(16).padStart(2, '0')).join(' '),
+        length: request.write.payload.length,
+        error: error === undefined ? undefined : errorMessage(error),
+      }));
+    };
+    traceNameRoom('write-request');
     try {
       const writeArguments = [
         request.write.serviceUuid,
@@ -560,12 +581,11 @@ export class BleWriteExecutionService implements OnDestroy {
         request.deviceId,
       ] as const;
       const writeOptions = {
+        ...(request.write.operation === 'name-room'
+          ? { disconnectOnAndroidTimeout: true } : {}),
         ...(request.policy?.gattWriteTimeoutMs === undefined
           ? {}
           : { timeoutMs: request.policy.gattWriteTimeoutMs }),
-        ...(request.policy?.useLegacyAndroidWriteApi
-          ? { useLegacyAndroidWriteApi: true }
-          : {}),
       };
       if (Object.keys(writeOptions).length === 0) {
         await this.bleService.writeCharacteristic(...writeArguments);
@@ -576,6 +596,7 @@ export class BleWriteExecutionService implements OnDestroy {
         );
       }
     } catch (error: unknown) {
+      traceNameRoom('execution-error', error);
       return this.contextFailure(request, startedAt, context, false) ??
         this.result(
           request, startedAt, 'failed', false, 'not-validated',
@@ -584,6 +605,7 @@ export class BleWriteExecutionService implements OnDestroy {
         );
     }
 
+    traceNameRoom('write-response-received');
     return this.contextFailure(request, startedAt, context, true) ??
       this.result(
         request, startedAt, 'success', true,

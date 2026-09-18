@@ -146,7 +146,7 @@ export interface LegacyProfileWriteConstraints {
   readonly obstacleSensitivity?: LegacyValueRange;
   readonly breakForceAtOpen?: LegacyValueRange;
   readonly weightRanges: readonly (readonly [number, number])[];
-  readonly uiProfessionalRanges: Readonly<Record<string, LegacyValueRange>>;
+  readonly uiAdvancedRanges: Readonly<Record<string, LegacyValueRange>>;
 }
 
 const MOVENTIV_60_WEIGHT_RANGES = [
@@ -184,7 +184,7 @@ export const LEGACY_WRITE_CONSTRAINTS: Readonly<
     nearOpenTorque: { min: 0, max: 255 },
     nearCloseTorque: { min: 0, max: 255 },
     weightRanges: [],
-    uiProfessionalRanges: {
+    uiAdvancedRanges: {
       breakForceAtOpen: { min: 1, max: 10 },
       nearOpenSpeed: { min: 70, max: 100 },
       nearCloseSpeed: { min: 50, max: 100 },
@@ -203,7 +203,7 @@ export const LEGACY_WRITE_CONSTRAINTS: Readonly<
     brakingOpenPower: { min: 0, max: 200 },
     obstacleSensitivity: { min: 0, max: 200 },
     weightRanges: MOVENTIV_60_WEIGHT_RANGES,
-    uiProfessionalRanges: {
+    uiAdvancedRanges: {
       nearOpenSpeed: { min: 1, max: 100 },
       nearCloseSpeed: { min: 1, max: 100 },
       nearOpenTorque: { min: 1, max: 200 },
@@ -225,7 +225,7 @@ export const LEGACY_WRITE_CONSTRAINTS: Readonly<
     brakingOpenPower: { min: 0, max: 200 },
     obstacleSensitivity: { min: 0, max: 200 },
     weightRanges: MOVENTIV_80_WEIGHT_RANGES,
-    uiProfessionalRanges: {
+    uiAdvancedRanges: {
       nearOpenSpeed: { min: 1, max: 100 },
       nearCloseSpeed: { min: 1, max: 100 },
       nearOpenTorque: { min: 1, max: 200 },
@@ -247,7 +247,7 @@ export const LEGACY_WRITE_CONSTRAINTS: Readonly<
     brakingOpenPower: { min: 0, max: 200 },
     obstacleSensitivity: { min: 0, max: 200 },
     weightRanges: GARLINE_WEIGHT_RANGES,
-    uiProfessionalRanges: {
+    uiAdvancedRanges: {
       nearOpenSpeed: { min: 0, max: 100 },
       nearCloseSpeed: { min: 0, max: 100 },
       nearOpenTorque: { min: 1, max: 200 },
@@ -502,6 +502,19 @@ export function encodeLegacyEnabledState(state: LegacyFeatureState): number {
 
 export function encodeLegacyInputMode(mode: LegacyInputMode): number {
   return mode === 'radar' ? 0x01 : 0x02;
+}
+
+export function encodeMoventivUserInputMode(
+  profile: 'moventiv-60' | 'moventiv-80',
+  input: 1 | 2,
+  mode: LegacyInputMode,
+): LegacyBleWrite {
+  // User peripheral selectors match firmware bit positions (7/6/3 already used).
+  return userWrite(profile, input === 1 ? 'input-1-radar' : 'input-2-radar', [
+    0x05,
+    input === 1 ? 0x05 : 0x04,
+    encodeLegacyInputMode(mode),
+  ]);
 }
 
 export function encodeLegacyLockState(state: LegacyLockState): number {

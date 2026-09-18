@@ -420,9 +420,9 @@ ion-content.product-profile-widoor {
     font-size: 15px;
   }
 
-  .advanced-slider-row[data-professional-scalar-field='break-force-at-open']
+  .advanced-slider-row[data-advanced-scalar-field='break-force-at-open']
     .advanced-range::part(tick),
-  .advanced-slider-row[data-professional-scalar-field='break-force-at-open']
+  .advanced-slider-row[data-advanced-scalar-field='break-force-at-open']
     .advanced-range::part(tick-active) {
     background: #bdbdbd;
     height: 7px;
@@ -658,7 +658,7 @@ ion-content.product-profile-widoor {
     order: 10;
   }
 
-  .advanced-action-toggle-row[data-sensitive-action='professional-peripheral-lock'] {
+  .advanced-action-toggle-row[data-sensitive-action='advanced-peripheral-lock'] {
     order: 20;
   }
 

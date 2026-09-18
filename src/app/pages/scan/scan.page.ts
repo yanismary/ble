@@ -62,7 +62,7 @@ import {
   ProductDataLoadStatus,
 } from '../../core/services/product-data-load.service';
 import {
-  BleProfessionalParameters,
+  BleAdvancedParameters,
   BleSoftwareVersion,
   BleStackVersion,
   HistoricalBleDate,
@@ -75,9 +75,7 @@ import {
   readAutoEnableBluetooth,
   readShowBleIdentifier,
 } from '../../core/services/app-preferences';
-import {
-  readRoomCacheEntry,
-} from '../../core/services/app-room-cache';
+import { normalizeBleProductName } from '../../core/services/ble-product-name';
 import {
   ProductExitStateService,
 } from '../../core/services/product-exit-state.service';
@@ -357,10 +355,7 @@ export class ScanPage implements OnDestroy {
   }
 
   getScanDisplayName(device: ScannedDevice): string {
-    const cachedName = readRoomCacheEntry(device.deviceId)?.name;
-    return cachedName !== undefined && cachedName !== null
-      ? cachedName
-      : splitScanDisplayName(device.name).displayName || device.name;
+    return splitScanDisplayName(device.name).displayName || device.name;
   }
 
   async launchDemoMode(): Promise<void> {
@@ -403,10 +398,7 @@ export class ScanPage implements OnDestroy {
   }
 
   getScanRoomSuffix(device: ScannedDevice): string | null {
-    const cachedSuffix = readRoomCacheEntry(device.deviceId)?.suffix;
-    return cachedSuffix !== undefined && cachedSuffix !== null
-      ? cachedSuffix || null
-      : splitScanDisplayName(device.name).roomSuffix;
+    return splitScanDisplayName(device.name).roomSuffix;
   }
 
   getScanRoomIconClass(device: ScannedDevice): string | null {
@@ -1868,8 +1860,8 @@ export class ScanPage implements OnDestroy {
     const existingDevice = existingIndex === -1
       ? null
       : this.devices[existingIndex];
-    const localName = result.localName?.trim() ?? '';
-    const deviceName = result.device.name?.trim() ?? '';
+    const localName = normalizeBleProductName(result.localName ?? '');
+    const deviceName = normalizeBleProductName(result.device.name ?? '');
     const previousName = existingDevice?.name ?? '';
     const previousUsableName = previousName !== 'Appareil sans nom'
       ? previousName
@@ -1879,6 +1871,47 @@ export class ScanPage implements OnDestroy {
       || deviceName
       || previousName
       || 'Appareil sans nom';
+    if (this.bleService.platform === 'ios') {
+      console.info('[IOS-SCAN-NAME]', JSON.stringify({
+        deviceId,
+        localName: result.localName ?? null,
+        deviceName: result.device.name ?? null,
+        previousName: existingDevice?.name ?? null,
+        resolvedName: name,
+        displayedName: splitScanDisplayName(name).displayName || name,
+        source: localName ? 'advertisement.localName'
+          : previousUsableName ? 'previous-scan-result'
+            : deviceName ? 'CBPeripheral.name' : 'unnamed',
+      }));
+    }
+    if (existingDevice === null || name !== existingDevice.name) {
+      const parts = splitScanDisplayName(name);
+      console.info('[BLE-NAME-DISPLAY]', {
+        deviceKey: deviceId,
+        deviceName: result.device.name ?? null,
+        localName: result.localName ?? null,
+        resultName: (result as ScanResult & { name?: string }).name ?? null,
+        advertisementLocalName: null,
+        advertisingLocalName: null,
+        resolvedName: name,
+        source: localName ? 'localName' : previousUsableName
+          ? 'previous-scan-result' : deviceName ? 'device.name' : 'unnamed',
+        isFresh: Boolean(localName),
+        baseName: parts.displayName,
+        roomSuffix: parts.roomSuffix,
+        displayedName: parts.displayName || name,
+      });
+      console.info('[BLE-ROOM-DISPLAY]', {
+        rawBleName: result.localName ?? result.device.name ?? '',
+        displayedName: parts.displayName || name,
+        extractedRoomSuffix: parts.roomSuffix ?? '',
+        selectedRoomSuffix: parts.roomSuffix ?? '',
+        rawTailCodePoints: Array.from(
+          (result.localName ?? result.device.name ?? '').slice(-8),
+          (character) =>
+          character.codePointAt(0)?.toString(16)),
+      });
+    }
     const device: ScannedDevice = {
       deviceId,
       name,
@@ -1986,8 +2019,8 @@ export class ScanPage implements OnDestroy {
     const labels = this.productReadText.peripheralFlagLabels;
     return `${labels.dynamicLight}=${value.dynamicLight}, ` +
       `${labels.staticLight}=${value.staticLight}, ` +
-      `${labels.light1}=${value.light1}, ` +
-      `${labels.light2}=${value.light2}, ` +
+      `${labels.input1Radar}=${value.input1Radar}, ` +
+      `${labels.input2Radar}=${value.input2Radar}, ` +
       `${labels.rgbIndicator}=${value.rgbIndicator}`;
   }
 
@@ -1997,9 +2030,9 @@ export class ScanPage implements OnDestroy {
     return this.productReadText.status[status];
   }
 
-  isWidoorProfessionalParameters(
-    value: BleProfessionalParameters,
-  ): value is Extract<BleProfessionalParameters, { profile: 'widoor' }> {
+  isWidoorAdvancedParameters(
+    value: BleAdvancedParameters,
+  ): value is Extract<BleAdvancedParameters, { profile: 'widoor' }> {
     return value.profile === 'widoor';
   }
 

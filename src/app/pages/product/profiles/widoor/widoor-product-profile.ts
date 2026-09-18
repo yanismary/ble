@@ -45,7 +45,7 @@ export const WIDOOR_PRODUCT_PROFILE = defineProductProfile({
     'learning',
     'radar-test-1',
     'radar-test-2',
-    'professional-peripheral-lock',
+    'advanced-peripheral-lock',
     'reset',
   ],
   capabilities: {

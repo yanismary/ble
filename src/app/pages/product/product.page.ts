@@ -62,12 +62,13 @@ import {
   LegacyBleWriteExecutionResult,
 } from '../../core/services/ble-write-execution.service';
 import {
-  BleProfessionalParameters,
+  BleAdvancedParameters,
   BleSoftwareVersion,
   BleStackVersion,
   BleUserParameters,
   HistoricalBleDate,
-  decodeProfessionalPeripheralFlags,
+  decodeAdvancedPeripheralFlags,
+  withUserInputRadar,
 } from '../../core/services/ble-read-decoders';
 import {
   BleTypedReadResult,
@@ -92,9 +93,6 @@ import {
   readShowProductSettings,
 } from '../../core/services/app-preferences';
 import {
-  writeRoomCacheEntry,
-} from '../../core/services/app-room-cache';
-import {
   triggerConfiguredHapticFeedback,
 } from '../../core/services/app-haptics';
 import { currentAppLanguage } from '../../core/services/app-language';
@@ -104,6 +102,7 @@ import {
 import {
   ProductExitStateService,
 } from '../../core/services/product-exit-state.service';
+import { normalizeBleProductName } from '../../core/services/ble-product-name';
 import {
   ConnectedProductInactivityService,
 } from '../../core/services/connected-product-inactivity.service';
@@ -211,19 +210,19 @@ import {
   ProductViewModel,
 } from './shared/models/product-view.model';
 import {
-  PRODUCT_NAME_ROOM_CONFIRMATION_POLICY,
-  PRODUCT_NAME_ROOM_EXECUTION_POLICY,
-  PRODUCT_NAME_ROOM_POST_WRITE_COOLDOWN_MS,
-  PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS,
+  PRODUCT_ROOM_NAME_CONFIRMATION_POLICY,
+  PRODUCT_ROOM_NAME_EXECUTION_POLICY,
+  PRODUCT_ROOM_NAME_POST_WRITE_COOLDOWN_MS,
+  PRODUCT_ROOM_NAME_PRE_WRITE_DELAY_MS,
   PRODUCT_ROOM_OPTIONS,
-  ProductNameRoomDraft,
+  ProductRoomNameDraft,
   ProductRoomSuffix,
-  createProductNameRoomAuthorization,
-  createProductNameRoomDraft,
-  encodeProductNameRoomWrite,
+  createProductRoomNameAuthorization,
+  createProductRoomNameDraft,
+  encodeProductRoomNameWrite,
   splitProductDisplayName,
-  validateProductNameRoomDraft,
-} from './shared/settings/product-name-room';
+  validateProductRoomNameDraft,
+} from './shared/settings/product-room-name';
 import {
   ProductDateActionContext,
   ProductDateMaintenanceFlowKind,
@@ -340,7 +339,7 @@ export class ProductPage implements OnDestroy {
   }>();
   private readonly widoorSliderButtonWriteDelayMs = 400;
   private readonly widoorShortTimingFallback = 1;
-  private nameRoomDraft: ProductNameRoomDraft | null = null;
+  private roomNameDraft: ProductRoomNameDraft | null = null;
 
   readonly config: ProductProfileDefinition;
   get text(): ReturnType<typeof productPageTextFor> {
@@ -450,7 +449,7 @@ export class ProductPage implements OnDestroy {
     readonly message: string | null;
   } = Object.freeze({ status: 'locked', message: null });
   expertAccessCode = '';
-  nameRoomWriteState: {
+  roomNameWriteState: {
     readonly status: 'idle' | 'executing' | 'sent' | 'failed';
     readonly message: string | null;
   } = Object.freeze({ status: 'idle', message: null });
@@ -650,7 +649,7 @@ export class ProductPage implements OnDestroy {
       this.context,
       this.initialConnectionState(routeProfile, this.context),
     );
-    this.resetNameRoomEditing();
+    this.resetRoomNameEditing();
 
     const inactivitySessionId = this.connectedProductInactivitySessionId();
     if (inactivitySessionId !== null &&
@@ -780,7 +779,7 @@ export class ProductPage implements OnDestroy {
       this.weightRangeWriteState.status !== 'executing' &&
       this.expertInputWriteState.status !== 'executing' &&
       this.expertScalarWriteState.status !== 'executing' &&
-      this.nameRoomWriteState.status !== 'executing' &&
+      this.roomNameWriteState.status !== 'executing' &&
       !this.productDateActionBusy &&
       !this.sensitiveActionBusy;
   }
@@ -799,8 +798,8 @@ export class ProductPage implements OnDestroy {
       this.productCommands.length > 0;
   }
 
-  get showNameRoomControls(): boolean {
-    return this.pageContextCurrent && this.nameRoomDraft !== null;
+  get showRoomNameControls(): boolean {
+    return this.pageContextCurrent && this.roomNameDraft !== null;
   }
 
   get showLockModeControls(): boolean {
@@ -904,8 +903,9 @@ export class ProductPage implements OnDestroy {
 
   expertInputIconSrc(
     config: ProductExpertInputUiConfig,
-  ): string {
-    return this.currentExpertInputMode(config) === 'radar'
+  ): string | null {
+    const mode = this.currentExpertInputMode(config);
+    return mode === null ? null : mode === 'radar'
       ? 'assets/img/icon_radar.svg'
       : 'assets/img/icon_button.svg';
   }
@@ -935,7 +935,7 @@ export class ProductPage implements OnDestroy {
         return this.sensitiveActionCurrentEnabled(config) === true
           ? 'assets/img/icon_test_on.svg'
           : 'assets/img/icon_test_off.svg';
-      case 'professional-peripheral-lock':
+      case 'advanced-peripheral-lock':
         return null;
       case 'learning':
       case 'reset':
@@ -958,7 +958,7 @@ export class ProductPage implements OnDestroy {
   get showWeightRangeControls(): boolean {
     return this.pageContextCurrent &&
       this.weightRangeControls.length > 0 &&
-      (this.viewModel.reads.professionalParameters.status === 'available' ||
+      (this.viewModel.reads.advancedParameters.status === 'available' ||
         this.config.family === 'moventiv');
   }
 
@@ -975,7 +975,8 @@ export class ProductPage implements OnDestroy {
   get showExpertInputControls(): boolean {
     return this.pageContextCurrent &&
       this.expertInputControls.length > 0 &&
-      this.phase1ShowsExpertControls();
+      (this.viewModel.reads.userParameters.status === 'available' ||
+        this.config.behavior.showControlsBeforeRead);
   }
 
   get showExpertScalarControls(): boolean {
@@ -989,7 +990,7 @@ export class ProductPage implements OnDestroy {
       this.showUserSpeedControls ||
       this.showUserTimingControls ||
       this.showBasicWeightRangeControls ||
-      this.showNameRoomControls ||
+      this.showRoomNameControls ||
       this.viewModel.reads.userParameters.status === 'available';
   }
 
@@ -1000,7 +1001,7 @@ export class ProductPage implements OnDestroy {
       this.showExpertAccessPrompt ||
       this.expertAccessState.message !== null ||
       this.expertPeripheralDiagnosticRows.length > 0 ||
-      this.viewModel.reads.professionalParameters.status === 'available';
+      this.viewModel.reads.advancedParameters.status === 'available';
   }
 
   get hasUnlockedProductControls(): boolean {
@@ -1048,7 +1049,7 @@ export class ProductPage implements OnDestroy {
 
   get showExpertAccessPrompt(): boolean {
     return this.pageContextCurrent &&
-      (this.viewModel.reads.professionalParameters.status === 'available' ||
+      (this.viewModel.reads.advancedParameters.status === 'available' ||
         this.config.family === 'garline') &&
       this.expertAccessControlsAvailable &&
       !this.expertAccessGranted;
@@ -1092,7 +1093,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.expertInputWriteState.status === 'executing' ||
         this.expertScalarWriteState.status === 'executing' ||
-        this.nameRoomWriteState.status === 'executing' ||
+        this.roomNameWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
         this.commandInProgress) {
@@ -1218,7 +1219,7 @@ export class ProductPage implements OnDestroy {
   }
 
   get expertRows(): readonly ProductDisplayRow[] {
-    const value = this.viewModel.reads.professionalParameters.value;
+    const value = this.viewModel.reads.advancedParameters.value;
     return value === null ? [] : this.createExpertRows(value);
   }
 
@@ -1238,7 +1239,7 @@ export class ProductPage implements OnDestroy {
   }
 
   get expertPeripheralDiagnosticRows(): readonly ProductDisplayRow[] {
-    const value = this.viewModel.reads.professionalParameters.value;
+    const value = this.viewModel.reads.advancedParameters.value;
     if (value === null || !this.expertFieldVisible('peripherals')) {
       return [];
     }
@@ -1253,7 +1254,7 @@ export class ProductPage implements OnDestroy {
   }
 
   get expertTechnicalRows(): readonly ProductDisplayRow[] {
-    const value = this.viewModel.reads.professionalParameters.value;
+    const value = this.viewModel.reads.advancedParameters.value;
     if (value === null || !this.expertFieldVisible('peripherals')) {
       return [];
     }
@@ -1262,7 +1263,7 @@ export class ProductPage implements OnDestroy {
       ? this.text.expert.peripheralsWithoutLock
       : this.text.expert.peripherals;
     return [this.row(
-      'professional-peripherals',
+      'advanced-peripherals',
       peripheralLabel,
       this.formatBytes([value.peripheralByte1, value.peripheralByte2]),
     )];
@@ -1468,7 +1469,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.expertInputWriteState.status === 'executing' ||
         this.expertScalarWriteState.status === 'executing' ||
-        this.nameRoomWriteState.status === 'executing' ||
+        this.roomNameWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
         this.commandInProgress) {
@@ -1498,6 +1499,36 @@ export class ProductPage implements OnDestroy {
         properties.characteristicPresent &&
         properties.propertiesAvailable &&
         properties.write === true;
+    });
+  }
+
+  canRenderProductDateMaintenanceActionEnabled(): boolean {
+    if (!this.showProductDateMaintenanceAction ||
+        !this.isCurrentContext() ||
+        this.context === null ||
+        this.productDateActionBusy ||
+        this.viewModel.connectionState === 'disconnected') {
+      return false;
+    }
+    if (this.isDemoMode) {
+      return true;
+    }
+    const flow = prepareProductDateMaintenanceFlow({
+      context: this.productDateActionContext(this.context),
+      firstCommissioningDate:
+        this.viewModel.reads.datesAndCycles.value!.firstCommissioningDate,
+      now: new Date(),
+      attemptId: 'display',
+      confirmationId: 'display',
+      confirmedAt: Date.now(),
+    });
+    return flow.ok && flow.actions.every(({ write }) => {
+      const properties = this.bleService.getGattCharacteristicProperties(
+        write.serviceUuid, write.characteristicUuid, this.context!.deviceId,
+      );
+      return properties.servicePresent &&
+        properties.characteristicPresent &&
+        properties.propertiesAvailable && properties.write === true;
     });
   }
 
@@ -1715,67 +1746,67 @@ export class ProductPage implements OnDestroy {
     return this.requestProductCommand(config);
   }
 
-  currentNameRoomValue(): ProductNameRoomDraft {
+  currentRoomNameValue(): ProductRoomNameDraft {
     return Object.freeze({
       name: this.viewModel.displayedName,
       roomSuffix: this.viewModel.roomSuffix as ProductRoomSuffix | null,
     });
   }
 
-  nameRoomDraftValue(): ProductNameRoomDraft {
-    return this.nameRoomDraft ?? createProductNameRoomDraft(
-      this.currentNameRoomValue(),
+  roomNameDraftValue(): ProductRoomNameDraft {
+    return this.roomNameDraft ?? createProductRoomNameDraft(
+      this.currentRoomNameValue(),
     );
   }
 
-  get nameRoomControlUnlocked(): boolean {
+  get roomNameControlUnlocked(): boolean {
     return this.controlLocks.isUnlocked('name-room');
   }
 
-  toggleNameRoomControlLock(): void {
+  toggleRoomNameControlLock(): void {
     this.controlLocks.toggle('name-room');
   }
 
-  setNameRoomDraftName(
+  setRoomNameDraftName(
     eventOrValue: CustomEvent<{ readonly value?: string | null }> | string,
   ): void {
-    if (!this.showNameRoomControls) {
+    if (!this.showRoomNameControls) {
       return;
     }
     const value = typeof eventOrValue === 'string'
       ? eventOrValue
       : eventOrValue.detail.value ?? '';
-    this.nameRoomDraft = Object.freeze({
-      ...this.nameRoomDraftValue(),
+    this.roomNameDraft = Object.freeze({
+      ...this.roomNameDraftValue(),
       name: value,
     });
-    this.resetSettledNameRoomWriteState();
+    this.resetSettledRoomNameWriteState();
   }
 
-  setNameRoomDraftRoom(
+  setRoomNameDraftRoom(
     eventOrValue:
       CustomEvent<{ readonly value?: ProductRoomSuffix | null }> |
       ProductRoomSuffix |
       null,
   ): void {
-    if (!this.showNameRoomControls) {
+    if (!this.showRoomNameControls) {
       return;
     }
     const value = typeof eventOrValue === 'string' ||
         eventOrValue === null
       ? eventOrValue
       : eventOrValue.detail.value ?? null;
-    this.nameRoomDraft = Object.freeze({
-      ...this.nameRoomDraftValue(),
+    this.roomNameDraft = Object.freeze({
+      ...this.roomNameDraftValue(),
       roomSuffix: value,
     });
-    this.resetSettledNameRoomWriteState();
+    this.resetSettledRoomNameWriteState();
   }
 
-  nameRoomValidationMessage(): string | null {
-    const result = validateProductNameRoomDraft(
-      this.currentNameRoomValue(),
-      this.nameRoomDraftValue(),
+  roomNameValidationMessage(): string | null {
+    const result = validateProductRoomNameDraft(
+      this.currentRoomNameValue(),
+      this.roomNameDraftValue(),
     );
     if (result.valid || result.error === 'unchanged') {
       return null;
@@ -1794,31 +1825,31 @@ export class ProductPage implements OnDestroy {
     }
   }
 
-  currentNameRoomDisplay(): string {
-    const current = this.currentNameRoomValue();
+  currentRoomNameDisplay(): string {
+    const current = this.currentRoomNameValue();
     return `${current.name}${current.roomSuffix ?? ''}`.trim() ||
       this.text.noValue;
   }
 
-  nameRoomDraftDisplay(): string {
-    const current = this.currentNameRoomValue();
-    const draft = this.nameRoomDraftValue();
+  roomNameDraftDisplay(): string {
+    const current = this.currentRoomNameValue();
+    const draft = this.roomNameDraftValue();
     const name = draft.name.trim() || current.name;
     return `${name}${draft.roomSuffix ?? ''}`.trim() || this.text.noValue;
   }
 
-  canApplyNameRoom(): boolean {
-    if (!this.nameRoomRequestContextAvailable()) {
+  canApplyRoomName(): boolean {
+    if (!this.roomNameRequestContextAvailable()) {
       return false;
     }
-    const validation = validateProductNameRoomDraft(
-      this.currentNameRoomValue(),
-      this.nameRoomDraftValue(),
+    const validation = validateProductRoomNameDraft(
+      this.currentRoomNameValue(),
+      this.roomNameDraftValue(),
     );
     if (!validation.valid) {
       return false;
     }
-    const write = encodeProductNameRoomWrite(this.config.profile, validation);
+    const write = encodeProductRoomNameWrite(this.config.profile, validation);
     if (this.isDemoMode) {
       return true;
     }
@@ -1837,16 +1868,16 @@ export class ProductPage implements OnDestroy {
       properties.write === true;
   }
 
-  canRequestNameRoomChange(): boolean {
-    if (!this.nameRoomRequestContextAvailable()) {
+  canRequestRoomNameChange(): boolean {
+    if (!this.roomNameRequestContextAvailable()) {
       return false;
     }
-    const validation = validateProductNameRoomDraft(
-      this.currentNameRoomValue(),
-      this.nameRoomDraftValue(),
+    const validation = validateProductRoomNameDraft(
+      this.currentRoomNameValue(),
+      this.roomNameDraftValue(),
     );
     return validation.valid
-      ? this.canApplyNameRoom()
+      ? this.canApplyRoomName()
       : validation.error !== 'unchanged';
   }
 
@@ -1963,7 +1994,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.expertInputWriteState.status === 'executing' ||
         this.expertScalarWriteState.status === 'executing' ||
-        this.nameRoomWriteState.status === 'executing' ||
+        this.roomNameWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
         this.commandInProgress) {
@@ -2116,7 +2147,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.expertInputWriteState.status === 'executing' ||
         this.expertScalarWriteState.status === 'executing' ||
-        this.nameRoomWriteState.status === 'executing' ||
+        this.roomNameWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
         this.commandInProgress) {
@@ -2186,7 +2217,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.expertInputWriteState.status === 'executing' ||
         this.expertScalarWriteState.status === 'executing' ||
-        this.nameRoomWriteState.status === 'executing' ||
+        this.roomNameWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
         this.commandInProgress) {
@@ -2210,14 +2241,13 @@ export class ProductPage implements OnDestroy {
   currentExpertInputMode(
     config: ProductExpertInputUiConfig,
   ): LegacyInputMode | null {
-    const value = this.viewModel.reads.professionalParameters.value;
-    if (value === null || value.profile !== config.profile) {
+    const value = this.viewModel.reads.userParameters.value;
+    if (value === null || this.config.profile !== config.profile) {
       return null;
     }
-    const flags = decodeProfessionalPeripheralFlags(value.peripheralByte1);
     const radar = config.field === 'input-1'
-      ? flags.input1Radar
-      : flags.input2Radar;
+      ? value.peripheralFlags.input1Radar
+      : value.peripheralFlags.input2Radar;
     return radar ? 'radar' : 'button';
   }
 
@@ -2242,14 +2272,14 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.expertInputWriteState.status === 'executing' ||
         this.expertScalarWriteState.status === 'executing' ||
-        this.nameRoomWriteState.status === 'executing' ||
+        this.roomNameWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
         this.commandInProgress) {
       return false;
     }
     const current = this.currentExpertInputMode(config);
-    if ((current === null && config.profile !== 'widoor') ||
+    if (current === null ||
         (mode !== undefined && mode === current)) {
       return false;
     }
@@ -2279,6 +2309,20 @@ export class ProductPage implements OnDestroy {
     this.controlLocks.toggle('expert-inputs');
   }
 
+  onExpertInputToggleChange(
+    config: ProductExpertInputUiConfig,
+    event: CustomEvent<{ readonly checked: boolean }>,
+  ): void {
+    const confirmed = this.currentExpertInputMode(config);
+    const toggle = event.target as HTMLIonToggleElement | null;
+    if (toggle !== null) {
+      toggle.checked = confirmed === 'radar';
+    }
+    void this.requestExpertInputChange(
+      config, event.detail.checked ? 'radar' : 'button',
+    );
+  }
+
   async requestExpertInputChange(
     config: ProductExpertInputUiConfig,
     eventOrMode: CustomEvent<{ readonly value?: LegacyInputMode }> |
@@ -2287,20 +2331,22 @@ export class ProductPage implements OnDestroy {
     const mode = typeof eventOrMode === 'string'
       ? eventOrMode
       : eventOrMode.detail.value;
-    console.info('[INPUT] change-event', {
+    console.info('[INPUT] change-event', JSON.stringify({
+      input: config.field === 'input-1' ? 1 : 2,
+      requestedMode: mode,
+      confirmedMode: this.currentExpertInputMode(config),
       profile: config.profile,
       deviceId: this.context?.deviceId ?? null,
-      field: config.field,
-      source: typeof eventOrMode === 'string' ? 'ionChange-toggle-or-direct-call' : 'ionChange-select',
-      requestedMode: mode,
-      currentMode: this.currentExpertInputMode(config),
-      readStatus: this.viewModel.reads.professionalParameters.status,
-      at: Date.now(),
-    });
+    }));
     if ((mode !== 'button' && mode !== 'radar') ||
         !this.canChangeExpertInput(config, mode) ||
         this.context === null) {
-      console.info('[INPUT] change-ignored', { field: config.field, requestedMode: mode, at: Date.now() });
+      console.info('[INPUT] change-ignored', JSON.stringify({
+        field: config.field,
+        requestedMode: mode,
+        readStatus: this.viewModel.reads.userParameters.status,
+        at: Date.now(),
+      }));
       return;
     }
 
@@ -2315,20 +2361,24 @@ export class ProductPage implements OnDestroy {
       return;
     }
     const write = config.catalogFactory(mode);
-    console.info('[INPUT] write-prepared', {
-      profile: config.profile,
-      deviceId: this.context.deviceId,
-      field: config.field,
-      logicalMode: mode,
-      bleValue: write.payload[2],
+    const context = this.context;
+    console.info('[INPUT] write-prepared', JSON.stringify({
+      input: config.field === 'input-1' ? 1 : 2,
+      requestedMode: mode,
       payloadHex: write.payloadHex,
       serviceUuid: write.serviceUuid,
       characteristicUuid: write.characteristicUuid,
-      at: Date.now(),
-    });
-    const context = this.context;
+      profile: config.profile,
+      deviceId: context.deviceId,
+    }));
     const contextStatus = this.writeContextStatus(context, write);
     if (contextStatus !== null) {
+      console.info('[INPUT] write-result', JSON.stringify({
+        input: config.field === 'input-1' ? 1 : 2,
+        requestedMode: mode,
+        status: 'blocked',
+        error: contextStatus,
+      }));
       this.expertInputWriteState = Object.freeze({
         status: 'failed',
         field: config.field,
@@ -2364,14 +2414,12 @@ export class ProductPage implements OnDestroy {
       confirmationPolicy: config.confirmationPolicy,
       policy: this.withPhase1ImmediatePolicy(config.profile, config.policy),
     });
-    console.info('[INPUT] write-result', {
-      profile: config.profile,
-      deviceId: context.deviceId,
-      field: config.field,
+    console.info('[INPUT] write-result', JSON.stringify({
+      input: config.field === 'input-1' ? 1 : 2,
       requestedMode: mode,
       status: result.status,
-      at: Date.now(),
-    });
+      error: result.error,
+    }));
     if (!this.isCurrentContext() || this.context !== context) {
       this.expertInputWriteState = Object.freeze({
         status: 'failed',
@@ -2381,15 +2429,17 @@ export class ProductPage implements OnDestroy {
       return;
     }
     if (result.status === 'success') {
-      this.updateExpertInputDisplay(config.field, mode);
-      this.expertInputWriteState = Object.freeze({
-        status: 'sent',
-        field: config.field,
-        message: this.text.expertInputControls.sent,
-      });
-      if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
-        await this.refreshProductData({}, false);
+      const confirmed = await this.verifyExpertInputMode(context, config, mode);
+      if (!this.isCurrentContext() || this.context !== context) {
+        return;
       }
+      this.expertInputWriteState = Object.freeze({
+        status: confirmed ? 'sent' : 'failed',
+        field: config.field,
+        message: confirmed
+          ? this.text.expertInputControls.sent
+          : this.text.expertInputControls.failed,
+      });
       return;
     }
     this.expertInputWriteState = Object.freeze({
@@ -2400,7 +2450,7 @@ export class ProductPage implements OnDestroy {
   }
 
   currentWeightRangeValue(): ProductWeightRange | null {
-    const value = this.viewModel.reads.professionalParameters.value;
+    const value = this.viewModel.reads.advancedParameters.value;
     if (value === null) {
       return null;
     }
@@ -2467,7 +2517,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.expertInputWriteState.status === 'executing' ||
         this.expertScalarWriteState.status === 'executing' ||
-        this.nameRoomWriteState.status === 'executing' ||
+        this.roomNameWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
         this.commandInProgress) {
@@ -2503,7 +2553,7 @@ export class ProductPage implements OnDestroy {
   currentExpertScalarValue(
     config: ProductExpertScalarUiConfig,
   ): number | null {
-    const value = this.viewModel.reads.professionalParameters.value;
+    const value = this.viewModel.reads.advancedParameters.value;
     if (value === null || value.profile !== config.profile) {
       return null;
     }
@@ -2650,7 +2700,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.expertInputWriteState.status === 'executing' ||
         this.expertScalarWriteState.status === 'executing' ||
-        this.nameRoomWriteState.status === 'executing' ||
+        this.roomNameWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
         this.commandInProgress) {
@@ -2705,7 +2755,7 @@ export class ProductPage implements OnDestroy {
         this.weightRangeWriteState.status === 'executing' ||
         this.expertInputWriteState.status === 'executing' ||
         this.expertScalarWriteState.status === 'executing' ||
-        this.nameRoomWriteState.status === 'executing' ||
+        this.roomNameWriteState.status === 'executing' ||
         this.productDateActionBusy ||
         this.sensitiveActionBusy ||
         this.commandInProgress) {
@@ -2743,7 +2793,7 @@ export class ProductPage implements OnDestroy {
     if (config.control !== 'toggle') {
       return null;
     }
-    const value = this.viewModel.reads.professionalParameters.value;
+    const value = this.viewModel.reads.advancedParameters.value;
     if (value === null || value.profile !== 'widoor') {
       if (value === null &&
           this.sensitiveActionState.action === config.action &&
@@ -2754,13 +2804,13 @@ export class ProductPage implements OnDestroy {
       }
       return null;
     }
-    const flags = decodeProfessionalPeripheralFlags(value.peripheralByte1);
+    const flags = decodeAdvancedPeripheralFlags(value.peripheralByte1);
     switch (config.action) {
       case 'radar-test-1':
         return flags.radarTest1;
       case 'radar-test-2':
         return flags.radarTest2;
-      case 'professional-peripheral-lock':
+      case 'advanced-peripheral-lock':
         return flags.locked;
       default:
         return null;
@@ -2770,22 +2820,29 @@ export class ProductPage implements OnDestroy {
   canExecuteSensitiveAction(
     config: ProductSensitiveActionUiConfig,
   ): boolean {
+    return this.canRenderSensitiveActionEnabled(config) &&
+      !this.viewModel.loading &&
+      !this.productDataLoadService.isLoading &&
+      !this.productWriteInProgress() &&
+      !this.productDateActionBusy &&
+      !this.commandInProgress;
+  }
+
+  canRenderSensitiveActionEnabled(
+    config: ProductSensitiveActionUiConfig,
+  ): boolean {
     if (!this.sensitiveActions.includes(config) ||
         config.profile !== this.config.profile ||
         !this.isCurrentContext() ||
         this.context === null ||
-        this.viewModel.loading ||
-        this.productDataLoadService.isLoading ||
-        this.bleService.isWriting ||
+        this.viewModel.connectionState === 'disconnected' ||
         this.bleService.disconnectingDeviceId !== null ||
-        this.bleWriteExecutionService.isExecuting ||
-        this.sensitiveActionBusy ||
-        this.productDateActionBusy ||
-        this.commandInProgress) {
+        (this.sensitiveActionBusy &&
+          this.sensitiveActionState.action === config.action)) {
       return false;
     }
     if (!this.isDemoMode &&
-        config.action === 'professional-peripheral-lock' &&
+        config.action === 'advanced-peripheral-lock' &&
         !this.widoorLockSupported()) {
       return false;
     }
@@ -2893,6 +2950,17 @@ export class ProductPage implements OnDestroy {
         });
         return;
       }
+    }
+
+    if (this.productWriteInProgress() ||
+        this.productDateActionBusy ||
+        this.commandInProgress) {
+      this.sensitiveActionState = Object.freeze({
+        status: 'failed',
+        action: config.action,
+        message: this.text.sensitiveActions.failed,
+      });
+      return;
     }
 
     const steps = productSensitiveActionWriteSteps(config, enabled);
@@ -3829,6 +3897,14 @@ export class ProductPage implements OnDestroy {
     if (actionKind === null) {
       return;
     }
+    this.traceCommissioning('requested', {
+      profile: context.profile,
+      deviceId: context.deviceId,
+      action: actionKind,
+      firstCommissioningDate: dates.firstCommissioningDate,
+      lastMaintenanceDate: dates.lastMaintenanceDate,
+      buttonState: this.productDateMaintenanceActionLabel,
+    });
     const accessContext = this.maintenanceAccessContext(context);
     const now = new Date();
     this.productDateActionState = Object.freeze({
@@ -3951,8 +4027,20 @@ export class ProductPage implements OnDestroy {
     });
     let successfulWrites = 0;
     for (const action of flow.actions) {
+      const step = action.action === 'maintenance'
+        ? 'maintenance-write' : 'first-write';
+      this.traceCommissioning(`${step}-start`, {
+        profile: context.profile,
+        deviceId: context.deviceId,
+        payloadHex: action.write.payloadHex,
+        characteristicUuid: action.write.characteristicUuid,
+      });
       const contextStatus = this.writeContextStatus(context, action.write);
       if (contextStatus !== null) {
+        this.traceCommissioning(`${step}-result`, {
+          status: contextStatus,
+          error: this.productDateActionFailureMessage(contextStatus),
+        });
         this.setProductDateActionFailure(
           flow.kind,
           successfulWrites > 0,
@@ -3964,6 +4052,12 @@ export class ProductPage implements OnDestroy {
       const result = await this.bleWriteExecutionService.execute(
         action.request,
       );
+      this.traceCommissioning(`${step}-result`, {
+        status: result.status,
+        payloadHex: result.payloadHex,
+        nativeWriteCompleted: result.nativeWriteCompleted,
+        error: result.error,
+      });
       if (result.status === 'success') {
         successfulWrites += 1;
       }
@@ -3987,35 +4081,73 @@ export class ProductPage implements OnDestroy {
       }
     }
 
+    if (flow.kind === 'first-commissioning') {
+      const verification = await this.verifyFirstCommissioningDate(context);
+      if (!this.isCurrentContext() || this.context !== context) {
+        this.traceCommissioning('final-state', {
+          status: 'stale',
+          verification,
+          profile: context.profile,
+          deviceId: context.deviceId,
+        });
+        return;
+      }
+      this.productDateActionState = Object.freeze({
+        status: verification === 'confirmed' ? 'sent' : 'failed',
+        action: flow.kind,
+        message: verification === 'confirmed'
+          ? this.text.productDateActions.setupSent
+          : verification === 'read-failed'
+            ? this.text.productDateActions.setupSentReloadFailed
+            : this.text.productDateActions.setupNotConfirmed,
+      });
+      this.traceCommissioning('final-state', {
+        status: this.productDateActionState.status,
+        verification,
+        firstCommissioningDate:
+          this.viewModel.reads.datesAndCycles.value?.firstCommissioningDate,
+        lastMaintenanceDate:
+          this.viewModel.reads.datesAndCycles.value?.lastMaintenanceDate,
+        buttonState: this.productDateMaintenanceActionLabel,
+      });
+      return;
+    }
+
     this.productDateActionState = Object.freeze({
       status: 'sent',
       action: flow.kind,
-      message: flow.kind === 'first-commissioning'
-        ? this.text.productDateActions.setupSent
-        : this.text.productDateActions.maintenanceSent,
+      message: this.text.productDateActions.maintenanceSent,
     });
     if (this.shouldRefreshAfterProductDateAction(flow.kind)) {
       await this.refreshAfterProductDateAction();
     }
+    this.traceCommissioning('final-state', {
+      status: this.productDateActionState.status,
+      firstCommissioningDate:
+        this.viewModel.reads.datesAndCycles.value?.firstCommissioningDate,
+      lastMaintenanceDate:
+        this.viewModel.reads.datesAndCycles.value?.lastMaintenanceDate,
+      buttonState: this.productDateMaintenanceActionLabel,
+    });
   }
 
-  async requestNameRoomChange(): Promise<void> {
-    if (!this.canRequestNameRoomChange() || this.context === null) {
+  async requestRoomNameChange(): Promise<void> {
+    if (!this.canRequestRoomNameChange() || this.context === null) {
       return;
     }
 
-    const validation = validateProductNameRoomDraft(
-      this.currentNameRoomValue(),
-      this.nameRoomDraftValue(),
+    const validation = validateProductRoomNameDraft(
+      this.currentRoomNameValue(),
+      this.roomNameDraftValue(),
     );
     if (!validation.valid) {
-      const message = this.nameRoomValidationMessage();
+      const message = this.roomNameValidationMessage();
       if (message !== null) {
-        this.nameRoomWriteState = Object.freeze({
+        this.roomNameWriteState = Object.freeze({
           status: 'failed',
           message,
         });
-        await this.presentNameRoomWriteFailure(message);
+        await this.presentRoomNameWriteFailure(message);
       }
       return;
     }
@@ -4026,23 +4158,23 @@ export class ProductPage implements OnDestroy {
         displayedName: validation.baseName,
         roomSuffix: validation.roomSuffix,
       };
-      this.resetNameRoomDraft();
-      this.nameRoomWriteState = Object.freeze({
+      this.resetRoomNameDraft();
+      this.roomNameWriteState = Object.freeze({
         status: 'sent',
         message: this.text.nameRoomControls.sent,
       });
       return;
     }
-    const write = encodeProductNameRoomWrite(this.config.profile, validation);
+    const write = encodeProductRoomNameWrite(this.config.profile, validation);
     const context = this.context;
     const contextStatus = this.writeContextStatus(context, write);
     if (contextStatus !== null) {
-      const message = this.nameRoomFailureMessage(contextStatus);
-      this.nameRoomWriteState = Object.freeze({
+      const message = this.roomNameFailureMessage(contextStatus);
+      this.roomNameWriteState = Object.freeze({
         status: 'failed',
         message,
       });
-      await this.presentNameRoomWriteFailure(message);
+      await this.presentRoomNameWriteFailure(message);
       return;
     }
 
@@ -4050,7 +4182,7 @@ export class ProductPage implements OnDestroy {
     const confirmedAt = Date.now();
     const authorization = this.usesPhase1ImmediateWrite(this.config.profile)
       ? null
-      : createProductNameRoomAuthorization({
+      : createProductRoomNameAuthorization({
           write,
           deviceId: context.deviceId,
           connectionGeneration: context.connectionGeneration,
@@ -4058,19 +4190,19 @@ export class ProductPage implements OnDestroy {
           confirmationId: this.nextCommandIdentifier('confirmation'),
           confirmedAt,
         });
-    this.nameRoomWriteState = Object.freeze({
+    this.roomNameWriteState = Object.freeze({
       status: 'executing',
       message: this.text.nameRoomControls.executing,
     });
 
-    await this.delay(PRODUCT_NAME_ROOM_PRE_WRITE_DELAY_MS);
+    await this.delay(PRODUCT_ROOM_NAME_PRE_WRITE_DELAY_MS);
     if (!this.isCurrentContext() || this.context !== context) {
       const message = this.text.openCommand.stale;
-      this.nameRoomWriteState = Object.freeze({
+      this.roomNameWriteState = Object.freeze({
         status: 'failed',
         message,
       });
-      await this.presentNameRoomWriteFailure(message);
+      await this.presentRoomNameWriteFailure(message);
       return;
     }
 
@@ -4082,19 +4214,19 @@ export class ProductPage implements OnDestroy {
       identification: { profile: this.config.profile, confidence: 'strong' },
       authorization,
       attemptId,
-      confirmationPolicy: PRODUCT_NAME_ROOM_CONFIRMATION_POLICY,
+      confirmationPolicy: PRODUCT_ROOM_NAME_CONFIRMATION_POLICY,
       policy: this.withPhase1ImmediatePolicy(
         this.config.profile,
-        PRODUCT_NAME_ROOM_EXECUTION_POLICY,
+        PRODUCT_ROOM_NAME_EXECUTION_POLICY,
       ),
     });
     if (!this.isCurrentContext() || this.context !== context) {
       const message = this.text.openCommand.stale;
-      this.nameRoomWriteState = Object.freeze({
+      this.roomNameWriteState = Object.freeze({
         status: 'failed',
         message,
       });
-      await this.presentNameRoomWriteFailure(message);
+      await this.presentRoomNameWriteFailure(message);
       return;
     }
     if (result.status === 'success') {
@@ -4103,28 +4235,23 @@ export class ProductPage implements OnDestroy {
         displayedName: validation.baseName,
         roomSuffix: validation.roomSuffix,
       };
-      this.updateStoredRoomAssignment(
-        context.deviceId,
-        validation.baseName,
-        validation.roomSuffix ?? '',
-      );
-      this.resetNameRoomDraft();
-      this.nameRoomWriteState = Object.freeze({
+      this.resetRoomNameDraft();
+      this.roomNameWriteState = Object.freeze({
         status: 'sent',
         message: this.text.nameRoomControls.sent,
       });
-      await this.delay(PRODUCT_NAME_ROOM_POST_WRITE_COOLDOWN_MS);
+      await this.delay(PRODUCT_ROOM_NAME_POST_WRITE_COOLDOWN_MS);
       if (this.shouldRefreshAfterSettledWrite() && this.canRefresh) {
         await this.refreshProductData({}, false);
       }
       return;
     }
     const message = this.text.nameRoomControls.failed;
-    this.nameRoomWriteState = Object.freeze({
+    this.roomNameWriteState = Object.freeze({
       status: 'failed',
       message,
     });
-    await this.presentNameRoomWriteFailure(message);
+    await this.presentRoomNameWriteFailure(message);
   }
 
   get lockModeControlUnlocked(): boolean {
@@ -4287,13 +4414,13 @@ export class ProductPage implements OnDestroy {
   }
 
   ionViewWillEnter(): void {
-    console.info('[INPUT] product-page-entered', {
+    console.info('[INPUT] product-page-entered', JSON.stringify({
       profile: this.config.profile,
       deviceId: this.context?.deviceId ?? null,
       connectionState: this.viewModel.connectionState,
-      professionalReadStatus: this.viewModel.reads.professionalParameters.status,
+      userReadStatus: this.viewModel.reads.userParameters.status,
       at: Date.now(),
-    });
+    }));
     this.productBackButtonSubscription?.unsubscribe();
     this.productBackButtonSubscription =
       this.platform.backButton.subscribeWithPriority(10, () =>
@@ -4328,7 +4455,7 @@ export class ProductPage implements OnDestroy {
     if (this.viewModel.loading) {
       this.productDataLoadService.cancelCurrentLoad();
     }
-    this.resetNameRoomEditing();
+    this.resetRoomNameEditing();
     this.resetUserSpeedEditing();
     this.resetUserTimingEditing();
     this.resetUserPeripheralEditing();
@@ -4429,7 +4556,7 @@ export class ProductPage implements OnDestroy {
       this.weightRangeWriteState.status === 'executing' ||
       this.expertInputWriteState.status === 'executing' ||
       this.expertScalarWriteState.status === 'executing' ||
-      this.nameRoomWriteState.status === 'executing' ||
+      this.roomNameWriteState.status === 'executing' ||
       this.productDateActionState.status === 'executing' ||
       this.sensitiveActionState.status === 'executing';
   }
@@ -4492,8 +4619,32 @@ export class ProductPage implements OnDestroy {
     context: ProductPageNavigationState | null,
     connectionState: ProductConnectionState,
   ): ProductViewModel {
-    const displayName = context?.displayName.trim() || this.config.productName;
-    const { name, roomSuffix } = splitProductDisplayName(displayName);
+    const rawValue = context?.displayName ?? '';
+    const physicalName = normalizeBleProductName(rawValue) || this.config.productName;
+    const { name, roomSuffix } = splitProductDisplayName(physicalName);
+    if (this.bleService.platform === 'ios' && context?.mode !== 'demo') {
+      console.info('[IOS-PRODUCT-NAME]', JSON.stringify({
+        deviceId: context?.deviceId ?? null,
+        rawProductName: rawValue,
+        displayedName: name,
+        roomSuffix,
+        source: 'scan-navigation-context',
+      }));
+    }
+    if (context?.mode !== 'demo') {
+      console.info('[NAME-EDIT-RAW]', {
+        rawValue: JSON.stringify(rawValue),
+        rawLength: rawValue.length,
+        visibleValue: name,
+        visibleLength: name.length,
+        codePoints: Array.from(rawValue, (character) => character.codePointAt(0)),
+        tailCodePoints: Array.from(rawValue.slice(-8), (character) =>
+          character.codePointAt(0)),
+        roomSuffix: roomSuffix ?? '',
+        draftValue: name,
+        draftLength: name.length,
+      });
+    }
     const demoSnapshot = context?.mode === 'demo' &&
       isProductDemoProfile(this.config)
       ? createProductDemoSnapshot(this.config)
@@ -4572,7 +4723,7 @@ export class ProductPage implements OnDestroy {
     await alert.present();
   }
 
-  private async presentNameRoomWriteFailure(message: string): Promise<void> {
+  private async presentRoomNameWriteFailure(message: string): Promise<void> {
     const alert = await this.alertController.create({
       message,
       buttons: [
@@ -4585,8 +4736,8 @@ export class ProductPage implements OnDestroy {
     await alert.present();
   }
 
-  private nameRoomRequestContextAvailable(): boolean {
-    return this.showNameRoomControls &&
+  private roomNameRequestContextAvailable(): boolean {
+    return this.showRoomNameControls &&
       this.isCurrentContext() &&
       !this.viewModel.loading &&
       !this.productDataLoadService.isLoading &&
@@ -4600,7 +4751,7 @@ export class ProductPage implements OnDestroy {
       this.weightRangeWriteState.status !== 'executing' &&
       this.expertInputWriteState.status !== 'executing' &&
       this.expertScalarWriteState.status !== 'executing' &&
-      this.nameRoomWriteState.status !== 'executing' &&
+      this.roomNameWriteState.status !== 'executing' &&
       !this.productDateActionBusy &&
       !this.sensitiveActionBusy &&
       !this.commandInProgress &&
@@ -4617,7 +4768,7 @@ export class ProductPage implements OnDestroy {
   }
 
   private phase1ShowsExpertControls(): boolean {
-    return this.viewModel.reads.professionalParameters.status === 'available' ||
+    return this.viewModel.reads.advancedParameters.status === 'available' ||
       this.config.behavior.showControlsBeforeRead;
   }
 
@@ -4669,7 +4820,7 @@ export class ProductPage implements OnDestroy {
       datesAndCycles: false,
       maintenance: false,
       userParameters: false,
-      professionalParameters: true,
+      advancedParameters: true,
     }, false);
   }
 
@@ -4854,30 +5005,35 @@ export class ProductPage implements OnDestroy {
           keepMissingRead
           ? this.viewModel.reads.userParameters
           : readView(result.results.userParameters, result.status),
-        professionalParameters:
-          result.results.professionalParameters === undefined &&
+        advancedParameters:
+          result.results.advancedParameters === undefined &&
             keepMissingRead
-            ? this.viewModel.reads.professionalParameters
-            : readView(result.results.professionalParameters, result.status),
+            ? this.viewModel.reads.advancedParameters
+            : readView(result.results.advancedParameters, result.status),
       },
       loadStatus: result.status,
       partialSuccess: result.partialSuccess,
       lastUpdatedAt: result.completedAt,
       globalError: result.error?.message ?? null,
     };
-    if (result.results.professionalParameters !== undefined) {
-      console.info('[INPUT] ui-read-applied', {
+    if (result.results.userParameters !== undefined) {
+      console.info('[INPUT] ui-read-applied', JSON.stringify({
         profile: this.config.profile,
         deviceId: this.context?.deviceId ?? null,
-        readStatus: this.viewModel.reads.professionalParameters.status,
-        input1: this.expertInputControls[0]
-          ? this.currentExpertInputMode(this.expertInputControls[0].config)
-          : null,
-        input2: this.expertInputControls[1]
-          ? this.currentExpertInputMode(this.expertInputControls[1].config)
-          : null,
+        status: result.results.userParameters.status,
+        viewStatus: this.viewModel.reads.userParameters.status,
+        rawHex: result.results.userParameters.decoded?.rawHex ?? null,
+        peripheralByte1:
+          this.viewModel.reads.userParameters.value?.peripheralByte1 ?? null,
+        input1Radar:
+          this.viewModel.reads.userParameters.value?.peripheralFlags
+            .input1Radar ?? null,
+        input2Radar:
+          this.viewModel.reads.userParameters.value?.peripheralFlags
+            .input2Radar ?? null,
+        error: result.results.userParameters.error,
         at: Date.now(),
-      });
+      }));
     }
     const receivedInitialUserParameters =
       !hadConfirmedUserParameters &&
@@ -4893,7 +5049,7 @@ export class ProductPage implements OnDestroy {
       this.widoorPrecisionSliderKey = null;
       this.userSpeedDrafts.clear();
       this.userTimingDrafts.clear();
-      this.resetNameRoomDraft();
+      this.resetRoomNameDraft();
       this.weightRangeDraft = null;
       this.expertScalarDrafts.clear();
     }
@@ -4964,7 +5120,7 @@ export class ProductPage implements OnDestroy {
     this.widoorPrecisionSliderKey = null;
     this.resetUserSpeedEditing();
     this.resetUserTimingEditing();
-    this.resetNameRoomEditing();
+    this.resetRoomNameEditing();
     this.resetUserPeripheralEditing();
     this.resetWeightRangeEditing();
     this.resetExpertScalarEditing();
@@ -4977,23 +5133,23 @@ export class ProductPage implements OnDestroy {
     });
   }
 
-  private resetNameRoomDraft(): void {
-    this.nameRoomDraft = this.pageContextCurrent
-      ? createProductNameRoomDraft(this.currentNameRoomValue())
+  private resetRoomNameDraft(): void {
+    this.roomNameDraft = this.pageContextCurrent
+      ? createProductRoomNameDraft(this.currentRoomNameValue())
       : null;
   }
 
-  private resetNameRoomEditing(): void {
-    this.resetNameRoomDraft();
-    this.nameRoomWriteState = Object.freeze({
+  private resetRoomNameEditing(): void {
+    this.resetRoomNameDraft();
+    this.roomNameWriteState = Object.freeze({
       status: 'idle',
       message: null,
     });
   }
 
-  private resetSettledNameRoomWriteState(): void {
-    if (this.nameRoomWriteState.status !== 'executing') {
-      this.nameRoomWriteState = Object.freeze({
+  private resetSettledRoomNameWriteState(): void {
+    if (this.roomNameWriteState.status !== 'executing') {
+      this.roomNameWriteState = Object.freeze({
         status: 'idle',
         message: null,
       });
@@ -5031,7 +5187,7 @@ export class ProductPage implements OnDestroy {
   }
 
   private updateDemoExpertParameters(
-    patch: Partial<BleProfessionalParameters>,
+    patch: Partial<BleAdvancedParameters>,
   ): void {
     if (!this.isDemoMode) {
       return;
@@ -5040,9 +5196,9 @@ export class ProductPage implements OnDestroy {
   }
 
   private updateExpertParametersDisplay(
-    patch: Partial<BleProfessionalParameters>,
+    patch: Partial<BleAdvancedParameters>,
   ): void {
-    const current = this.viewModel.reads.professionalParameters.value;
+    const current = this.viewModel.reads.advancedParameters.value;
     if (current === null) {
       return;
     }
@@ -5050,13 +5206,13 @@ export class ProductPage implements OnDestroy {
       ...this.viewModel,
       reads: {
         ...this.viewModel.reads,
-        professionalParameters: {
+        advancedParameters: {
           status: 'available',
           readStatus: 'success',
           value: Object.freeze({
             ...current,
             ...patch,
-          }) as BleProfessionalParameters,
+          }) as BleAdvancedParameters,
           result: null,
         },
       },
@@ -5098,15 +5254,64 @@ export class ProductPage implements OnDestroy {
     field: ProductExpertInputField,
     mode: LegacyInputMode,
   ): void {
-    const current = this.viewModel.reads.professionalParameters.value;
+    const current = this.viewModel.reads.userParameters.value;
     if (current === null) {
       return;
     }
-    const mask = field === 'input-1' ? 0x80 : 0x40;
-    const peripheralByte1 = mode === 'radar'
-      ? current.peripheralByte1 | mask
-      : current.peripheralByte1 & ~mask;
-    this.updateExpertParametersDisplay({ peripheralByte1 });
+    this.updateDemoUserParameters(withUserInputRadar(
+      current, field === 'input-1' ? 1 : 2, mode === 'radar',
+    ));
+  }
+
+  private async verifyExpertInputMode(
+    context: ProductPageNavigationState,
+    config: ProductExpertInputUiConfig,
+    mode: LegacyInputMode,
+  ): Promise<boolean> {
+    try {
+      const result = await this.productDataLoadService.loadProductData(
+        context.profile,
+        context.deviceId,
+        {
+          version: false,
+          datesAndCycles: false,
+          maintenance: false,
+          userParameters: true,
+          advancedParameters: false,
+        },
+      );
+      if (!this.isCurrentContext() || this.context !== context ||
+          result.profile !== context.profile ||
+          result.deviceId !== context.deviceId ||
+          result.connectionGeneration !== context.connectionGeneration) {
+        return false;
+      }
+      this.applyLoadResult(result);
+      const actualMode = this.currentExpertInputMode(config);
+      const confirmed = actualMode === mode;
+      console.info('[INPUT] readback-confirmation', JSON.stringify({
+        input: config.field === 'input-1' ? 1 : 2,
+        requestedMode: mode,
+        actualMode,
+        confirmed,
+        rawHex: result.results.userParameters?.decoded?.rawHex ?? null,
+        peripheralByte1:
+          this.viewModel.reads.userParameters.value?.peripheralByte1 ?? null,
+        input1Radar:
+          this.viewModel.reads.userParameters.value?.peripheralFlags.input1Radar ?? null,
+        input2Radar:
+          this.viewModel.reads.userParameters.value?.peripheralFlags.input2Radar ?? null,
+      }));
+      return confirmed;
+    } catch (error) {
+      console.info('[INPUT] readback-confirmation', JSON.stringify({
+        input: config.field === 'input-1' ? 1 : 2,
+        requestedMode: mode,
+        confirmed: false,
+        error: error instanceof Error ? error.message : String(error),
+      }));
+      return false;
+    }
   }
 
   private updateDemoWeightRange(range: ProductWeightRange): void {
@@ -5156,7 +5361,7 @@ export class ProductPage implements OnDestroy {
     action: ProductSensitiveAction,
     enabled: boolean,
   ): void {
-    const current = this.viewModel.reads.professionalParameters.value;
+    const current = this.viewModel.reads.advancedParameters.value;
     if (current === null) {
       return;
     }
@@ -5164,7 +5369,7 @@ export class ProductPage implements OnDestroy {
       ? 0x20
       : action === 'radar-test-2'
         ? 0x10
-        : action === 'professional-peripheral-lock'
+        : action === 'advanced-peripheral-lock'
           ? 0x08
           : 0;
     if (mask === 0) {
@@ -5186,18 +5391,6 @@ export class ProductPage implements OnDestroy {
 
   private updateLockModeDisplay(mode: LegacyLockMode): void {
     this.updateUserParametersDisplay({ lockMode: mode });
-  }
-
-  private updateStoredRoomAssignment(
-    deviceId: string,
-    name: string,
-    suffix: string,
-  ): void {
-    try {
-      writeRoomCacheEntry(deviceId, { name, suffix });
-    } catch {
-      // The BLE write remains the source of truth; the cache is scan-display fallback only.
-    }
   }
 
   private resetUserSpeedEditing(): void {
@@ -5386,6 +5579,68 @@ export class ProductPage implements OnDestroy {
         ? this.text.productDateActions.partialFailed
         : fallbackMessage,
     });
+    this.traceCommissioning('final-state', {
+      status: this.productDateActionState.status,
+      action,
+      message: this.productDateActionState.message,
+      buttonState: this.productDateMaintenanceActionLabel,
+    });
+  }
+
+  private traceCommissioning(event: string, details: object): void {
+    console.info(`[COMMISSIONING] ${event} ${JSON.stringify(details)}`);
+  }
+
+  private async verifyFirstCommissioningDate(
+    context: ProductPageNavigationState,
+  ): Promise<'confirmed' | 'not-confirmed' | 'read-failed'> {
+    this.traceCommissioning('readback-start', {
+      profile: context.profile,
+      deviceId: context.deviceId,
+    });
+    try {
+      const result = await this.productDataLoadService.loadProductData(
+        context.profile,
+        context.deviceId,
+        {
+          version: false,
+          datesAndCycles: true,
+          maintenance: false,
+          userParameters: false,
+          advancedParameters: false,
+        },
+      );
+      const dates = result.results.datesAndCycles;
+      this.traceCommissioning('readback-result', {
+        status: dates?.status ?? result.status,
+        rawHex: dates?.decoded?.rawHex,
+        firstCommissioningDate: dates?.decoded?.valid
+          ? dates.decoded.value.firstCommissioningDate : null,
+        lastMaintenanceDate: dates?.decoded?.valid
+          ? dates.decoded.value.lastMaintenanceDate : null,
+        error: dates?.error,
+      });
+      if (!this.isCurrentContext() || this.context !== context ||
+          result.profile !== context.profile ||
+          result.deviceId !== context.deviceId ||
+          result.connectionGeneration !== context.connectionGeneration) {
+        return 'read-failed';
+      }
+      this.applyLoadResult(result);
+      if (result.status !== 'success' ||
+          dates?.status !== 'success' || !dates.decoded?.valid) {
+        return 'read-failed';
+      }
+      return dates.decoded.value.firstCommissioningDate.status === 'present'
+        ? 'confirmed'
+        : 'not-confirmed';
+    } catch (error) {
+      this.traceCommissioning('readback-result', {
+        status: 'failed',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return 'read-failed';
+    }
   }
 
   private async refreshAfterProductDateAction(): Promise<void> {
@@ -5519,7 +5774,7 @@ export class ProductPage implements OnDestroy {
     return lockMode === 'locked-open' || lockMode === 'locked-closed';
   }
 
-  private nameRoomFailureMessage(
+  private roomNameFailureMessage(
     status: 'disconnected' | 'stale' | 'unavailable',
   ): string {
     switch (status) {
@@ -5784,7 +6039,7 @@ export class ProductPage implements OnDestroy {
   }
 
   private createExpertRows(
-    value: BleProfessionalParameters,
+    value: BleAdvancedParameters,
   ): readonly ProductDisplayRow[] {
     const rows: ProductDisplayRow[] = [];
     this.addExpertScalar(
@@ -6014,7 +6269,7 @@ function initialReadStates(): ProductReadViewStates {
     datesAndCycles: initialReadState(),
     maintenance: initialReadState(),
     userParameters: initialReadState(),
-    professionalParameters: initialReadState(),
+    advancedParameters: initialReadState(),
   };
 }
 
@@ -6030,7 +6285,7 @@ function demoReadStates(snapshot: ProductDemoSnapshot): ProductReadViewStates {
     datesAndCycles: available(snapshot.datesAndCycles),
     maintenance: available(snapshot.maintenance),
     userParameters: available(snapshot.userParameters),
-    professionalParameters: available(snapshot.professionalParameters),
+    advancedParameters: available(snapshot.advancedParameters),
   };
 }
 

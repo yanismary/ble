@@ -694,25 +694,25 @@
                 }
               }
 
-              @if (showNameRoomControls) {
+              @if (showRoomNameControls) {
                 <ion-list-header
                   class="basic-section-header basic-name-room-header"
-                  [class.basic-unlocked]="nameRoomControlUnlocked"
+                  [class.basic-unlocked]="roomNameControlUnlocked"
                 >
                   <ion-label>{{ text.nameRoomControls.title }}</ion-label>
                   <ion-badge class="mantion-value-badge basic-value-badge">
-                    {{ currentNameRoomDisplay() }}
+                    {{ currentRoomNameDisplay() }}
                   </ion-badge>
                   @if (config.profile !== 'widoor' && !usesMoventivLayout) {
                     <ion-button
                       type="button"
                       fill="clear"
-                      [attr.aria-label]="nameRoomControlUnlocked ? text.user.lockSetting : text.user.unlockSetting"
-                      (click)="toggleNameRoomControlLock()"
+                      [attr.aria-label]="roomNameControlUnlocked ? text.user.lockSetting : text.user.unlockSetting"
+                      (click)="toggleRoomNameControlLock()"
                     >
                       <img
                         class="basic-lock-icon"
-                        [src]="nameRoomControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
+                        [src]="roomNameControlUnlocked ? 'assets/img/icon_lock_off.svg' : 'assets/img/icon_lock_on.svg'"
                         alt=""
                         aria-hidden="true"
                       />
@@ -732,9 +732,9 @@
                     [label]="text.nameRoomControls.nameLabel"
                     label-placement="stacked"
                     [maxlength]="15"
-                    [value]="nameRoomDraftValue().name"
-                    [disabled]="(config.profile !== 'widoor' && !usesMoventivLayout && !nameRoomControlUnlocked) || nameRoomWriteState.status === 'executing'"
-                    (ionInput)="setNameRoomDraftName($event)"
+                    [value]="roomNameDraftValue().name"
+                    [disabled]="(config.profile !== 'widoor' && !usesMoventivLayout && !roomNameControlUnlocked) || roomNameWriteState.status === 'executing'"
+                    (ionInput)="setRoomNameDraftName($event)"
                   ></ion-input>
                 </ion-item>
                 <ion-item class="basic-name-row basic-room-row">
@@ -744,9 +744,9 @@
                     label-placement="stacked"
                     [placeholder]="text.nameRoomControls.roomLabel"
                     interface="popover"
-                    [value]="nameRoomDraftValue().roomSuffix"
-                    [disabled]="(config.profile !== 'widoor' && !usesMoventivLayout && !nameRoomControlUnlocked) || nameRoomWriteState.status === 'executing'"
-                    (ionChange)="setNameRoomDraftRoom($event)"
+                    [value]="roomNameDraftValue().roomSuffix"
+                    [disabled]="(config.profile !== 'widoor' && !usesMoventivLayout && !roomNameControlUnlocked) || roomNameWriteState.status === 'executing'"
+                    (ionChange)="setRoomNameDraftRoom($event)"
                   >
                     @for (room of roomOptions; track room.suffix) {
                       <ion-select-option [value]="room.suffix">
@@ -760,15 +760,15 @@
                     type="button"
                     size="small"
                     expand="block"
-                    (click)="requestNameRoomChange()"
-                    [disabled]="(config.profile !== 'widoor' && !usesMoventivLayout && !nameRoomControlUnlocked) || !canRequestNameRoomChange()"
+                    (click)="requestRoomNameChange()"
+                    [disabled]="(config.profile !== 'widoor' && !usesMoventivLayout && !roomNameControlUnlocked) || !canRequestRoomNameChange()"
                   >
                     {{ text.nameRoomControls.apply }}
                   </ion-button>
                 </div>
                 <p class="basic-current-value">
                   {{ text.nameRoomControls.draft }}
-                  {{ nameRoomDraftDisplay() }}
+                  {{ roomNameDraftDisplay() }}
                 </p>
               }
             </ion-list>
@@ -854,25 +854,29 @@
                 @for (inputControl of expertInputControls; track inputControl.config.field) {
                   <ion-item
                     class="advanced-input-row"
-                    [attr.data-professional-input-field]="inputControl.config.field"
+                    [attr.data-advanced-input-field]="inputControl.config.field"
                   >
-                    <img
-                      slot="start"
-                      class="advanced-row-icon"
-                      [src]="expertInputIconSrc(inputControl.config)"
-                      alt=""
-                    />
+                    @if (expertInputIconSrc(inputControl.config); as inputIcon) {
+                      <img
+                        slot="start"
+                        class="advanced-row-icon"
+                        [src]="inputIcon"
+                        alt=""
+                      />
+                    }
                     <ion-label>{{ inputControl.text }}</ion-label>
                     <ion-badge
                       slot="end"
                       class="advanced-value-badge"
                       [class.advanced-value-positive]="currentExpertInputMode(inputControl.config) === 'radar'"
-                      [class.advanced-value-negative]="currentExpertInputMode(inputControl.config) !== 'radar'"
+                      [class.advanced-value-negative]="currentExpertInputMode(inputControl.config) === 'button'"
                     >
                       @if (currentExpertInputMode(inputControl.config) === 'radar') {
                         {{ text.expertInputControls.radar }}
-                      } @else {
+                      } @else if (currentExpertInputMode(inputControl.config) === 'button') {
                         {{ text.expertInputControls.button }}
+                      } @else {
+                        {{ text.states.notLoaded }}
                       }
                     </ion-badge>
                     @if (config.profile === 'widoor' || isMoventivProfile) {
@@ -882,7 +886,7 @@
                         [attr.aria-label]="inputControl.text"
                         [checked]="currentExpertInputMode(inputControl.config) === 'radar'"
                         [disabled]="!canChangeExpertInput(inputControl.config)"
-                        (ionChange)="requestExpertInputChange(inputControl.config, $event.detail.checked ? 'radar' : 'button')"
+                        (ionChange)="onExpertInputToggleChange(inputControl.config, $event)"
                       ></ion-toggle>
                     } @else {
                       <ion-select
@@ -1013,7 +1017,7 @@
                       <ion-button
                         type="button"
                         [class.action-write-pending]="sensitiveActionBusy && sensitiveActionState.action === action.action"
-                        [disabled]="!canExecuteSensitiveAction(action)"
+                        [disabled]="!canRenderSensitiveActionEnabled(action)"
                         (click)="requestSensitiveAction(action)"
                       >
                         {{ text.sensitiveActions[action.textKey] }}
@@ -1029,7 +1033,7 @@
                       color="warning"
                       [class.action-write-pending]="productDateActionBusy"
                       (click)="requestProductDateMaintenanceAction()"
-                      [disabled]="!canRequestProductDateMaintenanceAction()"
+                      [disabled]="!canRenderProductDateMaintenanceActionEnabled()"
                     >
                       {{ productDateMaintenanceActionLabel }}
                     </ion-button>
@@ -1051,7 +1055,7 @@
                   }
                   <ion-list-header
                     class="advanced-section-header advanced-scalar-header"
-                    [attr.data-professional-scalar-header]="scalarControl.config.field"
+                    [attr.data-advanced-scalar-header]="scalarControl.config.field"
                     [class.advanced-unlocked]="isExpertScalarUnlocked(scalarControl.config)"
                     (click)="usesPhase1SliderInteraction && toggleExpertScalarLock(scalarControl.config)"
                   >
@@ -1093,7 +1097,7 @@
                   <ion-item
                     class="advanced-slider-row"
                     [class.slider-unlocked]="isExpertScalarUnlocked(scalarControl.config)"
-                    [attr.data-professional-scalar-field]="scalarControl.config.field"
+                    [attr.data-advanced-scalar-field]="scalarControl.config.field"
                     (click)="usesPhase1SliderInteraction && unlockExpertScalarFromZone(scalarControl.config)"
                   >
                     @if (config.profile === 'widoor' || usesMoventivLayout) {
@@ -1142,7 +1146,7 @@
                     <div
                       class="advanced-precision-row"
                       [attr.aria-label]="text.shell.preciseAdjustment"
-                      [attr.data-professional-scalar-precision]="scalarControl.config.field"
+                      [attr.data-advanced-scalar-precision]="scalarControl.config.field"
                     >
                       <ion-button
                         type="button"
@@ -1221,7 +1225,7 @@
                   class="advanced-historical-action"
                   color="warning"
                   (click)="requestProductDateMaintenanceAction()"
-                  [disabled]="!canRequestProductDateMaintenanceAction()"
+                  [disabled]="!canRenderProductDateMaintenanceActionEnabled()"
                 >
                   {{ productDateMaintenanceActionLabel }}
                 </ion-button>
@@ -1269,7 +1273,7 @@
                     class="advanced-action-toggle-row"
                     [attr.data-sensitive-action]="action.action"
                   >
-                    @if (action.action === 'professional-peripheral-lock') {
+                    @if (action.action === 'advanced-peripheral-lock') {
                       <span
                         slot="start"
                         class="advanced-row-icon product-lock-state-icon"
@@ -1326,7 +1330,7 @@
                       [class.action-write-pending]="sensitiveActionBusy && sensitiveActionState.action === action.action"
                       [color]="sensitiveActionButtonColor(action)"
                       [class.advanced-danger-button]="action.action === 'reset'"
-                      [disabled]="!canExecuteSensitiveAction(action)"
+                      [disabled]="!canRenderSensitiveActionEnabled(action)"
                       (click)="requestSensitiveAction(action)"
                     >
                       {{ text.sensitiveActions[action.textKey] }}

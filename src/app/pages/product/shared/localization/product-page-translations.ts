@@ -129,8 +129,8 @@ const PRODUCT_PAGE_TRANSLATIONS = {
     expertInputControls: {
       current: 'Current value:',
       executing: 'Sending input configuration…',
-      sent: 'Input configuration sent. Verification read in progress.',
-      failed: 'Failed to send the input configuration.',
+      sent: 'Input configuration confirmed by the product.',
+      failed: 'Input configuration not confirmed by the product.',
       unavailable: 'Input-configuration command unavailable',
     },
     expertScalarControls: {
@@ -170,7 +170,9 @@ const PRODUCT_PAGE_TRANSLATIONS = {
       confirm: 'Confirm',
       awaitingConfirmation: 'Maintenance confirmation required.',
       executing: 'Sending date action…',
-      setupSent: 'Commissioning sent. Verification read in progress.',
+      setupSent: 'Commissioning confirmed.',
+      setupNotConfirmed:
+        'Commissioning was not confirmed by the product. Check the dates.',
       maintenanceSent: 'Maintenance sent. Verification read in progress.',
       setupSentReloadFailed:
         'Commissioning sent, but the verification read failed.',
@@ -178,9 +180,9 @@ const PRODUCT_PAGE_TRANSLATIONS = {
         'Maintenance sent, but the verification read failed.',
       failed: 'Failed to send the date action.',
       partialFailed:
-        'Maintenance sent, but commissioning was not sent. Verification read in progress.',
+        'Maintenance was sent, but commissioning was not confirmed.',
       partialReloadFailed:
-        'Maintenance sent, but commissioning was not sent. The verification read failed.',
+        'Maintenance was sent, but commissioning was not confirmed. The verification read failed.',
       unavailable: 'Date action unavailable',
       wrongCode: 'Incorrect maintenance code.',
       cancelled: 'Action cancelled.',
@@ -470,8 +472,8 @@ const PRODUCT_PAGE_TRANSLATIONS = {
     },
     expertInputControls: {
       current: 'Aktueller Wert:', executing: 'Eingangskonfiguration wird gesendet…',
-      sent: 'Eingangskonfiguration gesendet. Kontrolllesung läuft.',
-      failed: 'Eingangskonfiguration konnte nicht gesendet werden.',
+      sent: 'Eingangskonfiguration vom Produkt bestätigt.',
+      failed: 'Eingangskonfiguration vom Produkt nicht bestätigt.',
       unavailable: 'Befehl für Eingangskonfiguration nicht verfügbar',
     },
     expertScalarControls: {
@@ -494,12 +496,12 @@ const PRODUCT_PAGE_TRANSLATIONS = {
     productDateActions: {
       confirmTitle: 'Bestätigung erforderlich', passwordPlaceholder: 'Wartungspasswort', cancel: 'Abbrechen', confirm: 'Bestätigen',
       awaitingConfirmation: 'Wartungsbestätigung erforderlich.', executing: 'Datumsaktion wird gesendet…',
-      setupSent: 'Inbetriebnahme gesendet. Kontrolllesung läuft.', maintenanceSent: 'Wartung gesendet. Kontrolllesung läuft.',
+      setupSent: 'Inbetriebnahme bestätigt.', setupNotConfirmed: 'Inbetriebnahme vom Produkt nicht bestätigt. Prüfen Sie die Datumsangaben.', maintenanceSent: 'Wartung gesendet. Kontrolllesung läuft.',
       setupSentReloadFailed: 'Inbetriebnahme gesendet, aber die Kontrolllesung ist fehlgeschlagen.',
       maintenanceSentReloadFailed: 'Wartung gesendet, aber die Kontrolllesung ist fehlgeschlagen.',
       failed: 'Datumsaktion konnte nicht gesendet werden.',
-      partialFailed: 'Wartung gesendet, aber die Inbetriebnahme wurde nicht gesendet. Kontrolllesung läuft.',
-      partialReloadFailed: 'Wartung gesendet, aber die Inbetriebnahme wurde nicht gesendet. Die Kontrolllesung ist fehlgeschlagen.',
+      partialFailed: 'Wartung gesendet, aber die Inbetriebnahme wurde nicht bestätigt.',
+      partialReloadFailed: 'Wartung gesendet, aber die Inbetriebnahme wurde nicht bestätigt. Die Kontrolllesung ist fehlgeschlagen.',
       unavailable: 'Datumsaktion nicht verfügbar', wrongCode: 'Falscher Wartungscode.', cancelled: 'Aktion abgebrochen.',
       setupConfirmation: (date: string) => `Bestätigen Sie, dass die Inbetriebnahme am ${date} durchgeführt wurde? Die Wartung wird gespeichert; anschließend wird das Inbetriebnahmedatum dauerhaft gespeichert, wenn das Produkt weiterhin als nicht initialisiert gemeldet wird.`,
       maintenanceConfirmation: (date: string) => `Bestätigen Sie, dass die Wartung am ${date} durchgeführt wurde? Die Firmware kann den Zykluszähler seit der letzten Wartung zurücksetzen.`,
@@ -566,12 +568,12 @@ const PRODUCT_PAGE_TRANSLATIONS = {
       learningConfirmTitle: 'Uruchomić kalibrację pozycji krańcowych?', learningConfirmMessage: 'To polecenie może spowodować automatyczny ruch napędu. Przed potwierdzeniem upewnij się, że obszar jest wolny.', resetConfirmTitle: 'Zresetować ustawienia Widoor?', resetConfirmMessage: 'Ta czynność przywraca dziewięć ustawień domyślnych i zastępuje kilka bieżących ustawień. Nie można jej automatycznie cofnąć.',
     },
     expertPeripheralDiagnostics: { title: 'Diagnostyka urządzeń peryferyjnych', readonlyNotice: 'Stany odczytane z produktu. Nie jest wysyłane żadne polecenie testu ani blokady.', radarTest1: 'Test radaru 1', radarTest2: 'Test radaru 2', peripheralLock: 'Blokada urządzeń peryferyjnych', enabled: 'Włączone', disabled: 'Wyłączone' },
-    expertInputControls: { current: 'Bieżąca wartość:', executing: 'Wysyłanie konfiguracji wejść…', sent: 'Konfiguracja wejść wysłana. Trwa odczyt kontrolny.', failed: 'Nie udało się wysłać konfiguracji wejść.', unavailable: 'Polecenie konfiguracji wejść niedostępne' },
+    expertInputControls: { current: 'Bieżąca wartość:', executing: 'Wysyłanie konfiguracji wejść…', sent: 'Konfiguracja wejść potwierdzona przez produkt.', failed: 'Produkt nie potwierdził konfiguracji wejść.', unavailable: 'Polecenie konfiguracji wejść niedostępne' },
     expertScalarControls: { apply: 'Zastosuj', current: 'Bieżąca wartość:', draft: 'Wartość do zastosowania:', executing: 'Wysyłanie ustawienia eksperckiego…', sent: 'Ustawienie eksperckie wysłane. Trwa odczyt kontrolny.', failed: 'Nie udało się wysłać ustawienia eksperckiego.', unavailable: 'Ustawienie eksperckie niedostępne' },
     expertAccess: { title: 'Dostęp ekspercki', expertTitle: 'Ustawienia eksperckie', expertMode: 'Tryb ekspercki', message: 'Wprowadź kod ekspercki, aby wyświetlić te ustawienia.', placeholder: 'Kod ekspercki', expertPlaceholder: 'Wprowadź hasło', cancel: 'Anuluj', confirm: 'Potwierdź', unlock: 'Odblokuj ustawienia eksperckie', locked: 'Niektóre ustawienia eksperckie są ukryte.', unlocked: 'Ustawienia eksperckie odblokowane.', failed: 'Nieprawidłowy kod ekspercki.' },
     moventivAdvancedAlert: { title: 'Uwaga', message: 'Zmiana tych ustawień może wpłynąć na prawidłowe działanie systemu. Przed wprowadzeniem zmian przeczytaj instrukcję.', no: 'Anuluj', yes: 'Kontynuuj' },
     productDateActions: {
-      confirmTitle: 'Wymagane potwierdzenie', passwordPlaceholder: 'Hasło konserwacyjne', cancel: 'Anuluj', confirm: 'Potwierdź', awaitingConfirmation: 'Wymagane potwierdzenie konserwacji.', executing: 'Wysyłanie działania daty…', setupSent: 'Uruchomienie wysłane. Trwa odczyt kontrolny.', maintenanceSent: 'Konserwacja wysłana. Trwa odczyt kontrolny.', setupSentReloadFailed: 'Uruchomienie wysłane, ale odczyt kontrolny nie powiódł się.', maintenanceSentReloadFailed: 'Konserwacja wysłana, ale odczyt kontrolny nie powiódł się.', failed: 'Nie udało się wysłać działania daty.', partialFailed: 'Konserwacja wysłana, ale uruchomienie nie zostało wysłane. Trwa odczyt kontrolny.', partialReloadFailed: 'Konserwacja wysłana, ale uruchomienie nie zostało wysłane. Odczyt kontrolny nie powiódł się.', unavailable: 'Działanie daty niedostępne', wrongCode: 'Nieprawidłowy kod konserwacyjny.', cancelled: 'Działanie anulowane.',
+      confirmTitle: 'Wymagane potwierdzenie', passwordPlaceholder: 'Hasło konserwacyjne', cancel: 'Anuluj', confirm: 'Potwierdź', awaitingConfirmation: 'Wymagane potwierdzenie konserwacji.', executing: 'Wysyłanie działania daty…', setupSent: 'Potwierdzono uruchomienie.', setupNotConfirmed: 'Produkt nie potwierdził uruchomienia. Sprawdź daty.', maintenanceSent: 'Konserwacja wysłana. Trwa odczyt kontrolny.', setupSentReloadFailed: 'Uruchomienie wysłane, ale odczyt kontrolny nie powiódł się.', maintenanceSentReloadFailed: 'Konserwacja wysłana, ale odczyt kontrolny nie powiódł się.', failed: 'Nie udało się wysłać działania daty.', partialFailed: 'Konserwacja wysłana, ale uruchomienie nie zostało potwierdzone.', partialReloadFailed: 'Konserwacja wysłana, ale uruchomienie nie zostało potwierdzone. Odczyt kontrolny nie powiódł się.', unavailable: 'Działanie daty niedostępne', wrongCode: 'Nieprawidłowy kod konserwacyjny.', cancelled: 'Działanie anulowane.',
       setupConfirmation: (date: string) => `Czy potwierdzasz, że uruchomienie przeprowadzono ${date}? Konserwacja zostanie zapisana, a następnie data uruchomienia zostanie trwale zapisana, jeśli produkt nadal zgłasza brak inicjalizacji.`,
       maintenanceConfirmation: (date: string) => `Czy potwierdzasz, że konserwację przeprowadzono ${date}? Oprogramowanie układowe może wyzerować licznik cykli od ostatniej konserwacji.`,
     },

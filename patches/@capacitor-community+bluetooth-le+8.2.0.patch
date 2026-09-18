@@ -1,52 +1,123 @@
 diff --git a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt
-index ac18a9c..1908db2 100644
+index ac18a9c..4fd7107 100644
 --- a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt
 +++ b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt
-@@ -678,8 +678,9 @@ class BluetoothLe : Plugin() {
+@@ -955,8 +955,13 @@ class BluetoothLe : Plugin() {
+         val bleDevice = getBleDevice(result.device)
+         scanResult.put("device", bleDevice)
+
+-        if (result.device.name != null) {
+-            scanResult.put("localName", result.device.name)
++        val advertisedName = result.scanRecord?.deviceName
++        val deviceName = result.device.name
++        if (advertisedName != null) {
++            scanResult.put("localName", advertisedName)
++        }
++        if (advertisedName != deviceName) {
++            android.util.Log.i("BLE-NAME-RAW", "deviceId=${result.device.address} scanRecordName=$advertisedName deviceName=$deviceName selectedLocalName=$advertisedName")
          }
-         val writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
-+        val useLegacyAndroidWriteApi = call.getBoolean("useLegacyAndroidWriteApi", false) as Boolean
-         device.write(
--            characteristic.first, characteristic.second, value, writeType, timeout
-+            characteristic.first, characteristic.second, value, writeType, timeout, useLegacyAndroidWriteApi
-         ) { response ->
-             run {
-                 if (response.success) {
-@@ -703,7 +704,7 @@ class BluetoothLe : Plugin() {
-         val writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
-         device.write(
--            characteristic.first, characteristic.second, value, writeType, timeout
-+            characteristic.first, characteristic.second, value, writeType, timeout, false
-         ) { response ->
-             run {
-                 if (response.success) {
+
+         scanResult.put("rssi", result.rssi)
 diff --git a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt
-index 5546881..12713b0 100644
+index 5546881..eaffa09 100644
 --- a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt
 +++ b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt
-@@ -555,6 +555,7 @@ class Device(
-         value: String,
-         writeType: Int,
-         timeout: Long,
-+        useLegacyAndroidWriteApi: Boolean,
-         callback: (CallbackResponse) -> Unit
-     ) {
-         val key = "write|$serviceUUID|$characteristicUUID"
-@@ -567,13 +568,14 @@ class Device(
+@@ -64,6 +64,7 @@ class Device(
+         private const val STATE_CONNECTED = 2
+         private const val CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb"
+         private const val REQUEST_MTU = 512
++        private const val NAME_ROOM_KEY = "write|dc06d52e-6ee8-471e-a5fd-0f40674a061d|e36d5943-cc43-4d59-89ed-bcd58a70d85d"
+     }
+
+     private var connectionState = STATE_DISCONNECTED
+@@ -76,6 +77,16 @@ class Device(
+     private var currentMtu = -1
+     private var skipDescriptorDiscovery = false
+
++    // Temporary diagnostics only; never used to select or schedule a GATT operation.
++    @Volatile private var nameRoomWriteStartedAt = -1L
++
++    private fun logNameRoom(event: String, details: String) {
++        val startedAt = nameRoomWriteStartedAt
++        if (startedAt < 0) return
++        val now = android.os.SystemClock.elapsedRealtime()
++        android.util.Log.i("NAME_ROOM_GATT", "event=$event deviceId=$address attempt=$startedAt elapsedMs=${now - startedAt} sdk=${Build.VERSION.SDK_INT} gattId=${System.identityHashCode(bluetoothGatt)} connectionState=$connectionState thread=${Thread.currentThread().name} $details")
++    }
++
+     private lateinit var callbacksHandlerThread: HandlerThread
+     private lateinit var callbacksHandler: Handler
+
+@@ -115,6 +126,7 @@ class Device(
+         override fun onConnectionStateChange(
+             gatt: BluetoothGatt, status: Int, newState: Int
+         ) {
++            logNameRoom("connection-state", "callbackGattId=${System.identityHashCode(gatt)} status=$status newState=$newState")
+             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                 connectionState = STATE_CONNECTED
+                 // service discovery is required to use services
+@@ -216,6 +228,9 @@ class Device(
+         ) {
+             super.onCharacteristicWrite(gatt, characteristic, status)
+             val key = "write|${characteristic.service.uuid}|${characteristic.uuid}"
++            if (key == NAME_ROOM_KEY) {
++                logNameRoom("native-callback", "key=$key callbackGattId=${System.identityHashCode(gatt)} status=$status callbackRegistered=${callbackMap.containsKey(key)}")
++            }
+             if (status == BluetoothGatt.GATT_SUCCESS) {
+                 resolve(key, "Characteristic successfully written.")
+             } else {
+@@ -567,8 +582,15 @@ class Device(
          }
          val bytes = stringToBytes(value)
- 
--        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !useLegacyAndroidWriteApi) {
+
++        if (key == NAME_ROOM_KEY) {
++            nameRoomWriteStartedAt = android.os.SystemClock.elapsedRealtime()
++            logNameRoom("write-start", "key=$key characteristicInstance=${characteristic.instanceId} length=${bytes.size} hex=${bytesToString(bytes)} writeType=$writeType timeoutMs=$timeout mtu=$currentMtu bondState=${device.bondState} properties=${characteristic.properties}")
++        }
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
              val statusCode = bluetoothGatt?.writeCharacteristic(characteristic, bytes, writeType)
++            if (key == NAME_ROOM_KEY) {
++                logNameRoom("native-return", "api=modern statusCode=$statusCode accepted=${statusCode == BluetoothStatusCodes.SUCCESS}")
++            }
              if (statusCode != BluetoothStatusCodes.SUCCESS) {
                  reject(key, "Writing characteristic failed with status code $statusCode.")
                  return
-             }
-         } else {
-+            // Some legacy peripherals only acknowledge the pre-API 33 write path.
+@@ -577,6 +599,9 @@ class Device(
              characteristic.value = bytes
              characteristic.writeType = writeType
              val result = bluetoothGatt?.writeCharacteristic(characteristic)
++            if (key == NAME_ROOM_KEY) {
++                logNameRoom("native-return", "api=legacy accepted=$result")
++            }
+             if (result != true) {
+                 reject(key, "Writing characteristic failed.")
+                 return
+@@ -731,6 +756,9 @@ class Device(
+     }
+
+     private fun resolve(key: String, value: String) {
++        if (key == NAME_ROOM_KEY) {
++            logNameRoom("plugin-resolve", "callbackRegistered=${callbackMap.containsKey(key)} message=$value")
++        }
+         pendingBondKeys.remove(key)
+         callbackMap.remove(key)?.let { callback ->
+             Logger.debug(TAG, "resolve: $key $value")
+@@ -740,6 +768,9 @@ class Device(
+     }
+
+     private fun reject(key: String, value: String) {
++        if (key == NAME_ROOM_KEY) {
++            logNameRoom("plugin-reject", "callbackRegistered=${callbackMap.containsKey(key)} message=$value")
++        }
+         pendingBondKeys.remove(key)
+         callbackMap.remove(key)?.let { callback ->
+             Logger.debug(TAG, "reject: $key $value")
+@@ -754,6 +785,9 @@ class Device(
+         val handler = Handler(Looper.getMainLooper())
+         timeoutQueue.add(TimeoutHandler(key, handler))
+         handler.postDelayed({
++            if (key == NAME_ROOM_KEY) {
++                logNameRoom("plugin-timeout", "callbackRegistered=${callbackMap.containsKey(key)} timeoutMs=$timeout")
++            }
+             reject(key, message)
+         }, timeout)
+     }

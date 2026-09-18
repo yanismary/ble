@@ -78,7 +78,7 @@ export type ProductSensitiveActionCapability =
   | 'learning'
   | 'radar-test-1'
   | 'radar-test-2'
-  | 'professional-peripheral-lock'
+  | 'advanced-peripheral-lock'
   | 'reset';
 
 export type ProductMaintenanceInformationField =

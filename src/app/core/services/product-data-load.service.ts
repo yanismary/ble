@@ -4,7 +4,7 @@ import { ProductProfile } from './ble-profile-catalog';
 import {
   BleDatesAndCycles,
   BleMaintenance,
-  BleProfessionalParameters,
+  BleAdvancedParameters,
   BleUserParameters,
   BleVersionFrame,
 } from './ble-read-decoders';
@@ -24,14 +24,14 @@ export type ProductDataLoadStep =
   | 'datesAndCycles'
   | 'maintenance'
   | 'userParameters'
-  | 'professionalParameters';
+  | 'advancedParameters';
 
 export interface ProductDataLoadOptions {
   readonly version?: boolean;
   readonly datesAndCycles?: boolean;
   readonly maintenance?: boolean;
   readonly userParameters?: boolean;
-  readonly professionalParameters?: boolean;
+  readonly advancedParameters?: boolean;
 }
 
 export type ProductDataLoadStatus =
@@ -65,8 +65,8 @@ export interface ProductDataLoadReadResults {
   readonly datesAndCycles?: BleTypedReadResult<BleDatesAndCycles>;
   readonly maintenance?: BleTypedReadResult<BleMaintenance>;
   readonly userParameters?: BleTypedReadResult<BleUserParameters>;
-  readonly professionalParameters?: BleTypedReadResult<
-    BleProfessionalParameters
+  readonly advancedParameters?: BleTypedReadResult<
+    BleAdvancedParameters
   >;
 }
 
@@ -100,7 +100,7 @@ interface LoadResultState {
   datesAndCycles?: BleTypedReadResult<BleDatesAndCycles>;
   maintenance?: BleTypedReadResult<BleMaintenance>;
   userParameters?: BleTypedReadResult<BleUserParameters>;
-  professionalParameters?: BleTypedReadResult<BleProfessionalParameters>;
+  advancedParameters?: BleTypedReadResult<BleAdvancedParameters>;
 }
 
 const LOAD_ORDER: readonly ProductDataLoadStep[] = [
@@ -108,7 +108,7 @@ const LOAD_ORDER: readonly ProductDataLoadStep[] = [
   'datesAndCycles',
   'maintenance',
   'userParameters',
-  'professionalParameters',
+  'advancedParameters',
 ];
 
 @Injectable({
@@ -250,9 +250,9 @@ export class ProductDataLoadService implements OnDestroy {
                 targetDeviceId,
               );
             break;
-          case 'professionalParameters':
-            results.professionalParameters =
-              await this.bleReadService.readProfessionalParameters(
+          case 'advancedParameters':
+            results.advancedParameters =
+              await this.bleReadService.readAdvancedParameters(
                 profile,
                 targetDeviceId,
               );

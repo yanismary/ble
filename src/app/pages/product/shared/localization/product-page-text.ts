@@ -137,8 +137,8 @@ export const PRODUCT_PAGE_TEXT = {
     button: 'Bouton',
     radar: 'Radar',
     executing: 'Envoi de la configuration d’entrée…',
-    sent: 'Configuration d’entrée envoyée. Lecture de contrôle en cours.',
-    failed: 'Échec de l’envoi de la configuration d’entrée.',
+    sent: 'Configuration d’entrée confirmée par le produit.',
+    failed: 'Configuration d’entrée non confirmée par le produit.',
     unavailable: 'Commande de configuration d’entrée indisponible',
   },
   expertScalarControls: {
@@ -186,7 +186,9 @@ export const PRODUCT_PAGE_TEXT = {
     awaitingConfirmation: 'Confirmation maintenance requise.',
     executing: 'Envoi de l’action historique…',
     setupSent:
-      'Mise en service envoyée. Lecture de contrôle en cours.',
+      'Mise en service confirmée.',
+    setupNotConfirmed:
+      'Mise en service non confirmée par le produit. Vérifiez les dates.',
     maintenanceSent:
       'Maintenance envoyée. Lecture de contrôle en cours.',
     setupSentReloadFailed:
@@ -195,10 +197,9 @@ export const PRODUCT_PAGE_TEXT = {
       'Maintenance envoyée, mais la lecture de contrôle a échoué.',
     failed: 'Échec de l’envoi de l’action historique.',
     partialFailed:
-      'Maintenance envoyée, mais la mise en service n’a pas été envoyée. ' +
-      'Lecture de contrôle en cours.',
+      'Maintenance envoyée, mais la mise en service n’a pas été confirmée.',
     partialReloadFailed:
-      'Maintenance envoyée, mais la mise en service n’a pas été envoyée. ' +
+      'Maintenance envoyée, mais la mise en service n’a pas été confirmée. ' +
       'La lecture de contrôle a échoué.',
     unavailable: 'Action historique indisponible',
     wrongCode: 'Code maintenance incorrect.',

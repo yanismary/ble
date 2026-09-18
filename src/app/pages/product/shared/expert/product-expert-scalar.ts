@@ -153,7 +153,7 @@ export function productExpertScalarConfigsFor(
           config.profile,
         ) &&
         config.expertFields.includes(definition.field) &&
-        LEGACY_WRITE_CONSTRAINTS[config.profile].uiProfessionalRanges[
+        LEGACY_WRITE_CONSTRAINTS[config.profile].uiAdvancedRanges[
           definition.constraintKey
         ] !== undefined,
       )
@@ -215,7 +215,7 @@ function expertScalarConfig(
 ): ProductExpertScalarUiConfig {
   const range = LEGACY_WRITE_CONSTRAINTS[
     pageConfig.profile
-  ].uiProfessionalRanges[definition.constraintKey];
+  ].uiAdvancedRanges[definition.constraintKey];
   if (range === undefined ||
       !isProductExpertScalarProfileSupported(
         definition,
