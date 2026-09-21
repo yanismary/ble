@@ -330,19 +330,8 @@ export function tutorialImagePathsFor(
   const imagePlatform = platform === 'ios' ? 'ios' : 'android';
   const localizedBasePath = `${basePath}${imagePlatform}/${language}/`;
   const localizedImage = (slideNumber: 2 | 3 | 4 | 5 | 6): string => {
-    if (imagePlatform === 'android') {
-      return `${localizedBasePath}slide${slideNumber}.jpg`;
-    }
-    if (language === 'de' && (slideNumber === 3 || slideNumber === 4)) {
-      return `${localizedBasePath}slide3-4_a_revoir.PNG`;
-    }
-    if (slideNumber === 6) {
-      const fileName = language === 'fr'
-        ? 'slide6_a_revoir_avec_UUID_et_MAC.PNG'
-        : 'slide6_a_revoir_UUID_MAC.PNG';
-      return `${localizedBasePath}${fileName}`;
-    }
-    return `${localizedBasePath}slide${slideNumber}.PNG`;
+    const extension = imagePlatform === 'ios' ? 'PNG' : 'jpg';
+    return `${localizedBasePath}slide${slideNumber}.${extension}`;
   };
 
   return Object.freeze({

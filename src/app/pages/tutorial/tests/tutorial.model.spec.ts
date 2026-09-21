@@ -79,26 +79,24 @@ describe('tutorial model', () => {
       .toBe('assets/img/tuto_moventiv/android/de/slide3.jpg');
   });
 
-  it('selects localized iOS images using their real file names', () => {
+  it('selects localized iOS images using the final generic file names', () => {
     const widoor = tutorialImagePathsFor('widoor', 'en', 'ios');
+    const widoorGerman = tutorialImagePathsFor('widoor', 'de', 'ios');
     const garline = tutorialImagePathsFor('garline', 'pl', 'ios');
-    const moventivGerman = tutorialImagePathsFor('moventiv', 'de', 'ios');
     const moventivFrench = tutorialImagePathsFor('moventiv', 'fr', 'ios');
 
     expect(widoor.slide2)
       .toBe('assets/img/tuto_widoor/ios/en/slide2.PNG');
     expect(garline.slide4)
       .toBe('assets/img/tuto_garline/ios/pl/slide4.PNG');
-    expect(moventivGerman.slide3)
-      .toBe('assets/img/tuto_moventiv/ios/de/slide3-4_a_revoir.PNG');
-    expect(moventivGerman.slide4).toBe(moventivGerman.slide3);
-    expect(moventivFrench.slide6).toBe(
-      'assets/img/tuto_moventiv/ios/fr/' +
-      'slide6_a_revoir_avec_UUID_et_MAC.PNG',
-    );
-    expect(garline.slide6).toBe(
-      'assets/img/tuto_garline/ios/pl/slide6_a_revoir_UUID_MAC.PNG',
-    );
+    expect(widoorGerman.slide3)
+      .toBe('assets/img/tuto_widoor/ios/de/slide3.PNG');
+    expect(widoorGerman.slide4)
+      .toBe('assets/img/tuto_widoor/ios/de/slide4.PNG');
+    expect(moventivFrench.slide6)
+      .toBe('assets/img/tuto_moventiv/ios/fr/slide6.PNG');
+    expect(garline.slide6)
+      .toBe('assets/img/tuto_garline/ios/pl/slide6.PNG');
   });
 
   it('normalizes supported languages and platforms', () => {
