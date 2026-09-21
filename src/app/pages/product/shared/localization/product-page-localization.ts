@@ -300,7 +300,7 @@ const PRODUCT_LOCALIZED_LABELS = {
       "settings": "Einstellungen",
       "information": "Informationen",
       "basic": "Grundeinstellungen",
-      "advanced": "Fortgeschrittene Einstellungen",
+      "advanced": "Fortgeschrittene\nEinstellungen",
       "motorState": "Status",
       "general": "Allgemeine Informationen",
       "version": "Firmware-Versionen",

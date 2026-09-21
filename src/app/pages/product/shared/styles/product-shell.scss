@@ -62,6 +62,10 @@
   height: 48px;
 }
 
+.product-sub-segment ion-segment-button span {
+  white-space: pre-line;
+}
+
 .product-sub-segment ion-segment-button.segment-button-checked {
   border-bottom-color: var(--mantion-green);
 }

@@ -41,6 +41,17 @@ describe('product page localization', () => {
       .not.toBe(productPageTextFor('fr').dates.firstCommissioning);
   });
 
+  it('breaks only the German advanced-settings label onto two lines', () => {
+    expect(productPageTextFor('de').shell.advanced)
+      .toBe('Fortgeschrittene\nEinstellungen');
+
+    for (const language of ['fr', 'en', 'pl'] as const) {
+      expect(productPageTextFor(language).shell.advanced)
+        .withContext(language)
+        .not.toContain('\n');
+    }
+  });
+
   it('formats the short timed motor command with its duration in every language',
     () => {
       expect(widoorDelayedOpenLabelFor('fr', 4)).toBe('Ouvrir 4 s');
