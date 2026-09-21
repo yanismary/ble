@@ -119,7 +119,6 @@ export class BleService implements OnDestroy {
   private notificationSequenceValue = 0;
   private connectionGenerationValue = 0;
   private activeConnectionToken: symbol | null = null;
-  private connecting = false;
   private scanning = false;
   private bluetoothEnabledNotificationsActive = false;
 
@@ -384,7 +383,6 @@ export class BleService implements OnDestroy {
     }
 
     this.clearDiscoveredServices();
-    this.connecting = true;
     this.connectingDeviceId = normalizedDeviceId;
     const connectionGenerationBeforeAttempt = this.connectionGenerationValue;
     const connection = this.connectToDevice(normalizedDeviceId);
@@ -407,7 +405,6 @@ export class BleService implements OnDestroy {
       if (this.connectionPromise === connection) {
         this.connectionPromise = null;
       }
-      this.connecting = false;
       this.connectingDeviceId = null;
     }
   }
@@ -945,7 +942,6 @@ export class BleService implements OnDestroy {
     this.connectionGenerationValue += 1;
     this.activeConnectionToken = null;
     this.connectingDeviceId = null;
-    this.connecting = false;
     this.disconnectionSubject.next({ deviceId, reason: 'remote' });
   }
 
