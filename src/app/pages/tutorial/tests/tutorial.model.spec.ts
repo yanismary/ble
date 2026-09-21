@@ -50,32 +50,54 @@ describe('tutorial model', () => {
     expect(garline.readyTitle.toUpperCase()).toContain('GARLINE');
   });
 
-  it('keeps the Phase 1 image-language fallback for non-French languages', () => {
-    const copy = tutorialCopyFor('moventiv', 'de', 'android');
+  it('uses one product slide 1 for every language and platform', () => {
+    const products: TutorialProduct[] = ['widoor', 'moventiv', 'garline'];
+    const contexts: readonly [TutorialPlatform, TutorialLanguage][] = [
+      ['android', 'fr'],
+      ['android', 'en'],
+      ['ios', 'fr'],
+      ['ios', 'pl'],
+    ];
 
-    expect(copy.slides[1].image).toContain('_en_moventiv');
+    for (const product of products) {
+      const expected = `assets/img/tuto_${product}/slide1_${product}.png`;
+      for (const [platform, language] of contexts) {
+        expect(tutorialImagePathsFor(product, language, platform).slide1)
+          .withContext(`${product}/${platform}/${language}`)
+          .toBe(expected);
+      }
+    }
   });
 
-  it('selects Android tutorial images with their exact historical paths', () => {
-    const images = tutorialImagePathsFor('widoor', 'fr', 'android');
+  it('selects localized Android tutorial images from product folders', () => {
+    const widoor = tutorialImagePathsFor('widoor', 'fr', 'android');
+    const moventiv = tutorialImagePathsFor('moventiv', 'de', 'android');
 
-    expect(images.slide1).toBe('assets/img/tuto_widoor/slide1_widoor.png');
-    expect(images.slide2).toBe(
-      'assets/img/tuto_widoor/slide2_android_fr_widoor.jpg',
-    );
-    expect(images.slide4).toBe(
-      'assets/img/tuto_widoor/slide4_anroid_fr_widoor.jpg',
-    );
+    expect(widoor.slide2)
+      .toBe('assets/img/tuto_widoor/android/fr/slide2.jpg');
+    expect(moventiv.slide3)
+      .toBe('assets/img/tuto_moventiv/android/de/slide3.jpg');
   });
 
-  it('selects iOS tutorial images with the historical uppercase extension', () => {
-    const images = tutorialImagePathsFor('garline', 'en', 'ios');
+  it('selects localized iOS images using their real file names', () => {
+    const widoor = tutorialImagePathsFor('widoor', 'en', 'ios');
+    const garline = tutorialImagePathsFor('garline', 'pl', 'ios');
+    const moventivGerman = tutorialImagePathsFor('moventiv', 'de', 'ios');
+    const moventivFrench = tutorialImagePathsFor('moventiv', 'fr', 'ios');
 
-    expect(images.slide2).toBe(
-      'assets/img/tuto_garline/slide2_ios_en_garline.PNG',
+    expect(widoor.slide2)
+      .toBe('assets/img/tuto_widoor/ios/en/slide2.PNG');
+    expect(garline.slide4)
+      .toBe('assets/img/tuto_garline/ios/pl/slide4.PNG');
+    expect(moventivGerman.slide3)
+      .toBe('assets/img/tuto_moventiv/ios/de/slide3-4_a_revoir.PNG');
+    expect(moventivGerman.slide4).toBe(moventivGerman.slide3);
+    expect(moventivFrench.slide6).toBe(
+      'assets/img/tuto_moventiv/ios/fr/' +
+      'slide6_a_revoir_avec_UUID_et_MAC.PNG',
     );
-    expect(images.slide6).toBe(
-      'assets/img/tuto_garline/slide6_ios_en_garline.PNG',
+    expect(garline.slide6).toBe(
+      'assets/img/tuto_garline/ios/pl/slide6_a_revoir_UUID_MAC.PNG',
     );
   });
 

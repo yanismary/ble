@@ -327,30 +327,31 @@ export function tutorialImagePathsFor(
   platform: TutorialPlatform,
 ): TutorialImageSet {
   const basePath = `assets/img/tuto_${product}/`;
-  const imageLanguage = language === 'fr' ? 'fr' : 'en';
-
-  if (platform === 'ios') {
-    return Object.freeze({
-      slide1: `${basePath}slide1_${product}.png`,
-      slide2: `${basePath}slide2_ios_${imageLanguage}_${product}.PNG`,
-      slide3: `${basePath}slide3_ios_${imageLanguage}_${product}.PNG`,
-      slide4: `${basePath}slide4_ios_${imageLanguage}_${product}.PNG`,
-      slide5: `${basePath}slide5_ios_${imageLanguage}_${product}.PNG`,
-      slide6: `${basePath}slide6_ios_${imageLanguage}_${product}.PNG`,
-    });
-  }
-
-  const slide4 = product === 'widoor' && imageLanguage === 'fr'
-    ? `${basePath}slide4_anroid_fr_widoor.jpg`
-    : `${basePath}slide4_android_${imageLanguage}_${product}.jpg`;
+  const imagePlatform = platform === 'ios' ? 'ios' : 'android';
+  const localizedBasePath = `${basePath}${imagePlatform}/${language}/`;
+  const localizedImage = (slideNumber: 2 | 3 | 4 | 5 | 6): string => {
+    if (imagePlatform === 'android') {
+      return `${localizedBasePath}slide${slideNumber}.jpg`;
+    }
+    if (language === 'de' && (slideNumber === 3 || slideNumber === 4)) {
+      return `${localizedBasePath}slide3-4_a_revoir.PNG`;
+    }
+    if (slideNumber === 6) {
+      const fileName = language === 'fr'
+        ? 'slide6_a_revoir_avec_UUID_et_MAC.PNG'
+        : 'slide6_a_revoir_UUID_MAC.PNG';
+      return `${localizedBasePath}${fileName}`;
+    }
+    return `${localizedBasePath}slide${slideNumber}.PNG`;
+  };
 
   return Object.freeze({
     slide1: `${basePath}slide1_${product}.png`,
-    slide2: `${basePath}slide2_android_${imageLanguage}_${product}.jpg`,
-    slide3: `${basePath}slide3_android_${imageLanguage}_${product}.jpg`,
-    slide4,
-    slide5: `${basePath}slide5_android_${imageLanguage}_${product}.jpg`,
-    slide6: `${basePath}slide6_android_${imageLanguage}_${product}.jpg`,
+    slide2: localizedImage(2),
+    slide3: localizedImage(3),
+    slide4: localizedImage(4),
+    slide5: localizedImage(5),
+    slide6: localizedImage(6),
   });
 }
 

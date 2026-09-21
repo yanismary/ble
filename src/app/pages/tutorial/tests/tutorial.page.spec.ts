@@ -135,7 +135,7 @@ describe('TutorialPage', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.currentSlide?.image)
-      .toContain('slide2_android_fr_moventiv.jpg');
+      .toContain('tuto_moventiv/android/fr/slide2.jpg');
   });
 
   it('uses iOS images on iOS', async () => {
@@ -147,7 +147,7 @@ describe('TutorialPage', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.currentSlide?.image)
-      .toContain('slide2_ios_en_garline.PNG');
+      .toContain('tuto_garline/ios/en/slide2.PNG');
   });
 
   it('changes slides by horizontal swipe and updates the visual pager',
