@@ -829,7 +829,7 @@ describe('ProductPage', () => {
       .not.toBeNull();
   });
 
-  it('should load once on first entry and keep cached data across tabs',
+  it('should reload settings on entry without reloading other tabs',
     async () => {
       loadService.nextResult = completeLoadResult(
         'success',
@@ -863,7 +863,14 @@ describe('ProductPage', () => {
       component.setActiveMainTab('information');
       component.setActiveMainTab('commands');
 
-      expect(loadService.loadProductData).toHaveBeenCalledTimes(1);
+      expect(loadService.loadProductData).toHaveBeenCalledTimes(2);
+      expect(loadService.loadProductData.calls.mostRecent().args[2]).toEqual({
+        version: false,
+        datesAndCycles: false,
+        maintenance: false,
+        userParameters: true,
+        advancedParameters: true,
+      });
       expect(component.viewModel.loading).toBeFalse();
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
       expect(bleService.writeCharacteristic).not.toHaveBeenCalled();
@@ -6358,7 +6365,9 @@ describe('ProductPage expert scalar controls',
           },
         },
       },
-      userParameters: BleUserParameters = userValue(),
+      userParameters: BleUserParameters = userValueWithPeripheralByte(
+        (advancedParameters.peripheralByte1 & 0xc0) >> 2,
+      ),
     ): Promise<{
       readonly component: ProductPage;
       readonly fixture: ComponentFixture<ProductPage>;
@@ -7223,33 +7232,33 @@ describe('ProductPage expert scalar controls',
           const { component, fixture, loadService, writeExecutionService } =
             await createExpertScalarPage(
               profile,
-              { ...advancedValue(profile), peripheralByte1: 0x00 },
+              { ...advancedValue(profile), peripheralByte1: 0xc0 },
               undefined,
               undefined,
-              userValueWithPeripheralByte(0x30),
+              userValueWithPeripheralByte(0x00),
             );
           const [input1, input2] = component.expertInputControls.map(
             (control) => control.config,
           );
-          expect(component.currentExpertInputMode(input1)).toBe('radar');
-          expect(component.currentExpertInputMode(input2)).toBe('radar');
+          expect(component.currentExpertInputMode(input1)).toBe('button');
+          expect(component.currentExpertInputMode(input2)).toBe('button');
 
           loadService.nextResult = completeLoadResult(
-            'success', profile, userValueWithPeripheralByte(0x00),
-            { ...advancedValue(profile), peripheralByte1: 0xc0 },
+            'success', profile, userValueWithPeripheralByte(0x30),
+            { ...advancedValue(profile), peripheralByte1: 0x00 },
           );
           await component.refreshProductData();
           component.activeMainTab = 'settings';
           component.activeSettingsTab = 'advanced';
           fixture.detectChanges();
 
-          expect(component.currentExpertInputMode(input1)).toBe('button');
-          expect(component.currentExpertInputMode(input2)).toBe('button');
+          expect(component.currentExpertInputMode(input1)).toBe('radar');
+          expect(component.currentExpertInputMode(input2)).toBe('radar');
           expect(writeExecutionService.execute).not.toHaveBeenCalled();
           const firstRow = (fixture.nativeElement as HTMLElement)
             .querySelector<HTMLElement>('[data-advanced-input-field="input-1"]');
           expect(firstRow?.textContent).toContain(
-            component.text.expertInputControls.button,
+            component.text.expertInputControls.radar,
           );
         },
       );
@@ -7263,8 +7272,9 @@ describe('ProductPage expert scalar controls',
     ] as const) {
       it(`should initialize Moventiv input UI from user byte 0x${byte.toString(16)}`,
         async () => {
-          const { component, fixture } = await createExpertScalarPage(
-            'moventiv-80', advancedValue('moventiv-80'),
+          const { component, fixture, writeExecutionService } = await createExpertScalarPage(
+            'moventiv-80',
+            { ...advancedValue('moventiv-80'), peripheralByte1: 0xc0 },
             undefined, undefined, userValueWithPeripheralByte(byte),
           );
           const [input1, input2] = component.expertInputControls.map(
@@ -7283,15 +7293,52 @@ describe('ProductPage expert scalar controls',
           expect(rows[1].textContent).toContain(
             component.text.expertInputControls[secondMode],
           );
+          const toggle = rows[0].querySelector<HTMLIonToggleElement>('ion-toggle')!;
+          toggle.dispatchEvent(new CustomEvent('ionChange', {
+            detail: { checked: firstMode === 'radar' },
+            bubbles: true,
+          }));
+          await fixture.whenStable();
+          expect(writeExecutionService.execute).not.toHaveBeenCalled();
         });
     }
 
-    it('should not display Button when the user read is unavailable',
+    it('rereads input modes on a new connection without writing', async () => {
+      const first = await createExpertScalarPage(
+        'moventiv-80',
+        { ...advancedValue('moventiv-80'), peripheralByte1: 0xc0 },
+      );
+      const firstInput = first.component.expertInputControls[0].config;
+      expect(first.component.currentExpertInputMode(firstInput)).toBe('radar');
+      expect(first.writeExecutionService.execute).not.toHaveBeenCalled();
+      await first.bleService.disconnect();
+      expect(first.component.currentExpertInputMode(firstInput)).toBe('radar');
+      first.fixture.destroy();
+
+      const second = await createExpertScalarPage(
+        'moventiv-80',
+        { ...advancedValue('moventiv-80'), peripheralByte1: 0x00 },
+      );
+      const secondInput = second.component.expertInputControls[0].config;
+      expect(second.component.currentExpertInputMode(secondInput)).toBe('button');
+      expect(second.writeExecutionService.execute).not.toHaveBeenCalled();
+    });
+
+    it('should not display Button before any valid Moventiv user read',
       async () => {
         const { component, fixture, loadService, writeExecutionService } =
           await createExpertScalarPage(
             'moventiv-80', advancedValue('moventiv-80'),
           );
+        component.viewModel = {
+          ...component.viewModel,
+          reads: {
+            ...component.viewModel.reads,
+            userParameters: {
+              status: 'not-loaded', readStatus: null, value: null, result: null,
+            },
+          },
+        };
         const base = completeLoadResult('partial-success', 'moventiv-80');
         loadService.nextResult = {
           ...base,
@@ -7311,6 +7358,7 @@ describe('ProductPage expert scalar controls',
         const input = component.expertInputControls[0].config;
         expect(component.currentExpertInputMode(input)).toBeNull();
         expect(component.canChangeExpertInput(input)).toBeFalse();
+        await component.requestExpertInputChange(input, 'radar');
         const row = (fixture.nativeElement as HTMLElement)
           .querySelector<HTMLElement>('[data-advanced-input-field="input-1"]');
         expect(row?.textContent).toContain(component.text.states.notLoaded);
@@ -7319,11 +7367,12 @@ describe('ProductPage expert scalar controls',
       },
     );
 
-    it('should keep input controls when advanced read fails but user read succeeds',
+    it('should use the user input mode when an advanced reread fails',
       async () => {
         const { component, fixture, loadService } =
           await createExpertScalarPage(
-            'moventiv-80', advancedValue('moventiv-80'),
+            'moventiv-80',
+            { ...advancedValue('moventiv-80'), peripheralByte1: 0x80 },
           );
         const base = completeLoadResult(
           'partial-success', 'moventiv-80',
@@ -7350,7 +7399,7 @@ describe('ProductPage expert scalar controls',
         )).toBe('radar');
       });
 
-    it('should leave both input modes unknown after an invalid user read',
+    it('should retain both input modes after an invalid advanced reread',
       async () => {
         const { component, fixture, loadService } =
           await createExpertScalarPage(
@@ -7361,8 +7410,9 @@ describe('ProductPage expert scalar controls',
           ...base,
           results: {
             ...base.results,
-            userParameters: invalidRead(
-              'user-parameters', BLE_UUIDS.userParametersCharacteristic,
+            advancedParameters: invalidRead(
+              'advanced-parameters',
+              BLE_UUIDS.professionalParametersCharacteristic,
             ),
           },
         };
@@ -7372,31 +7422,63 @@ describe('ProductPage expert scalar controls',
         fixture.detectChanges();
 
         for (const control of component.expertInputControls) {
-          expect(component.currentExpertInputMode(control.config)).toBeNull();
+          expect(component.currentExpertInputMode(control.config)).toBe('button');
         }
         const row = (fixture.nativeElement as HTMLElement)
           .querySelector<HTMLElement>('[data-advanced-input-field="input-1"]');
-        expect(row?.textContent).toContain(component.text.states.notLoaded);
+        expect(row?.textContent).toContain(
+          component.text.expertInputControls.button,
+        );
       });
 
-    for (const [initialByte, mode, readbackByte, payloadHex] of [
-      [0x00, 'radar', 0x20, '05 05 01'],
-      [0x20, 'button', 0x00, '05 05 02'],
+    it('keeps the Phase 1 Widoor Button default before a valid user read',
+      async () => {
+        const { component, loadService, writeExecutionService } =
+          await createExpertScalarPage('widoor', advancedValue('widoor'));
+        component.viewModel = {
+          ...component.viewModel,
+          reads: {
+            ...component.viewModel.reads,
+            userParameters: {
+              status: 'not-loaded', readStatus: null, value: null, result: null,
+            },
+          },
+        };
+        const base = completeLoadResult('partial-success', 'widoor');
+        loadService.nextResult = {
+          ...base,
+          results: {
+            ...base.results,
+            userParameters: unavailableRead(
+              'user-parameters',
+              BLE_UUIDS.userParametersCharacteristic,
+            ),
+          },
+        };
+        await component.refreshProductData();
+
+        const [input1, input2] = component.expertInputControls.map(
+          (control) => control.config,
+        );
+        expect(component.currentExpertInputMode(input1)).toBe('button');
+        expect(component.currentExpertInputMode(input2)).toBe('button');
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      });
+
+    for (const [initialByte, mode, payloadHex] of [
+      [0x00, 'radar', '0a 07 01'],
+      [0x80, 'button', '0a 07 02'],
     ] as const) {
-      it(`confirms a Moventiv ${mode} write only from user readback`,
+      it(`writes Moventiv ${mode} once without an automatic readback`,
         async () => {
           const { component, loadService, writeExecutionService } =
             await createExpertScalarPage(
-              'moventiv-80', advancedValue('moventiv-80'),
+              'moventiv-80',
+              { ...advancedValue('moventiv-80'), peripheralByte1: initialByte },
               undefined, undefined,
-              userValueWithPeripheralByte(initialByte),
+              userValueWithPeripheralByte(mode === 'radar' ? 0x00 : 0x20),
             );
           const input = component.expertInputControls[0].config;
-          loadService.nextResult = completeLoadResult(
-            'success', 'moventiv-80',
-            userValueWithPeripheralByte(readbackByte),
-            { ...advancedValue('moventiv-80'), peripheralByte1: 0x80 },
-          );
           loadService.loadProductData.calls.reset();
 
           await component.requestExpertInputChange(input, mode);
@@ -7406,35 +7488,30 @@ describe('ProductPage expert scalar controls',
             .args[0] as LegacyBleWriteRequest;
           expect(request.write.payloadHex).toBe(payloadHex);
           expect(request.write.characteristicUuid)
-            .toBe(BLE_UUIDS.userParametersCharacteristic);
-          expect(loadService.loadProductData).toHaveBeenCalledTimes(1);
-          expect(loadService.loadProductData.calls.mostRecent().args[2])
-            .toEqual({
-              version: false,
-              datesAndCycles: false,
-              maintenance: false,
-              userParameters: true,
-              advancedParameters: false,
-            });
+            .toBe(BLE_UUIDS.professionalParametersCharacteristic);
+          expect(loadService.loadProductData).not.toHaveBeenCalled();
           expect(component.currentExpertInputMode(input)).toBe(mode);
           expect(component.expertInputWriteState.status).toBe('sent');
         });
     }
 
-    for (const [field, initialByte, mode, readbackByte, payloadHex] of [
-      ['input-1', 0x30, 'button', 0x10, '05 05 02'],
-      ['input-1', 0x10, 'radar', 0x30, '05 05 01'],
-      ['input-2', 0x30, 'button', 0x20, '05 04 02'],
-      ['input-2', 0x20, 'radar', 0x30, '05 04 01'],
+    for (const [field, initialByte, mode, payloadHex] of [
+      ['input-1', 0xc0, 'button', '0a 07 02'],
+      ['input-1', 0x40, 'radar', '0a 07 01'],
+      ['input-2', 0xc0, 'button', '0a 06 02'],
+      ['input-2', 0x80, 'radar', '0a 06 01'],
     ] as const) {
       it(`writes ${field} ${mode} and preserves the other input`, async () => {
         const { component, fixture, loadService, writeExecutionService } =
           await createExpertScalarPage(
-            'moventiv-80', advancedValue('moventiv-80'),
-            undefined, undefined, userValueWithPeripheralByte(initialByte),
+            'moventiv-80',
+            { ...advancedValue('moventiv-80'), peripheralByte1: initialByte },
+            undefined, undefined,
+            userValueWithPeripheralByte((initialByte & 0xc0) >> 2),
           );
         component.setActiveMainTab('settings');
         component.setActiveSettingsTab('advanced');
+        await fixture.whenStable();
         fixture.detectChanges();
         const input = component.expertInputControls.find(
           (control) => control.config.field === field,
@@ -7444,11 +7521,6 @@ describe('ProductPage expert scalar controls',
             `[data-advanced-input-field="${field}"] ion-toggle`,
           )!;
         expect(toggle.checked).toBe(mode === 'button');
-        loadService.nextResult = completeLoadResult(
-          'success', 'moventiv-80',
-          userValueWithPeripheralByte(readbackByte),
-          { ...advancedValue('moventiv-80'), peripheralByte1: 0xc0 },
-        );
         loadService.loadProductData.calls.reset();
 
         toggle.checked = mode === 'radar';
@@ -7456,7 +7528,7 @@ describe('ProductPage expert scalar controls',
           detail: { checked: mode === 'radar' },
           bubbles: true,
         }));
-        expect(toggle.checked).toBe(mode === 'button');
+        expect(toggle.checked).toBe(mode === 'radar');
         await fixture.whenStable();
         fixture.detectChanges();
 
@@ -7465,8 +7537,8 @@ describe('ProductPage expert scalar controls',
           .args[0] as LegacyBleWriteRequest;
         expect(request.write.payloadHex).toBe(payloadHex);
         expect(request.write.characteristicUuid)
-          .toBe(BLE_UUIDS.userParametersCharacteristic);
-        expect(loadService.loadProductData).toHaveBeenCalledTimes(1);
+          .toBe(BLE_UUIDS.professionalParametersCharacteristic);
+        expect(loadService.loadProductData).not.toHaveBeenCalled();
         expect(component.currentExpertInputMode(input)).toBe(mode);
         expect(toggle.checked).toBe(mode === 'radar');
         const other = component.expertInputControls.find(
@@ -7477,11 +7549,12 @@ describe('ProductPage expert scalar controls',
       });
     }
 
-    it('restores the confirmed toggle state when a Moventiv write fails',
+    it('keeps the Phase 1 user selection when a Moventiv write fails',
       async () => {
         const { component, fixture, loadService, writeExecutionService } =
           await createExpertScalarPage(
-            'moventiv-80', advancedValue('moventiv-80'),
+            'moventiv-80',
+            { ...advancedValue('moventiv-80'), peripheralByte1: 0x80 },
             expertScalarExecutionResult(
               'moventiv-80', 'obstacle-sensitivity', '07 03', 'failed',
             ),
@@ -7489,6 +7562,7 @@ describe('ProductPage expert scalar controls',
           );
         component.setActiveMainTab('settings');
         component.setActiveSettingsTab('advanced');
+        await fixture.whenStable();
         fixture.detectChanges();
         const toggle = (fixture.nativeElement as HTMLElement)
           .querySelector<HTMLIonToggleElement>(
@@ -7499,7 +7573,7 @@ describe('ProductPage expert scalar controls',
         toggle.dispatchEvent(new CustomEvent('ionChange', {
           detail: { checked: false }, bubbles: true,
         }));
-        expect(toggle.checked).toBeTrue();
+        expect(toggle.checked).toBeFalse();
         await fixture.whenStable();
         fixture.detectChanges();
 
@@ -7507,20 +7581,22 @@ describe('ProductPage expert scalar controls',
         expect(loadService.loadProductData).not.toHaveBeenCalled();
         expect(component.currentExpertInputMode(
           component.expertInputControls[0].config,
-        )).toBe('radar');
-        expect(toggle.checked).toBeTrue();
+        )).toBe('button');
+        expect(toggle.checked).toBeFalse();
         expect(component.expertInputWriteState.status).toBe('failed');
       });
 
-    it('rejects a successful Moventiv write with contradictory User readback',
+    it('replaces a local Moventiv selection on the next motor read',
       async () => {
         const { component, fixture, loadService } =
           await createExpertScalarPage(
-            'moventiv-80', advancedValue('moventiv-80'),
+            'moventiv-80',
+            { ...advancedValue('moventiv-80'), peripheralByte1: 0x80 },
             undefined, undefined, userValueWithPeripheralByte(0x30),
           );
         component.setActiveMainTab('settings');
         component.setActiveSettingsTab('advanced');
+        await fixture.whenStable();
         fixture.detectChanges();
         const toggle = (fixture.nativeElement as HTMLElement)
           .querySelector<HTMLIonToggleElement>(
@@ -7528,6 +7604,7 @@ describe('ProductPage expert scalar controls',
           )!;
         loadService.nextResult = completeLoadResult(
           'success', 'moventiv-80', userValueWithPeripheralByte(0x30),
+          { ...advancedValue('moventiv-80'), peripheralByte1: 0x80 },
         );
         loadService.loadProductData.calls.reset();
 
@@ -7538,12 +7615,17 @@ describe('ProductPage expert scalar controls',
         await fixture.whenStable();
         fixture.detectChanges();
 
-        expect(loadService.loadProductData).toHaveBeenCalledTimes(1);
+        expect(loadService.loadProductData).not.toHaveBeenCalled();
+        expect(component.currentExpertInputMode(
+          component.expertInputControls[0].config,
+        )).toBe('button');
+        await component.refreshProductData();
+        fixture.detectChanges();
         expect(toggle.checked).toBeTrue();
-        expect(component.expertInputWriteState.status).toBe('failed');
+        expect(component.expertInputWriteState.status).toBe('sent');
       });
 
-    it('should reject an input write whose motor readback disagrees',
+    it('should apply a later Widoor motor read over a local selection',
       async () => {
         const { component, loadService, writeExecutionService } =
           await createExpertScalarPage('widoor', advancedValue('widoor'));
@@ -7553,25 +7635,60 @@ describe('ProductPage expert scalar controls',
         loadService.loadProductData.calls.reset();
         loadService.nextResult = completeLoadResult(
           'success', 'widoor', userValueWithPeripheralByte(0x00),
-          { ...advancedValue('widoor'), peripheralByte1: 0x80 },
+          { ...advancedValue('widoor'), peripheralByte1: 0x00 },
         );
 
         await component.requestExpertInputChange(input, 'radar');
 
         expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
-        expect(loadService.loadProductData).toHaveBeenCalledTimes(1);
-        expect(loadService.loadProductData.calls.mostRecent().args[2])
-          .toEqual({
-            version: false,
-            datesAndCycles: false,
-            maintenance: false,
-            userParameters: true,
-            advancedParameters: false,
-          });
+        expect(loadService.loadProductData).not.toHaveBeenCalled();
+        expect(component.currentExpertInputMode(input)).toBe('radar');
+        await component.refreshProductData();
         expect(component.currentExpertInputMode(input)).toBe('button');
-        expect(component.expertInputWriteState.status).toBe('failed');
+        expect(component.expertInputWriteState.status).toBe('sent');
       },
     );
+
+    it('allows the Phase 1 Widoor Button default to change before a valid read',
+      async () => {
+        const { component, loadService, writeExecutionService } = await createExpertScalarPage(
+          'widoor',
+          { ...advancedValue('widoor'), peripheralByte1: 0x80 },
+        );
+        component.viewModel = {
+          ...component.viewModel,
+          reads: {
+            ...component.viewModel.reads,
+            userParameters: {
+              status: 'not-loaded', readStatus: null, value: null, result: null,
+            },
+          },
+        };
+        const input = component.expertInputControls[0].config;
+        const base = completeLoadResult('partial-success', 'widoor');
+        loadService.nextResult = {
+          ...base,
+          results: {
+            ...base.results,
+            userParameters: unavailableRead(
+              'user-parameters',
+              BLE_UUIDS.userParametersCharacteristic,
+            ),
+          },
+        };
+
+        await component.refreshProductData();
+        expect(component.currentExpertInputMode(input)).toBe('button');
+        loadService.loadProductData.calls.reset();
+        component.viewModel = { ...component.viewModel, loading: true };
+        loadService.isLoading = true;
+        await component.requestExpertInputChange(input, 'radar');
+
+        expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+        expect(loadService.loadProductData).not.toHaveBeenCalled();
+        expect(component.currentExpertInputMode(input)).toBe('radar');
+        expect(component.expertInputWriteState.status).toBe('sent');
+      });
 
     it('should mirror Widoor input and lock switch states after confirmed reads',
       async () => {
@@ -7607,7 +7724,7 @@ describe('ProductPage expert scalar controls',
         const confirmedInput = advancedValue('widoor');
         loadService.nextResult = completeLoadResult(
           'success', 'widoor', userValueWithPeripheralByte(0x20),
-          { ...confirmedInput, peripheralByte1: 0x00 },
+          { ...confirmedInput, peripheralByte1: 0x80 },
         );
         await component.requestExpertInputChange(input, 'radar');
         expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);

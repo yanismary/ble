@@ -135,6 +135,20 @@ export class BleReadService implements OnDestroy {
       decode: (_profile, value) => decodeBleUserParameters(value),
     }).then((result) => {
       const value = result.decoded?.valid ? result.decoded.value : null;
+      if (value !== null) {
+        const byte6 = value.peripheralByte1;
+        const highNibble = (byte6 >> 4) & 0x0f;
+        console.info('[INPUT READ]', JSON.stringify({
+          deviceId: result.deviceId,
+          rawByte6: `0x${byte6.toString(16).padStart(2, '0').toUpperCase()}`,
+          highNibble: `0x${highNibble.toString(16).toUpperCase()}`,
+          highNibbleBinary: highNibble.toString(2).padStart(4, '0'),
+          input1Bit: (highNibble >> 1) & 1,
+          input1Mode: value.peripheralFlags.input1Radar ? 'radar' : 'button',
+          input2Bit: highNibble & 1,
+          input2Mode: value.peripheralFlags.input2Radar ? 'radar' : 'button',
+        }));
+      }
       console.info('[INPUT] user-read-result', JSON.stringify({
         profile,
         deviceId,

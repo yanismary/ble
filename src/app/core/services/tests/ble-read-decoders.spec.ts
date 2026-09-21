@@ -427,6 +427,9 @@ describe('decodeBleUserParameters', () => {
   });
 
   for (const [byte, input1Radar, input2Radar] of [
+    [0xbf, true, true],
+    [0x1f, false, true],
+    [0x9a, false, true],
     [0x30, true, true],
     [0x20, true, false],
     [0x10, false, true],
@@ -434,7 +437,7 @@ describe('decodeBleUserParameters', () => {
     [0xf8, true, true],
     [0xc8, false, false],
   ] as const) {
-    it(`decodes user input modes from masked byte 0x${byte.toString(16)}`,
+    it(`decodes user input modes from high nibble of 0x${byte.toString(16)}`,
       () => {
         const result = decodeBleUserParameters(
           bytes(0, 50, 60, 3, 12, byte, 0xa5),
@@ -480,7 +483,7 @@ describe('decodeAdvancedPeripheralFlags', () => {
     });
   });
 
-  it('decodes cleared high bits without assigning input modes', () => {
+  it('decodes cleared high bits', () => {
     const flags = decodeAdvancedPeripheralFlags(0x00);
     expect(flags.bit7Set).toBeFalse();
     expect(flags.bit6Set).toBeFalse();

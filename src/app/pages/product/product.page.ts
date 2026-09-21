@@ -68,7 +68,6 @@ import {
   BleUserParameters,
   HistoricalBleDate,
   decodeAdvancedPeripheralFlags,
-  withUserInputRadar,
 } from '../../core/services/ble-read-decoders';
 import {
   BleTypedReadResult,
@@ -305,7 +304,6 @@ export class ProductPage implements OnDestroy {
   private readonly subscriptions = new Subscription();
   private productBackButtonSubscription: Subscription | null = null;
   private initialPageInitializationInProgress = false;
-  private initialPageReadyLogged = false;
   private readonly controlLocks = new ProductControlUnlockRegistry();
   private readonly context: ProductPageNavigationState | null;
   private loadCycle = 0;
@@ -323,6 +321,10 @@ export class ProductPage implements OnDestroy {
     ProductExpertInputField,
     LegacyBleWrite
   >;
+  private readonly requestedExpertInputModes = new Map<
+    ProductExpertInputField,
+    LegacyInputMode
+  >();
   private readonly expertScalarWrites: Map<
     ProductExpertScalarField,
     LegacyBleWrite
@@ -718,6 +720,7 @@ export class ProductPage implements OnDestroy {
     this.activeMainTab = tab;
     if (tab === 'settings' && previousTab !== 'settings') {
       this.activeSettingsTab = 'basic';
+      void this.refreshSettingsOnEntry();
     }
     this.scrollContentToTop();
   }
@@ -975,8 +978,7 @@ export class ProductPage implements OnDestroy {
   get showExpertInputControls(): boolean {
     return this.pageContextCurrent &&
       this.expertInputControls.length > 0 &&
-      (this.viewModel.reads.userParameters.status === 'available' ||
-        this.config.behavior.showControlsBeforeRead);
+      this.phase1ShowsExpertControls();
   }
 
   get showExpertScalarControls(): boolean {
@@ -1596,11 +1598,11 @@ export class ProductPage implements OnDestroy {
   async refreshProductData(
     options: ProductDataLoadOptions = {},
     showLoading = true,
+    settingsRefresh = false,
   ): Promise<void> {
     if (!this.canRefresh || this.context === null || this.isDemoMode) {
       return;
     }
-    const initialLoad = this.viewModel.lastUpdatedAt === null;
     const cycle = ++this.loadCycle;
     const context = this.context;
     this.viewModel = {
@@ -1608,10 +1610,6 @@ export class ProductPage implements OnDestroy {
       loading: showLoading,
       globalError: null,
     };
-    if (initialLoad) {
-      this.logConnectionPerformance('Initial reads start');
-    }
-
     try {
       const result = await this.productDataLoadService.loadProductData(
         context.profile,
@@ -1626,25 +1624,13 @@ export class ProductPage implements OnDestroy {
           result.connectionGeneration !== context.connectionGeneration) {
         return;
       }
-      this.applyLoadResult(result);
-      if (initialLoad) {
-        this.logConnectionPerformance('Initial reads finished', {
-          status: result.status,
-          executedOrder: result.executedOrder,
-        });
-      }
+      this.applyLoadResult(result, settingsRefresh);
     } finally {
       if (cycle === this.loadCycle && !this.destroyed) {
         this.viewModel = {
           ...this.viewModel,
           loading: false,
         };
-        if (initialLoad && !this.initialPageReadyLogged) {
-          this.initialPageReadyLogged = true;
-          this.logConnectionPerformance('Page ready', {
-            loadStatus: this.viewModel.loadStatus,
-          });
-        }
       }
     }
   }
@@ -2241,14 +2227,33 @@ export class ProductPage implements OnDestroy {
   currentExpertInputMode(
     config: ProductExpertInputUiConfig,
   ): LegacyInputMode | null {
-    const value = this.viewModel.reads.userParameters.value;
-    if (value === null || this.config.profile !== config.profile) {
+    if (this.config.profile !== config.profile) {
       return null;
     }
-    const radar = config.field === 'input-1'
-      ? value.peripheralFlags.input1Radar
-      : value.peripheralFlags.input2Radar;
+    const requested = this.requestedExpertInputModes.get(config.field);
+    if (requested !== undefined) {
+      return requested;
+    }
+    const radar = this.isDemoMode
+      ? this.demoExpertInputRadar(config)
+      : this.viewModel.reads.userParameters.value?.peripheralFlags[
+          config.field === 'input-1' ? 'input1Radar' : 'input2Radar'
+        ];
+    if (radar === undefined || radar === null) {
+      return config.profile === 'widoor' ? 'button' : null;
+    }
     return radar ? 'radar' : 'button';
+  }
+
+  private demoExpertInputRadar(
+    config: ProductExpertInputUiConfig,
+  ): boolean | null {
+    const value = this.viewModel.reads.advancedParameters.value;
+    if (value === null || value.profile !== config.profile) {
+      return null;
+    }
+    const flags = decodeAdvancedPeripheralFlags(value.peripheralByte1);
+    return config.field === 'input-1' ? flags.bit7Set : flags.bit6Set;
   }
 
   canChangeExpertInput(
@@ -2260,8 +2265,8 @@ export class ProductPage implements OnDestroy {
         ) ||
         !this.showExpertInputControls ||
         !this.isCurrentContext() ||
-        this.viewModel.loading ||
-        this.productDataLoadService.isLoading ||
+        (this.config.profile !== 'widoor' &&
+          (this.viewModel.loading || this.productDataLoadService.isLoading)) ||
         this.bleService.isWriting ||
         this.bleService.disconnectingDeviceId !== null ||
         this.bleWriteExecutionService.isExecuting ||
@@ -2313,14 +2318,14 @@ export class ProductPage implements OnDestroy {
     config: ProductExpertInputUiConfig,
     event: CustomEvent<{ readonly checked: boolean }>,
   ): void {
-    const confirmed = this.currentExpertInputMode(config);
     const toggle = event.target as HTMLIonToggleElement | null;
-    if (toggle !== null) {
-      toggle.checked = confirmed === 'radar';
-    }
     void this.requestExpertInputChange(
       config, event.detail.checked ? 'radar' : 'button',
-    );
+    ).then(() => {
+      if (toggle !== null && this.isCurrentContext()) {
+        toggle.checked = this.currentExpertInputMode(config) === 'radar';
+      }
+    });
   }
 
   async requestExpertInputChange(
@@ -2344,7 +2349,7 @@ export class ProductPage implements OnDestroy {
       console.info('[INPUT] change-ignored', JSON.stringify({
         field: config.field,
         requestedMode: mode,
-        readStatus: this.viewModel.reads.userParameters.status,
+        readStatus: this.viewModel.reads.advancedParameters.status,
         at: Date.now(),
       }));
       return;
@@ -2371,7 +2376,9 @@ export class ProductPage implements OnDestroy {
       profile: config.profile,
       deviceId: context.deviceId,
     }));
-    const contextStatus = this.writeContextStatus(context, write);
+    const contextStatus = this.writeContextStatus(
+      context, write, config.profile === 'widoor',
+    );
     if (contextStatus !== null) {
       console.info('[INPUT] write-result', JSON.stringify({
         input: config.field === 'input-1' ? 1 : 2,
@@ -2386,6 +2393,7 @@ export class ProductPage implements OnDestroy {
       });
       return;
     }
+    this.requestedExpertInputModes.set(config.field, mode);
     const attemptId = this.nextCommandIdentifier('attempt');
     const confirmedAt = Date.now();
     const authorization = this.usesPhase1ImmediateWrite(config.profile)
@@ -2429,16 +2437,10 @@ export class ProductPage implements OnDestroy {
       return;
     }
     if (result.status === 'success') {
-      const confirmed = await this.verifyExpertInputMode(context, config, mode);
-      if (!this.isCurrentContext() || this.context !== context) {
-        return;
-      }
       this.expertInputWriteState = Object.freeze({
-        status: confirmed ? 'sent' : 'failed',
+        status: 'sent',
         field: config.field,
-        message: confirmed
-          ? this.text.expertInputControls.sent
-          : this.text.expertInputControls.failed,
+        message: this.text.expertInputControls.sent,
       });
       return;
     }
@@ -4429,14 +4431,11 @@ export class ProductPage implements OnDestroy {
     if (this.routerOutlet !== null) {
       this.routerOutlet.swipeGesture = false;
     }
-    this.logConnectionPerformance('Product page entered');
     if (this.viewModel.lastUpdatedAt === null && this.canRefresh) {
       void this.initializeConnectedProductPage();
+    } else if (this.activeMainTab === 'settings') {
+      void this.refreshSettingsOnEntry();
     }
-  }
-
-  ionViewDidEnter(): void {
-    this.logConnectionPerformance('Product page displayed');
   }
 
   ionViewWillLeave(): void {
@@ -4482,19 +4481,14 @@ export class ProductPage implements OnDestroy {
 
     this.initialPageInitializationInProgress = true;
     this.viewModel = { ...this.viewModel, loading: true };
-    this.logConnectionPerformance('Motor notification wait start');
-
     try {
       await this.bleService.waitForNotificationStart(
         BLE_UUIDS.shdoService,
         BLE_UUIDS.motorStateCharacteristic,
         context.deviceId,
       );
-      this.logConnectionPerformance('Motor notification wait finished');
     } catch (error: unknown) {
-      this.logConnectionPerformance('Motor notification wait failed', {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      console.warn('Motor notification wait failed.', error);
     } finally {
       if (!this.destroyed) {
         this.viewModel = { ...this.viewModel, loading: false };
@@ -4508,20 +4502,6 @@ export class ProductPage implements OnDestroy {
     } finally {
       this.initialPageInitializationInProgress = false;
     }
-  }
-
-  private logConnectionPerformance(
-    step: string,
-    details: Readonly<Record<string, unknown>> = {},
-  ): void {
-    const startedAt = this.context?.connectionPerformanceStartedAt;
-    if (startedAt === undefined) {
-      return;
-    }
-    console.info(
-      `[BLE PERF] ${step} +${Date.now() - startedAt} ms`,
-      details,
-    );
   }
 
   private connectedProductInactivitySessionId(): string | null {
@@ -4622,29 +4602,6 @@ export class ProductPage implements OnDestroy {
     const rawValue = context?.displayName ?? '';
     const physicalName = normalizeBleProductName(rawValue) || this.config.productName;
     const { name, roomSuffix } = splitProductDisplayName(physicalName);
-    if (this.bleService.platform === 'ios' && context?.mode !== 'demo') {
-      console.info('[IOS-PRODUCT-NAME]', JSON.stringify({
-        deviceId: context?.deviceId ?? null,
-        rawProductName: rawValue,
-        displayedName: name,
-        roomSuffix,
-        source: 'scan-navigation-context',
-      }));
-    }
-    if (context?.mode !== 'demo') {
-      console.info('[NAME-EDIT-RAW]', {
-        rawValue: JSON.stringify(rawValue),
-        rawLength: rawValue.length,
-        visibleValue: name,
-        visibleLength: name.length,
-        codePoints: Array.from(rawValue, (character) => character.codePointAt(0)),
-        tailCodePoints: Array.from(rawValue.slice(-8), (character) =>
-          character.codePointAt(0)),
-        roomSuffix: roomSuffix ?? '',
-        draftValue: name,
-        draftLength: name.length,
-      });
-    }
     const demoSnapshot = context?.mode === 'demo' &&
       isProductDemoProfile(this.config)
       ? createProductDemoSnapshot(this.config)
@@ -4974,7 +4931,59 @@ export class ProductPage implements OnDestroy {
       this.isCurrentContext();
   }
 
-  private applyLoadResult(result: ProductDataLoadResult): void {
+  private async refreshSettingsOnEntry(): Promise<void> {
+    if (!this.canRefresh || this.context === null || this.isDemoMode) {
+      return;
+    }
+    const { profile, deviceId } = this.context;
+    this.userSpeedDrafts.clear();
+    this.userTimingDrafts.clear();
+    this.weightRangeDraft = null;
+    this.expertScalarDrafts.clear();
+    console.info('[SETTINGS REFRESH] start', JSON.stringify({ profile, deviceId }));
+    try {
+      await this.refreshProductData({
+        version: false,
+        datesAndCycles: false,
+        maintenance: false,
+        userParameters: true,
+        advancedParameters: true,
+      }, false, true);
+    } catch (error: unknown) {
+      console.warn('[SETTINGS REFRESH] read failed', JSON.stringify({
+        profile,
+        deviceId,
+        error: error instanceof Error ? error.message : String(error),
+      }));
+    }
+  }
+
+  private applyLoadResult(
+    result: ProductDataLoadResult,
+    settingsRefresh = false,
+  ): void {
+    if (settingsRefresh) {
+      console.info('[SETTINGS REFRESH] completed', JSON.stringify({
+        profile: result.profile,
+        deviceId: result.deviceId,
+        status: result.status,
+        userParameters: result.results.userParameters?.status ?? null,
+        advancedParameters: result.results.advancedParameters?.status ?? null,
+        error: result.error,
+      }));
+      for (const step of ['userParameters', 'advancedParameters'] as const) {
+        const read = result.results[step];
+        if (read !== undefined && read.status !== 'success') {
+          console.warn('[SETTINGS REFRESH] read failed', JSON.stringify({
+            profile: result.profile,
+            deviceId: result.deviceId,
+            step,
+            status: read.status,
+            error: read.error,
+          }));
+        }
+      }
+    }
     const terminalConnectionState =
       result.status === 'disconnected'
         ? 'disconnected'
@@ -4986,6 +4995,15 @@ export class ProductPage implements OnDestroy {
     const fullLoad = result.notRequested.length === 0;
     const hadConfirmedUserParameters =
       this.viewModel.reads.userParameters.value !== null;
+    if (result.results.userParameters !== undefined &&
+        result.results.userParameters.status !== 'success') {
+      for (const control of this.expertInputControls) {
+        const mode = this.currentExpertInputMode(control.config);
+        if (mode !== null) {
+          this.requestedExpertInputModes.set(control.config.field, mode);
+        }
+      }
+    }
     this.viewModel = {
       ...this.viewModel,
       connectionState: terminalConnectionState,
@@ -5001,13 +5019,17 @@ export class ProductPage implements OnDestroy {
           keepMissingRead
           ? this.viewModel.reads.maintenance
           : readView(result.results.maintenance, result.status),
-        userParameters: result.results.userParameters === undefined &&
-          keepMissingRead
+        userParameters: (result.results.userParameters === undefined &&
+          keepMissingRead) || (settingsRefresh && keepMissingRead &&
+          result.results.userParameters?.status !== 'success' &&
+          this.viewModel.reads.userParameters.value !== null)
           ? this.viewModel.reads.userParameters
           : readView(result.results.userParameters, result.status),
         advancedParameters:
-          result.results.advancedParameters === undefined &&
-            keepMissingRead
+          (result.results.advancedParameters === undefined &&
+            keepMissingRead) || (settingsRefresh && keepMissingRead &&
+            result.results.advancedParameters?.status !== 'success' &&
+            this.viewModel.reads.advancedParameters.value !== null)
             ? this.viewModel.reads.advancedParameters
             : readView(result.results.advancedParameters, result.status),
       },
@@ -5016,7 +5038,12 @@ export class ProductPage implements OnDestroy {
       lastUpdatedAt: result.completedAt,
       globalError: result.error?.message ?? null,
     };
+    if (result.results.userParameters?.status === 'success') {
+      this.requestedExpertInputModes.clear();
+    }
     if (result.results.userParameters !== undefined) {
+      const inputFlags = this.viewModel.reads.userParameters.value
+        ?.peripheralFlags ?? null;
       console.info('[INPUT] ui-read-applied', JSON.stringify({
         profile: this.config.profile,
         deviceId: this.context?.deviceId ?? null,
@@ -5025,12 +5052,8 @@ export class ProductPage implements OnDestroy {
         rawHex: result.results.userParameters.decoded?.rawHex ?? null,
         peripheralByte1:
           this.viewModel.reads.userParameters.value?.peripheralByte1 ?? null,
-        input1Radar:
-          this.viewModel.reads.userParameters.value?.peripheralFlags
-            .input1Radar ?? null,
-        input2Radar:
-          this.viewModel.reads.userParameters.value?.peripheralFlags
-            .input2Radar ?? null,
+        input1Radar: inputFlags?.input1Radar ?? null,
+        input2Radar: inputFlags?.input2Radar ?? null,
         error: result.results.userParameters.error,
         at: Date.now(),
       }));
@@ -5042,6 +5065,14 @@ export class ProductPage implements OnDestroy {
     if (receivedInitialUserParameters) {
       this.userSpeedDrafts.clear();
       this.userTimingDrafts.clear();
+    }
+    if (settingsRefresh && result.results.userParameters?.status === 'success') {
+      this.userSpeedDrafts.clear();
+      this.userTimingDrafts.clear();
+    }
+    if (settingsRefresh && result.results.advancedParameters?.status === 'success') {
+      this.weightRangeDraft = null;
+      this.expertScalarDrafts.clear();
     }
     if (fullLoad) {
       this.controlLocks.lockAll();
@@ -5103,6 +5134,12 @@ export class ProductPage implements OnDestroy {
     this.loadCycle += 1;
     if (this.viewModel.loading) {
       this.productDataLoadService.cancelCurrentLoad();
+    }
+    for (const control of this.expertInputControls) {
+      const mode = this.currentExpertInputMode(control.config);
+      if (mode !== null) {
+        this.requestedExpertInputModes.set(control.config.field, mode);
+      }
     }
     this.viewModel = {
       ...this.viewModel,
@@ -5254,64 +5291,16 @@ export class ProductPage implements OnDestroy {
     field: ProductExpertInputField,
     mode: LegacyInputMode,
   ): void {
-    const current = this.viewModel.reads.userParameters.value;
+    const current = this.viewModel.reads.advancedParameters.value;
     if (current === null) {
       return;
     }
-    this.updateDemoUserParameters(withUserInputRadar(
-      current, field === 'input-1' ? 1 : 2, mode === 'radar',
-    ));
-  }
-
-  private async verifyExpertInputMode(
-    context: ProductPageNavigationState,
-    config: ProductExpertInputUiConfig,
-    mode: LegacyInputMode,
-  ): Promise<boolean> {
-    try {
-      const result = await this.productDataLoadService.loadProductData(
-        context.profile,
-        context.deviceId,
-        {
-          version: false,
-          datesAndCycles: false,
-          maintenance: false,
-          userParameters: true,
-          advancedParameters: false,
-        },
-      );
-      if (!this.isCurrentContext() || this.context !== context ||
-          result.profile !== context.profile ||
-          result.deviceId !== context.deviceId ||
-          result.connectionGeneration !== context.connectionGeneration) {
-        return false;
-      }
-      this.applyLoadResult(result);
-      const actualMode = this.currentExpertInputMode(config);
-      const confirmed = actualMode === mode;
-      console.info('[INPUT] readback-confirmation', JSON.stringify({
-        input: config.field === 'input-1' ? 1 : 2,
-        requestedMode: mode,
-        actualMode,
-        confirmed,
-        rawHex: result.results.userParameters?.decoded?.rawHex ?? null,
-        peripheralByte1:
-          this.viewModel.reads.userParameters.value?.peripheralByte1 ?? null,
-        input1Radar:
-          this.viewModel.reads.userParameters.value?.peripheralFlags.input1Radar ?? null,
-        input2Radar:
-          this.viewModel.reads.userParameters.value?.peripheralFlags.input2Radar ?? null,
-      }));
-      return confirmed;
-    } catch (error) {
-      console.info('[INPUT] readback-confirmation', JSON.stringify({
-        input: config.field === 'input-1' ? 1 : 2,
-        requestedMode: mode,
-        confirmed: false,
-        error: error instanceof Error ? error.message : String(error),
-      }));
-      return false;
-    }
+    const mask = field === 'input-1' ? 0x80 : 0x40;
+    this.updateDemoExpertParameters({
+      peripheralByte1: mode === 'radar'
+        ? current.peripheralByte1 | mask
+        : current.peripheralByte1 & ~mask,
+    });
   }
 
   private updateDemoWeightRange(range: ProductWeightRange): void {
@@ -5730,6 +5719,7 @@ export class ProductPage implements OnDestroy {
   private writeContextStatus(
     context: ProductPageNavigationState,
     write: LegacyBleWrite,
+    allowDuringLoad = false,
   ): 'disconnected' | 'stale' | 'unavailable' | null {
     if (this.destroyed || this.context !== context ||
         context.profile !== write.profile ||
@@ -5747,8 +5737,8 @@ export class ProductPage implements OnDestroy {
         this.viewModel.connectionState !== 'connected') {
       return 'stale';
     }
-    if (this.viewModel.loading ||
-        this.productDataLoadService.isLoading ||
+    if ((!allowDuringLoad &&
+          (this.viewModel.loading || this.productDataLoadService.isLoading)) ||
         this.bleService.isWriting) {
       return 'unavailable';
     }
@@ -5767,11 +5757,6 @@ export class ProductPage implements OnDestroy {
 
   private currentLockMode(): LegacyLockMode | 'unknown' | null {
     return this.viewModel.reads.userParameters.value?.lockMode ?? null;
-  }
-
-  private motorCommandsBlockedByLockMode(): boolean {
-    const lockMode = this.currentLockMode();
-    return lockMode === 'locked-open' || lockMode === 'locked-closed';
   }
 
   private roomNameFailureMessage(
@@ -6142,26 +6127,6 @@ export class ProductPage implements OnDestroy {
     ) > 0;
   }
 
-  private motorStateLabel(state: number | null): string {
-    if (state === null || this.viewModel.profile !== 'widoor') {
-      return state === null
-        ? this.text.noValue
-        : this.text.motor.unknown;
-    }
-    switch (state) {
-      case 0x21:
-        return this.text.motor.openingStarted;
-      case 0x20:
-        return this.text.motor.stoppedAfterOpening;
-      case 0x31:
-        return this.text.motor.closingStarted;
-      case 0x30:
-        return this.text.motor.stoppedAfterClosing;
-      default:
-        return this.text.motor.unknown;
-    }
-  }
-
   private row(key: string, label: string, value: string): ProductDisplayRow {
     return { key, label, value };
   }
@@ -6213,10 +6178,6 @@ export class ProductPage implements OnDestroy {
       case 'pairing':
         return switches.pairing;
     }
-  }
-
-  private optionalNumber(value: number | null): string {
-    return value === null ? this.text.noValue : String(value);
   }
 
   private formatByte(value: number): string {
@@ -6344,9 +6305,6 @@ export function isProductPageNavigationState(
     candidate.deviceId.trim().length > 0 &&
     Number.isInteger(candidate.connectionGeneration) &&
     (candidate.connectionGeneration ?? -1) >= 0 &&
-    (candidate.connectionPerformanceStartedAt === undefined ||
-      (Number.isFinite(candidate.connectionPerformanceStartedAt) &&
-        (candidate.connectionPerformanceStartedAt ?? -1) >= 0)) &&
     typeof candidate.displayName === 'string' &&
     candidate.displayName.trim().length > 0 &&
     candidate.identificationConfidence ===

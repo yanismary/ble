@@ -23,16 +23,18 @@ describe('productExpertInputConfigsFor', () => {
       .toEqual([]);
   });
 
-  it('encodes Moventiv User input commands without exposing radar tests', () => {
+  it('encodes Moventiv input commands like Phase 1', () => {
     const [input1, input2] = productExpertInputConfigsFor(
       PRODUCT_PAGE_CONFIG['moventiv-60'],
     );
-    expect(input1.catalogFactory('radar').payloadHex).toBe('05 05 01');
-    expect(input1.catalogFactory('button').payloadHex).toBe('05 05 02');
-    expect(input2.catalogFactory('radar').payloadHex).toBe('05 04 01');
-    expect(input2.catalogFactory('button').payloadHex).toBe('05 04 02');
+    expect(input1.catalogFactory('radar').payloadHex).toBe('0a 07 01');
+    expect(input1.catalogFactory('button').payloadHex).toBe('0a 07 02');
+    expect(input2.catalogFactory('radar').payloadHex).toBe('0a 06 01');
+    expect(input2.catalogFactory('button').payloadHex).toBe('0a 06 02');
     expect(input1.catalogFactory('radar').characteristicUuid)
-      .toBe('7c7679a6-5a0d-4cbd-8cbe-93b6d6b4b80f');
+      .toBe('15e9eef3-939b-4e66-baf9-772d8bd18c41');
+    expect(input1.catalogFactory('radar').serviceUuid)
+      .toBe('978ae765-664c-45d8-9157-3b9031e6478e');
   });
 
   it('creates a scoped authorization for a catalogued input write', () => {
@@ -40,6 +42,7 @@ describe('productExpertInputConfigsFor', () => {
       PRODUCT_PAGE_CONFIG.widoor,
     );
     const write = input1.catalogFactory('radar');
+    expect(write.serviceUuid).toBe('3206890a-650e-46f3-9c73-2bc0840e3b8e');
     const authorization = createProductExpertInputAuthorization({
       write,
       deviceId: 'device-1',

@@ -416,6 +416,7 @@ export function decodeBleUserParameters(
     return failure;
   }
 
+  const inputModeNibble = (bytes[5] >> 4) & 0x0f;
   return validResult(bytes, {
     lockModeRaw: bytes[0],
     lockMode: decodeLockMode(bytes[0]),
@@ -428,8 +429,8 @@ export function decodeBleUserParameters(
     peripheralFlags: {
       dynamicLight: Boolean(bytes[5] & 0x80),
       staticLight: Boolean(bytes[5] & 0x40),
-      input1Radar: Boolean(bytes[5] & 0x20),
-      input2Radar: Boolean(bytes[5] & 0x10),
+      input1Radar: (inputModeNibble & 0x02) !== 0,
+      input2Radar: (inputModeNibble & 0x01) !== 0,
       rgbIndicator: Boolean(bytes[5] & 0x08),
     },
   });
