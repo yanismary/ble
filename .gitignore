@@ -75,3 +75,7 @@ Thumbs.db
 *.salive
 
 .angular/
+
+/android/app/debug/
+/android/mantion-release-key
+/android/upload_certificate.pem
