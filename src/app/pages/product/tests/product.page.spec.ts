@@ -69,6 +69,7 @@ import {
 } from '../../../core/services/product-exit-state.service';
 import {
   CONNECTED_PRODUCT_INACTIVITY_TIMEOUT_MS,
+  CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS,
   ConnectedProductInactivityService,
 } from '../../../core/services/connected-product-inactivity.service';
 import {
@@ -134,6 +135,16 @@ class FakeBleService {
     if (deviceId !== null) {
       this.disconnectionSubject.next({ deviceId, reason: 'remote' });
     }
+  }
+
+  emitRemoteDisconnection(): void {
+    const deviceId = this.connectedDeviceId;
+    if (deviceId === null) {
+      return;
+    }
+    this.connectedDeviceId = null;
+    this.connectionGeneration += 1;
+    this.disconnectionSubject.next({ deviceId, reason: 'remote' });
   }
 
   emitMotorState(bytes: readonly number[]): void {
@@ -658,6 +669,8 @@ describe('ProductPage', () => {
       expect(routerNavigate).not.toHaveBeenCalled();
 
       inactivity.handleAppStateChange(true);
+      expect(routerNavigate).not.toHaveBeenCalled();
+      tick(CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS);
       flushMicrotasks();
 
       expect(disconnect).toHaveBeenCalledTimes(1);
@@ -666,7 +679,7 @@ describe('ProductPage', () => {
     }),
   );
 
-  it('should retry Scan on resume when expiration completed in background',
+  it('should not navigate twice when expiration completed in background',
     fakeAsync(() => {
       const inactivity = TestBed.inject(ConnectedProductInactivityService);
       const disconnect = spyOn(bleService, 'disconnect').and.callThrough();
@@ -691,18 +704,36 @@ describe('ProductPage', () => {
       inactivity.handleAppStateChange(false);
       resolveFirstNavigation(true);
       flushMicrotasks();
-      expect(inactivity.isExpirationPending('widoor:device-1:4')).toBeTrue();
+      expect(inactivity.isMonitoring('widoor:device-1:4')).toBeFalse();
 
       routerNavigate.and.resolveTo(true);
       inactivity.handleAppStateChange(true);
+      tick(CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS);
       flushMicrotasks();
 
       expect(disconnect).toHaveBeenCalledTimes(1);
-      expect(routerNavigate).toHaveBeenCalledTimes(2);
-      expect(routerNavigate.calls.allArgs()).toEqual([
-        [['/scan']],
-        [['/scan']],
-      ]);
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
+      expect(inactivity.isMonitoring()).toBeFalse();
+    }),
+  );
+
+  it('should navigate once when BLE disconnects during deferred resume',
+    fakeAsync(() => {
+      const inactivity = TestBed.inject(ConnectedProductInactivityService);
+      const disconnect = spyOn(bleService, 'disconnect').and.callThrough();
+      inactivity.handleAppStateChange(false);
+      tick(CONNECTED_PRODUCT_INACTIVITY_TIMEOUT_MS);
+
+      inactivity.handleAppStateChange(true);
+      bleService.emitRemoteDisconnection();
+      expect(component.viewModel.connectionState).toBe('disconnected');
+      expect(routerNavigate).not.toHaveBeenCalled();
+
+      tick(CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS);
+      flushMicrotasks();
+
+      expect(disconnect).not.toHaveBeenCalled();
+      expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
       expect(inactivity.isMonitoring()).toBeFalse();
     }),
   );

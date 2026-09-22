@@ -7,6 +7,8 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { addIcons } from 'ionicons';
+import { App } from '@capacitor/app';
+import type { PluginListenerHandle } from '@capacitor/core';
 import {
   add,
   arrowBack,
@@ -317,6 +319,9 @@ export class ProductPage implements OnDestroy {
   private readonly userTimingWrites: Map<ProductUserTimingField, LegacyBleWrite>;
   private readonly userTimingDrafts = new Map<ProductUserTimingField, number>();
   private weightRangeDraft: ProductWeightRange | null = null;
+  private appStateListener: PluginListenerHandle | null = null;
+  private motorNotificationsPausedForBackground = false;
+  private motorNotificationLifecycle: Promise<void> = Promise.resolve();
   private readonly expertInputWrites: Map<
     ProductExpertInputField,
     LegacyBleWrite
@@ -675,6 +680,118 @@ export class ProductPage implements OnDestroy {
           this.ngZone.run(() => this.handleMotorNotification(event));
         },
       ));
+    }
+
+    void App.addListener('appStateChange', ({ isActive }) => {
+      if (this.destroyed || this.isDemoMode) {
+        return;
+      }
+
+      this.motorNotificationLifecycle = this.motorNotificationLifecycle
+        .then(async () => {
+          if (isActive) {
+            await this.resumeMotorNotificationsAfterBackground();
+          } else {
+            await this.pauseMotorNotificationsForBackground();
+          }
+        })
+        .catch((error: unknown) => {
+          console.warn(
+            '[BLE LIFECYCLE] notification lifecycle failed',
+            error,
+          );
+        });
+    }).then((listener) => {
+      if (this.destroyed) {
+        void listener.remove();
+        return;
+      }
+
+      this.appStateListener = listener;
+    });
+  }
+
+  private async pauseMotorNotificationsForBackground(): Promise<void> {
+    const context = this.context;
+
+    if (
+      context === null ||
+      this.isDemoMode ||
+      this.motorNotificationsPausedForBackground ||
+      this.bleService.connectedDeviceId !== context.deviceId
+    ) {
+      return;
+    }
+
+    console.info(
+      '[BLE LIFECYCLE] pausing motor notifications for background',
+    );
+
+    try {
+      await this.bleService.stopNotifications(
+        BLE_UUIDS.shdoService,
+        BLE_UUIDS.motorStateCharacteristic,
+        context.deviceId,
+      );
+
+      if (!this.destroyed) {
+        this.motorNotificationsPausedForBackground = true;
+
+        console.info(
+          '[BLE LIFECYCLE] motor notifications paused',
+        );
+      }
+    } catch (error: unknown) {
+      console.warn(
+        '[BLE LIFECYCLE] failed to pause motor notifications',
+        error,
+      );
+    }
+  }
+
+  private async resumeMotorNotificationsAfterBackground(): Promise<void> {
+    const context = this.context;
+
+    if (
+      context === null ||
+      this.isDemoMode ||
+      !this.motorNotificationsPausedForBackground
+    ) {
+      return;
+    }
+
+    if (this.bleService.connectedDeviceId !== context.deviceId) {
+      this.motorNotificationsPausedForBackground = false;
+      return;
+    }
+
+    console.info(
+      '[BLE LIFECYCLE] resuming motor notifications',
+    );
+
+    try {
+      await this.bleService.startNotifications(
+        BLE_UUIDS.shdoService,
+        BLE_UUIDS.motorStateCharacteristic,
+        () => {
+          // ProductPage receives the notification through
+          // bleService.notifications$.
+        },
+        context.deviceId,
+      );
+
+      if (!this.destroyed) {
+        this.motorNotificationsPausedForBackground = false;
+
+        console.info(
+          '[BLE LIFECYCLE] motor notifications resumed',
+        );
+      }
+    } catch (error: unknown) {
+      console.warn(
+        '[BLE LIFECYCLE] failed to resume motor notifications',
+        error,
+      );
     }
   }
 
@@ -4471,6 +4588,10 @@ export class ProductPage implements OnDestroy {
     this.clearWidoorSliderWrites();
     this.productBackButtonSubscription?.unsubscribe();
     this.productBackButtonSubscription = null;
+    if (this.appStateListener !== null) {
+      void this.appStateListener.remove();
+      this.appStateListener = null;
+    }
     this.subscriptions.unsubscribe();
   }
 

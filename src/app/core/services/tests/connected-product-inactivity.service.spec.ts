@@ -7,6 +7,7 @@ import {
 
 import {
   CONNECTED_PRODUCT_INACTIVITY_TIMEOUT_MS,
+  CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS,
   ConnectedProductInactivityService,
 } from '../connected-product-inactivity.service';
 
@@ -64,7 +65,7 @@ describe('ConnectedProductInactivityService', () => {
     expect(onTimeout).toHaveBeenCalledTimes(1);
   }));
 
-  it('expires immediately on foreground resume after 10 minutes',
+  it('expires once after the foreground resume settles',
     fakeAsync(() => {
       startSession();
       tick(3 * 60 * 1_000);
@@ -74,6 +75,13 @@ describe('ConnectedProductInactivityService', () => {
       expect(onTimeout).not.toHaveBeenCalled();
 
       service.handleAppStateChange(true);
+      expect(onTimeout).not.toHaveBeenCalled();
+      expect(service.isExpirationPending('widoor:device-1:4')).toBeTrue();
+
+      document.dispatchEvent(new Event('pointerdown'));
+      tick(CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS - 1);
+      expect(onTimeout).not.toHaveBeenCalled();
+      tick(1);
       expect(onTimeout).toHaveBeenCalledTimes(1);
     }),
   );
@@ -88,12 +96,14 @@ describe('ConnectedProductInactivityService', () => {
       service.handleAppStateChange(true);
       expect(onTimeout).not.toHaveBeenCalled();
 
-      tick(60 * 1_000);
+      tick(CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS);
+      expect(onTimeout).not.toHaveBeenCalled();
+      tick(60 * 1_000 - CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS);
       expect(onTimeout).toHaveBeenCalledTimes(1);
     }),
   );
 
-  it('retries a completed background expiration when the app resumes',
+  it('does not retry a completed background expiration on resume',
     fakeAsync(() => {
       let resolveFirstAttempt!: (completed: boolean) => void;
       let attempt = 0;
@@ -114,13 +124,11 @@ describe('ConnectedProductInactivityService', () => {
       resolveFirstAttempt(true);
       flushMicrotasks();
 
-      expect(service.isExpirationPending('widoor:device-1:4')).toBeTrue();
-      expect(service.isMonitoring('widoor:device-1:4')).toBeTrue();
+      expect(service.isMonitoring('widoor:device-1:4')).toBeFalse();
 
       service.handleAppStateChange(true);
-      flushMicrotasks();
-
-      expect(onTimeout).toHaveBeenCalledTimes(2);
+      tick(CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS);
+      expect(onTimeout).toHaveBeenCalledTimes(1);
       expect(service.isMonitoring()).toBeFalse();
     }),
   );
@@ -138,12 +146,39 @@ describe('ConnectedProductInactivityService', () => {
       service.handleAppStateChange(true);
       service.handleAppStateChange(true);
 
+      expect(onTimeout).not.toHaveBeenCalled();
+      tick(CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS);
       expect(onTimeout).toHaveBeenCalledTimes(1);
       resolveAttempt(true);
       flushMicrotasks();
       expect(service.isMonitoring()).toBeFalse();
     }),
   );
+
+  it('cancels the deferred check when backgrounded again', fakeAsync(() => {
+    startSession();
+    service.handleAppStateChange(false);
+    tick(CONNECTED_PRODUCT_INACTIVITY_TIMEOUT_MS);
+
+    service.handleAppStateChange(true);
+    service.handleAppStateChange(false);
+    tick(CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS);
+
+    expect(onTimeout).not.toHaveBeenCalled();
+    expect(service.isExpirationPending()).toBeTrue();
+  }));
+
+  it('cancels the deferred check when destroyed', fakeAsync(() => {
+    startSession();
+    service.handleAppStateChange(false);
+    tick(CONNECTED_PRODUCT_INACTIVITY_TIMEOUT_MS);
+
+    service.handleAppStateChange(true);
+    service.ngOnDestroy();
+    tick(CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS);
+
+    expect(onTimeout).not.toHaveBeenCalled();
+  }));
 
   it('retries when timeout finalization reports failed navigation',
     fakeAsync(() => {

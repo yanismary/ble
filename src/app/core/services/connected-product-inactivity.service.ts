@@ -6,6 +6,7 @@ import type { PluginListenerHandle } from '@capacitor/core';
 export const CONNECTED_PRODUCT_INACTIVITY_TIMEOUT_MS =
   10 * 60 * 1000;
 
+export const CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS = 300;
 const WRITE_COMPLETION_RETRY_MS = 250;
 const USER_ACTIVITY_EVENTS = Object.freeze([
   'pointerdown',
@@ -33,6 +34,7 @@ export class ConnectedProductInactivityService implements OnDestroy {
   private session: ConnectedProductInactivitySession | null = null;
   private lastUserInteractionAt = 0;
   private timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+  private resumeTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
   private appStateListener: PluginListenerHandle | null = null;
   private foreground = true;
   private expirationPending = false;
@@ -76,6 +78,7 @@ export class ConnectedProductInactivityService implements OnDestroy {
       }
       return;
     }
+    this.clearResumeTimeout();
     this.session = session;
     this.lastUserInteractionAt = Date.now();
     this.expirationPending = false;
@@ -87,6 +90,7 @@ export class ConnectedProductInactivityService implements OnDestroy {
     if (sessionId !== undefined && this.session?.id !== sessionId) {
       return;
     }
+    this.clearResumeTimeout();
     this.clearScheduledTimeout();
     this.session = null;
     this.lastUserInteractionAt = 0;
@@ -116,17 +120,46 @@ export class ConnectedProductInactivityService implements OnDestroy {
   }
 
   handleAppStateChange(isActive: boolean): void {
+    const wasForeground = this.foreground;
     this.foreground = isActive;
     if (!isActive) {
+      this.clearResumeTimeout();
       this.clearScheduledTimeout();
+      if (wasForeground && this.session !== null) {
+        console.info('[INACTIVITY] background', JSON.stringify({
+          sessionId: this.session.id,
+        }));
+      }
       return;
     }
-    this.checkForExpiration();
+    if (wasForeground || this.session === null || this.destroyed) {
+      return;
+    }
+
+    const elapsedMs = Date.now() - this.lastUserInteractionAt;
+    if (elapsedMs >= CONNECTED_PRODUCT_INACTIVITY_TIMEOUT_MS) {
+      this.expirationPending = true;
+    }
+    console.info('[INACTIVITY] resume-scheduled', JSON.stringify({
+      sessionId: this.session.id,
+      elapsedMs,
+      expirationPending: this.expirationPending,
+      delayMs: CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS,
+    }));
+    this.ngZone.runOutsideAngular(() => {
+      this.resumeTimeoutHandle = setTimeout(() => {
+        this.resumeTimeoutHandle = null;
+        if (!this.foreground || this.destroyed) {
+          return;
+        }
+        this.checkForExpiration();
+      }, CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS);
+    });
   }
 
   checkForExpiration(): void {
     if (this.session === null || this.destroyed ||
-        !this.foreground) {
+        !this.foreground || this.resumeTimeoutHandle !== null) {
       return;
     }
     if (!this.expirationPending) {
@@ -148,6 +181,10 @@ export class ConnectedProductInactivityService implements OnDestroy {
     const session = this.session;
     this.expirationInProgress = true;
     this.clearScheduledTimeout();
+    console.info('[INACTIVITY] expiration-start', JSON.stringify({
+      sessionId: session.id,
+      elapsedMs: Date.now() - this.lastUserInteractionAt,
+    }));
     this.ngZone.run(() => {
       void Promise.resolve(session.onTimeout()).then(
         (completed) => this.completeExpirationAttempt(
@@ -205,6 +242,13 @@ export class ConnectedProductInactivityService implements OnDestroy {
     }
   }
 
+  private clearResumeTimeout(): void {
+    if (this.resumeTimeoutHandle !== null) {
+      clearTimeout(this.resumeTimeoutHandle);
+      this.resumeTimeoutHandle = null;
+    }
+  }
+
   private completeExpirationAttempt(
     session: ConnectedProductInactivitySession,
     completed: boolean,
@@ -213,7 +257,7 @@ export class ConnectedProductInactivityService implements OnDestroy {
       return;
     }
     this.expirationInProgress = false;
-    if (completed && this.foreground) {
+    if (completed) {
       this.stop(session.id);
       return;
     }
