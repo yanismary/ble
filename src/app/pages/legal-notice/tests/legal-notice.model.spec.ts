@@ -4,15 +4,19 @@ import {
 } from '../legal-notice.model';
 
 describe('legal notice model', () => {
-  it('keeps the complete Phase 1 legal structure', () => {
+  it('contains the complete Phase 2 terms and contact', () => {
     const copy = legalNoticeCopyFor('fr');
 
     expect(copy.navbarTitle).toBeTruthy();
     expect(copy.title).toBeTruthy();
-    expect(copy.sections.length).toBe(2);
-    expect(copy.sections[0].paragraphs.length).toBe(3);
-    expect(copy.sections[1].paragraphs.length).toBe(1);
-    expect(copy.definitions.length).toBe(3);
+    expect(copy.navbarTitle).toBe('Conditions d’utilisation');
+    expect(copy.title).toContain('MANTION Door Control');
+    expect(copy.lastUpdated).toBe('22 septembre 2026');
+    expect(copy.sections.length).toBe(10);
+    expect(copy.sections[0].paragraphs.length).toBe(2);
+    expect(copy.sections[8].paragraphs).toContain('MANTION SMT');
+    expect(copy.sections[8].paragraphs).toContain('appsupport@mantion-smt.fr');
+    expect(copy.definitions.length).toBe(4);
   });
 
   it('keeps legal content available in every migrated language', () => {
@@ -20,7 +24,14 @@ describe('legal notice model', () => {
       const copy = legalNoticeCopyFor(language);
 
       expect(copy.title).toBeTruthy();
+      expect(copy.title).toContain('MANTION Door Control');
+      expect(copy.lastUpdated).toContain('2026');
+      expect(copy.sections.length).toBe(10);
+      expect(copy.sections.every((section) =>
+        Boolean(section.title) && section.paragraphs.length > 0,
+      )).toBeTrue();
       expect(copy.definitionsTitle).toBeTruthy();
+      expect(copy.definitions.length).toBe(4);
       expect(copy.definitions.every((definition) =>
         Boolean(definition.term) && Boolean(definition.description),
       )).toBeTrue();

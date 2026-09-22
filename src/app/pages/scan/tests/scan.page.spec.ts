@@ -886,7 +886,7 @@ describe('ScanPage', () => {
         'À propos',
         'Qui sommes-nous ?',
         'Contacts',
-        'Mentions légales',
+        'Conditions d’utilisation',
       ]);
 
       const didPresent = popoverDidPresent(popover);

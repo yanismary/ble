@@ -39,7 +39,7 @@ describe('AppMainMenuComponent', () => {
       'À propos',
       'Qui sommes-nous ?',
       'Contacts',
-      'Mentions légales',
+      'Conditions d’utilisation',
     ]);
     expect(component.items.map(({ route }) => route)).toEqual([
       ['/settings'],
@@ -51,18 +51,18 @@ describe('AppMainMenuComponent', () => {
     ]);
   });
 
-  it('should preserve the Phase 1 labels for every supported language', () => {
+  it('should use the Terms of Use label in every supported language', () => {
     expect(appMainMenuItemsFor('en').map(({ label }) => label)).toEqual([
       'App configuration', 'Help', 'About', 'Who are we?', 'Contacts',
-      'Legal notice',
+      'Terms of Use',
     ]);
     expect(appMainMenuItemsFor('de').map(({ label }) => label)).toEqual([
       'App-Einstellungen', 'Hilfe', 'Über uns', 'Wer sind wir?', 'Kontakt',
-      'AGB',
+      'Nutzungsbedingungen',
     ]);
     expect(appMainMenuItemsFor('pl').map(({ label }) => label)).toEqual([
       'Konfiguracja aplikacji', 'Pomoc', 'O aplikacji', 'Kim jesteśmy?',
-      'Kontakt', 'Informacje prawne',
+      'Kontakt', 'Warunki użytkowania',
     ]);
   });
 
@@ -74,7 +74,7 @@ describe('AppMainMenuComponent', () => {
 
     expect(component.items.map(({ label }) => label)).toEqual([
       'App-Einstellungen', 'Hilfe', 'Über uns', 'Wer sind wir?', 'Kontakt',
-      'AGB',
+      'Nutzungsbedingungen',
     ]);
   });
 

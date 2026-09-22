@@ -23,8 +23,27 @@
         </ion-item>
       </ion-list>
 
-      <h3>{{ copy.lastModification }}</h3>
-      <p>{{ copy.lastModificationText }}</p>
+      <p>{{ copy.description }}</p>
+      <p>{{ copy.connectionDescription }}</p>
+      <h3>{{ copy.supportedProductsTitle }}</h3>
+      <ul>
+        @for (product of copy.supportedProducts; track product) {
+          <li>{{ product }}</li>
+        }
+      </ul>
+      <p>{{ copy.phase2Description }}</p>
+      <p>{{ copy.modernizationDescription }}</p>
+      <p>{{ copy.compatibilityNotice }}</p>
+      <p>{{ copy.developerLabel }}</p>
+      <p>
+        @for (line of copy.aboutAddressLines; track line) {
+          {{ line }}<br />
+        }
+      </p>
+      <p>
+        {{ copy.supportLabel }}
+        <a [href]="copy.supportEmailHref">{{ copy.supportEmail }}</a>
+      </p>
     </section>
 
   </main>

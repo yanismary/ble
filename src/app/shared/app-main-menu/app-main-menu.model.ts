@@ -26,7 +26,7 @@ const APP_MAIN_MENU_LABELS: Readonly<
     about: 'À propos',
     company: 'Qui sommes-nous ?',
     contact: 'Contacts',
-    legal: 'Mentions légales',
+    legal: 'Conditions d’utilisation',
   }),
   en: Object.freeze({
     settings: 'App configuration',
@@ -34,7 +34,7 @@ const APP_MAIN_MENU_LABELS: Readonly<
     about: 'About',
     company: 'Who are we?',
     contact: 'Contacts',
-    legal: 'Legal notice',
+    legal: 'Terms of Use',
   }),
   de: Object.freeze({
     settings: 'App-Einstellungen',
@@ -42,7 +42,7 @@ const APP_MAIN_MENU_LABELS: Readonly<
     about: 'Über uns',
     company: 'Wer sind wir?',
     contact: 'Kontakt',
-    legal: 'AGB',
+    legal: 'Nutzungsbedingungen',
   }),
   pl: Object.freeze({
     settings: 'Konfiguracja aplikacji',
@@ -50,7 +50,7 @@ const APP_MAIN_MENU_LABELS: Readonly<
     about: 'O aplikacji',
     company: 'Kim jesteśmy?',
     contact: 'Kontakt',
-    legal: 'Informacje prawne',
+    legal: 'Warunki użytkowania',
   }),
 });
 

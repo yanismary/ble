@@ -12,6 +12,7 @@
 <ion-content class="mantion-page-background">
   <main class="legal-layout">
     <h2>{{ copy.title }}</h2>
+    <p>{{ copy.lastUpdatedLabel }} {{ copy.lastUpdated }}</p>
 
     @for (section of copy.sections; track section.title) {
       <section>

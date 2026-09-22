@@ -19,6 +19,10 @@ import {
 } from './app-info.model';
 import { currentAppLanguage } from '../../core/services/app-language';
 
+export function displayAppVersion(version: string): string {
+  return version ? `V${version.replace(/-dev$/, '')}` : '—';
+}
+
 @Component({
   selector: 'app-app-info',
   templateUrl: './app-info.page.html',
@@ -51,7 +55,7 @@ export class AppInfoPage implements OnInit {
 
     try {
       const info = await App.getInfo();
-      this.appVersion = info.version || '—';
+      this.appVersion = displayAppVersion(info.version);
     } catch {
       this.appVersion = '—';
     }

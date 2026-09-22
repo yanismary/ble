@@ -4,8 +4,16 @@ export interface AppInfoCopy {
   readonly aboutTitle: string;
   readonly aboutContentTitle: string;
   readonly versionLabel: string;
-  readonly lastModification: string;
-  readonly lastModificationText: string;
+  readonly description: string;
+  readonly connectionDescription: string;
+  readonly supportedProductsTitle: string;
+  readonly supportedProducts: readonly string[];
+  readonly phase2Description: string;
+  readonly modernizationDescription: string;
+  readonly compatibilityNotice: string;
+  readonly developerLabel: string;
+  readonly aboutAddressLines: readonly string[];
+  readonly supportLabel: string;
   readonly contactTitle: string;
   readonly sendMessage: string;
   readonly supportEmail: string;
@@ -18,302 +26,132 @@ export interface AppInfoCopy {
   readonly legalNoticeLabel: string;
 }
 
-interface LegacyAppInfoCopy {
-  readonly ABOUT_PAGE: {
-    readonly NAVBAR_TITLE: string;
-    readonly CONTENT_TITLE: string;
-    readonly VERSION: string;
-    readonly LAST_MODIFICATION: string;
-    readonly PARAGRAPHE1: string;
-    readonly PARAGRAPHE2: string;
-    readonly PARAGRAPHE2_LIST: {
-      readonly ITEM1: string;
-      readonly ITEM2: string;
-      readonly ITEM3: string;
-    };
-    readonly PARAGRAPHE3: string;
-    readonly PARAGRAPHE4: string;
-  };
-  readonly CONTACT_PAGE: {
-    readonly NAVBAR_TITLE: string;
-    readonly SEND_A_MESSAGE: string;
-    readonly CONTACT_1: LegacyContactCopy;
-    readonly CONTACT_2: LegacyContactCopy;
-  };
-}
+const SUPPORT_EMAIL = 'appsupport@mantion-smt.fr';
+const ABOUT_ADDRESS_LINES = Object.freeze([
+  '2 rue des Métiers', '21110 Genlis — France',
+]);
+const SUPPORTED_PRODUCTS = Object.freeze([
+  'WIDOOR', 'MOVENTIV 60', 'MOVENTIV 80', 'GARLINE',
+]);
 
-interface LegacyContactCopy {
-  readonly PHONE: {
-    readonly USERSEE: string;
-    readonly SYSTEMCALL: string;
-  };
-  readonly ADDRESS: {
-    readonly NAME: string;
-    readonly STATE: string;
-    readonly STREET: string;
-    readonly CITY: string;
-  };
-  readonly SEND_MESSAGE: {
-    readonly TO: string;
-    readonly CC: string;
-    readonly SUBJECT: string;
-    readonly BODY: string;
-  };
-}
+const ABOUT_COPY: Readonly<Record<AppInfoLanguage, Pick<AppInfoCopy,
+  | 'aboutTitle'
+  | 'aboutContentTitle'
+  | 'versionLabel'
+  | 'description'
+  | 'connectionDescription'
+  | 'supportedProductsTitle'
+  | 'phase2Description'
+  | 'modernizationDescription'
+  | 'compatibilityNotice'
+  | 'developerLabel'
+  | 'supportLabel'
+  | 'legalNoticeLabel'
+>>> = {
+  fr: {
+    aboutTitle: 'À propos',
+    aboutContentTitle: 'MANTION Door Control',
+    versionLabel: 'Version :',
+    description: 'MANTION Door Control est l’application mobile de MANTION SMT dédiée au pilotage, à la configuration et au diagnostic des motorisations MANTION compatibles.',
+    connectionDescription: 'L’application communique directement avec les équipements à proximité grâce au Bluetooth Low Energy (BLE).',
+    supportedProductsTitle: 'Motorisations prises en charge',
+    phase2Description: 'Cette nouvelle génération de l’application regroupe dans une interface unique les fonctionnalités auparavant réparties entre plusieurs applications MANTION.',
+    modernizationDescription: 'La version 2.1 repose sur une architecture modernisée afin d’améliorer la compatibilité avec les versions récentes d’Android et d’iOS ainsi que la stabilité, les performances et la maintenabilité de l’application.',
+    compatibilityNotice: 'Les fonctionnalités disponibles peuvent varier selon le modèle de motorisation, sa version matérielle et sa version logicielle.',
+    developerLabel: 'Développé par MANTION SMT',
+    supportLabel: 'Support application :',
+    legalNoticeLabel: 'Conditions d’utilisation',
+  },
+  en: {
+    aboutTitle: 'About',
+    aboutContentTitle: 'MANTION Door Control',
+    versionLabel: 'Version:',
+    description: 'MANTION Door Control is the MANTION SMT mobile app for operating, configuring and diagnosing compatible MANTION motorized systems.',
+    connectionDescription: 'The app communicates directly with nearby equipment using Bluetooth Low Energy (BLE).',
+    supportedProductsTitle: 'Supported motorized systems',
+    phase2Description: 'This new generation brings together in a single interface features previously spread across several MANTION apps.',
+    modernizationDescription: 'Version 2.1 is built on a modernized architecture to improve compatibility with recent Android and iOS versions, as well as the app’s stability, performance and maintainability.',
+    compatibilityNotice: 'Available features may vary depending on the motorized system model and its hardware and software versions.',
+    developerLabel: 'Developed by MANTION SMT',
+    supportLabel: 'App support:',
+    legalNoticeLabel: 'Terms of Use',
+  },
+  de: {
+    aboutTitle: 'Über die App',
+    aboutContentTitle: 'MANTION Door Control',
+    versionLabel: 'Version:',
+    description: 'MANTION Door Control ist die mobile App von MANTION SMT zur Steuerung, Konfiguration und Diagnose kompatibler MANTION-Antriebe.',
+    connectionDescription: 'Die App kommuniziert über Bluetooth Low Energy (BLE) direkt mit Antrieben in der Nähe.',
+    supportedProductsTitle: 'Unterstützte Antriebe',
+    phase2Description: 'Diese neue App-Generation vereint Funktionen, die bisher auf mehrere MANTION-Apps verteilt waren, in einer Oberfläche.',
+    modernizationDescription: 'Version 2.1 basiert auf einer modernisierten Architektur. Sie verbessert die Kompatibilität mit aktuellen Android- und iOS-Versionen sowie Stabilität, Leistung und Wartbarkeit der App.',
+    compatibilityNotice: 'Die verfügbaren Funktionen können je nach Antriebsmodell sowie dessen Hardware- und Softwareversion variieren.',
+    developerLabel: 'Entwickelt von MANTION SMT',
+    supportLabel: 'App-Support:',
+    legalNoticeLabel: 'Nutzungsbedingungen',
+  },
+  pl: {
+    aboutTitle: 'O aplikacji',
+    aboutContentTitle: 'MANTION Door Control',
+    versionLabel: 'Wersja:',
+    description: 'MANTION Door Control to aplikacja mobilna MANTION SMT służąca do sterowania, konfiguracji i diagnostyki zgodnych napędów MANTION.',
+    connectionDescription: 'Aplikacja komunikuje się bezpośrednio z pobliskimi urządzeniami za pomocą Bluetooth Low Energy (BLE).',
+    supportedProductsTitle: 'Obsługiwane napędy',
+    phase2Description: 'Ta nowa generacja aplikacji łączy w jednym interfejsie funkcje dostępne wcześniej w kilku aplikacjach MANTION.',
+    modernizationDescription: 'Wersja 2.1 opiera się na unowocześnionej architekturze, która poprawia zgodność z nowszymi wersjami Androida i iOS oraz stabilność, wydajność i łatwość utrzymania aplikacji.',
+    compatibilityNotice: 'Dostępne funkcje mogą się różnić w zależności od modelu napędu oraz wersji jego sprzętu i oprogramowania.',
+    developerLabel: 'Opracowano przez MANTION SMT',
+    supportLabel: 'Pomoc dotycząca aplikacji:',
+    legalNoticeLabel: 'Warunki użytkowania',
+  },
+};
 
-const APP_INFO_NAV_LABELS = {
-  "fr": {
-    "who": "Qui sommes-nous ?",
-    "legal": "Mentions légales"
+const CONTACT_COPY: Readonly<Record<AppInfoLanguage, Pick<AppInfoCopy,
+  | 'contactTitle'
+  | 'sendMessage'
+  | 'companyName'
+  | 'phoneLabel'
+  | 'phoneHref'
+  | 'addressLines'
+  | 'companyInfoLabel'
+>>> = {
+  fr: {
+    contactTitle: 'Contact',
+    sendMessage: 'Envoyer un message',
+    companyName: 'MANTION SMT',
+    phoneLabel: 'Tél +33 (0)3 80 37 85 71',
+    phoneHref: 'tel:+33380378571',
+    addressLines: ['France', '2 rue des métiers', '21110 Genlis'],
+    companyInfoLabel: 'Qui sommes-nous ?',
   },
-  "en": {
-    "who": "Who are we?",
-    "legal": "Legal notice"
+  en: {
+    contactTitle: 'Contact',
+    sendMessage: 'Send a message',
+    companyName: 'MANTION SMT',
+    phoneLabel: 'Call +33 (0)3 80 37 85 71',
+    phoneHref: 'tel:+33380378571',
+    addressLines: ['France', '2 rue des métiers', '21110 Genlis'],
+    companyInfoLabel: 'Who are we?',
   },
-  "de": {
-    "who": "Wer sind wir?",
-    "legal": "AGB"
+  de: {
+    contactTitle: 'Kontakt',
+    sendMessage: 'Senden Sie eine Nachricht',
+    companyName: 'MANTION Baubeschläge GmbH',
+    phoneLabel: 'Tel +49 2056 582690',
+    phoneHref: 'tel:+492056582690',
+    addressLines: ['Deutschland', 'Dieselstr. 18', '42579 Heiligenhaus'],
+    companyInfoLabel: 'Wer sind wir?',
   },
-  "pl": {
-    "who": "Kim jesteśmy?",
-    "legal": "Informacje prawne"
-  }
-} as const;
-
-const PHASE2_SUPPORT_EMAIL = 'appsupport@mantion-smt.fr';
-
-const LEGACY_APP_INFO = {
-  "fr": {
-    "ABOUT_PAGE": {
-      "NAVBAR_TITLE": "À propos",
-      "CONTENT_TITLE": "MANTION Door Control",
-      "VERSION": "Version :",
-      "LAST_MODIFICATION": "Dernières modifications :",
-      "PARAGRAPHE1": "Nouvelle application regroupant les anciennes applications MANTION. Les fonctionnalités principales restent identiques, avec une meilleure stabilité et une interface utilisateur améliorée.",
-      "PARAGRAPHE2": "Ajout d'un avertissement lors du changement de poids",
-      "PARAGRAPHE2_LIST": {
-        "ITEM1": "",
-        "ITEM2": "",
-        "ITEM3": ""
-      },
-      "PARAGRAPHE3": "Ajout de cette page (À propos) et de la page « Qui sommes-nous ? »",
-      "PARAGRAPHE4": "Ajout de la plage de poids 60-80 kg (uniquement pour les moteurs après SN-2307)"
-    },
-    "CONTACT_PAGE": {
-      "NAVBAR_TITLE": "Contact",
-      "SEND_A_MESSAGE": "Envoyer un message",
-      "CONTACT_1": {
-        "PHONE": {
-          "USERSEE": "Tél +33 (0)3 81 50 56 77",
-          "SYSTEMCALL": "33381505677"
-        },
-        "ADDRESS": {
-          "NAME": "MANTION SAS",
-          "STATE": "FRANCE",
-          "STREET": "7 rue Gay Lussac",
-          "CITY": "25000 BESANÇON"
-        },
-        "SEND_MESSAGE": {
-          "TO": "contact@mantion.com",
-          "CC": "contact@mantion-smt.com",
-          "SUBJECT": "Produit Moventiv",
-          "BODY": "Bonjour,"
-        }
-      },
-      "CONTACT_2": {
-        "PHONE": {
-          "USERSEE": "Tél +33 (0)3 80 37 85 71",
-          "SYSTEMCALL": "33380378571"
-        },
-        "ADDRESS": {
-          "NAME": "MANTION SMT",
-          "STATE": "France",
-          "STREET": "2 rue des métiers",
-          "CITY": "21110 Genlis"
-        },
-        "SEND_MESSAGE": {
-          "TO": "contact@mantion-smt.com",
-          "CC": "",
-          "SUBJECT": "Produit Moventiv",
-          "BODY": "Bonjour,"
-        }
-      }
-    }
+  pl: {
+    contactTitle: 'Kontakt',
+    sendMessage: 'Wyślij wiadomość',
+    companyName: 'MANTION SMT',
+    phoneLabel: 'Zadzwoń +33 (0)3 80 37 85 71',
+    phoneHref: 'tel:+33380378571',
+    addressLines: ['FRANCJA', '2 rue des métiers', '21110 Genlis'],
+    companyInfoLabel: 'Kim jesteśmy?',
   },
-  "en": {
-    "ABOUT_PAGE": {
-      "NAVBAR_TITLE": "About",
-      "CONTENT_TITLE": "MANTION Door Control",
-      "VERSION": "Version:",
-      "LAST_MODIFICATION": "Latest changes:",
-      "PARAGRAPHE1": "New application bringing together the previous MANTION apps. The main features remain the same, with improved stability and user interface.",
-      "PARAGRAPHE2": "Added a warning when changing the weight",
-      "PARAGRAPHE2_LIST": {
-        "ITEM1": "",
-        "ITEM2": "",
-        "ITEM3": ""
-      },
-      "PARAGRAPHE3": "Added the About and Who are we? pages",
-      "PARAGRAPHE4": "Added the 60-80 kg weight range (motors after SN-2307 only)"
-    },
-    "CONTACT_PAGE": {
-      "NAVBAR_TITLE": "Contact",
-      "SEND_A_MESSAGE": "Send a message",
-      "CONTACT_1": {
-        "PHONE": {
-          "USERSEE": "Call +33 (0)3 81 50 56 77",
-          "SYSTEMCALL": "33381505677"
-        },
-        "ADDRESS": {
-          "NAME": "MANTION SAS",
-          "STATE": "FRANCE",
-          "STREET": "7 rue Gay Lussac",
-          "CITY": "25000 BESANÇON"
-        },
-        "SEND_MESSAGE": {
-          "TO": "contact@mantion.com",
-          "CC": "contact@mantion-smt.com",
-          "SUBJECT": "Product Moventiv",
-          "BODY": "Hello,"
-        }
-      },
-      "CONTACT_2": {
-        "PHONE": {
-          "USERSEE": "Call +33 (0)3 80 37 85 71",
-          "SYSTEMCALL": "33380378571"
-        },
-        "ADDRESS": {
-          "NAME": "MANTION SMT",
-          "STATE": "France",
-          "STREET": "2 rue des métiers",
-          "CITY": "21110 Genlis"
-        },
-        "SEND_MESSAGE": {
-          "TO": "contact@mantion-smt.com",
-          "CC": "",
-          "SUBJECT": "Product Moventiv",
-          "BODY": "Hello,"
-        }
-      }
-    }
-  },
-  "de": {
-    "ABOUT_PAGE": {
-      "NAVBAR_TITLE": "Über uns",
-      "CONTENT_TITLE": "MANTION Door Control",
-      "VERSION": "Version:",
-      "LAST_MODIFICATION": "Letzte Änderungen:",
-      "PARAGRAPHE1": "Neue Anwendung, die die bisherigen MANTION Apps zusammenführt. Die Hauptfunktionen bleiben unverändert, mit besserer Stabilität und einer verbesserten Benutzeroberfläche.",
-      "PARAGRAPHE2": "Warnhinweis beim Ändern des Gewichts hinzugefügt",
-      "PARAGRAPHE2_LIST": {
-        "ITEM1": "",
-        "ITEM2": "",
-        "ITEM3": ""
-      },
-      "PARAGRAPHE3": "Die Seiten „Über uns“ und „Wer sind wir?“ wurden hinzugefügt",
-      "PARAGRAPHE4": "Gewichtsbereich 60-80 kg hinzugefügt (nur Motoren nach SN-2307)"
-    },
-    "CONTACT_PAGE": {
-      "NAVBAR_TITLE": "Kontakt",
-      "SEND_A_MESSAGE": "Senden Sie eine Nachricht",
-      "CONTACT_1": {
-        "PHONE": {
-          "USERSEE": "Tel. +33 (0)3 81 50 56 77",
-          "SYSTEMCALL": "492056582690"
-        },
-        "ADDRESS": {
-          "NAME": "MANTION SAS",
-          "STATE": "Frankreich",
-          "STREET": "7 rue Gay Lussac",
-          "CITY": "25000 BESANÇON"
-        },
-        "SEND_MESSAGE": {
-          "TO": "contact@mantion.com",
-          "CC": "contact@mantion-smt.com",
-          "SUBJECT": "Produkt Motor WIDOOR",
-          "BODY": "Guten Tag!"
-        }
-      },
-      "CONTACT_2": {
-        "PHONE": {
-          "USERSEE": "Tel +49 2056 582690",
-          "SYSTEMCALL": "492056582690"
-        },
-        "ADDRESS": {
-          "NAME": "MANTION Baubeschläge GmbH",
-          "STATE": "Deutschland",
-          "STREET": "Dieselstr. 18",
-          "CITY": "42579 Heiligenhaus"
-        },
-        "SEND_MESSAGE": {
-          "TO": "into@mantion.de",
-          "CC": "",
-          "SUBJECT": "Produkt Motor WIDOOR",
-          "BODY": "Guten Tag!"
-        }
-      }
-    }
-  },
-  "pl": {
-    "ABOUT_PAGE": {
-      "NAVBAR_TITLE": "O aplikacji",
-      "CONTENT_TITLE": "MANTION Door Control",
-      "VERSION": "Wersja:",
-      "LAST_MODIFICATION": "Ostatnie modyfikacje:",
-      "PARAGRAPHE1": "Nowa aplikacja łączy wcześniejsze aplikacje MANTION. Główne funkcje pozostają bez zmian, a stabilność i interfejs użytkownika zostały ulepszone.",
-      "PARAGRAPHE2": "Dodanie ostrzeżenia przy zmianie wagi.",
-      "PARAGRAPHE2_LIST": {
-        "ITEM1": "",
-        "ITEM2": "",
-        "ITEM3": ""
-      },
-      "PARAGRAPHE3": "Dodanie tej strony (O aplikacji), dodanie strony: Kim jesteśmy?",
-      "PARAGRAPHE4": "Dodano zakres wagi 60-80 kg (tylko napędy od numeru seryjnego SN-2307)"
-    },
-    "CONTACT_PAGE": {
-      "NAVBAR_TITLE": "Kontakt",
-      "SEND_A_MESSAGE": "Wyślij wiadomość",
-      "CONTACT_1": {
-        "PHONE": {
-          "USERSEE": "Zadzwoń +48 22 8187722",
-          "SYSTEMCALL": "48228187722"
-        },
-        "ADDRESS": {
-          "NAME": "MANTION POLSKA SP. Z O.O.",
-          "STATE": "POLSKA",
-          "STREET": "ulica Boruty 2A",
-          "CITY": "03-769 WARSZAWA"
-        },
-        "SEND_MESSAGE": {
-          "TO": "biuro@mantion.pl",
-          "CC": "contact@mantion-smt.com",
-          "SUBJECT": "Produkt WIDOOR",
-          "BODY": "Dzień dobry,"
-        }
-      },
-      "CONTACT_2": {
-        "PHONE": {
-          "USERSEE": "Zadzwoń +33 (0)3 80 37 85 71",
-          "SYSTEMCALL": "33380378571"
-        },
-        "ADDRESS": {
-          "NAME": "MANTION SMT",
-          "STATE": "FRANCJA",
-          "STREET": "2 rue des métiers",
-          "CITY": "21110 Genlis"
-        },
-        "SEND_MESSAGE": {
-          "TO": "contact@mantion-smt.com",
-          "CC": "",
-          "SUBJECT": "Produkt WIDOOR",
-          "BODY": "Dzień dobry,"
-        }
-      }
-    }
-  }
-} as const satisfies Readonly<
-  Record<AppInfoLanguage, LegacyAppInfoCopy>
->;
+};
 
 export function normalizeAppInfoLanguage(
   value: string | null,
@@ -324,30 +162,12 @@ export function normalizeAppInfoLanguage(
 }
 
 export function appInfoCopyFor(language: AppInfoLanguage): AppInfoCopy {
-  const source: LegacyAppInfoCopy = LEGACY_APP_INFO[language];
-  const about = source.ABOUT_PAGE;
-  const contact = source.CONTACT_PAGE;
-  const address = contact.CONTACT_2.ADDRESS;
-
   return Object.freeze({
-    aboutTitle: about.NAVBAR_TITLE,
-    aboutContentTitle: about.CONTENT_TITLE,
-    versionLabel: about.VERSION,
-    lastModification: about.LAST_MODIFICATION,
-    lastModificationText: about.PARAGRAPHE1,
-    contactTitle: contact.NAVBAR_TITLE,
-    sendMessage: contact.SEND_A_MESSAGE,
-    supportEmail: PHASE2_SUPPORT_EMAIL,
-    supportEmailHref: `mailto:${PHASE2_SUPPORT_EMAIL}`,
-    companyName: address.NAME,
-    phoneLabel: contact.CONTACT_2.PHONE.USERSEE,
-    phoneHref: `tel:+${contact.CONTACT_2.PHONE.SYSTEMCALL}`,
-    addressLines: Object.freeze([
-      address.STATE,
-      address.STREET,
-      address.CITY,
-    ].filter((value): value is string => Boolean(value))),
-    companyInfoLabel: APP_INFO_NAV_LABELS[language].who,
-    legalNoticeLabel: APP_INFO_NAV_LABELS[language].legal,
+    ...ABOUT_COPY[language],
+    ...CONTACT_COPY[language],
+    supportedProducts: SUPPORTED_PRODUCTS,
+    aboutAddressLines: ABOUT_ADDRESS_LINES,
+    supportEmail: SUPPORT_EMAIL,
+    supportEmailHref: `mailto:${SUPPORT_EMAIL}`,
   });
 }

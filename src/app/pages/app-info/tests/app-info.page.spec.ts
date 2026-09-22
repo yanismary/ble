@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { storeManualAppLanguage } from '../../../core/services/app-language';
-import { AppInfoPage } from '../app-info.page';
+import { AppInfoPage, displayAppVersion } from '../app-info.page';
 
 describe('AppInfoPage', () => {
   let fixture: ComponentFixture<AppInfoPage>;
@@ -28,7 +28,7 @@ describe('AppInfoPage', () => {
     expect(component.appVersion).toBeTruthy();
   });
 
-  it('renders only the Phase 1 About content', () => {
+  it('renders the Phase 2 About content without the old changelog', () => {
     const element = fixture.nativeElement as HTMLElement;
     const text = element.textContent ?? '';
 
@@ -40,11 +40,29 @@ describe('AppInfoPage', () => {
       .toContain(component.appVersion);
     expect(text).toContain(component.copy.aboutContentTitle);
     expect(text).toContain(component.copy.versionLabel);
-    expect(text).toContain(component.copy.lastModification);
-    expect(text).toContain(component.copy.lastModificationText);
+    expect(text).toContain(component.copy.description);
+    expect(text).toContain(component.copy.phase2Description);
+    expect(text).toContain(component.copy.compatibilityNotice);
+    expect(text).toContain('WIDOOR');
+    expect(text).toContain('MOVENTIV 60');
+    expect(text).toContain('MOVENTIV 80');
+    expect(text).toContain('GARLINE');
+    expect(text).not.toContain('Dernières modifications');
+    expect(text).not.toContain('Ajout d’un avertissement');
     expect(text).not.toContain(component.copy.contactTitle);
-    expect(text).not.toContain(component.copy.supportEmail);
+    expect(text).toContain(component.copy.supportEmail);
     expect(element.querySelector('.legacy-contact-list')).toBeNull();
     expect(element.querySelector('.info-links')).toBeNull();
+  });
+
+  it('renders the native marketing version as V2.1', () => {
+    expect(displayAppVersion('2.1')).toBe('V2.1');
+    expect(displayAppVersion('2.1-dev')).toBe('V2.1');
+    component.appVersion = displayAppVersion('2.1-dev');
+    fixture.detectChanges();
+
+    expect(component.appVersion).toBe('V2.1');
+    expect((fixture.nativeElement as HTMLElement)
+      .querySelector('.app-version-number')?.textContent).toContain('V2.1');
   });
 });

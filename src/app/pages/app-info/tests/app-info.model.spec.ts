@@ -22,15 +22,25 @@ describe('app info model', () => {
     expect(appInfoCopyFor('pl').phoneHref).toBe('tel:+33380378571');
   });
 
-  it('keeps the Phase 1 about text available in every migrated language', () => {
+  it('presents the Phase 2 app in all four languages', () => {
     for (const language of ['fr', 'en', 'de', 'pl'] as const) {
       const copy = appInfoCopyFor(language);
 
       expect(copy.aboutTitle).toBeTruthy();
       expect(copy.aboutContentTitle).toBeTruthy();
       expect(copy.versionLabel).toBeTruthy();
-      expect(copy.lastModification).toBeTruthy();
-      expect(copy.lastModificationText).toBeTruthy();
+      expect(copy.description).toContain('MANTION Door Control');
+      expect(copy.connectionDescription).toContain('Bluetooth Low Energy');
+      expect(copy.supportedProducts).toEqual([
+        'WIDOOR', 'MOVENTIV 60', 'MOVENTIV 80', 'GARLINE',
+      ]);
+      expect(copy.phase2Description).toBeTruthy();
+      expect(copy.modernizationDescription).toContain('2.1');
+      expect(copy.compatibilityNotice).toBeTruthy();
+      expect(copy.developerLabel).toContain('MANTION SMT');
+      expect(copy.aboutAddressLines).toEqual([
+        '2 rue des Métiers', '21110 Genlis — France',
+      ]);
       expect(copy.contactTitle).toBeTruthy();
       expect(copy.sendMessage).toBeTruthy();
       expect(copy.supportEmail).toBeTruthy();
@@ -40,7 +50,12 @@ describe('app info model', () => {
       expect(copy.phoneHref).toMatch(/^tel:\+\d+$/);
       expect(copy.addressLines.length).toBeGreaterThan(0);
       expect(copy.companyInfoLabel).toBeTruthy();
-      expect(copy.legalNoticeLabel).toBeTruthy();
+      expect(copy.legalNoticeLabel).toBe({
+        fr: 'Conditions d’utilisation',
+        en: 'Terms of Use',
+        de: 'Nutzungsbedingungen',
+        pl: 'Warunki użytkowania',
+      }[language]);
     }
   });
 
