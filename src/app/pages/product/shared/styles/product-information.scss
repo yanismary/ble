@@ -51,6 +51,16 @@
   white-space: normal;
 }
 
+.product-information-row[data-info-row='cycles-since-maintenance']
+  .product-information-value[data-cycle-status='within-limit'] {
+  --color: #18d13d;
+}
+
+.product-information-row[data-info-row='cycles-since-maintenance']
+  .product-information-value[data-cycle-status='over-limit'] {
+  --color: var(--ion-color-danger);
+}
+
 .product-information-technical {
   margin-top: 10px;
 }

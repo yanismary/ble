@@ -1452,6 +1452,9 @@
                 <ion-label>{{ row.label }}</ion-label>
                 <ion-badge
                   class="product-information-value"
+                  [attr.data-cycle-status]="row.key === 'cycles-since-maintenance'
+                    ? (viewModel.reads.datesAndCycles.value!.cyclesSinceMaintenance <= 100000
+                      ? 'within-limit' : 'over-limit') : null"
                   slot="end"
                 >{{ row.value }}</ion-badge>
               </ion-item>

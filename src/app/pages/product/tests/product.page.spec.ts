@@ -5973,6 +5973,45 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
     },
   );
 
+  for (const profile of ['moventiv-60', 'moventiv-80', 'garline'] as const) {
+    it(`colors maintenance cycles at the inclusive 100000 limit for ${profile}`,
+      async () => {
+        const { fixture, component, writeExecutionService } =
+          await createProductCommandsUiPage(profile);
+        component.setActiveMainTab('information');
+
+        for (const [count, status] of [
+          [0, 'within-limit'],
+          [100000, 'within-limit'],
+          [100001, 'over-limit'],
+        ] as const) {
+          component.viewModel = {
+            ...component.viewModel,
+            reads: {
+              ...component.viewModel.reads,
+              datesAndCycles: {
+                status: 'available',
+                readStatus: 'success',
+                value: { ...datesValue(), cyclesSinceMaintenance: count },
+                result: null,
+              },
+            },
+          };
+          fixture.detectChanges();
+
+          const badge = (fixture.nativeElement as HTMLElement)
+            .querySelector<HTMLElement>(
+              '[data-info-row="cycles-since-maintenance"] ion-badge',
+            );
+          expect(badge?.textContent?.trim()).toBe(String(count));
+          expect(badge?.getAttribute('data-cycle-status')).toBe(status);
+        }
+
+        expect(writeExecutionService.execute).not.toHaveBeenCalled();
+      },
+    );
+  }
+
   async function createProductCommandsUiPage(
     profile: KnownProductProfile,
   ): Promise<{
