@@ -721,6 +721,8 @@ export class ProductPage implements OnDestroy {
     if (tab === 'settings' && previousTab !== 'settings') {
       this.activeSettingsTab = 'basic';
       void this.refreshSettingsOnEntry();
+    } else if (tab === 'information') {
+      void this.refreshInformationOnEntry();
     }
     this.scrollContentToTop();
   }
@@ -1771,17 +1773,19 @@ export class ProductPage implements OnDestroy {
 
   setRoomNameDraftRoom(
     eventOrValue:
-      CustomEvent<{ readonly value?: ProductRoomSuffix | null }> |
+      CustomEvent<{ readonly value?: ProductRoomSuffix | '' | null }> |
       ProductRoomSuffix |
+      '' |
       null,
   ): void {
     if (!this.showRoomNameControls) {
       return;
     }
-    const value = typeof eventOrValue === 'string' ||
+    const selected = typeof eventOrValue === 'string' ||
         eventOrValue === null
       ? eventOrValue
       : eventOrValue.detail.value ?? null;
+    const value = selected === '' ? null : selected;
     this.roomNameDraft = Object.freeze({
       ...this.roomNameDraftValue(),
       roomSuffix: value,
@@ -4435,6 +4439,8 @@ export class ProductPage implements OnDestroy {
       void this.initializeConnectedProductPage();
     } else if (this.activeMainTab === 'settings') {
       void this.refreshSettingsOnEntry();
+    } else if (this.activeMainTab === 'information') {
+      void this.refreshInformationOnEntry();
     }
   }
 
@@ -4956,6 +4962,19 @@ export class ProductPage implements OnDestroy {
         error: error instanceof Error ? error.message : String(error),
       }));
     }
+  }
+
+  private async refreshInformationOnEntry(): Promise<void> {
+    if (!this.canRefresh || this.isDemoMode) {
+      return;
+    }
+    await this.refreshProductData({
+      version: true,
+      datesAndCycles: true,
+      maintenance: true,
+      userParameters: false,
+      advancedParameters: this.config.information.showCurrentWeightRange,
+    }, false);
   }
 
   private applyLoadResult(

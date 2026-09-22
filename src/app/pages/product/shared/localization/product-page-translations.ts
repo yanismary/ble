@@ -63,6 +63,7 @@ const PRODUCT_PAGE_TRANSLATIONS = {
       unavailable: 'Lighting command unavailable',
     },
     nameRoomControls: {
+      none: 'None',
       current: 'Current value:',
       draft: 'Value to write:',
       executing: 'Sending name and room…',
@@ -429,6 +430,7 @@ const PRODUCT_PAGE_TRANSLATIONS = {
       unavailable: 'Beleuchtungsbefehl nicht verfügbar',
     },
     nameRoomControls: {
+      none: 'Keine',
       current: 'Aktueller Wert:', draft: 'Zu schreibender Wert:',
       executing: 'Name und Raum werden gesendet…',
       sent: 'Name und Raum gesendet. Eine neue Suche kann erforderlich sein.',
@@ -558,6 +560,7 @@ const PRODUCT_PAGE_TRANSLATIONS = {
     userTimingControls: { apply: 'Zastosuj', current: 'Bieżąca wartość:', draft: 'Wartość do zastosowania:', executing: 'Wysyłanie opóźnienia…', sent: 'Opóźnienie wysłane. Trwa odczyt kontrolny.', failed: 'Nie udało się wysłać opóźnienia.', unavailable: 'Polecenie opóźnienia niedostępne' },
     userPeripheralControls: { title: 'Oświetlenie i wskaźniki', executing: 'Wysyłanie ustawienia oświetlenia…', sent: 'Ustawienie oświetlenia wysłane. Trwa odczyt kontrolny.', failed: 'Nie udało się wysłać ustawienia oświetlenia.', unavailable: 'Polecenie oświetlenia niedostępne' },
     nameRoomControls: {
+      none: 'Brak',
       current: 'Bieżąca wartość:', draft: 'Wartość do zapisania:', executing: 'Wysyłanie nazwy i pomieszczenia…', sent: 'Nazwa i pomieszczenie wysłane. Może być wymagane ponowne wyszukiwanie.', failed: 'Nie udało się wysłać nazwy i pomieszczenia.', unavailable: 'Polecenie nazwy/pomieszczenia niedostępne',
       rooms: { entrance: 'Przedpokój', hall: 'Hol' },
       errors: { empty: 'Nazwa jest wymagana.', invalidCharacters: 'Dozwolone są wyłącznie litery, cyfry, spacje i łączniki.', tooLong: 'Pełna nazwa jest ograniczona do 15 znaków.', tooShort: 'Nazwa musi zawierać co najmniej 5 znaków.', invalidRoom: 'Nieznane pomieszczenie.' },

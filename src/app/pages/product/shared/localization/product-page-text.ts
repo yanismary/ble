@@ -54,6 +54,7 @@ export const PRODUCT_PAGE_TEXT = {
     draft: 'Valeur à écrire :',
     nameLabel: 'Nom',
     roomLabel: 'Pièce',
+    none: 'Aucune',
     executing: 'Envoi du nom et de la pièce…',
     sent:
       'Nom et pièce envoyés. Une nouvelle recherche peut être nécessaire.',

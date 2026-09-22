@@ -829,7 +829,7 @@ describe('ProductPage', () => {
       .not.toBeNull();
   });
 
-  it('should reload settings on entry without reloading other tabs',
+  it('should reload settings and information only on their tab entries',
     async () => {
       loadService.nextResult = completeLoadResult(
         'success',
@@ -863,13 +863,20 @@ describe('ProductPage', () => {
       component.setActiveMainTab('information');
       component.setActiveMainTab('commands');
 
-      expect(loadService.loadProductData).toHaveBeenCalledTimes(2);
-      expect(loadService.loadProductData.calls.mostRecent().args[2]).toEqual({
+      expect(loadService.loadProductData).toHaveBeenCalledTimes(3);
+      expect(loadService.loadProductData.calls.all()[1].args[2]).toEqual({
         version: false,
         datesAndCycles: false,
         maintenance: false,
         userParameters: true,
         advancedParameters: true,
+      });
+      expect(loadService.loadProductData.calls.mostRecent().args[2]).toEqual({
+        version: true,
+        datesAndCycles: true,
+        maintenance: true,
+        userParameters: false,
+        advancedParameters: false,
       });
       expect(component.viewModel.loading).toBeFalse();
       expect(writeExecutionService.execute).not.toHaveBeenCalled();
@@ -973,6 +980,34 @@ describe('ProductPage', () => {
     harness.fixture.destroy();
   });
 
+  it('should select Aucune for a product name without a room', async () => {
+    const harness = await createRoomNameProfileHarness('widoor', 'Porte');
+    const select = (harness.fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLIonSelectElement>('ion-select.name-room-select');
+
+    expect(harness.component.roomNameDraftValue()).toEqual({
+      name: 'Porte', roomSuffix: null,
+    });
+    expect(select?.value).toBe('');
+    expect(Array.from(select?.querySelectorAll('ion-select-option') ?? [])
+      .some((option) => option.value === '' &&
+        option.textContent?.trim() === harness.component.text.nameRoomControls.none))
+      .toBeTrue();
+    harness.fixture.destroy();
+  });
+
+  it('should select an existing room when opening the editor', async () => {
+    const harness = await createRoomNameProfileHarness('widoor', 'Porte#SAL');
+    const select = (harness.fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLIonSelectElement>('ion-select.name-room-select');
+
+    expect(harness.component.roomNameDraftValue()).toEqual({
+      name: 'Porte', roomSuffix: '#SAL',
+    });
+    expect(select?.value).toBe('#SAL');
+    harness.fixture.destroy();
+  });
+
   it('should write a product name change through the executor', async () => {
     writeExecutionService.nextResult = roomNameExecutionResult(
       'widoor',
@@ -1043,7 +1078,7 @@ describe('ProductPage', () => {
         '50 6f 72 74 65',
       );
 
-      component.setRoomNameDraftRoom(null);
+      component.setRoomNameDraftRoom('');
       await component.requestRoomNameChange();
 
       expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
@@ -3616,7 +3651,7 @@ describe('ProductPage Moventiv/Garline motor commands', () => {
         expect(roomSelect?.label).withContext(profile)
           .toBe(harness.component.text.nameRoomControls.roomLabel);
         expect(roomSelect?.querySelectorAll('ion-select-option').length)
-          .withContext(profile).toBe(harness.component.roomOptions.length);
+          .withContext(profile).toBe(harness.component.roomOptions.length + 1);
         expect(element.querySelector('.basic-name-room-actions ion-button'))
           .withContext(profile).not.toBeNull();
         harness.fixture.destroy();
@@ -4632,6 +4667,7 @@ describe('ProductPage Phase 1 commands tab presentation', () => {
         );
         if (scenario.settingsTab) {
           component.setActiveMainTab('settings');
+          await fixture.whenStable();
           fixture.detectChanges();
         }
 
@@ -8696,6 +8732,58 @@ describe('ProductPage product date maintenance actions', () => {
       await pending;
       expect(harness.loadService.loadProductData).toHaveBeenCalledTimes(2);
       expect(harness.component.productDateActionState.status).toBe('sent');
+    },
+  );
+
+  it('rereads maintenance information from the product on each Information entry',
+    async () => {
+      const harness = await createProductDateHarness(
+        'moventiv-60', presentHistoricalDate(),
+      );
+      const { component, fixture, loadService, writeExecutionService } = harness;
+      expect(component.informationMaintenanceRows.find(
+        ({ key }) => key === 'last-maintenance',
+      )?.value).toBe(component.text.notInitialized);
+
+      await component.requestProductDateMaintenanceAction();
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
+      expect(loadService.loadProductData).toHaveBeenCalledTimes(1);
+      loadService.nextResult = productDateLoadResult(
+        'moventiv-60', presentHistoricalDate(), 'success',
+        presentHistoricalDate(),
+      );
+
+      component.setActiveMainTab('information');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(loadService.loadProductData).toHaveBeenCalledTimes(2);
+      expect(loadService.loadProductData.calls.mostRecent().args[2]).toEqual({
+        version: true,
+        datesAndCycles: true,
+        maintenance: true,
+        userParameters: false,
+        advancedParameters: true,
+      });
+      expect(component.informationMaintenanceRows.find(
+        ({ key }) => key === 'last-maintenance',
+      )?.value).toBe('02/01/2026');
+      expect((fixture.nativeElement as HTMLElement)
+        .querySelector('[data-info-row="last-maintenance"]')?.textContent)
+        .toContain('02/01/2026');
+      component.setActiveMainTab('information');
+      expect(loadService.loadProductData).toHaveBeenCalledTimes(2);
+
+      component.setActiveMainTab('commands');
+      harness.bleService.isWriting = true;
+      component.setActiveMainTab('information');
+      expect(loadService.loadProductData).toHaveBeenCalledTimes(2);
+      harness.bleService.isWriting = false;
+      component.setActiveMainTab('commands');
+      component.setActiveMainTab('information');
+      await fixture.whenStable();
+      expect(loadService.loadProductData).toHaveBeenCalledTimes(3);
+      expect(writeExecutionService.execute).toHaveBeenCalledTimes(1);
     },
   );
 

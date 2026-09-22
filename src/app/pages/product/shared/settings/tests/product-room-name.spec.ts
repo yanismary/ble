@@ -216,6 +216,14 @@ describe('Product name and room controls', () => {
       valueToWrite: 'Porte',
       roomSuffix: null,
     }));
+    if (!validation.valid) {
+      return;
+    }
+    const write = encodeProductRoomNameWrite('widoor', validation);
+    expect(write.payloadHex).toBe('50 6f 72 74 65');
+    expect(Array.from(write.payload)).toEqual(
+      Array.from('Porte', (character) => character.charCodeAt(0)),
+    );
   });
 
   it('encodes validated name and room writes through the legacy catalog', () => {

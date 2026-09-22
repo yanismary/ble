@@ -744,10 +744,13 @@
                     label-placement="stacked"
                     [placeholder]="text.nameRoomControls.roomLabel"
                     interface="popover"
-                    [value]="roomNameDraftValue().roomSuffix"
+                    [value]="roomNameDraftValue().roomSuffix ?? ''"
                     [disabled]="(config.profile !== 'widoor' && !usesMoventivLayout && !roomNameControlUnlocked) || roomNameWriteState.status === 'executing'"
                     (ionChange)="setRoomNameDraftRoom($event)"
                   >
+                    <ion-select-option value="">
+                      {{ text.nameRoomControls.none }}
+                    </ion-select-option>
                     @for (room of roomOptions; track room.suffix) {
                       <ion-select-option [value]="room.suffix">
                         {{ text.nameRoomControls.rooms[room.textKey] }}
