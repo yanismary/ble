@@ -78,7 +78,7 @@ const PRODUCT_PAGE_TRANSLATIONS = {
         empty: 'The name is required.',
         invalidCharacters:
           'Only letters, numbers, spaces and hyphens are allowed.',
-        tooLong: 'The full name is limited to 15 characters.',
+        tooLong: 'The name is limited to 15 characters.',
         tooShort: 'The name must contain at least 5 characters.',
         invalidRoom: 'Unknown room.',
       },
@@ -440,7 +440,7 @@ const PRODUCT_PAGE_TRANSLATIONS = {
       errors: {
         empty: 'Der Name ist erforderlich.',
         invalidCharacters: 'Nur Buchstaben, Ziffern, Leerzeichen und Bindestriche sind zulässig.',
-        tooLong: 'Der vollständige Name ist auf 15 Zeichen begrenzt.',
+        tooLong: 'Der Name ist auf 15 Zeichen begrenzt.',
         tooShort: 'Der Name muss mindestens 5 Zeichen enthalten.',
         invalidRoom: 'Unbekannter Raum.',
       },
@@ -553,46 +553,259 @@ const PRODUCT_PAGE_TRANSLATIONS = {
   pl: {
     backToScan: 'Powrót do wyszukiwania',
     returnToScanFailed: 'Nie można odłączyć produktu. Spróbuj ponownie przed powrotem do wyszukiwania.',
-    openProductPage: 'Otwórz stronę produktu', refresh: 'Odśwież informacje', loading: 'Ładowanie…',
-    readonlyNotice: 'Ustawienia odczytane z produktu.', commandsUnavailable: 'Polecenia są obecnie niedostępne.',
-    lockModeControls: { title: 'Blokada drzwi', executing: 'Wysyłanie ustawienia blokady…', sent: 'Ustawienie blokady wysłane. Trwa odczyt kontrolny.', failed: 'Nie udało się wysłać ustawienia blokady.', unavailable: 'Polecenie blokady niedostępne' },
-    userSpeedControls: { apply: 'Zastosuj', current: 'Bieżąca wartość:', draft: 'Wartość do zastosowania:', executing: 'Wysyłanie prędkości…', sent: 'Prędkość wysłana. Trwa odczyt kontrolny.', failed: 'Nie udało się wysłać prędkości.', unavailable: 'Polecenie prędkości niedostępne' },
-    userTimingControls: { apply: 'Zastosuj', current: 'Bieżąca wartość:', draft: 'Wartość do zastosowania:', executing: 'Wysyłanie opóźnienia…', sent: 'Opóźnienie wysłane. Trwa odczyt kontrolny.', failed: 'Nie udało się wysłać opóźnienia.', unavailable: 'Polecenie opóźnienia niedostępne' },
-    userPeripheralControls: { title: 'Oświetlenie i wskaźniki', executing: 'Wysyłanie ustawienia oświetlenia…', sent: 'Ustawienie oświetlenia wysłane. Trwa odczyt kontrolny.', failed: 'Nie udało się wysłać ustawienia oświetlenia.', unavailable: 'Polecenie oświetlenia niedostępne' },
+    openProductPage: 'Otwórz stronę produktu', 
+    refresh: 'Odśwież informacje', 
+    loading: 'Ładowanie…',
+    readonlyNotice: 'Ustawienia odczytane z produktu.', 
+    commandsUnavailable: 'Polecenia są obecnie niedostępne.',
+    lockModeControls: { 
+      title: 'Blokada drzwi', 
+      executing: 'Wysyłanie ustawienia blokady…', 
+      sent: 'Ustawienie blokady wysłane. Trwa odczyt kontrolny.', 
+      failed: 'Nie udało się wysłać ustawienia blokady.', 
+      unavailable: 'Polecenie blokady niedostępne' 
+    },
+    userSpeedControls: { 
+      apply: 'Zastosuj', 
+      current: 'Bieżąca wartość:', 
+      draft: 'Wartość do zastosowania:',
+      executing: 'Wysyłanie prędkości…', 
+      sent: 'Prędkość wysłana. Trwa odczyt kontrolny.', 
+      failed: 'Nie udało się wysłać prędkości.', 
+      unavailable: 'Polecenie prędkości niedostępne' 
+    },
+    userTimingControls: { 
+      apply: 'Zastosuj', 
+      current: 'Bieżąca wartość:', 
+      draft: 'Wartość do zastosowania:', 
+      executing: 'Wysyłanie opóźnienia…', 
+      sent: 'Opóźnienie wysłane. Trwa odczyt kontrolny.', 
+      failed: 'Nie udało się wysłać opóźnienia.', 
+      unavailable: 'Polecenie opóźnienia niedostępne' 
+    },
+    userPeripheralControls: { 
+      title: 'Oświetlenie i wskaźniki', 
+      executing: 'Wysyłanie ustawienia oświetlenia…', 
+      sent: 'Ustawienie oświetlenia wysłane. Trwa odczyt kontrolny.', 
+      failed: 'Nie udało się wysłać ustawienia oświetlenia.', 
+      unavailable: 'Polecenie oświetlenia niedostępne' 
+    },
     nameRoomControls: {
       none: 'Brak',
-      current: 'Bieżąca wartość:', draft: 'Wartość do zapisania:', executing: 'Wysyłanie nazwy i pomieszczenia…', sent: 'Nazwa i pomieszczenie wysłane. Może być wymagane ponowne wyszukiwanie.', failed: 'Nie udało się wysłać nazwy i pomieszczenia.', unavailable: 'Polecenie nazwy/pomieszczenia niedostępne',
-      rooms: { entrance: 'Przedpokój', hall: 'Hol' },
-      errors: { empty: 'Nazwa jest wymagana.', invalidCharacters: 'Dozwolone są wyłącznie litery, cyfry, spacje i łączniki.', tooLong: 'Pełna nazwa jest ograniczona do 15 znaków.', tooShort: 'Nazwa musi zawierać co najmniej 5 znaków.', invalidRoom: 'Nieznane pomieszczenie.' },
+      current: 'Bieżąca wartość:', 
+      draft: 'Wartość do zapisania:', 
+      executing: 'Wysyłanie nazwy i pomieszczenia…', 
+      sent: 'Nazwa i pomieszczenie wysłane. Może być wymagane ponowne wyszukiwanie.', 
+      failed: 'Nie udało się wysłać nazwy i pomieszczenia.', 
+      unavailable: 'Polecenie nazwy/pomieszczenia niedostępne',
+      rooms: { 
+        entrance: 'Przedpokój', 
+        hall: 'Hol' 
+      },
+      errors: { 
+        empty: 'Nazwa jest wymagana.', 
+        invalidCharacters: 'Dozwolone są wyłącznie litery, cyfry, spacje i łączniki.', 
+        tooLong: 'Nazwa jest ograniczona do 15 znaków.',
+        tooShort: 'Nazwa musi zawierać co najmniej 5 znaków.', 
+        invalidRoom: 'Nieznane pomieszczenie.' 
+      },
     },
-    weightRangeControls: { apply: 'Zastosuj', selectTitle: 'Wybierz wagę drzwi', warning: 'UWAGA: Zmiana tego ustawienia zresetuje ustawienia prędkości!', cancel: 'Anuluj', confirm: 'Potwierdź', current: 'Bieżący zakres:', draft: 'Zakres do zastosowania:', executing: 'Wysyłanie zakresu wagi…', sent: 'Zakres wagi wysłany. Trwa odczyt kontrolny.', failed: 'Nie udało się wysłać zakresu wagi.', unavailable: 'Polecenie zakresu wagi niedostępne' },
+    weightRangeControls: { 
+      apply: 'Zastosuj', 
+      selectTitle: 'Wybierz wagę drzwi', 
+      warning: 'UWAGA: Zmiana tego ustawienia zresetuje ustawienia prędkości!', 
+      cancel: 'Anuluj', 
+      confirm: 'Potwierdź', 
+      current: 'Bieżący zakres:', 
+      draft: 'Zakres do zastosowania:', 
+      executing: 'Wysyłanie zakresu wagi…', 
+      sent: 'Zakres wagi wysłany. Trwa odczyt kontrolny.', 
+      failed: 'Nie udało się wysłać zakresu wagi.', 
+      unavailable: 'Polecenie zakresu wagi niedostępne' 
+    },
     sensitiveActions: {
-      title: 'Funkcje zaawansowane', notice: 'Te funkcje odpowiadają poleceniom dostępnym w produkcie. Działania destrukcyjne wymagają wyraźnego potwierdzenia.', radarTest1: 'Test radaru 1', radarTest2: 'Test radaru 2', awaitingConfirmation: 'Wymagane potwierdzenie.', executing: 'Trwa wykonywanie polecenia zaawansowanego…', sent: 'Polecenie wysłane. Trwa odczyt kontrolny.', failed: 'Polecenie zaawansowane nie powiodło się.', cancelled: 'Polecenie anulowane.', cancel: 'Anuluj', confirm: 'Potwierdź',
-      learningConfirmTitle: 'Uruchomić kalibrację pozycji krańcowych?', learningConfirmMessage: 'To polecenie może spowodować automatyczny ruch napędu. Przed potwierdzeniem upewnij się, że obszar jest wolny.', resetConfirmTitle: 'Zresetować ustawienia Widoor?', resetConfirmMessage: 'Ta czynność przywraca dziewięć ustawień domyślnych i zastępuje kilka bieżących ustawień. Nie można jej automatycznie cofnąć.',
+      title: 'Funkcje zaawansowane', 
+      notice: 'Te funkcje odpowiadają poleceniom dostępnym w produkcie. Działania destrukcyjne wymagają wyraźnego potwierdzenia.', 
+      radarTest1: 'Test radaru 1', 
+      radarTest2: 'Test radaru 2', 
+      awaitingConfirmation: 'Wymagane potwierdzenie.', 
+      executing: 'Trwa wykonywanie polecenia zaawansowanego…', 
+      sent: 'Polecenie wysłane. Trwa odczyt kontrolny.',
+      failed: 'Polecenie zaawansowane nie powiodło się.', 
+      cancelled: 'Polecenie anulowane.', 
+      cancel: 'Anuluj', 
+      confirm: 'Potwierdź',
+      learningConfirmTitle: 'Uruchomić kalibrację pozycji krańcowych?', 
+      learningConfirmMessage: 'To polecenie może spowodować automatyczny ruch napędu. Przed potwierdzeniem upewnij się, że obszar jest wolny.', 
+      resetConfirmTitle: 'Zresetować ustawienia Widoor?', 
+      resetConfirmMessage: 'Ta czynność przywraca dziewięć ustawień domyślnych i zastępuje kilka bieżących ustawień. Nie można jej automatycznie cofnąć.',
     },
-    expertPeripheralDiagnostics: { title: 'Diagnostyka urządzeń peryferyjnych', readonlyNotice: 'Stany odczytane z produktu. Nie jest wysyłane żadne polecenie testu ani blokady.', radarTest1: 'Test radaru 1', radarTest2: 'Test radaru 2', peripheralLock: 'Blokada urządzeń peryferyjnych', enabled: 'Włączone', disabled: 'Wyłączone' },
-    expertInputControls: { current: 'Bieżąca wartość:', executing: 'Wysyłanie konfiguracji wejść…', sent: 'Konfiguracja wejść potwierdzona przez produkt.', failed: 'Produkt nie potwierdził konfiguracji wejść.', unavailable: 'Polecenie konfiguracji wejść niedostępne' },
-    expertScalarControls: { apply: 'Zastosuj', current: 'Bieżąca wartość:', draft: 'Wartość do zastosowania:', executing: 'Wysyłanie ustawienia eksperckiego…', sent: 'Ustawienie eksperckie wysłane. Trwa odczyt kontrolny.', failed: 'Nie udało się wysłać ustawienia eksperckiego.', unavailable: 'Ustawienie eksperckie niedostępne' },
-    expertAccess: { title: 'Dostęp ekspercki', expertTitle: 'Ustawienia eksperckie', expertMode: 'Tryb ekspercki', message: 'Wprowadź kod ekspercki, aby wyświetlić te ustawienia.', placeholder: 'Kod ekspercki', expertPlaceholder: 'Wprowadź hasło', cancel: 'Anuluj', confirm: 'Potwierdź', unlock: 'Odblokuj ustawienia eksperckie', locked: 'Niektóre ustawienia eksperckie są ukryte.', unlocked: 'Ustawienia eksperckie odblokowane.', failed: 'Nieprawidłowy kod ekspercki.' },
-    moventivAdvancedAlert: { title: 'Uwaga', message: 'Zmiana tych ustawień może wpłynąć na prawidłowe działanie systemu. Przed wprowadzeniem zmian przeczytaj instrukcję.', no: 'Anuluj', yes: 'Kontynuuj' },
+    expertPeripheralDiagnostics: { 
+      title: 'Diagnostyka urządzeń peryferyjnych', 
+      readonlyNotice: 'Stany odczytane z produktu. Nie jest wysyłane żadne polecenie testu ani blokady.', 
+      radarTest1: 'Test radaru 1', 
+      radarTest2: 'Test radaru 2', 
+      peripheralLock: 'Blokada urządzeń peryferyjnych', 
+      enabled: 'Włączone', 
+      disabled: 'Wyłączone' 
+    },
+    expertInputControls: { 
+      current: 'Bieżąca wartość:', 
+      executing: 'Wysyłanie konfiguracji wejść…', 
+      sent: 'Konfiguracja wejść potwierdzona przez produkt.', 
+      failed: 'Produkt nie potwierdził konfiguracji wejść.', 
+      unavailable: 'Polecenie konfiguracji wejść niedostępne' 
+    },
+    expertScalarControls: { 
+      apply: 'Zastosuj', 
+      current: 'Bieżąca wartość:', 
+      draft: 'Wartość do zastosowania:', 
+      executing: 'Wysyłanie ustawienia eksperckiego…', 
+      sent: 'Ustawienie eksperckie wysłane. Trwa odczyt kontrolny.', 
+      failed: 'Nie udało się wysłać ustawienia eksperckiego.', 
+      unavailable: 'Ustawienie eksperckie niedostępne' 
+    },
+    expertAccess: { 
+      title: 'Dostęp ekspercki', 
+      expertTitle: 'Ustawienia eksperckie', 
+      expertMode: 'Tryb ekspercki', 
+      message: 'Wprowadź kod ekspercki, aby wyświetlić te ustawienia.', 
+      placeholder: 'Kod ekspercki', 
+      expertPlaceholder: 'Wprowadź hasło', 
+      cancel: 'Anuluj', 
+      confirm: 'Potwierdź', 
+      unlock: 'Odblokuj ustawienia eksperckie', 
+      locked: 'Niektóre ustawienia eksperckie są ukryte.', 
+      unlocked: 'Ustawienia eksperckie odblokowane.', 
+      failed: 'Nieprawidłowy kod ekspercki.' 
+    },
+    moventivAdvancedAlert: { 
+      title: 'Uwaga', 
+      message: 'Zmiana tych ustawień może wpłynąć na prawidłowe działanie systemu. Przed wprowadzeniem zmian przeczytaj instrukcję.', 
+      no: 'Anuluj', 
+      yes: 'Kontynuuj' 
+    },
     productDateActions: {
-      confirmTitle: 'Wymagane potwierdzenie', passwordPlaceholder: 'Hasło konserwacyjne', cancel: 'Anuluj', confirm: 'Potwierdź', awaitingConfirmation: 'Wymagane potwierdzenie konserwacji.', executing: 'Wysyłanie działania daty…', setupSent: 'Potwierdzono uruchomienie.', setupNotConfirmed: 'Produkt nie potwierdził uruchomienia. Sprawdź daty.', maintenanceSent: 'Konserwacja wysłana. Trwa odczyt kontrolny.', setupSentReloadFailed: 'Uruchomienie wysłane, ale odczyt kontrolny nie powiódł się.', maintenanceSentReloadFailed: 'Konserwacja wysłana, ale odczyt kontrolny nie powiódł się.', failed: 'Nie udało się wysłać działania daty.', partialFailed: 'Konserwacja wysłana, ale uruchomienie nie zostało potwierdzone.', partialReloadFailed: 'Konserwacja wysłana, ale uruchomienie nie zostało potwierdzone. Odczyt kontrolny nie powiódł się.', unavailable: 'Działanie daty niedostępne', wrongCode: 'Nieprawidłowy kod konserwacyjny.', cancelled: 'Działanie anulowane.',
+      confirmTitle: 'Wymagane potwierdzenie', 
+      passwordPlaceholder: 'Hasło konserwacyjne', 
+      cancel: 'Anuluj', 
+      confirm: 'Potwierdź', 
+      awaitingConfirmation: 'Wymagane potwierdzenie konserwacji.', 
+      executing: 'Wysyłanie działania daty…', 
+      setupSent: 'Potwierdzono uruchomienie.', 
+      setupNotConfirmed: 'Produkt nie potwierdził uruchomienia. Sprawdź daty.', 
+      maintenanceSent: 'Konserwacja wysłana. Trwa odczyt kontrolny.', 
+      setupSentReloadFailed: 'Uruchomienie wysłane, ale odczyt kontrolny nie powiódł się.', 
+      maintenanceSentReloadFailed: 'Konserwacja wysłana, ale odczyt kontrolny nie powiódł się.', 
+      failed: 'Nie udało się wysłać działania daty.', 
+      partialFailed: 'Konserwacja wysłana, ale uruchomienie nie zostało potwierdzone.', 
+      partialReloadFailed: 'Konserwacja wysłana, ale uruchomienie nie zostało potwierdzone. Odczyt kontrolny nie powiódł się.', 
+      unavailable: 'Działanie daty niedostępne', 
+      wrongCode: 'Nieprawidłowy kod konserwacyjny.', 
+      cancelled: 'Działanie anulowane.',
       setupConfirmation: (date: string) => `Czy potwierdzasz, że uruchomienie przeprowadzono ${date}? Konserwacja zostanie zapisana, a następnie data uruchomienia zostanie trwale zapisana, jeśli produkt nadal zgłasza brak inicjalizacji.`,
       maintenanceConfirmation: (date: string) => `Czy potwierdzasz, że konserwację przeprowadzono ${date}? Oprogramowanie układowe może wyzerować licznik cykli od ostatniej konserwacji.`,
     },
-    openCommand: { cancel: 'Anuluj', awaitingConfirmation: 'Wymagane potwierdzenie', sent: 'Polecenie wysłane', executing: 'Polecenie w toku…', unavailable: 'Polecenie niedostępne', disconnected: 'Urządzenie odłączone', stale: 'Nieaktualny wynik', failed: 'Polecenie nie powiodło się', alreadyInProgress: 'Polecenie jest już wykonywane', cancelled: 'Polecenie anulowane' },
-    widoorCommands: {
-      warning: 'Napęd zostanie rzeczywiście uruchomiony.', physicalValidationRequired: 'Wymagana weryfikacja fizyczna', protected: 'Funkcja chroniona — wymagana osobna weryfikacja', timedCyclePending: 'Pełny cykl czasowy nadal wymaga weryfikacji fizycznej.',
-      open: { confirmTitle: 'Otworzyć drzwi?', confirmMessage: 'Ta czynność uruchamia napęd. Upewnij się, że obszar jest wolny, a fizyczny przycisk zatrzymania jest dostępny.', confirmed: 'Otwarcie potwierdzone', notConfirmed: 'Polecenie wysłane, ale otwarcie nie zostało potwierdzone' },
-      close: { confirmTitle: 'Zamknąć drzwi?', confirmMessage: 'Ta czynność uruchamia napęd. Upewnij się, że obszar jest wolny, a fizyczny przycisk zatrzymania jest dostępny.', confirmed: 'Zamknięcie potwierdzone', notConfirmed: 'Polecenie wysłane, ale zamknięcie nie zostało potwierdzone' },
-      openShortTimed: { label: 'Krótkie otwarcie czasowe', confirmTitle: 'Uruchomić krótkie otwarcie czasowe?', confirmMessage: 'Ta czynność uruchamia napęd. Upewnij się, że obszar jest wolny, a fizyczny przycisk zatrzymania jest dostępny. Początek ruchu zostanie sprawdzony, ale pełny cykl czasowy należy zweryfikować osobno.', confirmAction: 'Uruchom', confirmed: 'Potwierdzono początek krótkiego otwarcia czasowego', notConfirmed: 'Polecenie wysłane, ale początek nie został potwierdzony' },
-      openLongTimed: { label: 'Długie otwarcie czasowe', confirmTitle: 'Uruchomić długie otwarcie czasowe?', confirmMessage: 'Ta czynność uruchamia napęd. Upewnij się, że obszar jest wolny, a fizyczny przycisk zatrzymania jest dostępny. Początek ruchu zostanie sprawdzony, ale pełny cykl czasowy należy zweryfikować osobno.', confirmAction: 'Uruchom', confirmed: 'Potwierdzono początek długiego otwarcia czasowego', notConfirmed: 'Polecenie wysłane, ale początek nie został potwierdzony' },
-      learning: { label: 'Kalibracja' },
+    openCommand: { 
+      cancel: 'Anuluj', 
+      awaitingConfirmation: 'Wymagane potwierdzenie', 
+      sent: 'Polecenie wysłane', 
+      executing: 'Polecenie w toku…', 
+      unavailable: 'Polecenie niedostępne', 
+      disconnected: 'Urządzenie odłączone', 
+      stale: 'Nieaktualny wynik', 
+      failed: 'Polecenie nie powiodło się', 
+      alreadyInProgress: 'Polecenie jest już wykonywane', 
+      cancelled: 'Polecenie anulowane' 
     },
-    widoorCommandAlerts: { lock: { title: 'Nie można wykonać polecenia', subtitle: 'Najpierw wyłącz blokadę drzwi.' }, retention: { title: 'Nie można wykonać polecenia', subtitle: 'Najpierw wyłącz utrzymywanie drzwi w pozycji otwartej.' } },
-    commandHistory: { title: 'Historia poleceń', empty: 'W tej sesji nie zakończono żadnego polecenia.', duration: 'Czas', confirmation: 'Potwierdzenie napędu', timedCycle: 'Cykl czasowy', statuses: { confirmed: 'Potwierdzone', timeout: 'Niepotwierdzone', failed: 'Niepowodzenie', disconnected: 'Odłączone', stale: 'Nieaktualne', unavailable: 'Niedostępne', cancelled: 'Anulowane' }, confirmations: { confirmed: 'Potwierdzone', timeout: 'Niepotwierdzone', unavailable: 'Niedostępne', notRequired: 'Niewymagane', notValidated: 'Niezweryfikowane', none: 'Brak' }, timedCycles: { notObserved: 'Niezaobserwowany', pendingPhysicalValidation: 'Oczekuje na weryfikację fizyczną', validated: 'Zweryfikowany', failed: 'Niepowodzenie' } },
-    sections: { userSettings: 'Ustawienia użytkownika', expertSettings: 'Ustawienia eksperckie', identity: 'Połączony produkt' },
-    information: { general: 'Informacje ogólne', currentWeightProfile: 'Bieżący profil', maximumWeight: 'Maksymalna waga', supplemental: 'Informacje dodatkowe' },
+    widoorCommands: {
+      warning: 'Napęd zostanie rzeczywiście uruchomiony.', 
+      physicalValidationRequired: 'Wymagana weryfikacja fizyczna', 
+      protected: 'Funkcja chroniona — wymagana osobna weryfikacja', 
+      timedCyclePending: 'Pełny cykl czasowy nadal wymaga weryfikacji fizycznej.',
+      open: { 
+        confirmTitle: 'Otworzyć drzwi?', 
+        confirmMessage: 'Ta czynność uruchamia napęd. Upewnij się, że obszar jest wolny, a fizyczny przycisk zatrzymania jest dostępny.', 
+        confirmed: 'Otwarcie potwierdzone', 
+        notConfirmed: 'Polecenie wysłane, ale otwarcie nie zostało potwierdzone' 
+      },
+      close: { 
+        confirmTitle: 'Zamknąć drzwi?', 
+        confirmMessage: 'Ta czynność uruchamia napęd. Upewnij się, że obszar jest wolny, a fizyczny przycisk zatrzymania jest dostępny.', 
+        confirmed: 'Zamknięcie potwierdzone', 
+        notConfirmed: 'Polecenie wysłane, ale zamknięcie nie zostało potwierdzone' 
+      },
+      openShortTimed: { 
+        label: 'Krótkie otwarcie czasowe', 
+        confirmTitle: 'Uruchomić krótkie otwarcie czasowe?', 
+        confirmMessage: 'Ta czynność uruchamia napęd. Upewnij się, że obszar jest wolny, a fizyczny przycisk zatrzymania jest dostępny. Początek ruchu zostanie sprawdzony, ale pełny cykl czasowy należy zweryfikować osobno.', 
+        confirmAction: 'Uruchom', 
+        confirmed: 'Potwierdzono początek krótkiego otwarcia czasowego', 
+        notConfirmed: 'Polecenie wysłane, ale początek nie został potwierdzony' 
+      },
+      openLongTimed: { 
+        label: 'Długie otwarcie czasowe', 
+        confirmTitle: 'Uruchomić długie otwarcie czasowe?', 
+        confirmMessage: 'Ta czynność uruchamia napęd. Upewnij się, że obszar jest wolny, a fizyczny przycisk zatrzymania jest dostępny. Początek ruchu zostanie sprawdzony, ale pełny cykl czasowy należy zweryfikować osobno.', 
+        confirmAction: 'Uruchom', 
+        confirmed: 'Potwierdzono początek długiego otwarcia czasowego', 
+        notConfirmed: 'Polecenie wysłane, ale początek nie został potwierdzony' 
+      },
+      learning: { 
+        label: 'Kalibracja' 
+      },
+    },
+    widoorCommandAlerts: { 
+      lock: { 
+        title: 'Nie można wykonać polecenia', 
+        subtitle: 'Najpierw wyłącz blokadę drzwi.' 
+      }, 
+      retention: { 
+        title: 'Nie można wykonać polecenia', 
+        subtitle: 'Najpierw wyłącz utrzymywanie drzwi w pozycji otwartej.' 
+      } 
+    },
+    commandHistory: { 
+      title: 'Historia poleceń', 
+      empty: 'W tej sesji nie zakończono żadnego polecenia.',
+      duration: 'Czas', 
+      confirmation: 'Potwierdzenie napędu', 
+      timedCycle: 'Cykl czasowy', 
+      statuses: { 
+        confirmed: 'Potwierdzone', 
+        timeout: 'Niepotwierdzone', 
+        failed: 'Niepowodzenie', 
+        disconnected: 'Odłączone', 
+        stale: 'Nieaktualne', 
+        unavailable: 'Niedostępne', 
+        cancelled: 'Anulowane' 
+      }, 
+        confirmations: { 
+          confirmed: 'Potwierdzone', 
+          timeout: 'Niepotwierdzone', 
+          unavailable: 'Niedostępne', 
+          notRequired: 'Niewymagane', 
+          notValidated: 'Niezweryfikowane', 
+          none: 'Brak' 
+        }, 
+        timedCycles: { 
+          notObserved: 'Niezaobserwowany', 
+          pendingPhysicalValidation: 'Oczekuje na weryfikację fizyczną', 
+          validated: 'Zweryfikowany', 
+          failed: 'Niepowodzenie' 
+        } 
+      },
+    sections: { 
+      userSettings: 'Ustawienia użytkownika', 
+      expertSettings: 'Ustawienia eksperckie', 
+      identity: 'Połączony produkt' 
+    },
+    information: { 
+      general: 'Informacje ogólne', 
+      currentWeightProfile: 'Bieżący profil', 
+      maximumWeight: 'Maksymalna waga', 
+      supplemental: 'Informacje dodatkowe' 
+    },
     shell: {
       controlledDoor: 'Sterowane drzwi',
       showPrecision: 'Pokaż regulację precyzyjną',
@@ -600,14 +813,88 @@ const PRODUCT_PAGE_TRANSLATIONS = {
       increaseByOne: 'Zwiększ o 1',
       decreaseByOne: 'Zmniejsz o 1',
     },
-    states: { available: 'Dostępne', unavailable: 'Niedostępne', invalid: 'Nieprawidłowe dane', notLoaded: 'Niezaładowane', failed: 'Odczyt niemożliwy', disconnected: 'Odłączono', stale: 'Nieaktualne dane', connected: 'Połączono', invalidProfile: 'Niespójny profil', partialSuccess: 'Częściowe powodzenie', success: 'Informacje dostępne', cancelled: 'Odczyt anulowany' },
-    profile: 'Profil', productName: 'Nazwa produktu', displayedName: 'Wyświetlana nazwa', room: 'Pomieszczenie', deviceId: 'Identyfikator urządzenia', connection: 'Połączenie', lastRefresh: 'Ostatnie odświeżenie', noRoom: 'Nie podano', noValue: 'Niedostępne', noMotorState: 'Nie odebrano stanu napędu', yes: 'Tak', no: 'Nie', notInitialized: 'Nie zainicjalizowano', invalidHistoricalDate: 'Nieprawidłowa data historyczna', historicalFad: 'Surowe historyczne dane FAD', historicalFadNotice: 'Znaczenie funkcjonalne niepotwierdzone', rawFrame: 'Surowa ramka', technicalDetails: 'Szczegóły techniczne', serviceUuid: 'UUID usługi', characteristicUuid: 'UUID charakterystyki', errorCode: 'Kod błędu',
-    errors: { serviceAbsent: 'Usługa BLE niedostępna', characteristicAbsent: 'Niedostępne dla tego oprogramowania układowego', notReadable: 'Odczyt nieobsługiwany', unknown: 'Wystąpił błąd podczas odczytu.' },
-    errorDetails: { serviceAbsent: 'Wymagana usługa BLE nie jest udostępniana przez ten produkt.', characteristicAbsent: 'Wymagana charakterystyka BLE nie jest udostępniana przez ten produkt.', notReadable: 'Charakterystyki BLE tego produktu nie można odczytać.' },
-    version: { productType: 'Surowy typ produktu', productSubtype: 'Podtyp', crc: 'CRC', motorAddress: 'Numer seryjny' },
-    user: { lockMode: 'Tryb blokady', lockModeRaw: 'Surowy tryb blokady', staticLight: 'Oświetlenie statyczne', peripheralByte1: 'Bajt urządzeń peryferyjnych użytkownika 1', peripheralByte2: 'Bajt urządzeń peryferyjnych użytkownika 2' },
-    expert: { exactWeight: 'Dokładna waga', nearOpenProportional: 'Składnik proporcjonalny otwierania', nearCloseProportional: 'Składnik proporcjonalny zamykania', nearOpenIntegral: 'Składnik całkujący otwierania', nearCloseIntegral: 'Składnik całkujący zamykania', peripherals: 'Surowe dane urządzeń peryferyjnych (wejścia, blokada i testy radaru)', peripheralsWithoutLock: 'Surowe dane urządzeń peryferyjnych (wejścia i testy radaru)' },
-    motor: { rawState: 'Surowy stan', stateLabel: 'Stan techniczny', currentPosition: 'Bieżąca pozycja', maximumPosition: 'Pozycja maksymalna', percentage: 'Otwarcie', error: 'Błąd', switchesRaw: 'Surowe bity stanu', openingStarted: 'Rozpoczęto otwieranie', stoppedAfterOpening: 'Zatrzymano po otwarciu', closingStarted: 'Rozpoczęto zamykanie', stoppedAfterClosing: 'Zatrzymano po zamknięciu', unknown: 'Stan nieudokumentowany' },
+    states: { 
+      available: 'Dostępne', 
+      unavailable: 'Niedostępne', 
+      invalid: 'Nieprawidłowe dane', 
+      notLoaded: 'Niezaładowane', 
+      failed: 'Odczyt niemożliwy', 
+      disconnected: 'Odłączono', 
+      stale: 'Nieaktualne dane', 
+      connected: 'Połączono', 
+      invalidProfile: 'Niespójny profil', 
+      partialSuccess: 'Częściowe powodzenie', 
+      success: 'Informacje dostępne', 
+      cancelled: 'Odczyt anulowany' 
+    },
+    profile: 'Profil', 
+    productName: 'Nazwa produktu', 
+    displayedName: 'Wyświetlana nazwa', 
+    room: 'Pomieszczenie', 
+    deviceId: 'Identyfikator urządzenia', 
+    connection: 'Połączenie', 
+    lastRefresh: 'Ostatnie odświeżenie', 
+    noRoom: 'Nie podano', 
+    noValue: 'Niedostępne', 
+    noMotorState: 'Nie odebrano stanu napędu', 
+    yes: 'Tak', 
+    no: 'Nie', 
+    notInitialized: 'Nie zainicjalizowano', 
+    invalidHistoricalDate: 'Nieprawidłowa data historyczna', 
+    historicalFad: 'Surowe historyczne dane FAD', 
+    historicalFadNotice: 'Znaczenie funkcjonalne niepotwierdzone', 
+    rawFrame: 'Surowa ramka', 
+    technicalDetails: 'Szczegóły techniczne', 
+    serviceUuid: 'UUID usługi', 
+    characteristicUuid: 'UUID charakterystyki', 
+    errorCode: 'Kod błędu',
+    errors: { 
+      serviceAbsent: 'Usługa BLE niedostępna', 
+      characteristicAbsent: 'Niedostępne dla tego oprogramowania układowego', 
+      notReadable: 'Odczyt nieobsługiwany', 
+      unknown: 'Wystąpił błąd podczas odczytu.' 
+    },
+    errorDetails: { 
+      serviceAbsent: 'Wymagana usługa BLE nie jest udostępniana przez ten produkt.', 
+      characteristicAbsent: 'Wymagana charakterystyka BLE nie jest udostępniana przez ten produkt.', 
+      notReadable: 'Charakterystyki BLE tego produktu nie można odczytać.' 
+    },
+    version: { 
+      productType: 'Surowy typ produktu', 
+      productSubtype: 'Podtyp', 
+      crc: 'CRC', 
+      motorAddress: 'Numer seryjny' 
+    },
+    user: { 
+      lockMode: 'Tryb blokady', 
+      lockModeRaw: 'Surowy tryb blokady', 
+      staticLight: 'Oświetlenie statyczne', 
+      peripheralByte1: 'Bajt urządzeń peryferyjnych użytkownika 1', 
+      peripheralByte2: 'Bajt urządzeń peryferyjnych użytkownika 2' 
+    },
+    expert: { 
+      exactWeight: 'Dokładna waga', 
+      nearOpenProportional: 'Składnik proporcjonalny otwierania', 
+      nearCloseProportional: 'Składnik proporcjonalny zamykania', 
+      nearOpenIntegral: 'Składnik całkujący otwierania', 
+      nearCloseIntegral: 'Składnik całkujący zamykania', 
+      peripherals: 'Surowe dane urządzeń peryferyjnych (wejścia, blokada i testy radaru)', 
+      peripheralsWithoutLock: 'Surowe dane urządzeń peryferyjnych (wejścia i testy radaru)' 
+    },
+    motor: { 
+      rawState: 'Surowy stan', 
+      stateLabel: 'Stan techniczny', 
+      currentPosition: 'Bieżąca pozycja', 
+      maximumPosition: 'Pozycja maksymalna', 
+      percentage: 'Otwarcie', 
+      error: 'Błąd', 
+      switchesRaw: 'Surowe bity stanu',
+      openingStarted: 'Rozpoczęto otwieranie', 
+      stoppedAfterOpening: 'Zatrzymano po otwarciu', 
+      closingStarted: 'Rozpoczęto zamykanie', 
+      stoppedAfterClosing: 'Zatrzymano po zamknięciu', 
+      unknown: 'Stan nieudokumentowany' 
+    },
   },
 } satisfies Readonly<Record<TranslatedLanguage, TextPatch<ProductPageText>>>;
 

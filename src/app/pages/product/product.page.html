@@ -731,7 +731,7 @@
                     class="name-room-name-input"
                     [label]="text.nameRoomControls.nameLabel"
                     label-placement="stacked"
-                    [maxlength]="15"
+                    [maxlength]="roomNameMaxLength"
                     [value]="roomNameDraftValue().name"
                     [disabled]="(config.profile !== 'widoor' && !usesMoventivLayout && !roomNameControlUnlocked) || roomNameWriteState.status === 'executing'"
                     (ionInput)="setRoomNameDraftName($event)"

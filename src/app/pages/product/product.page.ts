@@ -216,6 +216,7 @@ import {
   PRODUCT_ROOM_NAME_POST_WRITE_COOLDOWN_MS,
   PRODUCT_ROOM_NAME_PRE_WRITE_DELAY_MS,
   PRODUCT_ROOM_OPTIONS,
+  PRODUCT_ROOM_NAME_MAX_LENGTH,
   ProductRoomNameDraft,
   ProductRoomSuffix,
   createProductRoomNameAuthorization,
@@ -367,6 +368,7 @@ export class ProductPage implements OnDestroy {
       hardware: text.sections.hardware,
     });
   }
+  readonly roomNameMaxLength = PRODUCT_ROOM_NAME_MAX_LENGTH;
   readonly roomOptions = PRODUCT_ROOM_OPTIONS;
   readonly sensitiveActions: readonly ProductSensitiveActionUiConfig[];
   readonly productCommands: readonly {

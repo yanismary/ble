@@ -76,7 +76,7 @@ export const PRODUCT_PAGE_TEXT = {
       empty: 'Le nom est obligatoire.',
       invalidCharacters:
         'Seuls les lettres, chiffres, espaces et tirets sont autorisés.',
-      tooLong: 'Le nom complet est limité à 15 caractères.',
+      tooLong: 'Le nom est limité à 15 caractères.',
       tooShort: 'Le nom doit contenir au moins 5 caractères.',
       invalidRoom: 'Pièce non reconnue.',
     },

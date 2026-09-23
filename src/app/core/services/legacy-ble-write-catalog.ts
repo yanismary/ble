@@ -598,10 +598,10 @@ export function encodeLegacyName(
       error: 'invalid-characters',
     };
   }
-  if (value.length > 15) {
+  if (value.length > 20) {
     return { valid: false, value: null, bytes: null, error: 'too-long' };
   }
-  return {
+  return {  
     valid: true,
     value,
     bytes: Uint8Array.from(Array.from(value), (character) =>

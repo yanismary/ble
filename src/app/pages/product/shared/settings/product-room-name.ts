@@ -153,9 +153,11 @@ export function validateProductRoomNameDraft(
   if (!baseName) {
     return { valid: false, error: 'empty' };
   }
-  if (typedName &&
-      typedName.length < PRODUCT_ROOM_NAME_MIN_TYPED_NAME_LENGTH) {
+  if (typedName && typedName.length < PRODUCT_ROOM_NAME_MIN_TYPED_NAME_LENGTH) {
     return { valid: false, error: 'too-short' };
+  }
+  if (baseName.length > PRODUCT_ROOM_NAME_MAX_LENGTH) {
+    return { valid: false, error: 'too-long' };
   }
 
   const encoded = encodeLegacyName(baseName, roomSuffix ?? '');
