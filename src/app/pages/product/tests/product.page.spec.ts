@@ -6184,7 +6184,7 @@ describe('ProductPage weight-range controls for profile variants', () => {
     loadService.nextResult = completeLoadResult(
       'success',
       profile,
-      userValue(),
+      userValueWithSpeeds(100, 100),
       advancedValue(profile, lower, upper),
     );
     const writeExecutionService = new FakeBleWriteExecutionService();
@@ -6282,6 +6282,7 @@ describe('ProductPage weight-range controls for profile variants', () => {
         const {
           component,
           fixture,
+          loadService,
           writeExecutionService,
         } = await createWeightRangePage(
           scenario.profile,
@@ -6309,6 +6310,29 @@ describe('ProductPage weight-range controls for profile variants', () => {
         expect(component.weightRangeDraftValue()).toEqual(scenario.accepted);
         expect(component.canApplyWeightRange()).toBeTrue();
         expect(writeExecutionService.execute).not.toHaveBeenCalled();
+        const advancedRefresh = completeLoadResult(
+          'success',
+          scenario.profile,
+          userValueWithSpeeds(100, 100),
+          advancedValue(
+            scenario.profile,
+            scenario.accepted.lower,
+            scenario.accepted.upper,
+          ),
+        );
+        loadService.nextResult = {
+          ...advancedRefresh,
+          executedOrder: ['advancedParameters'],
+          results: {
+            advancedParameters: advancedRefresh.results.advancedParameters,
+          },
+          notRequested: [
+            'version',
+            'datesAndCycles',
+            'maintenance',
+            'userParameters',
+          ],
+        };
 
         await component.requestWeightRangeChange();
 
@@ -6337,6 +6361,31 @@ describe('ProductPage weight-range controls for profile variants', () => {
           allowMoventivPhase1ImmediateWrite: true,
         }));
         expect(request.authorization).toBeNull();
+        const openSpeed = component.userSpeedControls.find((control) =>
+          control.config.field === 'open-speed',
+        )!.config;
+        const closeSpeed = component.userSpeedControls.find((control) =>
+          control.config.field === 'close-speed',
+        )!.config;
+        expect(component.currentUserSpeedValue(openSpeed)).toBe(75);
+        expect(component.currentUserSpeedValue(closeSpeed)).toBe(70);
+
+        writeExecutionService.nextResult = userSpeedExecutionResult(
+          scenario.profile,
+          'open-speed',
+          '01 64',
+        );
+        component.setUserSpeedDraftValue(openSpeed, 100);
+        expect(component.canApplyUserSpeed(openSpeed)).toBeTrue();
+
+        await component.requestUserSpeedChange(openSpeed);
+
+        expect(writeExecutionService.execute).toHaveBeenCalledTimes(4);
+        const speedRequest = writeExecutionService.execute.calls.mostRecent()
+          .args[0] as LegacyBleWriteRequest;
+        expect(speedRequest.write.operation).toBe('open-speed');
+        expect(speedRequest.write.payloadHex).toBe('01 64');
+        expect(component.currentUserSpeedValue(openSpeed)).toBe(100);
       },
     );
   }

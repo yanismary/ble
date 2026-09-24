@@ -3447,6 +3447,9 @@ export class ProductPage implements OnDestroy {
       return;
     }
     if (result.status === 'success') {
+      if (this.usesPhase1ImmediateWrite(config.profile)) {
+        this.updateUserSpeedDisplay(config.field, draftValue);
+      }
       this.userSpeedWriteState = Object.freeze({
         status: 'sent',
         field: config.field,
@@ -3823,6 +3826,7 @@ export class ProductPage implements OnDestroy {
           result.status !== 'success') {
         return false;
       }
+      this.updateUserSpeedDisplay(item.field, item.value);
       this.userSpeedDrafts.set(item.field, item.value);
     }
     return true;
@@ -5424,6 +5428,15 @@ export class ProductPage implements OnDestroy {
         },
       },
     };
+  }
+
+  private updateUserSpeedDisplay(
+    field: ProductUserSpeedField,
+    value: number,
+  ): void {
+    this.updateUserParametersDisplay(field === 'open-speed'
+      ? { openSpeed: value }
+      : { closeSpeed: value });
   }
 
   private updateDemoExpertParameters(
