@@ -942,6 +942,8 @@ export class BleService implements OnDestroy {
     this.connectionGenerationValue += 1;
     this.activeConnectionToken = null;
     this.connectingDeviceId = null;
+    console.info(`[BLE] Device disconnected: ${deviceId}`);
+    console.info('[BLE] Unexpected disconnect detected');
     this.disconnectionSubject.next({ deviceId, reason: 'remote' });
   }
 

@@ -55,6 +55,7 @@ import {
 } from '../scan-page-ui';
 import { TUTORIAL_FRESH_SCAN_STATE_KEY } from
   '../../tutorial/tutorial-navigation';
+import { CLEAR_SCAN_RESULTS_STATE_KEY } from '../scan-navigation';
 
 class FakeBleService {
   private readonly disconnectionSubject = new Subject<BleDisconnectionEvent>();
@@ -683,6 +684,90 @@ describe('ScanPage', () => {
       expect(component.devices).toEqual([]);
       expect(bleService.disconnect).not.toHaveBeenCalled();
       expect(component.scanning).toBeFalse();
+    },
+  );
+
+  it('should clear stale scan state once after an unexpected BLE disconnect',
+    async () => {
+      const oldDevice = {
+        deviceId: 'device-old',
+        name: 'Moventiv-BE-L',
+        rssi: -44,
+      };
+      const startScanSpy = spyOn(bleService, 'startScan').and.callThrough();
+      await component.startScan();
+      bleService.emit(createScanResult(
+        oldDevice.deviceId,
+        oldDevice.rssi,
+        oldDevice.name,
+      ));
+      bleService.emit(createScanResult(
+        'device-offline',
+        -71,
+        'Widoor-XXX',
+      ));
+      await component.stopScan();
+      startScanSpy.calls.reset();
+      component.selectedDeviceId = oldDevice.deviceId;
+      component.connectionRetryDeviceId = oldDevice.deviceId;
+      component.services = [{ uuid: 'old-service', characteristics: [] }];
+      component.discoveryError = 'Old discovery error';
+      component.identificationError = 'Old identification error';
+      component.connectionError = 'Old connection error';
+      component.errorMessage = 'Old scan error';
+      component.hasScanned = true;
+      const navigationState = {
+        navigationId: 42,
+        [CLEAR_SCAN_RESULTS_STATE_KEY]: true,
+      };
+      routerGetCurrentNavigation.and.returnValue({
+        extras: { state: navigationState },
+      });
+      globalThis.history.replaceState(navigationState, '');
+
+      await component.ionViewWillEnter();
+
+      expect(component.devices).toEqual([]);
+      expect(component.selectedDeviceId).toBeNull();
+      expect(component.connectionRetryDeviceId).toBeNull();
+      expect(component.services).toEqual([]);
+      expect(component.discoveryError).toBeNull();
+      expect(component.identificationError).toBeNull();
+      expect(component.connectionError).toBeNull();
+      expect(component.errorMessage).toBeNull();
+      expect(component.hasScanned).toBeFalse();
+      expect(component.scanning).toBeFalse();
+      expect(startScanSpy).not.toHaveBeenCalled();
+      expect(globalThis.history.state[CLEAR_SCAN_RESULTS_STATE_KEY])
+        .toBeUndefined();
+
+      bleService.emit(createScanResult(
+        oldDevice.deviceId,
+        -30,
+        oldDevice.name,
+      ));
+      expect(component.devices).toEqual([]);
+
+      routerGetCurrentNavigation.and.returnValue(null);
+      await component.startScan();
+      bleService.emit(createScanResult('device-new', -38, 'Garline-New'));
+
+      expect(component.devices).toEqual([{
+        deviceId: 'device-new',
+        name: 'Garline-New',
+        rssi: -38,
+      }]);
+      expect(component.devices.some(({ deviceId }) =>
+        deviceId === oldDevice.deviceId || deviceId === 'device-offline'
+      )).toBeFalse();
+      expect(startScanSpy).toHaveBeenCalledTimes(1);
+
+      await component.stopScan();
+      await component.ionViewWillEnter();
+
+      expect(component.devices.map(({ deviceId }) => deviceId))
+        .toEqual(['device-new']);
+      expect(startScanSpy).toHaveBeenCalledTimes(1);
     },
   );
 

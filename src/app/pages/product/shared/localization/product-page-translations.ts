@@ -23,6 +23,7 @@ type TranslatedLanguage = Exclude<ProductPageLanguage, 'fr'>;
 const PRODUCT_PAGE_TRANSLATIONS = {
   en: {
     backToScan: 'Back to scan',
+    connectionLost: 'Bluetooth connection lost.',
     returnToScanFailed:
       'Unable to disconnect the product. Try again before returning to scan.',
     openProductPage: 'Open product page',
@@ -394,6 +395,7 @@ const PRODUCT_PAGE_TRANSLATIONS = {
   },
   de: {
     backToScan: 'Zurück zur Suche',
+    connectionLost: 'Bluetooth-Verbindung verloren.',
     returnToScanFailed:
       'Das Produkt konnte nicht getrennt werden. Versuchen Sie es erneut, bevor Sie zur Suche zurückkehren.',
     openProductPage: 'Produktseite öffnen',
@@ -552,6 +554,7 @@ const PRODUCT_PAGE_TRANSLATIONS = {
   },
   pl: {
     backToScan: 'Powrót do wyszukiwania',
+    connectionLost: 'Utracono połączenie Bluetooth.',
     returnToScanFailed: 'Nie można odłączyć produktu. Spróbuj ponownie przed powrotem do wyszukiwania.',
     openProductPage: 'Otwórz stronę produktu', 
     refresh: 'Odśwież informacje', 

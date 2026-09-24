@@ -1,6 +1,7 @@
 // Catalogue temporaire, destiné à être remplacé par le futur i18n global.
 export const PRODUCT_PAGE_TEXT = {
   backToScan: 'Retour au scan',
+  connectionLost: 'Connexion Bluetooth perdue.',
   returnToScanFailed:
     'Impossible de déconnecter le produit. Réessayez avant de revenir au scan.',
   openProductPage: 'Ouvrir la page produit',

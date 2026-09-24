@@ -122,6 +122,10 @@ import {
 } from './scan-product-connection.text';
 import { scanSurfaceTextFor } from './scan-surface.text';
 import { scanExitTextFor } from './scan-exit.text';
+import {
+  shouldClearScanResults,
+  withoutClearScanResultsState,
+} from './scan-navigation';
 
 interface ScannedDevice {
   deviceId: string;
@@ -316,6 +320,16 @@ export class ScanPage implements OnDestroy {
     this.registerRootBackButton();
     const navigationState = this.router.getCurrentNavigation?.()?.extras.state ??
       globalThis.history?.state;
+    if (shouldClearScanResults(navigationState)) {
+      this.clearScanResults();
+      if (shouldClearScanResults(globalThis.history?.state)) {
+        globalThis.history.replaceState(
+          withoutClearScanResultsState(globalThis.history.state),
+          '',
+        );
+      }
+      return;
+    }
     if (isTutorialFreshScanNavigation(navigationState)) {
       this.devices = [];
       if (isTutorialFreshScanNavigation(globalThis.history?.state)) {
@@ -1524,6 +1538,15 @@ export class ScanPage implements OnDestroy {
     }
   }
 
+  private clearScanResults(): void {
+    this.resetAfterProductExit(true);
+    this.connectionRetryDeviceId = null;
+    this.retryingConnection = false;
+    this.errorMessage = null;
+    this.scanBleError = null;
+    this.hasScanned = false;
+  }
+
   private async presentDisconnectedToast(): Promise<void> {
     if (this.destroyed) {
       return;
@@ -1783,7 +1806,7 @@ export class ScanPage implements OnDestroy {
   }
 
   private updateDevice(result: ScanResult): void {
-    if (this.destroyed) {
+    if (this.destroyed || !this.scanning) {
       return;
     }
 

@@ -42,6 +42,7 @@ import {
   IonToolbar,
   IonRouterOutlet,
   Platform,
+  ToastController,
 } from '@ionic/angular/standalone';
 import { Subscription } from 'rxjs';
 
@@ -241,6 +242,7 @@ import {
   createProductDemoSnapshot,
   isProductDemoProfile,
 } from './shared/demo/product-demo';
+import { CLEAR_SCAN_RESULTS_STATE_KEY } from '../scan/scan-navigation';
 
 type ProductShellMainTab = 'commands' | 'settings' | 'information';
 type ProductShellSettingsTab = 'basic' | 'advanced';
@@ -301,6 +303,7 @@ export class ProductPage implements OnDestroy {
   private readonly router = inject(Router);
   private readonly platform = inject(Platform);
   private readonly routerOutlet = inject(IonRouterOutlet, { optional: true });
+  private readonly toastController = inject(ToastController);
   private readonly productExitState = inject(ProductExitStateService);
   private readonly connectedProductInactivity =
     inject(ConnectedProductInactivityService);
@@ -313,6 +316,7 @@ export class ProductPage implements OnDestroy {
   private commandCycle = 0;
   private commandIdentifierSequence = 0;
   private destroyed = false;
+  private unexpectedDisconnectionHandled = false;
   private readonly productCommandWrites: Map<string, LegacyBleWrite>;
   private readonly lockModeWrites: Map<LegacyLockMode, LegacyBleWrite>;
   private readonly userSpeedWrites: Map<ProductUserSpeedField, LegacyBleWrite>;
@@ -5229,7 +5233,12 @@ export class ProductPage implements OnDestroy {
   }
 
   private handleDisconnection(event: BleDisconnectionEvent): void {
-    if (this.context === null || event.deviceId !== this.context.deviceId) {
+    if (
+      this.context === null ||
+      event.deviceId !== this.context.deviceId ||
+      this.bleService.connectionGeneration !==
+        this.context.connectionGeneration + 1
+    ) {
       return;
     }
     const inactivitySessionId = this.connectedProductInactivitySessionId();
@@ -5255,6 +5264,58 @@ export class ProductPage implements OnDestroy {
     });
     this.commandHistoryEntries = [];
     this.invalidateContext('disconnected');
+
+    if (
+      event.reason === 'remote' &&
+      !this.returningToScan &&
+      !this.unexpectedDisconnectionHandled
+    ) {
+      this.unexpectedDisconnectionHandled = true;
+      this.returningToScan = true;
+      this.stopConnectedProductInactivity();
+      console.info('[PRODUCT] BLE disconnected -> returning to scan');
+      void this.returnToScanAfterUnexpectedDisconnection();
+    }
+  }
+
+  private async returnToScanAfterUnexpectedDisconnection(): Promise<void> {
+    try {
+      const [, navigated] = await Promise.all([
+        this.presentConnectionLostToast(),
+        this.ngZone.run(() => this.router.navigate(
+          ['/scan'],
+          {
+            replaceUrl: true,
+            state: { [CLEAR_SCAN_RESULTS_STATE_KEY]: true },
+          },
+        )),
+      ]);
+      if (!navigated && !this.destroyed) {
+        this.returningToScan = false;
+        this.unexpectedDisconnectionHandled = false;
+      }
+    } catch (error: unknown) {
+      if (!this.destroyed) {
+        this.returningToScan = false;
+        this.unexpectedDisconnectionHandled = false;
+      }
+      console.warn(
+        '[PRODUCT] Unable to return to scan after BLE disconnection',
+        error,
+      );
+    }
+  }
+
+  private async presentConnectionLostToast(): Promise<void> {
+    if (this.destroyed) {
+      return;
+    }
+    const toast = await this.toastController.create({
+      message: this.text.connectionLost,
+      duration: 1_500,
+      position: 'bottom',
+    });
+    await toast.present();
   }
 
   private handleMotorNotification(event: BleNotificationEvent): void {

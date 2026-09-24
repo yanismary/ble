@@ -12,6 +12,7 @@ import {
   IonContent,
   IonRouterOutlet,
   Platform,
+  ToastController,
 } from '@ionic/angular/standalone';
 import { Observable, Subject, Subscription } from 'rxjs';
 
@@ -106,6 +107,7 @@ import {
   ProductDemoProfile,
   createProductDemoNavigationState,
 } from '../shared/demo/product-demo';
+import { CLEAR_SCAN_RESULTS_STATE_KEY } from '../../scan/scan-navigation';
 
 class FakeBleService {
   private readonly disconnectionSubject =
@@ -133,7 +135,7 @@ class FakeBleService {
     this.connectedDeviceId = null;
     this.connectionGeneration += 1;
     if (deviceId !== null) {
-      this.disconnectionSubject.next({ deviceId, reason: 'remote' });
+      this.disconnectionSubject.next({ deviceId, reason: 'local' });
     }
   }
 
@@ -145,6 +147,10 @@ class FakeBleService {
     this.connectedDeviceId = null;
     this.connectionGeneration += 1;
     this.disconnectionSubject.next({ deviceId, reason: 'remote' });
+  }
+
+  emitDisconnection(event: BleDisconnectionEvent): void {
+    this.disconnectionSubject.next(event);
   }
 
   emitMotorState(bytes: readonly number[]): void {
@@ -298,6 +304,9 @@ describe('ProductPage', () => {
   let alertOptions: Record<string, unknown>[];
   let delaySpy: jasmine.Spy;
   let routerNavigate: jasmine.Spy;
+  let toastCreate: jasmine.Spy;
+  let toastPresent: jasmine.Spy;
+  let toastOptions: Record<string, unknown>[];
   let routerNavigationState: ProductPageNavigationState;
   let platform: FakePlatform;
   let routerOutlet: { swipeGesture: boolean };
@@ -327,6 +336,14 @@ describe('ProductPage', () => {
       dismiss: topAlertDismiss,
     });
     routerNavigate = jasmine.createSpy('navigate').and.resolveTo(true);
+    toastOptions = [];
+    toastPresent = jasmine.createSpy('present').and.resolveTo();
+    toastCreate = jasmine.createSpy('create').and.callFake(
+      async (options: Record<string, unknown>) => {
+        toastOptions.push(options);
+        return { present: toastPresent };
+      },
+    );
     routerNavigationState = navigationState('widoor');
     platform = new FakePlatform();
     routerOutlet = { swipeGesture: true };
@@ -360,6 +377,7 @@ describe('ProductPage', () => {
         },
         { provide: Platform, useValue: platform },
         { provide: IonRouterOutlet, useValue: routerOutlet },
+        { provide: ToastController, useValue: { create: toastCreate } },
       ],
     }).compileComponents();
 
@@ -727,16 +745,78 @@ describe('ProductPage', () => {
       inactivity.handleAppStateChange(true);
       bleService.emitRemoteDisconnection();
       expect(component.viewModel.connectionState).toBe('disconnected');
-      expect(routerNavigate).not.toHaveBeenCalled();
+      expect(routerNavigate).toHaveBeenCalledOnceWith(
+        ['/scan'],
+        {
+          replaceUrl: true,
+          state: { [CLEAR_SCAN_RESULTS_STATE_KEY]: true },
+        },
+      );
 
       tick(CONNECTED_PRODUCT_RESUME_CHECK_DELAY_MS);
       flushMicrotasks();
 
       expect(disconnect).not.toHaveBeenCalled();
-      expect(routerNavigate).toHaveBeenCalledOnceWith(['/scan']);
+      expect(routerNavigate).toHaveBeenCalledTimes(1);
+      expect(toastCreate).toHaveBeenCalledTimes(1);
+      expect(toastOptions).toEqual([{
+        message: component.text.connectionLost,
+        duration: 1_500,
+        position: 'bottom',
+      }]);
+      expect(toastPresent).toHaveBeenCalledTimes(1);
       expect(inactivity.isMonitoring()).toBeFalse();
     }),
   );
+
+  it('should not navigate or show the lost-connection toast after a local disconnect',
+    async () => {
+      await bleService.disconnect();
+
+      expect(component.viewModel.connectionState).toBe('disconnected');
+      expect(routerNavigate).not.toHaveBeenCalled();
+      expect(toastCreate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should not start a second navigation when a remote loss occurs during a controlled exit',
+    () => {
+      component.returningToScan = true;
+
+      bleService.emitRemoteDisconnection();
+
+      expect(component.viewModel.connectionState).toBe('disconnected');
+      expect(routerNavigate).not.toHaveBeenCalled();
+      expect(toastCreate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should ignore duplicate remote disconnection events', fakeAsync(() => {
+    bleService.emitRemoteDisconnection();
+    bleService.emitDisconnection({ deviceId: 'device-1', reason: 'remote' });
+    flushMicrotasks();
+
+    expect(routerNavigate).toHaveBeenCalledOnceWith(
+      ['/scan'],
+      {
+        replaceUrl: true,
+        state: { [CLEAR_SCAN_RESULTS_STATE_KEY]: true },
+      },
+    );
+    expect(toastCreate).toHaveBeenCalledTimes(1);
+    expect(toastPresent).toHaveBeenCalledTimes(1);
+    expect(component.returningToScan).toBeTrue();
+  }));
+
+  it('should ignore a disconnection from an older cached BLE session', () => {
+    bleService.connectionGeneration = 8;
+
+    bleService.emitDisconnection({ deviceId: 'device-1', reason: 'remote' });
+
+    expect(component.viewModel.connectionState).toBe('connected');
+    expect(routerNavigate).not.toHaveBeenCalled();
+    expect(toastCreate).not.toHaveBeenCalled();
+  });
 
   it('should show settings and information tabs by default', () => {
     const element = fixture.nativeElement as HTMLElement;
